@@ -269,25 +269,25 @@ const SHARED_FILES = [
     key:   'tenencia',
     name:  'Tenencia por Ticker',
     icon:  '📊',
-    hint:  'Exportar desde Balanz · hoja "Export" · .xlsx / .xls',
+    hint:  'Exportar desde Balanz · hoja "Export" · .xlsx / .csv',
     usedBy: ['Rotador RV', 'Scanner ONs'],
-    accept: '.xlsx,.xls'
+    accept: '.xlsx,.xls,.csv'
   },
   {
     key:   'stock',
     name:  'Stock de cuentas',
     icon:  '📋',
-    hint:  'Comitente → Teléfono · hoja "Export" · .xlsx / .xls',
+    hint:  'Comitente → Teléfono · hoja "Export" · .xlsx / .csv (si tiene bloqueo IRM)',
     usedBy: ['Rotador RV', 'Scanner ONs'],
-    accept: '.xlsx,.xls'
+    accept: '.xlsx,.xls,.csv'
   },
   {
     key:   'monitor',
     name:  'Monitor de Individuos',
     icon:  '📈',
-    hint:  'Archivo .xlsm directo desde Balanz',
+    hint:  'Archivo .xlsm directo desde Balanz · o .csv si tiene bloqueo IRM',
     usedBy: ['Armador de Carteras', 'Scanner ONs'],
-    accept: '.xlsx,.xls,.xlsm'
+    accept: '.xlsx,.xls,.xlsm,.csv'
   }
 ];
 
