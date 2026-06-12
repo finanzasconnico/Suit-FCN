@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCN Suite — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #081917;
+  --surface:  #0E2622;
+  --surface2: #122B27;
+  --border:   #1E3A34;
+  --jade:     #1C8C5F;
+  --jade-d:   rgba(28,140,95,.12);
+  --ambar:    #DBA03C;
+  --ambar-d:  rgba(219,160,60,.12);
+  --danger:   #C0453B;
+  --danger-d: rgba(192,69,59,.12);
+  --text:     #EAF1EE;
+  --muted:    #6C817C;
+  --dim:      #3C5752;
+  --font-d:   'Spectral', Georgia, serif;
+  --font-s:   'Hanken Grotesk', system-ui, sans-serif;
+  --font-m:   'IBM Plex Mono', ui-monospace, monospace;
+  --r: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:13px;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5;}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:0;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:44px 40px;width:100%;max-width:380px;text-align:center;position:relative;z-index:1;}
+.login-logo{width:60px;height:60px;border:2px solid var(--ambar);border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-family:var(--font-d);font-size:26px;color:var(--ambar);}
+.login-title{font-family:var(--font-d);font-size:26px;font-weight:300;color:var(--text);margin-bottom:4px;}
+.login-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:32px;font-family:var(--font-m);}
+.login-label{display:block;font-size:10px;color:var(--muted);text-align:left;margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;}
+.login-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:14px;outline:none;transition:border-color .2s;margin-bottom:12px;}
+.login-input:focus{border-color:var(--jade);}
+.login-btn{width:100%;padding:12px;background:var(--jade);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-s);font-size:14px;font-weight:500;cursor:pointer;transition:background .2s;margin-top:4px;}
+.login-btn:hover{background:#22a870;}
+.login-err{font-size:11px;color:var(--danger);margin-top:10px;min-height:16px;font-family:var(--font-m);}
+.login-footer{position:relative;z-index:1;margin-top:28px;font-family:var(--font-m);font-size:9px;color:var(--dim);letter-spacing:.08em;}
+
+/* ── APP SHELL ── */
+#app{display:none;height:100vh;flex-direction:column;}
+#app.visible{display:flex;}
+
+/* ── TOPBAR ── */
+.topbar{flex-shrink:0;height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;position:relative;z-index:50;}
+.topbar-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.brand-mark{width:30px;height:30px;border:1.5px solid var(--ambar);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:13px;color:var(--ambar);}
+.brand-name{font-family:var(--font-d);font-size:16px;font-weight:300;color:var(--text);}
+.brand-name span{color:var(--ambar);font-weight:400;}
+.brand-tag{font-family:var(--font-m);font-size:8.5px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-left:8px;padding:2px 7px;border:1px solid var(--border);border-radius:2px;}
+.topbar-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;}
+.topbar-tools{display:flex;gap:2px;flex:1;overflow-x:auto;}
+.topbar-tools::-webkit-scrollbar{height:0;}
+.tool-tab{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:12px;font-weight:400;white-space:nowrap;transition:all .15s;}
+.tool-tab:hover{background:var(--surface2);color:var(--text);}
+.tool-tab.active{background:rgba(28,140,95,.15);color:var(--jade);}
+.tool-tab.files-tab.active{background:rgba(219,160,60,.12);color:var(--ambar);}
+.tool-tab .icon{font-size:14px;flex-shrink:0;}
+.file-dot{width:6px;height:6px;border-radius:50%;background:var(--jade);flex-shrink:0;}
+.file-dot.warn{background:var(--ambar);}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto;}
+.user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;}
+.user-avatar{width:20px;height:20px;border-radius:50%;background:var(--jade-d);border:1px solid var(--jade);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:9px;color:var(--ambar);font-weight:600;}
+.user-name{font-size:12px;color:var(--text);}
+.user-role{font-size:9px;color:var(--muted);font-family:var(--font-m);letter-spacing:.04em;}
+.btn-logout{background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:4px 11px;color:var(--muted);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+.btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+/* ── CONTENT ── */
+.content-area{flex:1;position:relative;overflow:hidden;}
+.tool-frame{position:absolute;inset:0;width:100%;height:100%;border:none;display:none;}
+.tool-frame.active{display:block;}
+
+/* ── PANELS (home + files) ── */
+.hub-panel{position:absolute;inset:0;overflow-y:auto;padding:32px;display:none;}
+.hub-panel.active{display:block;}
+
+/* ── HOME ── */
+.home-hero{max-width:960px;margin:0 auto 24px;}
+.home-greeting{font-family:var(--font-d);font-size:13px;color:var(--muted);margin-bottom:4px;}
+.home-hero h1{font-family:var(--font-d);font-size:26px;font-weight:300;color:var(--text);margin-bottom:6px;}
+.home-hero p{font-size:12px;color:var(--muted);line-height:1.7;max-width:480px;}
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;max-width:960px;margin:0 auto 32px;}
+.tool-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.tool-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--jade-d),transparent);opacity:0;transition:opacity .2s;}
+.tool-card:hover{border-color:rgba(28,140,95,.5);transform:translateY(-2px);}
+.tool-card:hover::before{opacity:1;}
+.tool-card-icon{font-size:1.8rem;margin-bottom:12px;display:block;}
+.tool-card-name{font-family:var(--font-d);font-size:15px;font-weight:400;color:var(--text);margin-bottom:4px;}
+.tool-card-desc{font-size:11px;color:var(--muted);line-height:1.6;}
+.tool-card-badge{display:inline-flex;align-items:center;gap:4px;margin-top:10px;font-family:var(--font-m);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);background:var(--jade-d);border:1px solid rgba(28,140,95,.25);padding:2px 8px;border-radius:10px;}
+.tool-card-badge.amber{color:var(--ambar);background:var(--ambar-d);border-color:rgba(219,160,60,.25);}
+
+/* ── FILES PANEL ── */
+.files-header{max-width:820px;margin:0 auto 24px;}
+.files-header h2{font-family:var(--font-d);font-size:22px;font-weight:300;color:var(--text);margin-bottom:6px;}
+.files-header p{font-size:12px;color:var(--muted);line-height:1.6;max-width:560px;}
+.files-grid{display:flex;flex-direction:column;gap:12px;max-width:820px;margin:0 auto;}
+.file-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;transition:border-color .2s;}
+.file-card:hover{border-color:rgba(255,255,255,.12);}
+.file-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px;}
+.file-card-left{flex:1;}
+.file-card-icon{font-size:1.4rem;margin-bottom:8px;display:block;}
+.file-card-name{font-family:var(--font-d);font-size:16px;font-weight:400;color:var(--text);margin-bottom:3px;}
+.file-card-hint{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.file-card-tools{display:flex;gap:5px;flex-wrap:wrap;}
+.fct-pill{font-family:var(--font-m);font-size:8.5px;letter-spacing:.07em;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:2px 8px;border-radius:10px;}
+.file-card-status{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:var(--r);background:rgba(0,0,0,.2);border:1px solid var(--border);margin-bottom:12px;}
+.fcs-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--dim);}
+.fcs-dot.loaded{background:var(--jade);}
+.fcs-text{flex:1;font-size:11px;color:var(--muted);}
+.fcs-text strong{color:var(--text);font-weight:500;}
+.fcs-ts{font-family:var(--font-m);font-size:9px;color:var(--dim);}
+.file-card-actions{display:flex;gap:8px;align-items:center;}
+.file-drop-zone{flex:1;position:relative;border:1.5px dashed var(--border);border-radius:var(--r);padding:10px 14px;text-align:center;cursor:pointer;transition:all .2s;font-size:11px;color:var(--muted);}
+.file-drop-zone:hover,.file-drop-zone.drag{border-color:var(--ambar);background:var(--ambar-d);color:var(--text);}
+.file-drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.btn-del{padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-del:hover{border-color:var(--danger);color:var(--danger);}
+.btn-notify{padding:8px 14px;background:var(--jade-d);border:1px solid rgba(28,140,95,.3);border-radius:var(--r);color:var(--jade);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-notify:hover{background:rgba(28,140,95,.2);}
+.files-notice{max-width:820px;margin:16px auto 0;padding:12px 16px;background:var(--ambar-d);border:1px solid rgba(219,160,60,.2);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.65;}
+.files-notice strong{color:var(--ambar);}
+
+/* ── LOADING FRAME ── */
+.frame-loading{position:absolute;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:5;}
+.spinner{width:28px;height:28px;border:2px solid rgba(255,255,255,.08);border-top-color:var(--jade);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-tool-name{font-family:var(--font-d);font-size:15px;color:var(--muted);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--jade);border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);transform:translateY(0);transition:all .3s;pointer-events:none;}
+.toast.hidden{transform:translateY(20px);opacity:0;}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">FN</div>
+    <div class="login-title">FCN Suite</div>
+    <div class="login-sub">finanzasconnico · acceso interno</div>
+    <label class="login-label">Usuario</label>
+    <input class="login-input" type="text" id="login-user" placeholder="nombre de usuario" autocomplete="username"
+      onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    <label class="login-label">Contraseña</label>
+    <input class="login-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+  <div class="login-footer">FCN Suite v1.1 · Acceso restringido al equipo</div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-mark">FN</div>
+      <span class="brand-name">finanzascon<span>nico</span></span>
+      <span class="brand-tag">Suite</span>
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-tools" id="topbar-tools"></div>
+    <div class="topbar-right">
+      <div class="user-badge">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div>
+          <div class="user-name" id="user-display-name">—</div>
+          <div class="user-role" id="user-role-label">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="content-area" id="content-area">
+
+    <!-- HOME PANEL -->
+    <div class="hub-panel" id="home-panel">
+      <div class="home-hero">
+        <div class="home-greeting" id="home-greeting">Buen día</div>
+        <h1>¿Qué herramienta necesitás hoy?</h1>
+        <p>Seleccioná una herramienta del panel. Los archivos compartidos se cargan automáticamente en cada herramienta.</p>
+      </div>
+      <div class="tools-grid" id="tools-grid"></div>
+    </div>
+
+    <!-- FILES PANEL -->
+    <div class="hub-panel" id="files-panel">
+      <div class="files-header">
+        <h2>🗂 Archivos compartidos</h2>
+        <p>Subí cada archivo una sola vez acá. Se carga automáticamente en todas las herramientas que lo necesitan — sin tener que subirlo de nuevo en cada una.</p>
+      </div>
+      <div class="files-grid" id="files-grid"></div>
+      <div class="files-notice">
+        <strong>💡 Actualización automática:</strong> si ya tenés una herramienta abierta y subís un archivo nuevo acá, la herramienta se actualiza sola en 3 segundos.
+      </div>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div class="frame-loading" id="frame-loading" style="display:none;">
+      <div class="spinner"></div>
+      <div class="loading-tool-name" id="loading-tool-name">Cargando...</div>
+    </div>
+
+    <!-- Tool iframes (populated by JS) -->
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  ⚙ USUARIOS — editá esta sección para gestionar el equipo
+// ══════════════════════════════════════════════════════════════
+const USERS = [
+  { username: 'nicolas',      password: 'fcn2024',   displayName: 'Nicolás',              role: 'Administrador', tools: 'all' },
+  { username: 'catalina',     password: 'gol2025',   displayName: 'Catalina Gol Pares',   role: 'Asesor',        tools: 'all' },
+  { username: 'bautista.m',   password: 'mag2025',   displayName: 'Bautista Magenta',     role: 'Asesor',        tools: 'all' },
+  { username: 'florencia.g',  password: 'god2025',   displayName: 'Mª Florencia Godino',  role: 'Asesor',        tools: 'all' },
+  { username: 'ramiro',       password: 'zam2025',   displayName: 'Ramiro Zambra',        role: 'Asesor',        tools: 'all' },
+  { username: 'ignacio',      password: 'vil2025',   displayName: 'Ignacio del Villar',   role: 'Asesor',        tools: 'all' },
+  { username: 'santiago',     password: 'leg2025',   displayName: 'Santiago Leguizamón',  role: 'Asesor',        tools: 'all' },
+  { username: 'martiniano',   password: 'lem2025',   displayName: 'Martiniano Lema',      role: 'Asesor',        tools: 'all' },
+  { username: 'martin',       password: 'zub2025',   displayName: 'Martín Zubiri',        role: 'Asesor',        tools: 'all' },
+  { username: 'julieta',      password: 'fue2025',   displayName: 'Julieta Fuentes',      role: 'Asesor',        tools: 'all' },
+  { username: 'mariano.d',    password: 'die2025',   displayName: 'Mariano Diez F.',      role: 'Asesor',        tools: 'all' },
+  { username: 'florencia.n',  password: 'nav2025',   displayName: 'Florencia Navarro',    role: 'Asesor',        tools: 'all' },
+  { username: 'thiago',       password: 'her2025',   displayName: 'Thiago Hermoso',       role: 'Asesor',        tools: 'all' },
+  { username: 'valentina',    password: 'alm2025',   displayName: 'Valentina Almada',     role: 'Asesor',        tools: 'all' },
+  { username: 'juancruz',     password: 'mas2025',   displayName: 'Juan Cruz Massun',     role: 'Asesor',        tools: 'all' },
+  { username: 'timoteo',      password: 'msi2025',   displayName: 'Timoteo Masic',        role: 'Asesor',        tools: 'all' },
+  { username: 'mariano.n',    password: 'nis2025',   displayName: 'Mariano C. Nistico',   role: 'Asesor',        tools: 'all' },
+  { username: 'tomas.s',      password: 'szy2025',   displayName: 'Tomás Szylowicki',     role: 'Asesor',        tools: 'all' },
+  { username: 'tomas.g',      password: 'gar2025',   displayName: 'Tomás García P.',      role: 'Asesor',        tools: 'all' },
+  { username: 'bautista.g',   password: 'gom2025',   displayName: 'Bautista Gómez Cora', role: 'Asesor',        tools: 'all' },
+  { username: 'marco',        password: 'gua2025',   displayName: 'Marco Guastaferri',    role: 'Asesor',        tools: 'all' },
+  { username: 'javier',       password: 'san2025',   displayName: 'Javier Sánchez D.P.',  role: 'Asistente',     tools: 'all' }
+];
+
+// ══════════════════════════════════════════════════════════════
+//  HERRAMIENTAS
+// ══════════════════════════════════════════════════════════════
+const TOOLS = [
+  { id:'rotador', name:'Rotador RV',         icon:'📈', desc:'Señales de compra/venta en Renta Variable y WhatsApp por cliente.', badge:'Renta Variable', file:'Rotador_RV_3.html',           color:'amber' },
+  { id:'scanner', name:'Scanner ONs',         icon:'🔍', desc:'Detecta ONs con TIR baja, compara con el Monitor y genera rotaciones.', badge:'Renta Fija',     file:'Scanner_ONs_FCN.html',      color:'jade'  },
+  { id:'armador', name:'Armador de Carteras', icon:'📊', desc:'Construí propuestas de portfolio en PDF con gráficos y rotaciones.',   badge:'Propuestas',   file:'Armador_Carteras_v4_3.html',  color:'jade'  },
+  { id:'monitor', name:'Portfolio Monitor',   icon:'🗂',  desc:'Monitor personal de cartera: posiciones, cupones y ganancias.',       badge:'Cliente',      file:'portfolio_monitor_fcn.html',  color:'jade'  }
+];
+
+// ══════════════════════════════════════════════════════════════
+//  ARCHIVOS COMPARTIDOS — qué es cada uno y quién lo usa
+// ══════════════════════════════════════════════════════════════
+const SHARED_FILES = [
+  {
+    key:   'tenencia',
+    name:  'Tenencia por Ticker',
+    icon:  '📊',
+    hint:  'Exportar desde Balanz · hoja "Export" · .xlsx / .xls',
+    usedBy: ['Rotador RV', 'Scanner ONs'],
+    accept: '.xlsx,.xls'
+  },
+  {
+    key:   'stock',
+    name:  'Stock de cuentas',
+    icon:  '📋',
+    hint:  'Comitente → Teléfono · hoja "Export" · .xlsx / .xls',
+    usedBy: ['Rotador RV', 'Scanner ONs'],
+    accept: '.xlsx,.xls'
+  },
+  {
+    key:   'monitor',
+    name:  'Monitor de Individuos',
+    icon:  '📈',
+    hint:  'Archivo .xlsm directo desde Balanz',
+    usedBy: ['Armador de Carteras', 'Scanner ONs'],
+    accept: '.xlsx,.xls,.xlsm'
+  }
+];
+
+// ══════════════════════════════════════════════════════════════
+//  INDEXED DB — almacenamiento de archivos compartidos
+// ══════════════════════════════════════════════════════════════
+const DB_NAME  = 'fcn_shared_v1';
+const DB_STORE = 'files';
+
+function openSharedDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+    req.onsuccess  = e => res(e.target.result);
+    req.onerror    = () => rej(new Error('IndexedDB no disponible'));
+  });
+}
+
+async function saveSharedFile(key, arrayBuffer, fileName) {
+  const db = await openSharedDB();
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(DB_STORE, 'readwrite');
+    const req = tx.objectStore(DB_STORE).put({ data: arrayBuffer, name: fileName, ts: Date.now() }, key);
+    req.onsuccess = () => res();
+    req.onerror   = () => rej();
+  });
+}
+
+async function getSharedFile(key) {
+  try {
+    const db = await openSharedDB();
+    return new Promise(res => {
+      const tx  = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get(key);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => res(null);
+    });
+  } catch { return null; }
+}
+
+async function deleteSharedFile(key) {
+  const db = await openSharedDB();
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(DB_STORE, 'readwrite');
+    const req = tx.objectStore(DB_STORE).delete(key);
+    req.onsuccess = () => res();
+    req.onerror   = () => rej();
+  });
+}
+
+// BroadcastChannel: notifica a las herramientas abiertas cuando se actualiza un archivo
+const BC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('fcn_shared') : null;
+
+// ══════════════════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════════════════
+const AUTH_KEY = 'fcn_suite_auth';
+const AUTH_TTL = 8 * 60 * 60 * 1000;
+
+let currentUser  = null;
+let activeToolId = null;
+const frameCache = {};
+
+function doLogin() {
+  const username = document.getElementById('login-user').value.trim().toLowerCase();
+  const password = document.getElementById('login-pass').value;
+  const user     = USERS.find(u => u.username.toLowerCase() === username && u.password === password);
+  if (!user) {
+    const err = document.getElementById('login-err');
+    err.textContent = 'Usuario o contraseña incorrectos.';
+    document.getElementById('login-pass').value = '';
+    setTimeout(() => err.textContent = '', 3000);
+    return;
+  }
+  currentUser = user;
+  sessionStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
+  showApp();
+}
+
+function doLogout() {
+  sessionStorage.removeItem(AUTH_KEY);
+  localStorage.removeItem(AUTH_KEY);
+  location.reload();
+}
+
+function checkSession() {
+  const raw = sessionStorage.getItem(AUTH_KEY);
+  if (!raw) return false;
+  try {
+    const s = JSON.parse(raw);
+    if (Date.now() - s.ts > AUTH_TTL) { doLogout(); return false; }
+    const user = USERS.find(u => u.username === s.username);
+    if (!user) return false;
+    currentUser = user;
+    localStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
+    return true;
+  } catch { return false; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SHELL
+// ══════════════════════════════════════════════════════════════
+function getUserTools() {
+  if (!currentUser) return [];
+  return currentUser.tools === 'all' ? TOOLS : TOOLS.filter(t => currentUser.tools.includes(t.id));
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('user-display-name').textContent = currentUser.displayName;
+  document.getElementById('user-role-label').textContent   = currentUser.role;
+  document.getElementById('user-avatar').textContent       = currentUser.displayName.charAt(0).toUpperCase();
+  buildNav();
+  buildHomeDashboard();
+  buildFilesPanel();
+  showHome();
+}
+
+function buildNav() {
+  const tools     = getUserTools();
+  const container = document.getElementById('topbar-tools');
+  container.innerHTML = '';
+
+  addTab(container, 'home',  '🏠', 'Inicio',   () => showHome(),  true);
+  addTab(container, 'files', '🗂', 'Archivos',  () => showFiles(), false, true);
+  tools.forEach(tool => addTab(container, tool.id, tool.icon, tool.name, () => openTool(tool.id)));
+}
+
+function addTab(container, id, icon, label, onclick, active = false, isFiles = false) {
+  const btn = document.createElement('button');
+  btn.className = 'tool-tab' + (active ? ' active' : '') + (isFiles ? ' files-tab' : '');
+  btn.id = 'tab-' + id;
+  btn.innerHTML = `<span class="icon">${icon}</span> ${label}`;
+  btn.onclick = onclick;
+  container.appendChild(btn);
+}
+
+function buildHomeDashboard() {
+  const tools = getUserTools();
+  const grid  = document.getElementById('tools-grid');
+  grid.innerHTML = '';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+  document.getElementById('home-greeting').textContent = `${greeting}, ${currentUser.displayName} 👋`;
+  tools.forEach(tool => {
+    const card = document.createElement('div');
+    card.className = 'tool-card';
+    card.innerHTML = `<span class="tool-card-icon">${tool.icon}</span>
+      <div class="tool-card-name">${tool.name}</div>
+      <div class="tool-card-desc">${tool.desc}</div>
+      <span class="tool-card-badge ${tool.color === 'amber' ? 'amber' : ''}">${tool.badge}</span>`;
+    card.onclick = () => openTool(tool.id);
+    grid.appendChild(card);
+  });
+}
+
+// ── FILES PANEL ──
+function buildFilesPanel() {
+  const grid = document.getElementById('files-grid');
+  grid.innerHTML = '';
+  SHARED_FILES.forEach(sf => {
+    const card = document.createElement('div');
+    card.className = 'file-card';
+    card.id = 'fcard-' + sf.key;
+    card.innerHTML = buildFileCard(sf, null);
+    grid.appendChild(card);
+  });
+  refreshFilesStatus();
+}
+
+function buildFileCard(sf, entry) {
+  const usedPills = sf.usedBy.map(t => `<span class="fct-pill">${t}</span>`).join('');
+  const statusDot  = entry ? 'loaded' : '';
+  const statusText = entry
+    ? `<strong>${escHtml(entry.name)}</strong> &nbsp;·&nbsp; ${relTime(entry.ts)}`
+    : 'Sin archivo — subí uno para que se use automáticamente';
+  const tsText     = entry ? `<span class="fcs-ts">${new Date(entry.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>` : '';
+  return `
+    <div class="file-card-top">
+      <div class="file-card-left">
+        <span class="file-card-icon">${sf.icon}</span>
+        <div class="file-card-name">${sf.name}</div>
+        <div class="file-card-hint">${sf.hint}</div>
+        <div class="file-card-tools">${usedPills}</div>
+      </div>
+    </div>
+    <div class="file-card-status" id="fstatus-${sf.key}">
+      <span class="fcs-dot ${statusDot}"></span>
+      <span class="fcs-text">${statusText}</span>
+      ${tsText}
+    </div>
+    <div class="file-card-actions">
+      <div class="file-drop-zone" id="fdrop-${sf.key}">
+        <input type="file" accept="${sf.accept}" onchange="onFileSelected('${sf.key}', this)">
+        ${entry ? '↺ Actualizar archivo' : '⬆ Subir archivo'}
+      </div>
+      ${entry ? `<button class="btn-del" onclick="onDeleteFile('${sf.key}')">🗑 Eliminar</button>` : ''}
+      ${entry ? `<button class="btn-notify" onclick="notifyTools('${sf.key}')">⚡ Enviar a herramientas</button>` : ''}
+    </div>`;
+}
+
+async function refreshFilesStatus() {
+  for (const sf of SHARED_FILES) {
+    const entry = await getSharedFile(sf.key);
+    const card  = document.getElementById('fcard-' + sf.key);
+    if (card) card.innerHTML = buildFileCard(sf, entry);
+    // Update dot in topbar
+    updateFilesTabDot();
+  }
+}
+
+async function updateFilesTabDot() {
+  let anyMissing = false;
+  for (const sf of SHARED_FILES) {
+    const e = await getSharedFile(sf.key);
+    if (!e) { anyMissing = true; break; }
+  }
+  const tab = document.getElementById('tab-files');
+  if (!tab) return;
+  const existing = tab.querySelector('.file-dot');
+  if (existing) existing.remove();
+  const dot = document.createElement('span');
+  dot.className = 'file-dot' + (anyMissing ? ' warn' : '');
+  tab.appendChild(dot);
+}
+
+function onFileSelected(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      await saveSharedFile(key, e.target.result, file.name);
+      await refreshFilesStatus();
+      notifyTools(key);
+      showToast(`✓ "${file.name}" guardado y enviado a las herramientas`);
+    } catch(err) {
+      showToast('❌ Error guardando el archivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function onDeleteFile(key) {
+  await deleteSharedFile(key);
+  await refreshFilesStatus();
+  showToast('Archivo eliminado.');
+}
+
+function notifyTools(key) {
+  if (BC) BC.postMessage({ type: 'file_updated', key });
+  showToast(`⚡ Notificación enviada a las herramientas abiertas`);
+}
+
+// ── NAVIGATION ──
+function showHome() {
+  setActiveTab('home');
+  document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
+  document.getElementById('home-panel').classList.add('active');
+  document.getElementById('files-panel').classList.remove('active');
+  document.getElementById('frame-loading').style.display = 'none';
+  activeToolId = null;
+}
+
+function showFiles() {
+  setActiveTab('files');
+  document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
+  document.getElementById('home-panel').classList.remove('active');
+  document.getElementById('files-panel').classList.add('active');
+  document.getElementById('frame-loading').style.display = 'none';
+  activeToolId = null;
+  refreshFilesStatus();
+}
+
+function openTool(toolId) {
+  const tool = TOOLS.find(t => t.id === toolId);
+  if (!tool || !getUserTools().find(t => t.id === toolId)) return;
+  setActiveTab(toolId);
+  document.getElementById('home-panel').classList.remove('active');
+  document.getElementById('files-panel').classList.remove('active');
+  const loadingEl = document.getElementById('frame-loading');
+  loadingEl.style.display = 'flex';
+  document.getElementById('loading-tool-name').textContent = `Cargando ${tool.name}…`;
+  document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
+  if (frameCache[toolId]) {
+    frameCache[toolId].classList.add('active');
+    setTimeout(() => loadingEl.style.display = 'none', 300);
+  } else {
+    const iframe = document.createElement('iframe');
+    iframe.className = 'tool-frame active';
+    iframe.id = 'frame-' + toolId;
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups');
+    iframe.src = tool.file;
+    iframe.onload = () => setTimeout(() => loadingEl.style.display = 'none', 400);
+    document.getElementById('content-area').appendChild(iframe);
+    frameCache[toolId] = iframe;
+  }
+  activeToolId = toolId;
+}
+
+function setActiveTab(toolId) {
+  document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+  const btn = document.getElementById('tab-' + toolId);
+  if (btn) btn.classList.add('active');
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+}
+
+// ── UTILS ──
+function relTime(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000)      return 'hace unos segundos';
+  if (diff < 3600000)    return `hace ${Math.floor(diff/60000)} min`;
+  if (diff < 86400000)   return `hace ${Math.floor(diff/3600000)} h`;
+  return `hace ${Math.floor(diff/86400000)} días`;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── DRAG & DROP en file cards ──
+document.addEventListener('dragover', e => {
+  const drop = e.target.closest('.file-drop-zone');
+  if (drop) { e.preventDefault(); drop.classList.add('drag'); }
+});
+document.addEventListener('dragleave', e => {
+  const drop = e.target.closest('.file-drop-zone');
+  if (drop) drop.classList.remove('drag');
+});
+document.addEventListener('drop', e => {
+  const drop = e.target.closest('.file-drop-zone');
+  if (!drop) return;
+  e.preventDefault();
+  drop.classList.remove('drag');
+  const key  = drop.id.replace('fdrop-','');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const fakeInput = { files: [file] };
+    onFileSelected(key, fakeInput);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+(function init() {
+  if (checkSession()) showApp();
+})();
+</script>
+</body>
+</html>
