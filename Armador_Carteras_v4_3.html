@@ -550,20 +550,21 @@ async function fetchYFArmador(url) {
 }
 
 async function fetchTargetPrice(ticker) {
-  // Intenta múltiples endpoints hasta obtener targetMeanPrice
-  var endpoints = [
-    'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'+ticker+'?modules=financialData',
-    'https://query2.finance.yahoo.com/v10/finance/quoteSummary/'+ticker+'?modules=financialData',
-    'https://query1.finance.yahoo.com/v11/finance/quoteSummary/'+ticker+'?modules=financialData',
-    'https://query2.finance.yahoo.com/v11/finance/quoteSummary/'+ticker+'?modules=financialData',
-  ];
-  for (var i=0; i<endpoints.length; i++) {
-    try {
-      var data = await fetchYFArmador(endpoints[i]);
-      var target = data?.quoteSummary?.result?.[0]?.financialData?.targetMeanPrice?.raw;
-      if (target != null) return target;
-    } catch(e) { /* siguiente */ }
-  }
+  try {
+    var url = 'https://finance.yahoo.com/quote/'+ticker+'/';
+    var proxy = 'https://api.allorigins.win/get?url='+encodeURIComponent(url);
+    var resp = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+    var json = await resp.json();
+    var html = json.contents || '';
+    var tagMatch = html.match(/<fin-streamer[^>]*data-field="targetMeanPrice"[^>]*>/);
+    if (tagMatch) {
+      var valMatch = tagMatch[0].match(/data-value="([^"]+)"/);
+      if (valMatch) {
+        var num = parseFloat(valMatch[1].replace(/,/g, ''));
+        if (!isNaN(num) && num > 0) return num;
+      }
+    }
+  } catch(e) { /* sin target */ }
   return null;
 }
 
