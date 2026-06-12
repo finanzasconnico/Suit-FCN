@@ -467,21 +467,34 @@ async function fetchYF(url) {
   }
 }
 
+async function fetchTargetPriceRV(ticker) {
+  const endpoints = [
+    `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData`,
+    `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData`,
+    `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=financialData`,
+    `https://query2.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=financialData`,
+  ];
+  for (const url of endpoints) {
+    try {
+      const data = await fetchYF(url);
+      const target = data?.quoteSummary?.result?.[0]?.financialData?.targetMeanPrice?.raw;
+      if (target != null) return target;
+    } catch(e) { /* siguiente */ }
+  }
+  return null;
+}
+
 async function fetchPrecioTicker(ticker) {
   const candidatos = TICKERS_AR.has(ticker) ? [ticker, ticker+'.BA'] : [ticker];
   for (const t of candidatos) {
     try {
-      const urlChart   = `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`;
-      const urlSummary = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${t}?modules=financialData`;
-      const [dataChart, dataSummary] = await Promise.all([
-        fetchYF(urlChart),
-        fetchYF(urlSummary).catch(()=>null)
-      ]);
+      const urlChart = `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`;
+      const dataChart = await fetchYF(urlChart);
       const meta = dataChart?.chart?.result?.[0]?.meta;
       if (!meta?.regularMarketPrice) continue;
       const precio = meta.regularMarketPrice;
       const prev   = meta.chartPreviousClose || precio;
-      const targetPrice = dataSummary?.quoteSummary?.result?.[0]?.financialData?.targetMeanPrice?.raw ?? null;
+      const targetPrice = await fetchTargetPriceRV(t);
       const upsideAnalistas = (targetPrice != null && precio > 0) ? ((targetPrice/precio)-1)*100 : null;
       return { precio, cambio: ((precio/prev)-1)*100, targetPrice, upsideAnalistas, source:'live' };
     } catch(e) { continue; }
