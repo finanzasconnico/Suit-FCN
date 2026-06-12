@@ -530,6 +530,10 @@ var PALETTE=['#DBA03C','#1C8C5F','#4a9ebb','#7b5fbf','#D9892B','#2E7D8C','#5cc8c
 var JSONBIN_KEY='$2a$10$2FgZZQxokMCjkekkADQgL.SmdggeViLZl..NipmtWn4AtcmK.8lyq';
 var JSONBIN_BIN='6a0bd4d56610dd3ae86a39cb';
 
+function getUsername(){
+  try{var u=new URLSearchParams(location.search).get('u');if(u)return u;return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username||'';}catch{return '';}
+}
+
 // ═══ MONITOR LOADER ═══
 function monLog(m,t){var e=document.getElementById('monitor-log');e.textContent='› '+m;e.className='monitor-log '+(t||'');}
 function monProgress(p){var w=document.getElementById('mon-prog-wrap');w.style.display='block';document.getElementById('mon-prog-bar').style.width=p+'%';}
@@ -1610,6 +1614,9 @@ document.addEventListener('DOMContentLoaded',function(){
   var strip=document.getElementById('color-strip');
   PALETTE.forEach(function(c,i){var sw=document.createElement('div');sw.className='color-swatch'+(i===0?' active':'');sw.style.background=c;sw.onclick=function(){document.querySelectorAll('.color-swatch').forEach(function(s){s.classList.remove('active');});sw.classList.add('active');selColor=c;};strip.appendChild(sw);});
   loadMonitorFromCloud();
+  // Auto-completar campo Creador con usuario logueado
+  var u=getUsername();
+  if(u){var authorEl=document.getElementById('model-save-author');if(authorEl)authorEl.value=u;}
   // Pre-cargar fuentes en background para que el primer export sea rápido
   setTimeout(function(){_prefetchFonts();},2000);
 });
