@@ -151,13 +151,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="login-logo">FN</div>
     <div class="login-title">FCN Suite</div>
     <div class="login-sub">finanzasconnico · acceso interno</div>
-    <label class="login-label">Usuario</label>
-    <input class="login-input" type="text" id="login-user" placeholder="nombre de usuario" autocomplete="username"
-      onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-    <label class="login-label">Contraseña</label>
-    <input class="login-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <form onsubmit="doLogin();return false;" method="post" action="">
+      <label class="login-label">Usuario</label>
+      <input class="login-input" type="text" id="login-user" name="username" placeholder="nombre de usuario" autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      <label class="login-label">Contraseña</label>
+      <input class="login-input" type="password" id="login-pass" name="password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="login-btn" type="submit">Ingresar</button>
+    </form>
     <div class="login-err" id="login-err"></div>
   </div>
   <div class="login-footer">FCN Suite v1.1 · Acceso restringido al equipo</div>
