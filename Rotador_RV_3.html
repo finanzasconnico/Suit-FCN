@@ -447,7 +447,11 @@ let wppCtx = null; // { cliente, ticker, senal, nota, rent, ticker, nombre, tel 
 (function() {
   const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
   function getUsername() {
-    try { return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username || ''; } catch { return ''; }
+    try {
+      const up = new URLSearchParams(location.search).get('u');
+      if (up) return up;
+      return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username || '';
+    } catch { return ''; }
   }
   function uk(k) { const u = getUsername(); return u ? u + '_' + k : k; }
   function openDB() {
@@ -535,7 +539,13 @@ function handleStock(file) {
       document.getElementById('ok-stock').textContent = `${count} cuentas cargadas`;
       // Enriquecer posiciones si ya están cargadas
       if (posiciones.length) enriquecerPosiciones();
-    } catch(err) { alert('Error leyendo Stock: ' + err.message); }
+    } catch(err) {
+      if (err.message && err.message.includes('ECMA-376')) {
+        alert('⚠ El archivo tiene una etiqueta de confidencialidad (IRM) que impide leerlo.\n\nSolución:\n1. Abrí el archivo en Excel\n2. Ir a Inicio → Confidencialidad → cambiá a "Sin restricciones" o "Sin etiqueta"\n3. Guardá y volvé a subir\n\nSi no podés cambiarla, pedile al administrador de IT que guarde una copia sin etiqueta.');
+      } else {
+        alert('Error leyendo Stock: ' + err.message);
+      }
+    }
   };
   reader.readAsArrayBuffer(file);
 }

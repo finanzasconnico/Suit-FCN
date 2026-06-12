@@ -752,7 +752,13 @@ function cargarStock(input) {
       document.getElementById('card-stock').classList.add('loaded');
       document.getElementById('status-stock').textContent=`${total} cuentas cargadas`;
       if(datosFusionados.length>0) enriquecerConStock();
-    } catch(err){logMsg('Error leyendo Stock: '+err.message,'warn');}
+    } catch(err){
+      if(err.message&&err.message.includes('ECMA-376')){
+        logMsg('❌ Stock con etiqueta IRM (confidencialidad). En Excel: Inicio → Confidencialidad → Sin etiqueta → Guardar y volver a subir.','warn');
+      } else {
+        logMsg('Error leyendo Stock: '+err.message,'warn');
+      }
+    }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -1661,7 +1667,11 @@ function actualizarFiltrosDur() {
 (function() {
   const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
   function getUsername() {
-    try { return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username || ''; } catch { return ''; }
+    try {
+      const up = new URLSearchParams(location.search).get('u');
+      if (up) return up;
+      return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username || '';
+    } catch { return ''; }
   }
   function uk(k) { const u = getUsername(); return u ? u + '_' + k : k; }
   function openDB() {
