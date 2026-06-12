@@ -826,12 +826,13 @@ function aplicarFiltros() {
   if(datosFusionados.length===0) return;
   const asesor=document.getElementById('sel-asesor').value.toLowerCase();
   const cliente=document.getElementById('inp-cliente').value.toLowerCase();
-  const ticker=document.getElementById('inp-ticker').value.toLowerCase();
+  const tickerRaw=document.getElementById('inp-ticker').value.trim();
+  const tickers=tickerRaw?tickerRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean):[];
   const calif=document.getElementById('sel-calif').value.toLowerCase();
   datosFiltrados=datosFusionados.filter(d=>{
     if(asesor&&!d.asesor.toLowerCase().includes(asesor)) return false;
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
-    if(ticker&&!d.ticker.toLowerCase().includes(ticker)) return false;
+    if(tickers.length&&!tickers.some(t=>d.ticker.toLowerCase().includes(t))) return false;
     if(calif&&!d.calificacion.toLowerCase().includes(calif)) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
     return true;
@@ -1597,7 +1598,12 @@ function enviarWpp() {
   const texto = document.getElementById('wpp-texto').value.trim();
   if (!texto) { alert('Escribí un mensaje primero.'); return; }
   const tel = wppCtx.tel.replace(/\D/g, '');
-  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
+  // Intentar abrir WhatsApp nativo primero (evita bloqueo de api.whatsapp.com)
+  const native = `whatsapp://send?phone=${tel}&text=${encodeURIComponent(texto)}`;
+  const web    = `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`;
+  const a = document.createElement('a'); a.href = native; a.target = '_blank';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => window.open(web, '_blank'), 1500); // fallback si no está instalado
   cerrarWpp();
 }
 
@@ -1640,21 +1646,25 @@ function exportarExcel() {
 function mailBoton(d) {
   if(!d.mail) return '<span style="font-size:10px;color:var(--dim)">—</span>';
   const subj=encodeURIComponent(`Información sobre su posición en ${d.ticker}`);
-  return `<a class="mail-btn" href="mailto:${d.mail}?subject=${subj}" title="${d.mail}">✉</a>`;
+  const nombre=d.nombreStock||d.cliente||'';
+  const body=encodeURIComponent(`Estimado/a ${nombre},\n\nMe comunico para informarle sobre su posición en ${d.ticker}.\n\nQuedo a disposición ante cualquier consulta.\n\nSaludos,`);
+  return `<a class="mail-btn" href="mailto:${d.mail}?subject=${subj}&body=${body}" title="${d.mail}">✉</a>`;
 }
 
 function mailATodos(ticker) {
   const mails=[...new Set(datosFiltrados.filter(d=>d.ticker===ticker&&d.mail).map(d=>d.mail))];
   if(!mails.length){alert('No hay mails disponibles para clientes con '+ticker+'. Cargá el Stock de cuentas con la columna "Mails".');return;}
   const subj=encodeURIComponent(`Información sobre su posición en ${ticker}`);
-  window.open('mailto:'+mails.join(',')+`?subject=${subj}`,'_blank');
+  const body=encodeURIComponent(`Estimado/a cliente,\n\nMe comunico para informarle sobre su posición en ${ticker}.\n\nQuedo a disposición ante cualquier consulta.\n\nSaludos,`);
+  window.open('mailto:'+mails.join(',')+`?subject=${subj}&body=${body}`,'_blank');
 }
 
 function mailATodosClientes() {
   const mails=[...new Set(datosFiltrados.filter(d=>d.mail).map(d=>d.mail))];
   if(!mails.length){alert('No hay mails disponibles. Cargá el Stock de cuentas con la columna "Mails".');return;}
   const subj=encodeURIComponent('Información sobre su cartera de ONs');
-  window.open('mailto:'+mails.join(',')+`?subject=${subj}`,'_blank');
+  const body=encodeURIComponent('Estimado/a cliente,\n\nMe comunico para informarle sobre el estado de su cartera de Obligaciones Negociables.\n\nQuedo a disposición ante cualquier consulta.\n\nSaludos,');
+  window.open('mailto:'+mails.join(',')+`?subject=${subj}&body=${body}`,'_blank');
 }
 
 function actualizarFiltrosDur() {
