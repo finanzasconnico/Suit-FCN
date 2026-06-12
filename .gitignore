@@ -1,0 +1,23 @@
+# Archivos personales / datos sensibles
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.txt
+*.csv
+
+# Backups y versiones viejas
+*viejo*
+*_old*
+*_backup*
+
+# Carpetas personales
+BeaNico/
+bot/
+Skills/
+Tutoriales/
+Documentos clave Balanz/
+
+# Otros
+ResumenDeCuenta_test.txt
+Movimientos_test.xlsx
