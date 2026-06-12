@@ -1001,6 +1001,8 @@ function selAC(t,n,c,m){
     for(var i=0;i<sel.options.length;i++){if(sel.options[i].value==='Renta Fija | Letras y Bonos ARS'){sel.selectedIndex=i;break;}}
   }
   togglePriceRow();closeAC();
+  // Auto-fetch precio y target para RV
+  if(c.includes('Renta Variable')) setTimeout(onTickerBlur, 50);
 }
 
 function closeAC(){document.getElementById('ac-dd').classList.remove('open');}
