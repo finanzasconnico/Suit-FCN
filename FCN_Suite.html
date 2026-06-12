@@ -490,7 +490,7 @@ function buildFileCard(sf, entry) {
         ${entry ? '↺ Actualizar archivo' : '⬆ Subir archivo'}
       </div>
       <button class="btn-paste" onclick="pasteFromClipboard('${sf.key}')" title="Cómo copiar: abrí el Excel → hacé clic en cualquier celda con datos → Ctrl+A para seleccionar todo → Ctrl+C para copiar → volvé acá y hacé clic en este botón. (Si Ctrl+A no funciona: hacé clic primero en una celda, no en el encabezado)">📋 Pegar desde Excel</button>
-      <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.5;">💡 En Excel: clic en una celda de datos → Ctrl+A → Ctrl+C → clic acá</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.5;">💡 En Excel: clic en celda A1 → <strong style="color:var(--ambar)">Ctrl+Shift+End</strong> para seleccionar todos los datos → Ctrl+C → clic acá</div>
       ${entry ? `<button class="btn-del" onclick="onDeleteFile('${sf.key}')">🗑 Eliminar</button>` : ''}
       ${entry ? `<button class="btn-notify" onclick="notifyTools('${sf.key}')">⚡ Enviar a herramientas</button>` : ''}
     </div>`;
