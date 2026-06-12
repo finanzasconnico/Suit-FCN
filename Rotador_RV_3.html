@@ -200,6 +200,19 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .wpp-send-btn:hover{background:#1aad52;}
 .wpp-send-btn:disabled{opacity:.3;cursor:not-allowed;}
 
+/* ── PRECIOS TAB ── */
+.px-table{width:100%;border-collapse:collapse;font-size:11px;}
+.px-table thead th{padding:7px 12px;text-align:left;font-family:var(--font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);border-bottom:1px solid var(--border);}
+.px-table tbody td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle;}
+.px-input{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-family:var(--font-mono);font-size:11px;width:90px;padding:2px 4px;outline:none;transition:border-color .15s;}
+.px-input:focus{border-bottom-color:var(--jade);}
+.px-upside-pos{color:var(--jade);font-family:var(--font-mono);font-size:10px;font-weight:500;}
+.px-upside-neg{color:var(--danger);font-family:var(--font-mono);font-size:10px;font-weight:500;}
+.px-badge-live{display:inline-block;padding:1px 6px;border-radius:2px;font-family:var(--font-mono);font-size:8px;background:rgba(28,140,95,.15);color:var(--jade);border:1px solid rgba(28,140,95,.3);}
+.px-badge-manual{display:inline-block;padding:1px 6px;border-radius:2px;font-family:var(--font-mono);font-size:8px;background:rgba(219,160,60,.12);color:var(--ambar);border:1px solid rgba(219,160,60,.3);}
+.px-badge-none{display:inline-block;padding:1px 6px;border-radius:2px;font-family:var(--font-mono);font-size:8px;background:rgba(108,129,124,.1);color:var(--ink-muted);border:1px solid var(--border);}
+.btn-refetch{padding:3px 8px;border-radius:var(--radius);font-family:var(--font-mono);font-size:9px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--ink-muted);transition:all .15s;}
+.btn-refetch:hover{color:var(--ambar);border-color:rgba(219,160,60,.4);}
 /* ── BTN SM ── */
 .btn-sm{padding:4px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--ink-muted);transition:all .15s;}
 .btn-sm:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
@@ -327,7 +340,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
             🔵🟡🟣 Acumular / Mantener / Esperar
           </label>
         </div>
-        <div class="ctrl-label">Take profit — sugerir venta (%) ≥</div>
+        <div class="ctrl-label">Umbral manual de TP — usado cuando no hay target de analistas (%) ≥</div>
         <div class="thresh-row">
           <input type="range" id="sl-tp" min="10" max="100" step="5" value="30" oninput="actualizarUmbrales()">
           <span class="thresh-val" id="v-tp">30%</span>
@@ -382,6 +395,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
         <button class="tab active" onclick="switchTab('t-tabla')">Todas las posiciones</button>
         <button class="tab" onclick="switchTab('t-senales')">Señales activas</button>
         <button class="tab" onclick="switchTab('t-clientes')">Por cliente</button>
+        <button class="tab" id="tab-precios-btn" onclick="switchTab('t-precios')" style="opacity:.4;cursor:not-allowed;" disabled>Precios &amp; Targets</button>
       </div>
       <div class="tab-pane active" id="t-tabla">
         <div class="filters-bar">
@@ -412,6 +426,13 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
       </div>
       <div class="tab-pane" id="t-senales"><div id="senales-content"></div></div>
       <div class="tab-pane" id="t-clientes"><div id="clientes-content"></div></div>
+      <div class="tab-pane" id="t-precios">
+        <div style="margin-bottom:12px;font-size:10px;color:var(--ink-muted);line-height:1.6;">Editá precios y targets manualmente si necesitás ajustar. Los cambios afectan las señales en tiempo real.</div>
+        <div class="tbl-wrap"><table class="px-table">
+          <thead><tr><th>Ticker</th><th>Precio actual (USD)</th><th>Target analistas (USD)</th><th>Upside estimado</th><th>Fuente</th><th></th></tr></thead>
+          <tbody id="tbody-precios"></tbody>
+        </table></div>
+      </div>
     </div>
   </div>
 </div>
@@ -429,6 +450,44 @@ let tabActiva   = 't-tabla';
 let detailAbierto = null;
 // WPP modal state
 let wppCtx = null; // { cliente, ticker, senal, nota, rent, ticker, nombre, tel }
+
+// ── YAHOO FINANCE HELPERS ──
+const TICKERS_AR = new Set(['GGAL','YPFD','TECO2','BBAR','SUPV','BYMA','TGSU2','TGNO4','CEPU','EDN','TRAN','HARG','MOLI','MIRG','GCLA','AGRO','RICH']);
+
+async function fetchYF(url) {
+  const sig = () => AbortSignal.timeout(8000);
+  try {
+    const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, {signal: sig()});
+    const j = await r.json();
+    return JSON.parse(j.contents);
+  } catch(e) {
+    const r2 = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {signal: sig()});
+    const t = await r2.text();
+    return JSON.parse(t);
+  }
+}
+
+async function fetchPrecioTicker(ticker) {
+  const candidatos = TICKERS_AR.has(ticker) ? [ticker, ticker+'.BA'] : [ticker];
+  for (const t of candidatos) {
+    try {
+      const urlChart   = `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`;
+      const urlSummary = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${t}?modules=financialData`;
+      const [dataChart, dataSummary] = await Promise.all([
+        fetchYF(urlChart),
+        fetchYF(urlSummary).catch(()=>null)
+      ]);
+      const meta = dataChart?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) continue;
+      const precio = meta.regularMarketPrice;
+      const prev   = meta.chartPreviousClose || precio;
+      const targetPrice = dataSummary?.quoteSummary?.result?.[0]?.financialData?.targetMeanPrice?.raw ?? null;
+      const upsideAnalistas = (targetPrice != null && precio > 0) ? ((targetPrice/precio)-1)*100 : null;
+      return { precio, cambio: ((precio/prev)-1)*100, targetPrice, upsideAnalistas, source:'live' };
+    } catch(e) { continue; }
+  }
+  return { precio:null, cambio:null, targetPrice:null, upsideAnalistas:null, source:'error' };
+}
 
 // ── HUB BYPASS ──
 (function() {
@@ -569,6 +628,7 @@ const REGLAS = [
   {
     id: 'druckenmiller_tp', autor: 'Druckenmiller',
     condicion: p => p.rent !== null && p.rent >= umbralTP,
+    condicionDyn: (p, tp) => p.rent !== null && p.rent >= tp,
     senal: 'VENDER',
     nota: p => `Con +${p.rent.toFixed(1)}% de ganancia, Druckenmiller diría que el trade ya cumplió su objetivo. Concentración: tomá la ganancia y buscá el siguiente catalizador con alta convicción.`
   },
@@ -587,6 +647,7 @@ const REGLAS = [
   {
     id: 'oneil_momentum', autor: "O'Neil",
     condicion: p => p.rent !== null && p.rent >= umbralTP * 0.4 && p.rent < umbralTP,
+    condicionDyn: (p, tp) => p.rent !== null && p.rent >= tp * 0.4 && p.rent < tp,
     senal: 'ACUMULAR',
     nota: p => `CAN SLIM: el activo está en zona de momentum. +${p.rent.toFixed(1)}% es señal de que el mercado está validando la tesis. O'Neil consideraría agregar en ruptura de máximos.`
   },
@@ -611,13 +672,29 @@ const REGLAS = [
   {
     id: 'soros_reflexivity', autor: 'Soros',
     condicion: p => p.rent !== null && p.rent >= umbralTP * 0.8 && p.rent < umbralTP,
+    condicionDyn: (p, tp) => p.rent !== null && p.rent >= tp * 0.8 && p.rent < tp,
     senal: 'MANTENER',
     nota: p => `Soros — Reflexividad: a +${p.rent.toFixed(1)}% podés dejar correr el trade, pero ajustá el stop mental al 60% de la ganancia acumulada.`
   },
 ];
 
 function aplicarReglas(pos) {
-  for (const r of REGLAS) { if (r.condicion(pos)) return { senal:r.senal, autor:r.autor, nota:r.nota(pos), reglaId:r.id }; }
+  const px = precios[pos.ticker];
+  const upsideEfectivoTP = (px?.upsideAnalistas != null) ? px.upsideAnalistas : umbralTP;
+  const tieneTarget = px?.upsideAnalistas != null;
+  const DYN_RULES = new Set(['druckenmiller_tp','oneil_momentum','soros_reflexivity']);
+  for (const r of REGLAS) {
+    const activa = DYN_RULES.has(r.id) && r.condicionDyn
+      ? r.condicionDyn(pos, upsideEfectivoTP)
+      : r.condicion(pos);
+    if (activa) {
+      let nota = r.nota(pos);
+      if (tieneTarget && DYN_RULES.has(r.id)) {
+        nota += ` (Target consenso analistas: $${px.targetPrice.toFixed(2)} · upside ${px.upsideAnalistas>=0?'+':''}${px.upsideAnalistas.toFixed(1)}%)`;
+      }
+      return { senal:r.senal, autor:r.autor, nota, reglaId:r.id };
+    }
+  }
   return { senal:'ESPERAR', autor:'General', nota:`Sin señal fuerte. Rent: ${pos.rent!==null?pos.rent.toFixed(1)+'%':'sin precio'}. Esperá más datos.`, reglaId:'default' };
 }
 
@@ -690,25 +767,25 @@ async function fetchPrecios() {
   let done=0;
   const addLog=(msg,cls='')=>{const d=document.createElement('div');d.className='log-line '+cls;d.textContent=msg;log.appendChild(d);log.scrollTop=log.scrollHeight;};
   for(const ticker of tickers){
-    try{
-      const yf=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`;
-      const proxy=`https://api.allorigins.win/get?url=${encodeURIComponent(yf)}`;
-      const resp=await fetch(proxy,{signal:AbortSignal.timeout(6000)});
-      const json=await resp.json();
-      const data=JSON.parse(json.contents);
-      const meta=data?.chart?.result?.[0]?.meta;
-      if(meta?.regularMarketPrice){
-        const precio=meta.regularMarketPrice;
-        const prev=meta.chartPreviousClose||precio;
-        precios[ticker]={precio,cambio:((precio/prev)-1)*100,source:'live'};
-        addLog(`✓ ${ticker} $${precio.toFixed(3)}`,'ok');
-      } else { addLog(`⚠ ${ticker} sin datos`,'warn'); precios[ticker]={precio:null,source:'none'}; }
-    } catch(err){ addLog(`✗ ${ticker} error`,'err'); precios[ticker]={precio:null,source:'error'}; }
+    const result = await fetchPrecioTicker(ticker);
+    precios[ticker] = result;
+    if(result.precio){
+      if(result.targetPrice!=null){
+        const signo = result.upsideAnalistas>=0?'+':'';
+        addLog(`✓ ${ticker} $${result.precio.toFixed(2)} · Target $${result.targetPrice.toFixed(2)} (${signo}${result.upsideAnalistas.toFixed(1)}%)`,'ok');
+      } else {
+        addLog(`✓ ${ticker} $${result.precio.toFixed(2)} · Sin target`,'ok');
+      }
+    } else { addLog(`✗ ${ticker} error`,'err'); }
     done++;
     bar.style.width=(done/tickers.length*100)+'%';
     actualizarPreciosLive();
+    await new Promise(r=>setTimeout(r,200));
   }
   btn.disabled=false; ic.textContent='✅'; lbl.textContent=`${done} tickers actualizados`;
+  const tabBtn=document.getElementById('tab-precios-btn');
+  if(tabBtn){tabBtn.disabled=false;tabBtn.style.opacity='';tabBtn.style.cursor='';}
+  renderTabPrecios();
   renderResultados();
 }
 
@@ -1088,10 +1165,56 @@ function switchTab(id){
   tabActiva=id;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const idx=['t-tabla','t-senales','t-clientes'].indexOf(id);
-  document.querySelectorAll('.tab')[idx].classList.add('active');
+  const idx=['t-tabla','t-senales','t-clientes','t-precios'].indexOf(id);
+  if(idx>=0) document.querySelectorAll('.tab')[idx].classList.add('active');
   document.getElementById(id).classList.add('active');
-  renderTablaActiva();
+  if(id==='t-precios') renderTabPrecios();
+  else renderTablaActiva();
+}
+
+function renderTabPrecios(){
+  const tickers=[...new Set(posiciones.map(p=>p.ticker))].sort();
+  const tbody=document.getElementById('tbody-precios');
+  if(!tbody) return;
+  tbody.innerHTML=tickers.map(ticker=>{
+    const px=precios[ticker]||{precio:null,targetPrice:null,upsideAnalistas:null,source:'none'};
+    const upside=px.upsideAnalistas;
+    const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
+    const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>':px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
+    return `<tr>
+      <td class="td-tick">${ticker}</td>
+      <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
+      <td><input class="px-input" type="number" value="${px.targetPrice!=null?px.targetPrice.toFixed(2):''}" placeholder="—" title="${px.targetPrice==null?'Sin cobertura en Yahoo Finance':''}" onchange="editPrecio('${ticker}','target',this.value)" onfocus="this.select()"></td>
+      <td id="upside-${ticker}">${upsideStr}</td>
+      <td id="badge-${ticker}">${badge}</td>
+      <td><button class="btn-refetch" onclick="refetchTicker('${ticker}')">↺</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function editPrecio(ticker, campo, val){
+  if(!precios[ticker]) precios[ticker]={precio:null,cambio:null,targetPrice:null,upsideAnalistas:null,source:'manual'};
+  const v=parseFloat(val);
+  if(campo==='precio') precios[ticker].precio=isNaN(v)?null:v;
+  if(campo==='target') precios[ticker].targetPrice=isNaN(v)?null:v;
+  const px=precios[ticker];
+  px.upsideAnalistas=(px.precio&&px.targetPrice)?((px.targetPrice/px.precio)-1)*100:null;
+  px.source='manual';
+  const upside=px.upsideAnalistas;
+  const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)">—</span>`;
+  const uEl=document.getElementById('upside-'+ticker);
+  const bEl=document.getElementById('badge-'+ticker);
+  if(uEl) uEl.innerHTML=upsideStr;
+  if(bEl) bEl.innerHTML='<span class="px-badge-manual">manual</span>';
+  actualizarPreciosLive();
+}
+
+async function refetchTicker(ticker){
+  const result=await fetchPrecioTicker(ticker);
+  precios[ticker]=result;
+  renderTabPrecios();
+  actualizarPreciosLive();
+  renderResultados();
 }
 function exportarExcel(){
   if(!posiciones.length) return;

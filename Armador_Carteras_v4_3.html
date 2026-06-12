@@ -338,6 +338,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
         <div class="field"><label>Precio actual (USD)</label><input type="number" id="f-price-current" placeholder="100" oninput="calcRetFromPrice()"></div>
         <div class="field"><label>Precio target (USD)</label><input type="number" id="f-price-target" placeholder="120" oninput="calcRetFromPrice()"></div>
       </div>
+      <div id="yf-badge" style="display:none;margin-top:-4px;margin-bottom:6px;font-size:10px;"></div>
       <div class="field-row">
         <div class="field"><label>Moneda</label><select id="f-curr"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
         <div class="field"><label>Color</label><div class="color-strip" id="color-strip"></div></div>
@@ -533,6 +534,73 @@ var JSONBIN_BIN='6a0bd4d56610dd3ae86a39cb';
 function getUsername(){
   try{var u=new URLSearchParams(location.search).get('u');if(u)return u;return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username||'';}catch{return '';}
 }
+
+// ── YAHOO FINANCE AUTO-FETCH ──
+var TICKERS_AR_AC = new Set(['GGAL','YPFD','TECO2','BBAR','SUPV','BYMA','TGSU2','TGNO4','CEPU','EDN','TRAN','HARG','MOLI','MIRG','GCLA','AGRO','RICH']);
+
+async function fetchYFArmador(url) {
+  var sig = function(){ return AbortSignal.timeout(8000); };
+  try {
+    var r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url), {signal:sig()});
+    var j = await r.json(); return JSON.parse(j.contents);
+  } catch(e) {
+    var r2 = await fetch('https://corsproxy.io/?'+encodeURIComponent(url), {signal:sig()});
+    return JSON.parse(await r2.text());
+  }
+}
+
+async function fetchTickerData(ticker) {
+  var candidatos = TICKERS_AR_AC.has(ticker) ? [ticker, ticker+'.BA'] : [ticker];
+  for (var i=0; i<candidatos.length; i++) {
+    var t = candidatos[i];
+    try {
+      var urlChart   = 'https://query1.finance.yahoo.com/v8/finance/chart/'+t+'?interval=1d&range=2d';
+      var urlSummary = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/'+t+'?modules=financialData';
+      var results = await Promise.all([
+        fetchYFArmador(urlChart),
+        fetchYFArmador(urlSummary).catch(function(){return null;})
+      ]);
+      var meta = results[0]?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) continue;
+      var precioActual = meta.regularMarketPrice;
+      var targetPrice  = results[1]?.quoteSummary?.result?.[0]?.financialData?.targetMeanPrice?.raw ?? null;
+      return { precioActual: precioActual, targetPrice: targetPrice };
+    } catch(e) { continue; }
+  }
+  return { precioActual: null, targetPrice: null };
+}
+
+async function onTickerBlur() {
+  var type = document.getElementById('f-type').value;
+  if (!type.includes('Renta Variable')) return;
+  var ticker = document.getElementById('f-ticker').value.trim().toUpperCase();
+  if (!ticker) return;
+  var curEl = document.getElementById('f-price-current');
+  var tgtEl = document.getElementById('f-price-target');
+  var badgeEl = document.getElementById('yf-badge');
+  if (curEl.value && tgtEl.value) return; // ya tiene ambos valores
+  badgeEl.style.display = 'block';
+  badgeEl.innerHTML = '<span style="color:var(--cream-dim)">⟳ Consultando Yahoo Finance...</span>';
+  var data = await fetchTickerData(ticker);
+  if (data.precioActual) {
+    if (!curEl.value) curEl.value = data.precioActual.toFixed(2);
+    if (!tgtEl.value && data.targetPrice) tgtEl.value = data.targetPrice.toFixed(2);
+    calcRetFromPrice();
+    if (data.targetPrice) {
+      badgeEl.innerHTML = '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">Yahoo Finance ✓</span>';
+    } else {
+      badgeEl.innerHTML = '<span style="color:#D9892B;background:rgba(217,137,43,.1);border:1px solid rgba(217,137,43,.3);padding:1px 8px;border-radius:3px;">Solo precio</span>';
+    }
+  } else {
+    badgeEl.innerHTML = '<span style="color:#C0453B;background:rgba(192,69,59,.08);border:1px solid rgba(192,69,59,.25);padding:1px 8px;border-radius:3px;">Sin datos</span>';
+  }
+  setTimeout(function(){ badgeEl.style.display='none'; }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var fTicker = document.getElementById('f-ticker');
+  if (fTicker) fTicker.addEventListener('blur', onTickerBlur);
+});
 
 // ═══ MONITOR LOADER ═══
 function monLog(m,t){var e=document.getElementById('monitor-log');e.textContent='› '+m;e.className='monitor-log '+(t||'');}
