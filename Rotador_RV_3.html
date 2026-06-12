@@ -541,7 +541,7 @@ function handleStock(file) {
       if (posiciones.length) enriquecerPosiciones();
     } catch(err) {
       if (err.message && err.message.includes('ECMA-376')) {
-        alert('⚠ El archivo tiene una etiqueta de confidencialidad (IRM) que impide leerlo.\n\nSolución:\n1. Abrí el archivo en Excel\n2. Ir a Inicio → Confidencialidad → cambiá a "Sin restricciones" o "Sin etiqueta"\n3. Guardá y volvé a subir\n\nSi no podés cambiarla, pedile al administrador de IT que guarde una copia sin etiqueta.');
+        alert('⚠ El archivo "Stock de cuentas por equipo" tiene etiqueta de confidencialidad.\n\nSolución:\n1. Abrí el Excel de Stock de cuentas\n2. Ctrl+E para seleccionar toda la tabla → Ctrl+C para copiar\n3. En Archivos hacé clic en "📋 Pegar desde Excel" en Stock de Cuentas');
       } else {
         alert('Error leyendo Stock: ' + err.message);
       }
