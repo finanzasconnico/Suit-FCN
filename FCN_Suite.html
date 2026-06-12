@@ -126,6 +126,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn-del:hover{border-color:var(--danger);color:var(--danger);}
 .btn-notify{padding:8px 14px;background:var(--jade-d);border:1px solid rgba(28,140,95,.3);border-radius:var(--r);color:var(--jade);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .btn-notify:hover{background:rgba(28,140,95,.2);}
+.btn-paste{padding:8px 14px;background:rgba(219,160,60,.1);border:1px solid rgba(219,160,60,.3);border-radius:var(--r);color:var(--ambar);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-paste:hover{background:rgba(219,160,60,.2);border-color:rgba(219,160,60,.6);}
 .files-notice{max-width:820px;margin:16px auto 0;padding:12px 16px;background:var(--ambar-d);border:1px solid rgba(219,160,60,.2);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.65;}
 .files-notice strong{color:var(--ambar);}
 
@@ -139,6 +141,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--jade);border-radius:var(--r);padding:10px 16px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);transform:translateY(0);transition:all .3s;pointer-events:none;}
 .toast.hidden{transform:translateY(20px);opacity:0;}
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -486,6 +489,7 @@ function buildFileCard(sf, entry) {
         <input type="file" accept="${sf.accept}" onchange="onFileSelected('${sf.key}', this)">
         ${entry ? '↺ Actualizar archivo' : '⬆ Subir archivo'}
       </div>
+      <button class="btn-paste" onclick="pasteFromClipboard('${sf.key}')" title="Copiá las celdas en Excel (Ctrl+A → Ctrl+C) y pegá acá">📋 Pegar desde Excel</button>
       ${entry ? `<button class="btn-del" onclick="onDeleteFile('${sf.key}')">🗑 Eliminar</button>` : ''}
       ${entry ? `<button class="btn-notify" onclick="notifyTools('${sf.key}')">⚡ Enviar a herramientas</button>` : ''}
     </div>`;
@@ -542,6 +546,37 @@ async function onDeleteFile(key) {
 function notifyTools(key) {
   if (BC) BC.postMessage({ type: 'file_updated', key: userKey(key), rawKey: key });
   showToast(`⚡ Notificación enviada a las herramientas abiertas`);
+}
+
+async function pasteFromClipboard(key) {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) { showToast('❌ El portapapeles está vacío. Copiá las celdas en Excel primero (Ctrl+A → Ctrl+C).'); return; }
+
+    // Parsear TSV (formato que copia Excel)
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) { showToast('❌ No se detectaron filas suficientes. Asegurate de copiar toda la hoja.'); return; }
+    const aoa = lines.map(l => l.split('\t').map(v => v.replace(/\r/g,'')));
+
+    // Crear workbook SheetJS desde los datos
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, 'Export');
+    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+
+    // Guardar igual que si fuera un archivo subido
+    const fileName = key + '_pegado.xlsx';
+    await saveSharedFile(userKey(key), buffer, fileName);
+    await refreshFilesStatus();
+    notifyTools(key);
+    showToast(`✓ ${lines.length - 1} filas pegadas desde Excel para "${key}"`);
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      showToast('❌ Permiso denegado. El navegador bloqueó el acceso al portapapeles — hacé clic en "Permitir" si aparece el aviso.');
+    } else {
+      showToast('❌ Error al pegar: ' + err.message);
+    }
+  }
 }
 
 // ── NAVIGATION ──
