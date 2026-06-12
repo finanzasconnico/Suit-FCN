@@ -451,6 +451,20 @@ let detailAbierto = null;
 // WPP modal state
 let wppCtx = null; // { cliente, ticker, senal, nota, rent, ticker, nombre, tel }
 
+// ── TARGET PRICE CACHE (localStorage) ──
+const FCN_TARGET_CACHE_KEY = 'fcn_targets_v1';
+
+function loadTargetCache() {
+  try { return JSON.parse(localStorage.getItem(FCN_TARGET_CACHE_KEY) || '{}'); } catch { return {}; }
+}
+function saveTargetToCache(ticker, target) {
+  try {
+    const cache = loadTargetCache();
+    cache[ticker.toUpperCase()] = target;
+    localStorage.setItem(FCN_TARGET_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
 // ── YAHOO FINANCE HELPERS ──
 const TICKERS_AR = new Set(['GGAL','YPFD','TECO2','BBAR','SUPV','BYMA','TGSU2','TGNO4','CEPU','EDN','TRAN','HARG','MOLI','MIRG','GCLA','AGRO','RICH']);
 
@@ -497,7 +511,14 @@ async function fetchPrecioTicker(ticker) {
       if (!meta?.regularMarketPrice) continue;
       const precio = meta.regularMarketPrice;
       const prev   = meta.chartPreviousClose || precio;
-      const targetPrice = await fetchTargetPriceRV(t);
+      // Primero intenta live; si falla, usa caché
+      let targetPrice = await fetchTargetPriceRV(t);
+      if (targetPrice != null) {
+        saveTargetToCache(ticker, targetPrice);
+      } else {
+        const cache = loadTargetCache();
+        targetPrice = cache[ticker.toUpperCase()] ?? null;
+      }
       const upsideAnalistas = (targetPrice != null && precio > 0) ? ((targetPrice/precio)-1)*100 : null;
       return { precio, cambio: ((precio/prev)-1)*100, targetPrice, upsideAnalistas, source:'live' };
     } catch(e) { continue; }
@@ -1192,11 +1213,17 @@ function renderTabPrecios(){
   const tickers=[...new Set(posiciones.map(p=>p.ticker))].sort();
   const tbody=document.getElementById('tbody-precios');
   if(!tbody) return;
+  const targetCache=loadTargetCache();
   tbody.innerHTML=tickers.map(ticker=>{
-    const px=precios[ticker]||{precio:null,targetPrice:null,upsideAnalistas:null,source:'none'};
+    const base=precios[ticker]||{precio:null,targetPrice:null,upsideAnalistas:null,source:'none'};
+    // Si no hay target live, rellenar del caché
+    const cachedTarget = targetCache[ticker.toUpperCase()] ?? null;
+    const effectiveTarget = base.targetPrice ?? cachedTarget;
+    const upsideFromCache = (effectiveTarget!=null && base.precio) ? ((effectiveTarget/base.precio)-1)*100 : base.upsideAnalistas;
+    const px = {...base, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromCache: base.targetPrice==null && cachedTarget!=null};
     const upside=px.upsideAnalistas;
     const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
-    const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>':px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
+    const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>':px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>':px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
     return `<tr>
       <td class="td-tick">${ticker}</td>
       <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
@@ -1212,7 +1239,10 @@ function editPrecio(ticker, campo, val){
   if(!precios[ticker]) precios[ticker]={precio:null,cambio:null,targetPrice:null,upsideAnalistas:null,source:'manual'};
   const v=parseFloat(val);
   if(campo==='precio') precios[ticker].precio=isNaN(v)?null:v;
-  if(campo==='target') precios[ticker].targetPrice=isNaN(v)?null:v;
+  if(campo==='target') {
+    precios[ticker].targetPrice=isNaN(v)?null:v;
+    if(!isNaN(v) && v>0) saveTargetToCache(ticker, v);
+  }
   const px=precios[ticker];
   px.upsideAnalistas=(px.precio&&px.targetPrice)?((px.targetPrice/px.precio)-1)*100:null;
   px.source='manual';

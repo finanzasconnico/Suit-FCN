@@ -538,6 +538,19 @@ function getUsername(){
 // ── YAHOO FINANCE AUTO-FETCH ──
 var TICKERS_AR_AC = new Set(['GGAL','YPFD','TECO2','BBAR','SUPV','BYMA','TGSU2','TGNO4','CEPU','EDN','TRAN','HARG','MOLI','MIRG','GCLA','AGRO','RICH']);
 
+// ── TARGET PRICE CACHE (localStorage compartido con Rotador) ──
+var FCN_TARGET_CACHE_KEY_AC = 'fcn_targets_v1';
+function loadTargetCacheAC() {
+  try { return JSON.parse(localStorage.getItem(FCN_TARGET_CACHE_KEY_AC) || '{}'); } catch(e) { return {}; }
+}
+function saveTargetToCacheAC(ticker, target) {
+  try {
+    var cache = loadTargetCacheAC();
+    cache[ticker.toUpperCase()] = target;
+    localStorage.setItem(FCN_TARGET_CACHE_KEY_AC, JSON.stringify(cache));
+  } catch(e) {}
+}
+
 async function fetchYFArmador(url) {
   var sig = function(){ return AbortSignal.timeout(8000); };
   try {
@@ -579,6 +592,12 @@ async function fetchTickerData(ticker) {
       if (!meta?.regularMarketPrice) continue;
       var precioActual = meta.regularMarketPrice;
       var targetPrice = await fetchTargetPrice(t);
+      if (targetPrice != null) {
+        saveTargetToCacheAC(ticker, targetPrice);
+      } else {
+        var cache = loadTargetCacheAC();
+        targetPrice = cache[ticker.toUpperCase()] || null;
+      }
       return { precioActual: precioActual, targetPrice: targetPrice };
     } catch(e) { continue; }
   }
@@ -615,6 +634,14 @@ async function onTickerBlur() {
 document.addEventListener('DOMContentLoaded', function(){
   var fTicker = document.getElementById('f-ticker');
   if (fTicker) fTicker.addEventListener('blur', onTickerBlur);
+
+  // Guardar target al caché cuando el usuario lo ingresa manualmente
+  var fTarget = document.getElementById('f-price-target');
+  if (fTarget) fTarget.addEventListener('change', function(){
+    var ticker = document.getElementById('f-ticker').value.trim().toUpperCase();
+    var v = parseFloat(fTarget.value);
+    if (ticker && !isNaN(v) && v > 0) saveTargetToCacheAC(ticker, v);
+  });
 });
 
 // ═══ MONITOR LOADER ═══
