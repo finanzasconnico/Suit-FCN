@@ -298,6 +298,27 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
             <option value="A">A</option>
           </select>
         </div>
+        <div class="field">
+          <div class="field-label">Tipo de bono</div>
+          <div style="display:flex;flex-direction:column;gap:5px;padding:4px 0;">
+            <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;color:var(--text);">
+              <input type="checkbox" id="chk-corp" checked onchange="aplicarFiltros()" style="accent-color:var(--jade);width:13px;height:13px;">
+              Corporativos
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;color:var(--text);">
+              <input type="checkbox" id="chk-sob" checked onchange="aplicarFiltros()" style="accent-color:var(--jade);width:13px;height:13px;">
+              Soberanos
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;color:var(--text);">
+              <input type="checkbox" id="chk-prov" checked onchange="aplicarFiltros()" style="accent-color:var(--jade);width:13px;height:13px;">
+              Provinciales
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer;color:var(--text);">
+              <input type="checkbox" id="chk-bop" checked onchange="aplicarFiltros()" style="accent-color:var(--jade);width:13px;height:13px;">
+              Bopreales
+            </label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="divider"></div>
@@ -640,13 +661,12 @@ function cargarMonitor(input) {
       for(let i=0;i<Math.min(raw.length,15);i++){for(let j=0;j<raw[i].length;j++){if(raw[i][j]==='Ticker'){hIdx=i;tIdx=j;break;}}if(hIdx>=0)break;}
       if(hIdx<0) throw new Error('No encontré la columna "Ticker".');
       const iT=tIdx,iE=tIdx+1,iVto=tIdx+3,iTIR=tIdx+4,iCup=tIdx+7,iDol=tIdx+9,iCal=tIdx+11,iTIRC=tIdx+16;
-      // Detectar columnas adicionales por nombre de encabezado
+      // Detectar columnas adicionales por nombre de encabezado (case-insensitive)
       const colMap={};
-      raw[hIdx].forEach((v,j)=>{ if(v) colMap[String(v).trim()]=j; });
-      const iDur=colMap['Duration']!==undefined?colMap['Duration']:-1;
-      const iLamMin=colMap['Lámina min.']!==undefined?colMap['Lámina min.']:
-                    colMap['Lamina min.']!==undefined?colMap['Lamina min.']:
-                    colMap['Lámina mín.']!==undefined?colMap['Lámina mín.']:-1;
+      raw[hIdx].forEach((v,j)=>{ if(v) colMap[String(v).trim().toLowerCase()]=j; });
+      const findCol=(...names)=>{for(const n of names){const k=n.toLowerCase();if(colMap[k]!==undefined)return colMap[k];}return -1;};
+      const iDur=findCol('Duration','Dur.','Dur','Duration (años)','Duración','Duracion');
+      const iLamMin=findCol('Lámina min.','Lamina min.','Lámina mín.','Lamina mín.','Lam. min.','Lámina Min','Lamina Min');
       for(let i=hIdx+1;i<raw.length;i++){
         const row=raw[i];const tk=String(row[iT]||'').trim();
         if(!tk||!/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
@@ -829,12 +849,19 @@ function aplicarFiltros() {
   const tickerRaw=document.getElementById('inp-ticker').value.trim();
   const tickers=tickerRaw?tickerRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean):[];
   const calif=document.getElementById('sel-calif').value.toLowerCase();
+  const chkCorp=document.getElementById('chk-corp')?.checked??true;
+  const chkSob=document.getElementById('chk-sob')?.checked??true;
+  const chkProv=document.getElementById('chk-prov')?.checked??true;
+  const chkBop=document.getElementById('chk-bop')?.checked??true;
+  const tipoMap={'corporativo':chkCorp,'soberano':chkSob,'provincial':chkProv,'bopreal':chkBop,'dollarlinked':chkSob};
+  const filtrarTipo=!(chkCorp&&chkSob&&chkProv&&chkBop);
   datosFiltrados=datosFusionados.filter(d=>{
     if(asesor&&!d.asesor.toLowerCase().includes(asesor)) return false;
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
     if(tickers.length&&!tickers.some(t=>d.ticker.toLowerCase().includes(t))) return false;
     if(calif&&!d.calificacion.toLowerCase().includes(calif)) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
+    if(filtrarTipo&&!(tipoMap[d.tipo]??true)) return false;
     return true;
   });
   renderTablas();
@@ -1390,11 +1417,11 @@ function calcCobrado(d) {
 
 function filaON(d, highlightBaja=false, showAsesor=false) {
   const tirPct=d.tir!==null?(d.tir*100).toFixed(2):'—';
-  const tirClass=d.tir===null?'':d.tir<umbralTIR/100?'low':d.tir<0.08?'mid':'high';
+  const tirClass=d.tir===null?'':d.tir<umbralTIR/100?'low':d.tir<umbralTIRAlta/100?'mid':'high';
   const cuponPct=d.cupon!==null?(d.cupon*100).toFixed(2)+'%':'—';
   const rowClass=highlightBaja&&d.tir!==null&&d.tir<umbralTIR/100?'highlight-low':'';
   const barPct=d.tir!==null?Math.min(100,d.tir/0.12*100):0;
-  const barColor=d.tir===null?'#3C5752':d.tir<umbralTIR/100?'#C0453B':d.tir<0.08?'#D9892B':'#1C8C5F';
+  const barColor=d.tir===null?'#3C5752':d.tir<umbralTIR/100?'#C0453B':d.tir<umbralTIRAlta/100?'#D9892B':'#1C8C5F';
   const tirCell=`<div class="tir-bar-wrap"><span class="td-tir ${tirClass}">${tirPct!=='—'?tirPct+'%':'—'}</span><div class="tir-bar-bg"><div class="tir-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></div>`;
   const durCell=d.duration!==null?`<span style="font-family:var(--font-mono)">${d.duration.toFixed(1)}y</span>`:'—';
   const lamCell=d.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(d.laminaMin)}</span>`:'—';
@@ -1453,12 +1480,12 @@ function filaTop(d) {
 
 function filaONConCobrado(d) {
   const tirPct=d.tir!==null?(d.tir*100).toFixed(2):'—';
-  const tirClass=d.tir===null?'':d.tir<umbralTIR/100?'low':d.tir<0.08?'mid':'high';
+  const tirClass=d.tir===null?'':d.tir<umbralTIR/100?'low':d.tir<umbralTIRAlta/100?'mid':'high';
   const cuponPct=d.cupon!==null?(d.cupon*100).toFixed(2)+'%':'—';
   const rowClass=d.tir!==null&&d.tir<umbralTIR/100?'highlight-low':'';
   const cobrado=calcCobrado(d);
   const barPct=d.tir!==null?Math.min(100,d.tir/0.12*100):0;
-  const barColor=d.tir===null?'#3C5752':d.tir<umbralTIR/100?'#C0453B':d.tir<0.08?'#D9892B':'#1C8C5F';
+  const barColor=d.tir===null?'#3C5752':d.tir<umbralTIR/100?'#C0453B':d.tir<umbralTIRAlta/100?'#D9892B':'#1C8C5F';
   const tirCell=`<div class="tir-bar-wrap"><span class="td-tir ${tirClass}">${tirPct!=='—'?tirPct+'%':'—'}</span><div class="tir-bar-bg"><div class="tir-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></div>`;
   const durStr=d.duration!==null?d.duration.toFixed(1)+'y':'—';
   const lamStr=d.laminaMin!==null?formatNum(d.laminaMin):'—';
