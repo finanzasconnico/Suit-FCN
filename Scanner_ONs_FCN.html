@@ -323,24 +323,27 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">3 · Umbral de TIR baja</div>
-      <div style="margin-bottom:6px;font-size:10px;color:var(--ink-muted);">Marcar como "baja TIR" por debajo de:</div>
-      <div class="threshold-row">
-        <input type="range" id="slider-tir" min="2" max="10" step="0.5" value="5" oninput="actualizarUmbral()">
-        <span class="threshold-val" id="val-tir">5.0%</span>
+      <div class="section-title">3 · Rango de TIR</div>
+      <div style="margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--ink-muted);margin-bottom:4px;">TIR mínima (rojo por debajo):</div>
+        <div class="threshold-row">
+          <input type="range" id="slider-tir" min="0" max="15" step="0.5" value="5" oninput="actualizarUmbral()">
+          <span class="threshold-val" id="val-tir">5.0%</span>
+        </div>
+        <div style="font-size:10px;color:var(--ink-muted);margin-bottom:4px;margin-top:8px;">TIR máxima (verde por encima):</div>
+        <div class="threshold-row">
+          <input type="range" id="slider-tir-alta" min="0" max="20" step="0.5" value="8" oninput="actualizarUmbralAlta()">
+          <span class="threshold-val" id="val-tir-alta">8.0%</span>
+        </div>
       </div>
-      <div style="font-size:9px;color:var(--ink-muted);line-height:1.5;">Rojo &lt; umbral · Amarillo umbral–8% · Verde &gt;8%</div>
-    </div>
-    <div class="divider"></div>
-    <!-- MEJORA 1: umbral alta TIR -->
-    <div>
-      <div class="section-title">4 · Umbral de TIR alta</div>
-      <div style="margin-bottom:6px;font-size:10px;color:var(--ink-muted);">Marcar como "alta TIR" por encima de:</div>
-      <div class="threshold-row">
-        <input type="range" id="slider-tir-alta" min="5" max="15" step="0.5" value="8" oninput="actualizarUmbralAlta()">
-        <span class="threshold-val" id="val-tir-alta">8.0%</span>
-      </div>
-      <div style="font-size:9px;color:var(--ink-muted);line-height:1.5;">Verde &gt; umbral alta · se muestra en 🏆 Top ONs</div>
+      <div style="font-size:10px;color:var(--ink-muted);margin-bottom:6px;">Filtrar tabla (mostrar solo):</div>
+      <select id="sel-filtro-tir" onchange="aplicarFiltros()" style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:12px;outline:none;">
+        <option value="todos">— Todas las ONs (sin filtro) —</option>
+        <option value="alta">Solo TIR ≥ máxima</option>
+        <option value="media">Solo TIR entre mínima y máxima</option>
+        <option value="baja">Solo TIR &lt; mínima</option>
+      </select>
+      <div id="filtro-tir-desc" style="font-size:9px;color:var(--ambar);margin-top:5px;line-height:1.5;display:none;"></div>
     </div>
     <div class="divider"></div>
     <div>
@@ -855,6 +858,19 @@ function aplicarFiltros() {
   const chkBop=document.getElementById('chk-bop')?.checked??true;
   const tipoMap={'corporativo':chkCorp,'soberano':chkSob,'provincial':chkProv,'bopreal':chkBop,'dollarlinked':chkSob};
   const filtrarTipo=!(chkCorp&&chkSob&&chkProv&&chkBop);
+  const modoTIR=document.getElementById('sel-filtro-tir')?.value||'todos';
+  const minTIR=umbralTIR/100;
+  const maxTIR=umbralTIRAlta/100;
+  // Actualizar descripción del filtro activo
+  const descEl=document.getElementById('filtro-tir-desc');
+  if(descEl){
+    if(modoTIR==='todos'){descEl.style.display='none';}
+    else{
+      const textos={'alta':`Mostrando solo TIR ≥ ${umbralTIRAlta}%`,'media':`Mostrando solo TIR entre ${umbralTIR}% y ${umbralTIRAlta}%`,'baja':`Mostrando solo TIR < ${umbralTIR}%`};
+      descEl.textContent=textos[modoTIR]||'';
+      descEl.style.display='block';
+    }
+  }
   datosFiltrados=datosFusionados.filter(d=>{
     if(asesor&&!d.asesor.toLowerCase().includes(asesor)) return false;
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
@@ -862,9 +878,24 @@ function aplicarFiltros() {
     if(calif&&!d.calificacion.toLowerCase().includes(calif)) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
     if(filtrarTipo&&!(tipoMap[d.tipo]??true)) return false;
+    // Filtro por rango TIR
+    if(modoTIR!=='todos'&&d.tir!==null){
+      if(modoTIR==='alta'&&d.tir<maxTIR) return false;
+      if(modoTIR==='media'&&(d.tir<minTIR||d.tir>=maxTIR)) return false;
+      if(modoTIR==='baja'&&d.tir>=minTIR) return false;
+    }
     return true;
   });
   renderTablas();
+}
+
+function actualizarDescFiltroTIR(){
+  // Actualiza las labels del select con los valores actuales
+  const sel=document.getElementById('sel-filtro-tir');
+  if(!sel) return;
+  sel.options[1].text=`Solo TIR ≥ ${umbralTIRAlta}%`;
+  sel.options[2].text=`Solo TIR entre ${umbralTIR}% y ${umbralTIRAlta}%`;
+  sel.options[3].text=`Solo TIR < ${umbralTIR}%`;
 }
 
 // =================== RENDER ===================
@@ -1532,13 +1563,15 @@ function formatVto(v) {
 function actualizarUmbral() {
   umbralTIR=parseFloat(document.getElementById('slider-tir').value);
   document.getElementById('val-tir').textContent=umbralTIR.toFixed(1)+'%';
-  if(datosFusionados.length>0) renderTablas();
+  actualizarDescFiltroTIR();
+  if(datosFusionados.length>0) aplicarFiltros();
 }
 
 function actualizarUmbralAlta() {
   umbralTIRAlta=parseFloat(document.getElementById('slider-tir-alta').value);
   document.getElementById('val-tir-alta').textContent=umbralTIRAlta.toFixed(1)+'%';
-  if(datosFusionados.length>0) renderTablaTop();
+  actualizarDescFiltroTIR();
+  if(datosFusionados.length>0) aplicarFiltros();
 }
 
 function switchTab(id) {
