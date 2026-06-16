@@ -677,8 +677,8 @@ function cargarMonitor(input) {
           vencimiento:row[iVto]||'',calificacion:String(row[iCal]||'').trim(),
           emisor:String(row[iE]||'').trim(),tirCable:parseFloat(row[iTIRC])||null,
           dolar:String(row[iDol]||'').trim(),instrumento:String(row[iE]||'').trim(),
-          duration: iDur>=0?(parseFloat(row[iDur])||null):null,
-          laminaMin: iLamMin>=0?(parseFloat(row[iLamMin])||null):null};
+          duration: iDur>=0?(parseFloat(String(row[iDur]||'').replace(',','.'))||null):null,
+          laminaMin: iLamMin>=0?(parseFloat(String(row[iLamMin]||'').replace(',','.'))||null):null};
         corpCnt++;
       }
 
