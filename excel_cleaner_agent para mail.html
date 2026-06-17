@@ -2,705 +2,620 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Cleaner — FCN Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #081917;
+  --surface:  #0E2622;
+  --surface2: #122B27;
+  --border:   #1E3A34;
+  --jade:     #1C8C5F;
+  --jade-d:   rgba(28,140,95,.12);
+  --ambar:    #DBA03C;
+  --ambar-d:  rgba(219,160,60,.12);
+  --danger:   #C0453B;
+  --danger-d: rgba(192,69,59,.12);
+  --text:     #EAF1EE;
+  --muted:    #6C817C;
+  --dim:      #3C5752;
+  --font-d:   'Spectral', Georgia, serif;
+  --font-s:   'Hanken Grotesk', system-ui, sans-serif;
+  --font-m:   'IBM Plex Mono', ui-monospace, monospace;
+  --r: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg: #0d0f14;
-    --surface: #141720;
-    --border: #252a38;
-    --accent: #4fffb0;
-    --accent2: #ff6b6b;
-    --accent3: #ffc947;
-    --text: #e8eaf0;
-    --muted: #5a6070;
-    --mono: 'DM Mono', monospace;
-    --display: 'Syne', sans-serif;
-  }
+body {
+  font-family: var(--font-s);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  min-height: 100vh;
+  padding: 32px 24px 48px;
+}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 32px 16px;
-  }
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: .5;
+}
 
-  .header {
-    text-align: center;
-    margin-bottom: 40px;
-  }
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
-  .header h1 {
-    font-family: var(--display);
-    font-size: clamp(1.6rem, 4vw, 2.4rem);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--accent);
-    line-height: 1;
-  }
+/* Header */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.page-header-left h1 {
+  font-family: var(--font-d);
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.page-header-left p {
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.header-badge {
+  font-family: var(--font-m);
+  font-size: 8.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ambar);
+  background: var(--ambar-d);
+  border: 1px solid rgba(219,160,60,.25);
+  padding: 4px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 4px;
+}
 
-  .header p {
-    color: var(--muted);
-    font-size: 0.78rem;
-    margin-top: 8px;
-    letter-spacing: 0.04em;
-  }
+/* Rules */
+.rules-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--jade);
+  border-radius: var(--r);
+  padding: 14px 18px;
+}
+.rules-card h3 {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--jade);
+  margin-bottom: 10px;
+}
+.rules-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rules-card li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+.rules-card li::before {
+  content: '›';
+  color: var(--jade);
+  font-size: 14px;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
 
-  .rules-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin-bottom: 28px;
-    width: 100%;
-    max-width: 540px;
-  }
+/* Tabs */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 4px;
+  gap: 4px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-m);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface2); }
+.tab-btn.active { background: var(--jade-d); color: var(--jade); border: 1px solid rgba(28,140,95,.25); }
+.tab-btn.active.amber { background: var(--ambar-d); color: var(--ambar); border-color: rgba(219,160,60,.25); }
 
-  .rules-box h3 {
-    font-family: var(--display);
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
+/* Drop zone */
+.drop-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r);
+  padding: 44px 24px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: all .2s;
+  background: var(--surface);
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--jade);
+  background: var(--jade-d);
+}
+.drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.drop-icon { font-size: 2rem; display: block; margin-bottom: 10px; }
+.drop-zone h2 {
+  font-family: var(--font-d);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 5px;
+}
+.drop-zone p { font-size: 11px; color: var(--muted); }
+.file-name { font-family: var(--font-m); font-size: 10px; color: var(--jade); margin-top: 8px; }
 
-  .rules-box ul {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+/* Paste panel */
+.paste-panel { display: flex; flex-direction: column; gap: 14px; }
 
-  .rules-box li {
-    font-size: 0.76rem;
-    color: var(--muted);
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    line-height: 1.4;
-  }
+.steps-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--ambar);
+  border-radius: var(--r);
+  padding: 14px 18px;
+}
+.steps-card h3 {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ambar);
+  margin-bottom: 12px;
+}
+.step-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.step-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--ambar-d);
+  border: 1px solid rgba(219,160,60,.3);
+  color: var(--ambar);
+  font-family: var(--font-m);
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.kbd {
+  display: inline-block;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--dim);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--text);
+}
 
-  .rules-box li::before {
-    content: '›';
-    color: var(--accent);
-    font-size: 1rem;
-    line-height: 1;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
+.paste-area {
+  width: 100%;
+  min-height: 130px;
+  background: var(--surface);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  color: var(--text);
+  font-family: var(--font-m);
+  font-size: 11px;
+  resize: vertical;
+  outline: none;
+  transition: border-color .2s;
+  line-height: 1.6;
+}
+.paste-area:focus { border-color: var(--ambar); background: rgba(219,160,60,.03); }
+.paste-area::placeholder { color: var(--dim); }
 
-  /* Tabs */
-  .tabs {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-    max-width: 540px;
-    margin-bottom: 16px;
-  }
+.paste-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-m);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+.pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ambar);
+  animation: pulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.75); }
+}
 
-  .tab {
-    flex: 1;
-    padding: 10px 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.15s ease;
-  }
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 12px;
+  text-align: center;
+}
+.stat-card .num {
+  font-family: var(--font-d);
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--jade);
+  line-height: 1;
+}
+.stat-card .label {
+  font-family: var(--font-m);
+  font-size: 8.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+.stat-card.warn .num { color: var(--danger); }
 
-  .tab.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(79, 255, 176, 0.06);
-  }
+/* Buttons */
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: var(--jade);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--font-s);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-primary:hover { background: #22a870; }
+.btn-primary:disabled { opacity: .35; cursor: not-allowed; }
 
-  /* Drop zone */
-  .drop-zone {
-    width: 100%;
-    max-width: 540px;
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    margin-bottom: 24px;
-  }
+.btn-secondary {
+  width: 100%;
+  padding: 11px;
+  background: transparent;
+  color: var(--ambar);
+  border: 1px solid rgba(219,160,60,.4);
+  border-radius: var(--r);
+  font-family: var(--font-s);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-secondary:hover { background: var(--ambar-d); border-color: var(--ambar); }
 
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(79, 255, 176, 0.04);
-  }
+/* Log */
+.log-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.log-line {
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.log-line.ok   { color: var(--jade); }
+.log-line.warn { color: var(--danger); }
 
-  .drop-zone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-
-  .drop-icon {
-    font-size: 2.4rem;
-    margin-bottom: 12px;
-    display: block;
-  }
-
-  .drop-zone h2 {
-    font-family: var(--display);
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-
-  .drop-zone p {
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-  }
-
-  .file-name {
-    font-size: 0.75rem;
-    color: var(--accent);
-    margin-top: 10px;
-    font-weight: 500;
-  }
-
-  /* Paste panel */
-  .paste-panel {
-    width: 100%;
-    max-width: 540px;
-    margin-bottom: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .encrypted-steps {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent3);
-    border-radius: 8px;
-    padding: 14px 18px;
-  }
-
-  .encrypted-steps h3 {
-    font-family: var(--display);
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--accent3);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-
-  .step-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-  }
-
-  .step-list li {
-    font-size: 0.74rem;
-    color: var(--muted);
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    line-height: 1.4;
-  }
-
-  .step-num {
-    background: rgba(255, 201, 71, 0.15);
-    color: var(--accent3);
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 0.65rem;
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .kbd {
-    display: inline-block;
-    background: #1e2230;
-    border: 1px solid var(--border);
-    border-bottom: 2px solid #3a3f55;
-    border-radius: 4px;
-    padding: 1px 6px;
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    color: var(--text);
-  }
-
-  .paste-area-wrap {
-    position: relative;
-  }
-
-  .paste-area {
-    width: 100%;
-    min-height: 140px;
-    background: var(--surface);
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.2s;
-    line-height: 1.5;
-  }
-
-  .paste-area:focus {
-    border-color: var(--accent3);
-    background: rgba(255, 201, 71, 0.03);
-  }
-
-  .paste-area::placeholder {
-    color: var(--muted);
-  }
-
-  .paste-hint {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.68rem;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-
-  .paste-hint .pulse {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent3);
-    animation: pulse 1.6s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.8); }
-  }
-
-  .btn-process {
-    width: 100%;
-    padding: 12px;
-    background: transparent;
-    color: var(--accent3);
-    border: 1px solid var(--accent3);
-    border-radius: 8px;
-    font-family: var(--display);
-    font-size: 0.85rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-transform: uppercase;
-  }
-
-  .btn-process:hover {
-    background: rgba(255, 201, 71, 0.08);
-    transform: translateY(-1px);
-  }
-
-  /* Stats */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    width: 100%;
-    max-width: 540px;
-    margin-bottom: 20px;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 12px;
-    text-align: center;
-  }
-
-  .stat-card .num {
-    font-family: var(--display);
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .stat-card .label {
-    font-size: 0.64rem;
-    color: var(--muted);
-    margin-top: 4px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    line-height: 1.3;
-  }
-
-  .stat-card.warn .num { color: var(--accent2); }
-
-  .btn {
-    width: 100%;
-    max-width: 540px;
-    padding: 14px;
-    background: var(--accent);
-    color: #0d0f14;
-    border: none;
-    border-radius: 8px;
-    font-family: var(--display);
-    font-size: 0.95rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    text-transform: uppercase;
-  }
-
-  .btn:hover { background: #38e09a; transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); }
-  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-  .log {
-    width: 100%;
-    max-width: 540px;
-    margin-top: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    max-height: 160px;
-    overflow-y: auto;
-  }
-
-  .log-line {
-    font-size: 0.71rem;
-    color: var(--muted);
-    line-height: 1.5;
-  }
-
-  .log-line.ok { color: var(--accent); }
-  .log-line.warn { color: var(--accent2); }
-
-  .hidden { display: none; }
+.hidden { display: none !important; }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="header">
-  <h1>Excel Cleaner</h1>
-  <p>LIMPIEZA AUTOMÁTICA DE CONTACTOS</p>
-</div>
-
-<div class="rules-box">
-  <h3>Reglas aplicadas</h3>
-  <ul>
-    <li>Solo columnas <strong>Nombre</strong> y <strong>Mail</strong></li>
-    <li>Elimina filas sin mail</li>
-    <li>Si hay varios mails con ";", el primero queda en su fila, los demás se agregan al final</li>
-    <li>Elimina mails duplicados (conserva la primera aparición)</li>
-  </ul>
-</div>
-
-<!-- Tabs -->
-<div class="tabs">
-  <div class="tab active" id="tabFile" onclick="switchTab('file')">📂 Subir archivo</div>
-  <div class="tab" id="tabPaste" onclick="switchTab('paste')">🔒 Archivo encriptado</div>
-</div>
-
-<!-- Panel: subir archivo -->
-<div id="panelFile">
-  <div class="drop-zone" id="dropZone">
-    <input type="file" id="fileInput" accept=".xlsx,.xls">
-    <span class="drop-icon">📂</span>
-    <h2>Soltá tu archivo acá</h2>
-    <p>O hacé click para seleccionar · .xlsx / .xls</p>
-    <div class="file-name hidden" id="fileName"></div>
-  </div>
-</div>
-
-<!-- Panel: pegar desde Excel encriptado -->
-<div id="panelPaste" class="hidden">
-  <div class="paste-panel">
-    <div class="encrypted-steps">
-      <h3>Cómo usar con archivo encriptado</h3>
-      <ol class="step-list">
-        <li>
-          <span class="step-num">1</span>
-          <span>Abrí el archivo en Excel e ingresá la contraseña para desbloquearlo</span>
-        </li>
-        <li>
-          <span class="step-num">2</span>
-          <span>Seleccioná toda la hoja con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">E</kbd></span>
-        </li>
-        <li>
-          <span class="step-num">3</span>
-          <span>Copiá el contenido con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">C</kbd></span>
-        </li>
-        <li>
-          <span class="step-num">4</span>
-          <span>Hacé click en el área de abajo y pegá con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">V</kbd></span>
-        </li>
-        <li>
-          <span class="step-num">5</span>
-          <span>Presioná <strong style="color:var(--accent3)">Procesar datos</strong></span>
-        </li>
-      </ol>
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1>🧹 Excel Cleaner</h1>
+      <p>Limpieza automática de contactos</p>
     </div>
+    <span class="header-badge">Contactos</span>
+  </div>
 
-    <div class="paste-area-wrap">
-      <textarea class="paste-area" id="pasteArea" placeholder="Pegá acá el contenido copiado del Excel (Ctrl+V)..."></textarea>
+  <!-- Reglas -->
+  <div class="rules-card">
+    <h3>Reglas aplicadas</h3>
+    <ul>
+      <li>Conserva solo las columnas <strong style="color:var(--text)">Nombre</strong> y <strong style="color:var(--text)">Mail</strong></li>
+      <li>Elimina filas sin mail</li>
+      <li>Si hay varios mails separados por <strong style="color:var(--text)">";"</strong>, el primero queda en su fila y los demás se agregan al final</li>
+      <li>Elimina mails duplicados — conserva la primera aparición</li>
+    </ul>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tabFile"  onclick="switchTab('file')">📂 Subir archivo</button>
+    <button class="tab-btn amber"  id="tabPaste" onclick="switchTab('paste')">🔒 Archivo encriptado</button>
+  </div>
+
+  <!-- Panel: archivo -->
+  <div id="panelFile">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <span class="drop-icon">📂</span>
+      <h2>Soltá tu archivo acá</h2>
+      <p>O hacé click para seleccionar &middot; .xlsx / .xls</p>
+      <div class="file-name hidden" id="fileName"></div>
+    </div>
+  </div>
+
+  <!-- Panel: pegar -->
+  <div id="panelPaste" class="hidden">
+    <div class="paste-panel">
+      <div class="steps-card">
+        <h3>Cómo usar con archivo encriptado</h3>
+        <ol class="step-list">
+          <li><span class="step-num">1</span><span>Abrí el archivo en Excel e ingresá la contraseña para desbloquearlo</span></li>
+          <li><span class="step-num">2</span><span>Seleccioná toda la hoja con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">E</kbd></span></li>
+          <li><span class="step-num">3</span><span>Copiá el contenido con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">C</kbd></span></li>
+          <li><span class="step-num">4</span><span>Hacé click en el área de abajo y pegá con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">V</kbd></span></li>
+          <li><span class="step-num">5</span><span>Presioná <strong style="color:var(--ambar)">Procesar datos</strong></span></li>
+        </ol>
+      </div>
+
+      <textarea class="paste-area" id="pasteArea" placeholder="Pegá acá el contenido copiado del Excel (Ctrl+V)…"></textarea>
       <div class="paste-hint">
         <span class="pulse"></span>
         <span>Esperando datos pegados desde Excel</span>
       </div>
+
+      <button class="btn-secondary" onclick="processPasted()">▶ Procesar datos</button>
     </div>
-
-    <button class="btn-process" id="processBtn" onclick="processPasted()">▶ Procesar datos</button>
   </div>
+
+  <!-- Stats -->
+  <div class="stats-grid hidden" id="statsGrid">
+    <div class="stat-card">
+      <div class="num" id="statTotal">0</div>
+      <div class="label">Filas originales</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="statClean">0</div>
+      <div class="label">Contactos válidos</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="num" id="statRemoved">0</div>
+      <div class="label">Eliminados</div>
+    </div>
+  </div>
+
+  <!-- Descarga -->
+  <button class="btn-primary hidden" id="downloadBtn" onclick="download()">⬇ Descargar Excel limpio</button>
+
+  <!-- Log -->
+  <div class="log-box hidden" id="log"></div>
+
 </div>
-
-<!-- Stats y descarga (compartidos) -->
-<div class="stats-grid hidden" id="statsGrid">
-  <div class="stat-card">
-    <div class="num" id="statTotal">0</div>
-    <div class="label">Filas originales</div>
-  </div>
-  <div class="stat-card">
-    <div class="num" id="statClean">0</div>
-    <div class="label">Contactos válidos</div>
-  </div>
-  <div class="stat-card warn">
-    <div class="num" id="statRemoved">0</div>
-    <div class="label">Eliminados</div>
-  </div>
-</div>
-
-<button class="btn" id="downloadBtn" disabled>⬇ Descargar Excel limpio</button>
-
-<div class="log hidden" id="log"></div>
-
 <script>
   let cleanedData = null;
 
-  const dropZone = document.getElementById('dropZone');
-  const fileInput = document.getElementById('fileInput');
-  const fileName = document.getElementById('fileName');
-  const statsGrid = document.getElementById('statsGrid');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const logEl = document.getElementById('log');
+  const dropZone   = document.getElementById('dropZone');
+  const fileInput  = document.getElementById('fileInput');
+  const fileNameEl = document.getElementById('fileName');
+  const statsGrid  = document.getElementById('statsGrid');
+  const downloadBtn= document.getElementById('downloadBtn');
+  const logEl      = document.getElementById('log');
 
+  // ── Tabs ────────────────────────────────────────────────────
   function switchTab(tab) {
     const isFile = tab === 'file';
-    document.getElementById('tabFile').classList.toggle('active', isFile);
-    document.getElementById('tabPaste').classList.toggle('active', !isFile);
-    document.getElementById('panelFile').classList.toggle('hidden', !isFile);
+    document.getElementById('tabFile').className  = 'tab-btn'        + (isFile  ? ' active' : '');
+    document.getElementById('tabPaste').className = 'tab-btn amber'  + (!isFile ? ' active' : '');
+    document.getElementById('panelFile').classList.toggle('hidden',  !isFile);
     document.getElementById('panelPaste').classList.toggle('hidden', isFile);
-    resetState();
+    reset();
   }
 
-  function resetState() {
+  function reset() {
     logEl.innerHTML = '';
     logEl.classList.add('hidden');
     statsGrid.classList.add('hidden');
+    downloadBtn.classList.add('hidden');
     cleanedData = null;
-    downloadBtn.disabled = true;
   }
 
   function addLog(msg, type = '') {
     logEl.classList.remove('hidden');
-    const line = document.createElement('div');
-    line.className = 'log-line ' + type;
-    line.textContent = '› ' + msg;
-    logEl.appendChild(line);
+    const d = document.createElement('div');
+    d.className = 'log-line ' + type;
+    d.textContent = '› ' + msg;
+    logEl.appendChild(d);
     logEl.scrollTop = logEl.scrollHeight;
   }
 
-  // ── Parseo y limpieza compartida ──────────────────────────────────────────
-
+  // ── Lógica compartida ────────────────────────────────────────
   function processRows(raw, nombreKey, mailKey) {
-    const originalCount = raw.length;
     const seenMails = new Set();
-    const mainRows = [];
-    const extraMails = [];
+    const mainRows  = [];
+    const extraMails= [];
 
     for (const row of raw) {
-      const nombre = String(row[nombreKey] || '').trim();
-      const mailRaw = String(row[mailKey] || '').trim();
-
+      const nombre  = String(row[nombreKey] || '').trim();
+      const mailRaw = String(row[mailKey]   || '').trim();
       if (!mailRaw) continue;
 
-      const parts = mailRaw.split(';').map(m => m.trim()).filter(Boolean);
+      const parts     = mailRaw.split(';').map(m => m.trim()).filter(Boolean);
       const firstMail = parts[0].toLowerCase();
-
       if (seenMails.has(firstMail)) continue;
+
       seenMails.add(firstMail);
       mainRows.push({ Nombre: nombre, Mail: parts[0] });
 
       for (let i = 1; i < parts.length; i++) {
         const extra = parts[i].toLowerCase();
-        if (!seenMails.has(extra)) {
-          seenMails.add(extra);
-          extraMails.push(parts[i]);
-        }
+        if (!seenMails.has(extra)) { seenMails.add(extra); extraMails.push(parts[i]); }
       }
     }
 
     const extraRows = extraMails.map(m => ({ Nombre: '', Mail: m }));
-    return { finalRows: [...mainRows, ...extraRows], originalCount, extraRows };
+    return { finalRows: [...mainRows, ...extraRows], originalCount: raw.length, extraRows };
   }
 
-  function showResults(finalRows, originalCount, extraRows) {
+  function showResults({ finalRows, originalCount, extraRows }) {
     addLog('Sin mail o duplicados eliminados: ' + (originalCount - finalRows.length), 'warn');
-    if (extraRows.length) addLog('Mails extra (sin titular) agregados al final: ' + extraRows.length);
+    if (extraRows.length) addLog('Mails extra (sin titular) al final: ' + extraRows.length);
     addLog('Total filas en resultado: ' + finalRows.length, 'ok');
 
-    document.getElementById('statTotal').textContent = originalCount;
-    document.getElementById('statClean').textContent = finalRows.length;
+    document.getElementById('statTotal').textContent   = originalCount;
+    document.getElementById('statClean').textContent   = finalRows.length;
     document.getElementById('statRemoved').textContent = Math.max(0, originalCount - finalRows.length);
     statsGrid.classList.remove('hidden');
 
     cleanedData = finalRows;
-    downloadBtn.disabled = false;
+    downloadBtn.classList.remove('hidden');
     addLog('¡Listo! Hacé click en descargar.', 'ok');
   }
 
-  // ── Tab: subir archivo ────────────────────────────────────────────────────
-
+  // ── Tab: archivo ─────────────────────────────────────────────
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
-  fileInput.addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
-  });
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
   function handleFile(file) {
-    resetState();
-    fileName.textContent = file.name;
-    fileName.classList.remove('hidden');
+    reset();
+    fileNameEl.textContent = file.name;
+    fileNameEl.classList.remove('hidden');
     addLog('Leyendo archivo: ' + file.name);
 
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
+        const wb   = XLSX.read(e.target.result, { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const raw  = XLSX.utils.sheet_to_json(ws, { defval: '' });
         addLog('Filas encontradas: ' + raw.length);
 
-        const keys = Object.keys(raw[0] || {});
+        const keys      = Object.keys(raw[0] || {});
         const nombreKey = keys.find(k => k.toLowerCase().includes('nombre')) || 'Nombre';
-        const mailKey = keys.find(k => k.toLowerCase().includes('mail')) || 'Mail';
+        const mailKey   = keys.find(k => k.toLowerCase().includes('mail'))   || 'Mail';
+        addLog('Columnas: "' + nombreKey + '" · "' + mailKey + '"');
 
-        addLog('Columna nombre: "' + nombreKey + '" | mail: "' + mailKey + '"');
-
-        const { finalRows, originalCount, extraRows } = processRows(raw, nombreKey, mailKey);
-        showResults(finalRows, originalCount, extraRows);
-
-      } catch (err) {
-        addLog('Error procesando el archivo: ' + err.message, 'warn');
-      }
+        showResults(processRows(raw, nombreKey, mailKey));
+      } catch (err) { addLog('Error: ' + err.message, 'warn'); }
     };
     reader.readAsArrayBuffer(file);
   }
 
-  // ── Tab: pegar desde Excel encriptado ────────────────────────────────────
-
+  // ── Tab: pegar ───────────────────────────────────────────────
   function processPasted() {
     const text = document.getElementById('pasteArea').value.trim();
-    if (!text) {
-      addLog('No hay datos pegados. Copiá el contenido del Excel primero.', 'warn');
-      logEl.classList.remove('hidden');
-      return;
-    }
+    if (!text) { reset(); addLog('No hay datos. Pegá el contenido del Excel primero.', 'warn'); logEl.classList.remove('hidden'); return; }
 
-    resetState();
-    addLog('Procesando datos pegados...');
+    reset();
+    addLog('Procesando datos pegados…');
 
-    // Excel copia como TSV (tabs entre celdas, newlines entre filas)
     const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) {
-      addLog('Se necesitan al menos una fila de encabezado y una de datos.', 'warn');
-      logEl.classList.remove('hidden');
-      return;
-    }
+    if (lines.length < 2) { addLog('Se necesita al menos una fila de encabezado y una de datos.', 'warn'); logEl.classList.remove('hidden'); return; }
 
-    const headers = lines[0].split('\t').map(h => h.trim());
-    addLog('Encabezados detectados: ' + headers.join(' | '));
-
+    const headers   = lines[0].split('\t').map(h => h.trim());
     const nombreIdx = headers.findIndex(h => h.toLowerCase().includes('nombre'));
     const mailIdx   = headers.findIndex(h => h.toLowerCase().includes('mail'));
 
-    if (mailIdx === -1) {
-      addLog('No se encontró columna "Mail" en los encabezados.', 'warn');
-      logEl.classList.remove('hidden');
-      return;
-    }
-    if (nombreIdx === -1) {
-      addLog('No se encontró columna "Nombre" — se dejará vacío.', 'warn');
-      logEl.classList.remove('hidden');
-    }
+    addLog('Encabezados: ' + headers.join(' · '));
+
+    if (mailIdx === -1) { addLog('No se encontró columna "Mail" en los encabezados.', 'warn'); logEl.classList.remove('hidden'); return; }
 
     const raw = lines.slice(1).map(line => {
       const cols = line.split('\t');
-      return {
-        Nombre: nombreIdx >= 0 ? (cols[nombreIdx] || '') : '',
-        Mail:   cols[mailIdx] || ''
-      };
+      return { Nombre: nombreIdx >= 0 ? (cols[nombreIdx] || '') : '', Mail: cols[mailIdx] || '' };
     });
 
-    addLog('Filas de datos encontradas: ' + raw.length);
-
-    const { finalRows, originalCount, extraRows } = processRows(raw, 'Nombre', 'Mail');
-    showResults(finalRows, originalCount, extraRows);
+    addLog('Filas de datos: ' + raw.length);
+    showResults(processRows(raw, 'Nombre', 'Mail'));
   }
 
-  // ── Descarga ──────────────────────────────────────────────────────────────
-
-  downloadBtn.addEventListener('click', () => {
+  // ── Descarga ─────────────────────────────────────────────────
+  function download() {
     if (!cleanedData) return;
-
     const ws = XLSX.utils.json_to_sheet(cleanedData, { header: ['Nombre', 'Mail'] });
     ws['!cols'] = [{ wch: 35 }, { wch: 45 }];
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Datos Limpios');
     XLSX.writeFile(wb, 'Stock_limpio.xlsx');
     addLog('Archivo descargado correctamente.', 'ok');
-  });
+  }
 </script>
 </body>
 </html>
