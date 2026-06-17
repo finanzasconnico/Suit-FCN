@@ -670,6 +670,10 @@ function cargarMonitor(input) {
       const findCol=(...names)=>{for(const n of names){const k=n.toLowerCase();if(colMap[k]!==undefined)return colMap[k];}return -1;};
       const iDur=findCol('Duration','Dur.','Dur','Duration (años)','Duración','Duracion');
       const iLamMin=findCol('Lámina min.','Lamina min.','Lámina mín.','Lamina mín.','Lam. min.','Lámina Min','Lamina Min');
+      // Log diagnóstico — columnas detectadas
+      logMsg(`Monitor col. detectadas: hIdx=${hIdx} tIdx=${tIdx} iDur=${iDur} iLamMin=${iLamMin}`,'');
+      logMsg(`Encabezados fila ${hIdx}: ${raw[hIdx].filter(Boolean).join(' | ')}`,'');
+      const parseDur=v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;};
       for(let i=hIdx+1;i<raw.length;i++){
         const row=raw[i];const tk=String(row[iT]||'').trim();
         if(!tk||!/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
@@ -677,8 +681,8 @@ function cargarMonitor(input) {
           vencimiento:row[iVto]||'',calificacion:String(row[iCal]||'').trim(),
           emisor:String(row[iE]||'').trim(),tirCable:parseFloat(row[iTIRC])||null,
           dolar:String(row[iDol]||'').trim(),instrumento:String(row[iE]||'').trim(),
-          duration: iDur>=0?(parseFloat(String(row[iDur]||'').replace(',','.'))||null):null,
-          laminaMin: iLamMin>=0?(parseFloat(String(row[iLamMin]||'').replace(',','.'))||null):null};
+          duration: parseDur(iDur>=0?row[iDur]:null),
+          laminaMin: parseDur(iLamMin>=0?row[iLamMin]:null)};
         corpCnt++;
       }
 
