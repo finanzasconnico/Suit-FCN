@@ -666,7 +666,7 @@ function cargarMonitor(input) {
       const iT=tIdx,iE=tIdx+1,iVto=tIdx+3,iTIR=tIdx+4,iCup=tIdx+7,iDol=tIdx+9,iCal=tIdx+11,iTIRC=tIdx+16;
       // Detectar columnas adicionales por nombre de encabezado (case-insensitive)
       const colMap={};
-      raw[hIdx].forEach((v,j)=>{ if(v) colMap[String(v).trim().toLowerCase()]=j; });
+      raw[hIdx].forEach((v,j)=>{ if(v){const k=String(v).trim().toLowerCase();if(colMap[k]===undefined)colMap[k]=j;} });
       const findCol=(...names)=>{for(const n of names){const k=n.toLowerCase();if(colMap[k]!==undefined)return colMap[k];}return -1;};
       const iDur=findCol('Duration','Dur.','Dur','Duration (años)','Duración','Duracion');
       const iLamMin=findCol('Lámina min.','Lamina min.','Lámina mín.','Lamina mín.','Lam. min.','Lámina Min','Lamina Min');
