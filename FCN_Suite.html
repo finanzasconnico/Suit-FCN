@@ -154,9 +154,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <form onsubmit="doLogin();return false;" method="post" action="">
       <label class="login-label">Usuario</label>
       <input class="login-input" type="text" id="login-user" name="username" placeholder="nombre de usuario" autocomplete="username"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-      <label class="login-label">Contraseña</label>
-      <input class="login-input" type="password" id="login-pass" name="password" placeholder="••••••••" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')doLogin()">
       <button class="login-btn" type="submit">Ingresar</button>
     </form>
@@ -359,15 +356,14 @@ const frameCache = {};
 
 function doLogin() {
   const username = document.getElementById('login-user').value.trim().toLowerCase();
-  const password = document.getElementById('login-pass').value;
-  const user     = USERS.find(u => u.username.toLowerCase() === username && u.password === password);
-  if (!user) {
+  if (!username) {
     const err = document.getElementById('login-err');
-    err.textContent = 'Usuario o contraseña incorrectos.';
-    document.getElementById('login-pass').value = '';
+    err.textContent = 'Ingresá tu nombre de usuario.';
     setTimeout(() => err.textContent = '', 3000);
     return;
   }
+  const user = USERS.find(u => u.username.toLowerCase() === username)
+    || { username, displayName: username, role: 'Asesor', tools: 'all' };
   currentUser = user;
   sessionStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
   localStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
