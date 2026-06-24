@@ -30,23 +30,26 @@ html,body{height:100%;overflow:hidden;}
 body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:13px;}
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5;}
 
-/* ── LOGIN ── */
-#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:0;}
-.login-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:44px 40px;width:100%;max-width:380px;text-align:center;position:relative;z-index:1;}
-.login-logo{width:60px;height:60px;border:2px solid var(--ambar);border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-family:var(--font-d);font-size:26px;color:var(--ambar);}
-.login-title{font-family:var(--font-d);font-size:26px;font-weight:300;color:var(--text);margin-bottom:4px;}
-.login-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:32px;font-family:var(--font-m);}
-.login-label{display:block;font-size:10px;color:var(--muted);text-align:left;margin-bottom:5px;letter-spacing:.06em;text-transform:uppercase;}
-.login-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:14px;outline:none;transition:border-color .2s;margin-bottom:12px;}
-.login-input:focus{border-color:var(--jade);}
-.login-btn{width:100%;padding:12px;background:var(--jade);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-s);font-size:14px;font-weight:500;cursor:pointer;transition:background .2s;margin-top:4px;}
-.login-btn:hover{background:#22a870;}
-.login-err{font-size:11px;color:var(--danger);margin-top:10px;min-height:16px;font-family:var(--font-m);}
-.login-footer{position:relative;z-index:1;margin-top:28px;font-family:var(--font-m);font-size:9px;color:var(--dim);letter-spacing:.08em;}
+/* ── USERNAME MODAL ── */
+#username-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:2000;backdrop-filter:blur(4px);}
+#username-modal.visible{display:flex;}
+.umodal-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px 28px;width:100%;max-width:340px;text-align:center;}
+.umodal-title{font-family:var(--font-d);font-size:20px;font-weight:300;color:var(--text);margin-bottom:6px;}
+.umodal-sub{font-size:11px;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+.umodal-input{width:100%;padding:11px 14px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:14px;outline:none;transition:border-color .2s;margin-bottom:12px;}
+.umodal-input:focus{border-color:var(--jade);}
+.umodal-btn{width:100%;padding:11px;background:var(--jade);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-s);font-size:13px;font-weight:500;cursor:pointer;transition:background .2s;}
+.umodal-btn:hover{background:#22a870;}
+
+/* ── USER CHIP editable ── */
+.user-chip{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 6px;cursor:pointer;transition:border-color .2s;}
+.user-chip:hover{border-color:rgba(28,140,95,.5);}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:var(--jade-d);border:1px solid var(--jade);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:10px;color:var(--ambar);font-weight:600;flex-shrink:0;}
+.user-name{font-size:12px;color:var(--text);}
+.user-edit-icon{font-size:9px;color:var(--muted);margin-left:2px;}
 
 /* ── APP SHELL ── */
-#app{display:none;height:100vh;flex-direction:column;}
-#app.visible{display:flex;}
+#app{display:flex;height:100vh;flex-direction:column;}
 
 /* ── TOPBAR ── */
 .topbar{flex-shrink:0;height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;position:relative;z-index:50;}
@@ -145,21 +148,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">FN</div>
-    <div class="login-title">FCN Suite</div>
-    <div class="login-sub">finanzasconnico · acceso interno</div>
-    <form onsubmit="doLogin();return false;" method="post" action="">
-      <label class="login-label">Usuario</label>
-      <input class="login-input" type="text" id="login-user" name="username" placeholder="nombre de usuario" autocomplete="username"
-        onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="login-btn" type="submit">Ingresar</button>
+<!-- ── USERNAME MODAL ── -->
+<div id="username-modal">
+  <div class="umodal-card">
+    <div class="umodal-title">¿Cómo te llamás?</div>
+    <div class="umodal-sub">Tu nombre queda guardado para identificar las carteras que armás. Podés cambiarlo cuando quieras.</div>
+    <form onsubmit="guardarUsuario();return false;">
+      <input class="umodal-input" type="text" id="umodal-input" placeholder="ej: nicolas, catalina..." autocomplete="username">
+      <button class="umodal-btn" type="submit">Listo</button>
     </form>
-    <div class="login-err" id="login-err"></div>
   </div>
-  <div class="login-footer">FCN Suite v1.1 · Acceso restringido al equipo</div>
 </div>
 
 <!-- ── APP ── -->
@@ -173,14 +171,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="topbar-sep"></div>
     <div class="topbar-tools" id="topbar-tools"></div>
     <div class="topbar-right">
-      <div class="user-badge">
+      <div class="user-chip" onclick="editarUsuario()" title="Cambiar nombre de usuario">
         <div class="user-avatar" id="user-avatar">?</div>
-        <div>
-          <div class="user-name" id="user-display-name">—</div>
-          <div class="user-role" id="user-role-label">—</div>
-        </div>
+        <span class="user-name" id="user-display-name">—</span>
+        <span class="user-edit-icon">✎</span>
       </div>
-      <button class="btn-logout" onclick="doLogout()">Salir</button>
     </div>
   </div>
 
@@ -341,69 +336,69 @@ async function deleteSharedFile(key) {
 // BroadcastChannel: notifica a las herramientas abiertas cuando se actualiza un archivo
 const BC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('fcn_shared') : null;
 
-// Prefija las keys de IndexedDB con el username del usuario logueado
-function userKey(k) { return (currentUser ? currentUser.username + '_' : '') + k; }
-
 // ══════════════════════════════════════════════════════════════
-//  AUTH
+//  USUARIO (sin contraseña — solo nombre persistido)
 // ══════════════════════════════════════════════════════════════
-const AUTH_KEY = 'fcn_suite_auth';
-const AUTH_TTL = 8 * 60 * 60 * 1000;
+const USERNAME_KEY = 'fcn_username';
 
-let currentUser  = null;
 let activeToolId = null;
 const frameCache = {};
 
-function doLogin() {
-  const username = document.getElementById('login-user').value.trim().toLowerCase();
-  if (!username) {
-    const err = document.getElementById('login-err');
-    err.textContent = 'Ingresá tu nombre de usuario.';
-    setTimeout(() => err.textContent = '', 3000);
-    return;
-  }
-  const user = USERS.find(u => u.username.toLowerCase() === username)
-    || { username, displayName: username, role: 'Asesor', tools: 'all' };
-  currentUser = user;
-  sessionStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
-  localStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
-  showApp();
+function getSavedUsername() {
+  return localStorage.getItem(USERNAME_KEY) || '';
 }
 
-function doLogout() {
-  sessionStorage.removeItem(AUTH_KEY);
-  localStorage.removeItem(AUTH_KEY);
-  location.reload();
+function getDisplayUser() {
+  const raw = getSavedUsername();
+  const found = USERS.find(u => u.username.toLowerCase() === raw.toLowerCase());
+  return found || { username: raw, displayName: raw || '?', role: 'Asesor', tools: 'all' };
 }
 
-function checkSession() {
-  const raw = sessionStorage.getItem(AUTH_KEY);
-  if (!raw) return false;
-  try {
-    const s = JSON.parse(raw);
-    if (Date.now() - s.ts > AUTH_TTL) { doLogout(); return false; }
-    const user = USERS.find(u => u.username === s.username);
-    if (!user) return false;
-    currentUser = user;
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ username: user.username, ts: Date.now() }));
-    return true;
-  } catch { return false; }
+// Para compatibilidad con herramientas que leen fcn_suite_auth
+function syncAuthKey(username) {
+  const payload = JSON.stringify({ username, ts: Date.now() });
+  localStorage.setItem('fcn_suite_auth', payload);
+  sessionStorage.setItem('fcn_suite_auth', payload);
+}
+
+function guardarUsuario() {
+  const val = document.getElementById('umodal-input').value.trim().toLowerCase();
+  if (!val) return;
+  localStorage.setItem(USERNAME_KEY, val);
+  syncAuthKey(val);
+  document.getElementById('username-modal').classList.remove('visible');
+  actualizarChipUsuario();
+}
+
+function editarUsuario() {
+  const modal = document.getElementById('username-modal');
+  document.getElementById('umodal-input').value = getSavedUsername();
+  modal.classList.add('visible');
+  setTimeout(() => document.getElementById('umodal-input').focus(), 50);
+}
+
+function actualizarChipUsuario() {
+  const user = getDisplayUser();
+  const name = user.displayName || user.username || '?';
+  document.getElementById('user-display-name').textContent = name;
+  document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+}
+
+// Prefija las keys de IndexedDB con el username
+function userKey(k) {
+  const u = getSavedUsername();
+  return u ? u + '_' + k : k;
 }
 
 // ══════════════════════════════════════════════════════════════
 //  SHELL
 // ══════════════════════════════════════════════════════════════
 function getUserTools() {
-  if (!currentUser) return [];
-  return currentUser.tools === 'all' ? TOOLS : TOOLS.filter(t => currentUser.tools.includes(t.id));
+  return TOOLS;
 }
 
 function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').classList.add('visible');
-  document.getElementById('user-display-name').textContent = currentUser.displayName;
-  document.getElementById('user-role-label').textContent   = currentUser.role;
-  document.getElementById('user-avatar').textContent       = currentUser.displayName.charAt(0).toUpperCase();
+  actualizarChipUsuario();
   buildNav();
   buildHomeDashboard();
   buildFilesPanel();
@@ -435,7 +430,8 @@ function buildHomeDashboard() {
   grid.innerHTML = '';
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
-  document.getElementById('home-greeting').textContent = `${greeting}, ${currentUser.displayName} 👋`;
+  const name = getDisplayUser().displayName;
+  document.getElementById('home-greeting').textContent = name && name !== '?' ? `${greeting}, ${name} 👋` : greeting;
   tools.forEach(tool => {
     const card = document.createElement('div');
     card.className = 'tool-card';
@@ -679,7 +675,10 @@ document.addEventListener('drop', e => {
 //  INIT
 // ══════════════════════════════════════════════════════════════
 (function init() {
-  if (checkSession()) showApp();
+  // Sync auth key para herramientas que lo leen (Armador, etc.)
+  const saved = getSavedUsername();
+  if (saved) syncAuthKey(saved);
+  showApp();
 })();
 </script>
 </body>
