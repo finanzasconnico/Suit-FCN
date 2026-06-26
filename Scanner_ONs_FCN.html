@@ -204,6 +204,48 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .wpp-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:var(--radius);font-family:var(--font-mono);font-size:9px;letter-spacing:.05em;cursor:pointer;border:1px solid rgba(37,211,102,.35);background:rgba(37,211,102,.1);color:#4ade80;transition:all .15s;text-decoration:none;}
 .wpp-btn:hover{background:rgba(37,211,102,.2);border-color:rgba(37,211,102,.6);}
 .wpp-btn svg{width:12px;height:12px;fill:#4ade80;flex-shrink:0;}
+/* ── HOY ── */
+.hoy-wrap{padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+.hoy-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.hoy-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+.hoy-kpi-v{font-size:20px;font-weight:600;font-family:var(--font-mono);line-height:1;}
+.hoy-kpi-l{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-muted);margin-top:3px;}
+.hoy-kpi-v.red{color:var(--danger);}
+.hoy-kpi-v.amber{color:var(--warning);}
+.hoy-kpi-v.green{color:var(--jade);}
+.hoy-kpi-v.blue{color:#4EAABC;}
+.hoy-section-title{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);display:flex;align-items:center;gap:6px;}
+.hoy-cards{display:flex;flex-direction:column;gap:6px;}
+.hoy-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;border-left:3px solid transparent;transition:opacity .2s;}
+.hoy-card.contactado{opacity:.35;pointer-events:none;}
+.hoy-card.prio-rojo{border-left-color:var(--danger);}
+.hoy-card.prio-ambar{border-left-color:var(--warning);}
+.hoy-card.prio-verde{border-left-color:var(--jade);}
+.hoy-rank{font-size:15px;font-weight:700;font-family:var(--font-mono);text-align:center;color:var(--ink-muted);}
+.hoy-card.prio-rojo .hoy-rank{color:var(--danger);}
+.hoy-card.prio-ambar .hoy-rank{color:var(--warning);}
+.hoy-card.prio-verde .hoy-rank{color:var(--jade);}
+.hoy-body{}
+.hoy-title{font-size:12px;font-weight:600;color:var(--ink);}
+.hoy-sub{font-size:10px;color:var(--ink-muted);margin-top:2px;line-height:1.5;}
+.hoy-tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
+.hoy-tag{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid;}
+.hoy-tag-rot{background:rgba(192,69,59,.12);color:#E8837E;border-color:rgba(192,69,59,.3);}
+.hoy-tag-vto{background:rgba(217,137,43,.12);color:#E8B96A;border-color:rgba(217,137,43,.3);}
+.hoy-tag-sug{background:rgba(28,140,95,.12);color:#4ade80;border-color:rgba(28,140,95,.3);}
+.hoy-tag-seg{background:rgba(78,170,188,.1);color:#6BBFCC;border-color:rgba(78,170,188,.25);}
+.hoy-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
+.hoy-tenencia{font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--ink);}
+.hoy-tenencia-lbl{font-size:9px;color:var(--ink-muted);text-align:right;}
+.hoy-actions{display:flex;gap:5px;align-items:center;}
+.hoy-contactado-btn{font-size:9px;padding:2px 7px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all .15s;}
+.hoy-contactado-btn:hover{border-color:var(--jade);color:var(--jade);}
+.hoy-empty{text-align:center;padding:40px 20px;color:var(--ink-muted);font-size:12px;}
+.hoy-mostrar-contactados{font-size:10px;color:var(--ink-muted);cursor:pointer;text-decoration:underline;text-align:center;padding:4px;border:none;background:transparent;}
+.hoy-formula{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;}
+.hoy-formula-row{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);}
+.hoy-formula-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.hoy-formula-pct{font-size:9px;padding:1px 5px;border-radius:4px;background:var(--bg);color:var(--ink-muted);border:1px solid var(--border);margin-left:auto;}
 .wpp-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .wpp-modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:26px 26px 22px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:13px;}
 .wpp-modal-title{font-family:var(--font-display);font-size:16px;color:var(--text);}
@@ -371,15 +413,19 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 
     <div id="results-area" style="display:none">
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-bajas')">⚠️ TIR Baja</button>
-        <button class="tab-btn" onclick="switchTab('tab-todas')">📋 Todas las ONs</button>
-        <button class="tab-btn" onclick="switchTab('tab-top')">🏆 Top ONs</button>
+        <button class="tab-btn active" onclick="switchTab('tab-hoy')">⚡ Hoy</button>
+        <button class="tab-btn" onclick="switchTab('tab-todas')">📋 Todas</button>
         <button class="tab-btn" onclick="switchTab('tab-resumen')">👤 Por cliente</button>
         <button class="tab-btn" onclick="switchTab('tab-rotacion')">🔄 Rotación</button>
       </div>
 
-      <!-- TAB: TIR BAJA -->
-      <div class="tab-pane active" id="tab-bajas">
+      <!-- TAB: HOY -->
+      <div class="tab-pane active" id="tab-hoy">
+        <div id="hoy-content"></div>
+      </div>
+
+      <!-- TAB: TIR BAJA (oculta, mantenida para compatibilidad) -->
+      <div class="tab-pane" id="tab-bajas">
         <div class="stats-strip" id="stats-strip"></div>
         <div id="alerta-rotacion"></div>
         <div class="table-wrap">
@@ -673,16 +719,28 @@ function cargarMonitor(input) {
       // Log diagnóstico — columnas detectadas
       logMsg(`Monitor col. detectadas: hIdx=${hIdx} tIdx=${tIdx} iDur=${iDur} iLamMin=${iLamMin}`,'');
       logMsg(`Encabezados fila ${hIdx}: ${raw[hIdx].filter(Boolean).join(' | ')}`,'');
-      const parseDur=v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;};
+      const parseNum=v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;};
+      const calcDurFromVto=vtoRaw=>{
+        if(!vtoRaw) return null;
+        let ms;
+        if(typeof vtoRaw==='number') ms=Math.round((vtoRaw-25569)*86400*1000);
+        else {const d=new Date(String(vtoRaw));if(isNaN(d)) return null;ms=d.getTime();}
+        const yrs=(ms-Date.now())/(365.25*86400*1000);
+        return yrs>0?Math.round(yrs*100)/100:null;
+      };
       for(let i=hIdx+1;i<raw.length;i++){
         const row=raw[i];const tk=String(row[iT]||'').trim();
         if(!tk||!/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
+        const vtoRaw=row[iVto];
+        const vencimiento=typeof vtoRaw==='number'?excelSerialToDate(vtoRaw):(String(vtoRaw||'').trim());
+        const durFromExcel=parseNum(iDur>=0?row[iDur]:null);
+        const duration=durFromExcel!==null&&durFromExcel>0?durFromExcel:calcDurFromVto(vtoRaw);
         dataMonitor[tk]={tipo:'corporativo',tir:parseFloat(row[iTIR])||null,cupon:parseFloat(row[iCup])||null,
-          vencimiento:row[iVto]||'',calificacion:String(row[iCal]||'').trim(),
+          vencimiento,calificacion:String(row[iCal]||'').trim(),
           emisor:String(row[iE]||'').trim(),tirCable:parseFloat(row[iTIRC])||null,
           dolar:String(row[iDol]||'').trim(),instrumento:String(row[iE]||'').trim(),
-          duration: parseDur(iDur>=0?row[iDur]:null),
-          laminaMin: parseDur(iLamMin>=0?row[iLamMin]:null)};
+          duration,
+          laminaMin: parseNum(iLamMin>=0?row[iLamMin]:null)};
         corpCnt++;
       }
 
@@ -723,9 +781,11 @@ function cargarMonitor(input) {
             const cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
             const vRaw=dr[3];
             const vencimiento=vRaw?(typeof vRaw==='number'?excelSerialToDate(vRaw):String(vRaw).trim()):'';
+            const sovDur=calcDurFromVto(vRaw);
             dataMonitor[tk]={tipo:currentCat,tir,cupon:cup,vencimiento,
               calificacion:String(dr[11]||'').trim(),emisor:em,
-              tirCable:null,dolar:String(dr[9]||'').trim(),instrumento:em};
+              tirCable:null,dolar:String(dr[9]||'').trim(),instrumento:em,
+              duration:sovDur,laminaMin:null};
             sovCnt++;
           }
         }
@@ -902,10 +962,194 @@ function actualizarDescFiltroTIR(){
   sel.options[3].text=`Solo TIR < ${umbralTIR}%`;
 }
 
+// =================== HOY ===================
+
+let contactados = new Set(JSON.parse(localStorage.getItem('scanner-contactados')||'[]'));
+let mostrarContactados = false;
+
+function guardarContactados() {
+  localStorage.setItem('scanner-contactados', JSON.stringify([...contactados]));
+}
+
+function marcarContactado(cliente) {
+  contactados.add(cliente);
+  guardarContactados();
+  renderHoy();
+}
+
+function desmarcarContactado(cliente) {
+  contactados.delete(cliente);
+  guardarContactados();
+  renderHoy();
+}
+
+function toggleMostrarContactados() {
+  mostrarContactados = !mostrarContactados;
+  renderHoy();
+}
+
+function scoreCliente(posiciones) {
+  const hoy = Date.now();
+  const umbBajo = umbralTIR / 100;
+  const umbAlto = umbralTIRAlta / 100;
+  let maxScore = 0;
+  let motivos = [];
+  let tenenciaTotal = 0;
+  let tieneVtoProximo = false;
+  let diasSinContacto = 0;
+  let sugerido = null;
+  let tirMinima = Infinity;
+
+  posiciones.forEach(d => {
+    tenenciaTotal += d.tenencia || 0;
+    const dias = d.diasTenencia || 0;
+    if (dias > diasSinContacto) diasSinContacto = dias;
+
+    // Score por distancia al umbral TIR
+    let score = 0;
+    if (d.tir !== null) {
+      if (d.tir < umbBajo) {
+        const gap = umbBajo - d.tir;
+        score += gap * 300; // peso distancia
+        if (d.tir < tirMinima) { tirMinima = d.tir; }
+      }
+    }
+
+    // Score por tenencia (normalizado sobre $10k)
+    score += Math.min(d.tenencia / 10000, 5) * 20;
+
+    // Score por vencimiento próximo
+    if (d.vencimiento) {
+      const vtoMs = new Date(d.vencimiento).getTime();
+      const diasVto = (vtoMs - hoy) / (86400000);
+      if (diasVto > 0 && diasVto < 90) {
+        score += (90 - diasVto) / 90 * 40;
+        tieneVtoProximo = true;
+      }
+    }
+
+    // Score por días en cartera sin contacto
+    score += Math.min(dias / 365, 2) * 10;
+
+    if (score > maxScore) maxScore = score;
+  });
+
+  // Determinar tipo de acción principal
+  const bajasPos = posiciones.filter(d => d.tir !== null && d.tir < umbBajo);
+  if (tieneVtoProximo) motivos.push('vto');
+  if (bajasPos.length > 0) motivos.push('rot');
+  if (bajasPos.length === 0 && diasSinContacto > 180) motivos.push('seg');
+
+  // Buscar sugerencia: ON con TIR más alta en monitor
+  if (bajasPos.length > 0) {
+    const mejores = Object.entries(dataMonitor)
+      .filter(([tk, m]) => m.tipo === 'corporativo' && m.tir !== null && m.tir > umbAlto)
+      .sort((a, b) => b[1].tir - a[1].tir);
+    if (mejores.length > 0) sugerido = { ticker: mejores[0][0], tir: mejores[0][1].tir };
+  }
+
+  return { score: maxScore, motivos, tenenciaTotal, tieneVtoProximo, diasSinContacto, sugerido, tirMinima: tirMinima === Infinity ? null : tirMinima, bajasCount: bajasPos.length };
+}
+
+function renderHoy() {
+  const el = document.getElementById('hoy-content');
+  if (!el) return;
+  if (datosFiltrados.length === 0) {
+    el.innerHTML = '<div class="hoy-empty">Cargá los archivos y hacé clic en "Analizar" para ver las prioridades del día.</div>';
+    return;
+  }
+
+  // Agrupar por cliente
+  const porCliente = {};
+  datosFiltrados.forEach(d => {
+    if (!porCliente[d.cliente]) porCliente[d.cliente] = [];
+    porCliente[d.cliente].push(d);
+  });
+
+  // Calcular score por cliente
+  const clientes = Object.entries(porCliente).map(([cliente, posiciones]) => {
+    const s = scoreCliente(posiciones);
+    return { cliente, posiciones, ...s };
+  }).sort((a, b) => b.score - a.score);
+
+  const activos = clientes.filter(c => !contactados.has(c.cliente));
+  const yaContactados = clientes.filter(c => contactados.has(c.cliente));
+
+  // KPIs
+  const rotUrgentes = activos.filter(c => c.bajasCount > 0).length;
+  const vtoProx = activos.filter(c => c.tieneVtoProximo).length;
+  const tenenciaRot = activos.filter(c => c.bajasCount > 0).reduce((s, c) => s + c.tenenciaTotal, 0);
+  const totalContactar = activos.length;
+
+  const prioClass = (score) => score > 40 ? 'prio-rojo' : score > 20 ? 'prio-ambar' : 'prio-verde';
+
+  const cardHTML = (c, idx) => {
+    const tir = c.tirMinima !== null ? (c.tirMinima * 100).toFixed(2) + '%' : '—';
+    const sugTag = c.sugerido ? `<span class="hoy-tag hoy-tag-sug">Sugerido: ${c.sugerido.ticker} ${(c.sugerido.tir*100).toFixed(1)}%</span>` : '';
+    const rotTag = c.bajasCount > 0 ? `<span class="hoy-tag hoy-tag-rot">${c.bajasCount} posic. bajo ${umbralTIR}%</span>` : '';
+    const vtoTag = c.tieneVtoProximo ? `<span class="hoy-tag hoy-tag-vto">Vence &lt;90 días</span>` : '';
+    const segTag = c.motivos.includes('seg') ? `<span class="hoy-tag hoy-tag-seg">+${Math.round(c.diasSinContacto/30)} meses sin contacto</span>` : '';
+    const sub = c.bajasCount > 0
+      ? `TIR mínima ${tir} · ${c.posiciones.length} posición${c.posiciones.length>1?'es':''} · ${Math.round(c.diasSinContacto)} días`
+      : c.tieneVtoProximo
+        ? `Vencimiento próximo · Tenencia $${formatNum(c.tenenciaTotal)}`
+        : `${c.posiciones.length} posición${c.posiciones.length>1?'es':''} · ${Math.round(c.diasSinContacto)} días en cartera`;
+    const wppCtxData = { cliente: c.cliente, ticker: c.posiciones[0]?.ticker||'', tir: c.tirMinima, tirBaja: c.bajasCount>0, tirAlta: false, tel: c.posiciones[0]?.tel||null, nombre: c.posiciones[0]?.nombreStock||c.cliente, comitente: c.posiciones[0]?.comitente||'' };
+    const wppBtnHtml = `<button class="wpp-btn" onclick='abrirWpp(${JSON.stringify(wppCtxData).replace(/'/g,"&#39;")})'>
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.859L.057 23.571a.75.75 0 00.903.882l5.842-1.53A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.726 9.726 0 01-4.95-1.348l-.355-.211-3.667.961.977-3.573-.231-.368A9.712 9.712 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
+      WPP
+    </button>`;
+    return `<div class="hoy-card ${prioClass(c.score)}" id="hoy-card-${idx}">
+      <div class="hoy-rank">${idx+1}</div>
+      <div class="hoy-body">
+        <div class="hoy-title">${c.cliente}</div>
+        <div class="hoy-sub">${sub}</div>
+        <div class="hoy-tags">${rotTag}${vtoTag}${segTag}${sugTag}</div>
+      </div>
+      <div class="hoy-right">
+        <div>
+          <div class="hoy-tenencia">$${formatNum(c.tenenciaTotal)}</div>
+          <div class="hoy-tenencia-lbl">tenencia total</div>
+        </div>
+        <div class="hoy-actions">
+          ${wppBtnHtml}
+          <button class="hoy-contactado-btn" onclick="marcarContactado('${c.cliente.replace(/'/g,"\\'")}')">✓ Contactado</button>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  const listaHTML = activos.length > 0
+    ? activos.map((c, i) => cardHTML(c, i)).join('')
+    : '<div class="hoy-empty">Todos los clientes ya fueron contactados hoy.</div>';
+
+  el.innerHTML = `<div class="hoy-wrap">
+    <div class="hoy-kpi-row">
+      <div class="hoy-kpi"><div class="hoy-kpi-v red">${rotUrgentes}</div><div class="hoy-kpi-l">Rotaciones urgentes</div></div>
+      <div class="hoy-kpi"><div class="hoy-kpi-v amber">${vtoProx}</div><div class="hoy-kpi-l">Vencen en 90 días</div></div>
+      <div class="hoy-kpi"><div class="hoy-kpi-v green">$${formatNum(tenenciaRot)}</div><div class="hoy-kpi-l">Tenencia a rotar</div></div>
+      <div class="hoy-kpi"><div class="hoy-kpi-v blue">${totalContactar}</div><div class="hoy-kpi-l">Clientes pendientes</div></div>
+    </div>
+    <div class="hoy-section-title">Movimientos prioritarios del día</div>
+    <div class="hoy-cards">${listaHTML}</div>
+    ${yaContactados.length > 0 ? `<button class="hoy-mostrar-contactados" onclick="toggleMostrarContactados()">${mostrarContactados ? 'Ocultar' : 'Mostrar'} ${yaContactados.length} ya contactados</button>` : ''}
+    ${mostrarContactados && yaContactados.length > 0 ? `<div class="hoy-cards" style="opacity:.4">${yaContactados.map((c,i)=>`<div class="hoy-card" style="border-left:3px solid var(--border)"><div class="hoy-rank" style="color:var(--ink-muted)">${i+1}</div><div class="hoy-body"><div class="hoy-title">${c.cliente}</div><div class="hoy-sub">Contactado hoy · $${formatNum(c.tenenciaTotal)}</div></div><div class="hoy-right"><button class="hoy-contactado-btn" onclick="desmarcarContactado('${c.cliente.replace(/'/g,"\\'")}')">✗ Deshacer</button></div></div>`).join('')}</div>` : ''}
+    <div>
+      <div class="hoy-section-title" style="margin-bottom:8px">Cómo se calcula la prioridad</div>
+      <div class="hoy-formula">
+        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--danger)"></div>Distancia al umbral TIR<span class="hoy-formula-pct">40%</span></div>
+        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--warning)"></div>Tenencia en el activo<span class="hoy-formula-pct">30%</span></div>
+        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--warning)"></div>Días hasta vencimiento<span class="hoy-formula-pct">20%</span></div>
+        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--ink-muted)"></div>Días sin contacto<span class="hoy-formula-pct">10%</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
 // =================== RENDER ===================
 
 function renderTablas() {
-  renderStats(); renderTablaBajas(); renderTablaTodasONs();
+  renderHoy(); renderStats(); renderTablaBajas(); renderTablaTodasONs();
   renderTablaTop(); renderResumenClientes();
   if(clienteActivo) renderRotacion();
 }
@@ -1581,7 +1825,7 @@ function actualizarUmbralAlta() {
 function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const idx=['tab-bajas','tab-todas','tab-top','tab-resumen','tab-rotacion'].indexOf(id);
+  const idx=['tab-hoy','tab-todas','tab-resumen','tab-rotacion'].indexOf(id);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById(id).classList.add('active');
 }
