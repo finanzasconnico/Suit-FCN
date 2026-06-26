@@ -111,6 +111,15 @@ tbody td{padding:8px 12px;color:var(--text);vertical-align:middle;}
 .threshold-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
 .threshold-row input[type=range]{width:100px;accent-color:var(--ambar);}
 .threshold-val{font-size:12px;font-weight:500;color:var(--text);min-width:40px;font-family:var(--font-mono);}
+.range-block{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;display:flex;flex-direction:column;gap:7px;}
+.range-row{display:flex;align-items:center;gap:7px;}
+.range-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.range-lbl{font-size:11px;color:var(--ink-muted);flex-shrink:0;}
+.range-num-input{flex:1;padding:5px 7px;font-size:13px;font-weight:500;font-family:var(--font-mono);border:1px solid var(--border);border-radius:var(--radius);background:rgba(255,255,255,.06);color:var(--text);text-align:center;min-width:0;outline:none;transition:border-color .15s;}
+.range-num-input:hover{border-color:rgba(255,255,255,.3);}
+.range-num-input:focus{border-color:var(--ambar);background:rgba(255,255,255,.09);}
+.range-unit{font-size:11px;color:var(--ink-muted);flex-shrink:0;min-width:24px;}
+.range-sep{height:1px;background:var(--border);}
 .empty-state{text-align:center;padding:60px 20px;color:var(--ink-muted);}
 .empty-icon{font-size:3rem;margin-bottom:14px;opacity:.5;}
 .empty-title{font-family:var(--font-display);font-size:18px;color:rgba(234,241,238,0.5);margin-bottom:6px;}
@@ -365,37 +374,40 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">3 · Rango de TIR</div>
-      <div style="margin-bottom:8px;">
-        <div style="font-size:10px;color:var(--ink-muted);margin-bottom:4px;">TIR mínima (rojo por debajo):</div>
-        <div class="threshold-row">
-          <input type="range" id="slider-tir" min="0" max="15" step="0.5" value="5" oninput="actualizarUmbral()">
-          <span class="threshold-val" id="val-tir">5.0%</span>
+      <div class="section-title">3 · Umbral TIR</div>
+      <div class="range-block">
+        <div class="range-row">
+          <div class="range-dot" style="background:var(--danger)"></div>
+          <span class="range-lbl">Bajo</span>
+          <input type="number" id="inp-tir-min" class="range-num-input" value="5.0" min="0" max="30" step="0.1" oninput="actualizarUmbral()">
+          <span class="range-unit">%</span>
         </div>
-        <div style="font-size:10px;color:var(--ink-muted);margin-bottom:4px;margin-top:8px;">TIR máxima (verde por encima):</div>
-        <div class="threshold-row">
-          <input type="range" id="slider-tir-alta" min="0" max="20" step="0.5" value="8" oninput="actualizarUmbralAlta()">
-          <span class="threshold-val" id="val-tir-alta">8.0%</span>
+        <div class="range-sep"></div>
+        <div class="range-row">
+          <div class="range-dot" style="background:var(--jade)"></div>
+          <span class="range-lbl">Alto</span>
+          <input type="number" id="inp-tir-max" class="range-num-input" value="8.0" min="0" max="30" step="0.1" oninput="actualizarUmbralAlta()">
+          <span class="range-unit">%</span>
         </div>
       </div>
-      <div style="font-size:10px;color:var(--ink-muted);margin-bottom:6px;">Filtrar tabla (mostrar solo):</div>
-      <select id="sel-filtro-tir" onchange="aplicarFiltros()" style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:12px;outline:none;">
-        <option value="todos">— Todas las ONs (sin filtro) —</option>
-        <option value="alta">Solo TIR ≥ máxima</option>
-        <option value="media">Solo TIR entre mínima y máxima</option>
-        <option value="baja">Solo TIR &lt; mínima</option>
-      </select>
-      <div id="filtro-tir-desc" style="font-size:9px;color:var(--ambar);margin-top:5px;line-height:1.5;display:none;"></div>
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">5 · Filtro por Duration</div>
-      <div style="margin-bottom:6px;font-size:10px;color:var(--ink-muted);">Mostrar solo ONs con duration ≤ (0 = todas):</div>
-      <div class="threshold-row">
-        <input type="range" id="slider-dur" min="0" max="10" step="0.5" value="0" oninput="actualizarFiltrosDur()">
-        <span class="threshold-val" id="val-dur">Todas</span>
+      <div class="section-title">4 · Duration (años)</div>
+      <div class="range-block">
+        <div class="range-row">
+          <span class="range-lbl" style="width:28px;">Mín</span>
+          <input type="number" id="inp-dur-min" class="range-num-input" value="0" min="0" max="30" step="0.5" oninput="actualizarFiltrosDur()">
+          <span class="range-unit">años</span>
+        </div>
+        <div class="range-sep"></div>
+        <div class="range-row">
+          <span class="range-lbl" style="width:28px;">Máx</span>
+          <input type="number" id="inp-dur-max" class="range-num-input" value="0" min="0" max="30" step="0.5" oninput="actualizarFiltrosDur()">
+          <span class="range-unit">años</span>
+        </div>
+        <div style="font-size:9px;color:var(--ink-muted);padding-top:4px;">0 en Máx = sin límite superior</div>
       </div>
-      <div style="font-size:9px;color:var(--ink-muted);line-height:1.5;">Filtra por duration (años). Útil para clientes que prefieren corto plazo.</div>
     </div>
     <div class="divider"></div>
     <div id="log-panel" style="display:none">
@@ -592,7 +604,8 @@ let datosFusionados = [];
 let datosFiltrados = [];
 let umbralTIR = 5.0;
 let umbralTIRAlta = 8.0;
-let umbralDurMax = 0; // 0 = sin límite
+let umbralDurMax = 0;
+let umbralDurMin = 0;
 let sortResumen = 'bajas';
 let sortState = { tabla: null, col: null, dir: 'asc' };
 let tirOriginales = {};
@@ -682,9 +695,7 @@ function cargarTenencia(input) {
       sel.innerHTML='<option value="">— Todos —</option>';
       asesores.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;sel.appendChild(o);});
       logMsg(`✓ Tenencia: ${raw.length} filas cargadas`,'ok');
-      document.getElementById('icon-tenencia').textContent='✅';
-      document.getElementById('card-tenencia').classList.add('loaded');
-      document.getElementById('status-tenencia').textContent=`${raw.length} filas cargadas`;
+      marcarCardCargado('tenencia', `${raw.length} filas · clic para actualizar`);
       checkReady();
     } catch(err){logMsg('Error leyendo Tenencia: '+err.message,'warn');}
   };
@@ -797,9 +808,7 @@ function cargarMonitor(input) {
       const total=corpCnt+sovCnt;
       if(total===0) throw new Error('No se encontraron tickers válidos.');
       logMsg(`✓ Monitor: ${corpCnt} ONs + ${sovCnt} Soberanos/Sub-sober.`,'ok');
-      document.getElementById('icon-monitor').textContent='✅';
-      document.getElementById('card-monitor').classList.add('loaded');
-      document.getElementById('status-monitor').textContent=`${corpCnt} ONs · ${sovCnt} Sob.`;
+      marcarCardCargado('monitor', `${corpCnt} ONs · ${sovCnt} Sob. · clic para actualizar`);
       checkReady();
     } catch(err){logMsg('❌ '+err.message,'warn');document.getElementById('status-monitor').textContent='Error — ver log';}
   };
@@ -835,9 +844,7 @@ function cargarStock(input) {
       });
       const total=Object.keys(stockMap).length;
       logMsg(`✓ Stock: ${total} cuentas cargadas`,'ok');
-      document.getElementById('icon-stock').textContent='✅';
-      document.getElementById('card-stock').classList.add('loaded');
-      document.getElementById('status-stock').textContent=`${total} cuentas cargadas`;
+      marcarCardCargado('stock', `${total} cuentas · clic para actualizar`);
       if(datosFusionados.length>0) enriquecerConStock();
     } catch(err){
       if(err.message&&err.message.includes('ECMA-376')){
@@ -862,8 +869,45 @@ function enriquecerConStock() {
   renderTablas();
 }
 
+function marcarCardCargado(key, statusText) {
+  document.getElementById('icon-' + key).textContent = '✅';
+  document.getElementById('card-' + key).classList.add('loaded');
+  document.getElementById('status-' + key).textContent = statusText;
+}
+
+let _pendienteAutoAnalizar = false;
 function checkReady() {
-  document.getElementById('btn-analizar').disabled=!(dataTenencia.length>0&&Object.keys(dataMonitor).length>0);
+  const listo = dataTenencia.length>0 && Object.keys(dataMonitor).length>0;
+  document.getElementById('btn-analizar').disabled = !listo;
+  actualizarInstructivo();
+  if (listo && _pendienteAutoAnalizar) {
+    _pendienteAutoAnalizar = false;
+    setTimeout(() => analizarCarteras(), 300);
+  }
+}
+
+function actualizarInstructivo() {
+  const el = document.getElementById('empty-state');
+  if (!el || document.getElementById('results-area').style.display !== 'none') return;
+  const tieneTen = dataTenencia.length > 0;
+  const tieneMonitor = Object.keys(dataMonitor).length > 0;
+  if (!tieneTen && !tieneMonitor) {
+    el.innerHTML = `<div class="empty-icon">📂</div>
+      <div class="empty-title">Necesitás subir 2 archivos</div>
+      <div class="empty-sub" style="text-align:left;max-width:340px;margin:0 auto;">
+        <b>1. Tenencia por Ticker</b> — Exportar desde Balanz · hoja "Export" (.xlsx)<br><br>
+        <b>2. Monitor de Individuos</b> — Archivo .xlsm directo desde Balanz<br><br>
+        Subí ambos en <b>Archivos →</b> o directamente en los cards de la izquierda.
+      </div>`;
+  } else if (!tieneTen) {
+    el.innerHTML = `<div class="empty-icon">📊</div>
+      <div class="empty-title">Falta: Tenencia por Ticker</div>
+      <div class="empty-sub">Monitor cargado ✅<br>Subí la Tenencia por Ticker desde Balanz (hoja Export) para poder analizar.</div>`;
+  } else if (!tieneMonitor) {
+    el.innerHTML = `<div class="empty-icon">📈</div>
+      <div class="empty-title">Falta: Monitor de Individuos</div>
+      <div class="empty-sub">Tenencia cargada ✅<br>Subí el Monitor de Individuos (.xlsm directo desde Balanz) para poder analizar.</div>`;
+  }
 }
 
 // =================== ANALYSIS ===================
@@ -922,15 +966,11 @@ function aplicarFiltros() {
   const chkBop=document.getElementById('chk-bop')?.checked??true;
   const tipoMap={'corporativo':chkCorp,'soberano':chkSob,'provincial':chkProv,'bopreal':chkBop,'dollarlinked':chkSob};
   const filtrarTipo=!(chkCorp&&chkSob&&chkProv&&chkBop);
-  const modoTIR=document.getElementById('sel-filtro-tir')?.value||'todos';
+  const modoTIR='todos';
   const minTIR=umbralTIR/100;
   const maxTIR=umbralTIRAlta/100;
-  // Actualizar descripción del filtro activo
-  const descEl=document.getElementById('filtro-tir-desc');
-  if(descEl){
-    if(modoTIR==='todos'){descEl.style.display='none';}
-    else{
-      const textos={'alta':`Mostrando solo TIR ≥ ${umbralTIRAlta}%`,'media':`Mostrando solo TIR entre ${umbralTIR}% y ${umbralTIRAlta}%`,'baja':`Mostrando solo TIR < ${umbralTIR}%`};
+  if(false){
+    const textos={'alta':`Mostrando solo TIR ≥ ${umbralTIRAlta}%`,'media':`Mostrando solo TIR entre ${umbralTIR}% y ${umbralTIRAlta}%`,'baja':`Mostrando solo TIR < ${umbralTIR}%`};
       descEl.textContent=textos[modoTIR]||'';
       descEl.style.display='block';
     }
@@ -940,6 +980,7 @@ function aplicarFiltros() {
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
     if(tickers.length&&!tickers.some(t=>d.ticker.toLowerCase().includes(t))) return false;
     if(calif&&!d.calificacion.toLowerCase().includes(calif)) return false;
+    if(umbralDurMin>0&&d.duration!==null&&d.duration<umbralDurMin) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
     if(filtrarTipo&&!(tipoMap[d.tipo]??true)) return false;
     // Filtro por rango TIR
@@ -1809,16 +1850,16 @@ function formatVto(v) {
 }
 
 function actualizarUmbral() {
-  umbralTIR=parseFloat(document.getElementById('slider-tir').value);
-  document.getElementById('val-tir').textContent=umbralTIR.toFixed(1)+'%';
-  actualizarDescFiltroTIR();
+  const v=parseFloat(document.getElementById('inp-tir-min').value);
+  if(isNaN(v)||v<0) return;
+  umbralTIR=v;
   if(datosFusionados.length>0) aplicarFiltros();
 }
 
 function actualizarUmbralAlta() {
-  umbralTIRAlta=parseFloat(document.getElementById('slider-tir-alta').value);
-  document.getElementById('val-tir-alta').textContent=umbralTIRAlta.toFixed(1)+'%';
-  actualizarDescFiltroTIR();
+  const v=parseFloat(document.getElementById('inp-tir-max').value);
+  if(isNaN(v)||v<0) return;
+  umbralTIRAlta=v;
   if(datosFusionados.length>0) aplicarFiltros();
 }
 
@@ -1976,8 +2017,10 @@ function mailATodosClientes() {
 }
 
 function actualizarFiltrosDur() {
-  umbralDurMax=parseFloat(document.getElementById('slider-dur').value);
-  document.getElementById('val-dur').textContent=umbralDurMax>0?umbralDurMax.toFixed(1)+'y':'Todas';
+  const mn=parseFloat(document.getElementById('inp-dur-min').value);
+  const mx=parseFloat(document.getElementById('inp-dur-max').value);
+  umbralDurMin=isNaN(mn)||mn<0?0:mn;
+  umbralDurMax=isNaN(mx)||mx<0?0:mx;
   if(datosFusionados.length>0) aplicarFiltros();
 }
 
@@ -2006,6 +2049,7 @@ function actualizarFiltrosDur() {
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
   async function loadShared() {
     const [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
+    if (ten || mon) _pendienteAutoAnalizar = true;
     if (ten) cargarTenencia(fakeInput(ten));
     if (stk) cargarStock(fakeInput(stk));
     if (mon) cargarMonitor(fakeInput(mon));
@@ -2018,6 +2062,7 @@ function actualizarFiltrosDur() {
       const entry = await getShared(e.data.key);
       if (!entry) return;
       const raw = e.data.rawKey || e.data.key;
+      _pendienteAutoAnalizar = true;
       if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
       if (raw === 'stock')    cargarStock(fakeInput(entry));
       if (raw === 'monitor')  cargarMonitor(fakeInput(entry));
