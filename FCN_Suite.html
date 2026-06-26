@@ -384,11 +384,7 @@ function actualizarChipUsuario() {
   document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
 }
 
-// Prefija las keys de IndexedDB con el username
-function userKey(k) {
-  const u = getSavedUsername();
-  return u ? u + '_' + k : k;
-}
+function userKey(k) { return k; }
 
 // ══════════════════════════════════════════════════════════════
 //  SHELL

@@ -1984,14 +1984,7 @@ function actualizarFiltrosDur() {
 // ── SHARED FILES AUTO-LOAD ──
 (function() {
   const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function getUsername() {
-    try {
-      const up = new URLSearchParams(location.search).get('u');
-      if (up) return up;
-      return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username || '';
-    } catch { return ''; }
-  }
-  function uk(k) { const u = getUsername(); return u ? u + '_' + k : k; }
+  function uk(k) { return k; }
   function openDB() {
     return new Promise((res, rej) => {
       const r = indexedDB.open(DB_NAME, 1);

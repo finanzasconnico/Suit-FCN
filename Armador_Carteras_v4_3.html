@@ -1736,14 +1736,7 @@ document.addEventListener('DOMContentLoaded',function(){
 // ── SHARED FILES AUTO-LOAD ──
 (function() {
   var DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function getUsername() {
-    try {
-      var up = new URLSearchParams(location.search).get('u');
-      if (up) return up;
-      return JSON.parse(localStorage.getItem('fcn_suite_auth')||'{}').username || '';
-    } catch { return ''; }
-  }
-  function uk(k) { var u = getUsername(); return u ? u + '_' + k : k; }
+  function uk(k) { return k; }
   function openDB() {
     return new Promise(function(res, rej) {
       var r = indexedDB.open(DB_NAME, 1);
