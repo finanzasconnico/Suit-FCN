@@ -613,7 +613,8 @@ function openTool(toolId) {
     iframe.className = 'tool-frame active';
     iframe.id = 'frame-' + toolId;
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups');
-    iframe.src = tool.file + (currentUser ? '?u=' + encodeURIComponent(currentUser.username) : '');
+    const _u = getSavedUsername();
+    iframe.src = tool.file + (_u ? '?u=' + encodeURIComponent(_u) : '');
     iframe.onload = () => setTimeout(() => loadingEl.style.display = 'none', 400);
     document.getElementById('content-area').appendChild(iframe);
     frameCache[toolId] = iframe;
