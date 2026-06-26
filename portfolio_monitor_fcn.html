@@ -340,19 +340,6 @@ table{width:100%;border-collapse:collapse;}
   <div class="loading-txt" id="loading-txt">Procesando...</div>
 </div>
 
-<!-- LOGIN -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">F</div>
-    <div class="login-title">FinanzasconNico</div>
-    <div class="login-sub">Tu portfolio personal</div>
-    <label class="login-label">Tu clave de acceso</label>
-    <input type="password" class="login-input" id="pwd-input" placeholder="••••••••"
-           onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn-primary" onclick="doLogin()">Ver mi cartera</button>
-    <div class="login-err" id="login-err"></div>
-  </div>
-</div>
 
 <!-- UPLOAD SCREEN -->
 <div id="upload-screen">
@@ -665,30 +652,8 @@ var _CLEAN_TEMPLATE = (typeof document !== 'undefined') ? document.documentEleme
 // ══════════════════════════════════════════════════
 //  CONFIG — modificar para cada instalación
 // ══════════════════════════════════════════════════
-var PASSWORD = "FCN2024";
-// Clave para clientes: se genera automáticamente como APELLIDO2026
-
 // PRE_LOADED_DATA_SLOT — no modificar esta línea, es usada por el export
 var _PRELOADED = null;
-
-// ── HUB BYPASS ──
-(function() {
-  try {
-    const hub = JSON.parse(localStorage.getItem('fcn_suite_auth') || 'null');
-    if (hub && (Date.now() - hub.ts) < 8 * 3600 * 1000) {
-      window.addEventListener('DOMContentLoaded', function() {
-        const ls = document.getElementById('login-screen');
-        if (ls) ls.style.display = 'none';
-        sessionStorage.setItem('fcn_auth', '1');
-        if (_PRELOADED) { loadPreloaded(); }
-        else {
-          const us = document.getElementById('upload-screen');
-          if (us) us.style.display = 'block';
-        }
-      });
-    }
-  } catch(e) {}
-})();
 
 // ══════════════════════════════════════════════════
 //  PDF.JS WORKER
@@ -831,25 +796,7 @@ var donutChart = null;
 var IS_CLIENT_MODE = false; // true when pre-loaded data exists
 
 // ══════════════════════════════════════════════════
-//  LOGIN / LOGOUT
-// ══════════════════════════════════════════════════
-function doLogin() {
-  const pwd = document.getElementById('pwd-input').value;
-  if (pwd === PASSWORD) {
-    sessionStorage.setItem('fcn_auth','1');
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('login-err').textContent = '';
-    if (_PRELOADED) {
-      loadPreloaded();
-    } else {
-      document.getElementById('upload-screen').style.display = 'block';
-    }
-  } else {
-    document.getElementById('login-err').textContent = 'Clave incorrecta. Verificá con tu asesor.';
-  }
-}
 function doLogout() {
-  sessionStorage.removeItem('fcn_auth');
   location.reload();
 }
 function resetToUpload() {
@@ -1791,10 +1738,7 @@ function showError(msg) {
   setupDropZone('dz-pos','fi-pos','fn-pos','posBuffer', onPosLoaded);
   setupDropZone('dz-mov','fi-mov','fn-mov','movBuffer', onMovLoaded);
 
-  // Si hay datos pre-cargados (archivo de cliente): SIEMPRE pedir contraseña.
-  // Si es el tool principal: auto-login si ya hay sesión activa.
-  if (!_PRELOADED && sessionStorage.getItem('fcn_auth') === '1') {
-    document.getElementById('login-screen').style.display = 'none';
+  if (!_PRELOADED) {
     document.getElementById('upload-screen').style.display = 'block';
   }
 })();

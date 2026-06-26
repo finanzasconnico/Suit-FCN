@@ -228,18 +228,6 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 </head>
 <body>
 
-<!-- ── LOGIN OVERLAY ── -->
-<div class="login-overlay" id="login-overlay">
-  <div class="login-card">
-    <div class="login-logo">FN</div>
-    <div class="login-title">Rotador RV</div>
-    <div class="login-sub">finanzasconnico · acceso interno</div>
-    <input class="login-input" type="password" id="login-pwd" placeholder="••••••"
-      onkeydown="if(event.key==='Enter')checkLogin()">
-    <button class="login-btn" onclick="checkLogin()">Ingresar</button>
-    <div class="login-err" id="login-err">Contraseña incorrecta</div>
-  </div>
-</div>
 
 <!-- ── WPP MODAL ── -->
 <div class="wpp-modal-overlay" id="wpp-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarWppModal()">
@@ -533,18 +521,6 @@ async function fetchPrecioTicker(ticker) {
   return { precio:null, cambio:null, targetPrice:null, upsideAnalistas:null, source:'error' };
 }
 
-// ── HUB BYPASS ──
-(function() {
-  try {
-    const hub = JSON.parse(localStorage.getItem('fcn_suite_auth') || 'null');
-    if (hub && (Date.now() - hub.ts) < 8 * 3600 * 1000) {
-      window.addEventListener('DOMContentLoaded', function() {
-        const ov = document.getElementById('login-overlay');
-        if (ov) ov.style.display = 'none';
-      });
-    }
-  } catch(e) {}
-})();
 
 // ── SHARED FILES AUTO-LOAD ──
 (function() {
@@ -594,19 +570,6 @@ async function fetchPrecioTicker(ticker) {
   }
 })();
 
-// ── LOGIN ──
-const PASS_HASH = 'fcn2024'; // cambiar acá
-function checkLogin() {
-  const v = document.getElementById('login-pwd').value;
-  if (v === PASS_HASH) {
-    document.getElementById('login-overlay').style.display = 'none';
-  } else {
-    document.getElementById('login-err').style.display = 'block';
-    document.getElementById('login-pwd').value = '';
-    setTimeout(()=>document.getElementById('login-err').style.display='none', 2000);
-  }
-}
-document.getElementById('login-pwd').addEventListener('keydown', e => { if(e.key==='Enter') checkLogin(); });
 
 // ── STOCK DE CUENTAS ──
 const dzStock = document.getElementById('drop-stock');
