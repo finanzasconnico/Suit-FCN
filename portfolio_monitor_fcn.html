@@ -406,7 +406,8 @@ table{width:100%;border-collapse:collapse;}
     </div>
   </div>
   <div class="topbar-right">
-    <div class="mep-badge" id="mep-badge" style="display:none;">
+    <div class="mep-badge" id="mep-badge" style="display:none;" title="Tipo de cambio MEP en tiempo real · clic para actualizar" onclick="fetchMepLive()" style="cursor:pointer;">
+      <span id="mep-live-dot" style="width:6px;height:6px;border-radius:50%;background:#6C817C;flex-shrink:0;"></span>
       <span style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;">MEP</span>
       <span class="val" id="mep-topbar-val">—</span>
     </div>
@@ -693,8 +694,30 @@ const MEP_HIST = {
   "2026-05":1433.86,"2026-06":1458.42
 };
 
+let _mepLiveVal = null;
+
+async function fetchMepLive() {
+  const dot = document.getElementById('mep-live-dot');
+  const val = document.getElementById('mep-topbar-val');
+  if (dot) { dot.style.background = '#DBA03C'; }
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares/bolsa');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const mid = Math.round(((d.compra + d.venta) / 2) * 100) / 100;
+    _mepLiveVal = mid;
+    const nowKey = new Date().toISOString().slice(0,7);
+    MEP_HIST[nowKey] = mid;
+    if (dot) dot.style.background = '#1C8C5F';
+    if (val) val.textContent = '$' + mid.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  } catch(e) {
+    if (dot) dot.style.background = '#C0453B';
+    console.warn('MEP fetch error:', e.message);
+  }
+}
+
 function getMepForDate(dateStr) {
-  if (!dateStr) return 1458.42;
+  if (!dateStr) return _mepLiveVal || 1458.42;
   let d;
   if (typeof dateStr === 'number') d = new Date(Math.round((dateStr-25569)*86400*1000));
   else d = new Date(String(dateStr).replace(/\//g,'-'));
@@ -1281,6 +1304,7 @@ function showDashboard() {
   document.getElementById('ph-client-name').textContent = clientName;
   document.getElementById('ph-date').textContent = 'Actualizado: ' + new Date().toLocaleDateString('es-AR');
   hideLoading();
+  fetchMepLive();
 }
 
 // ══════════════════════════════════════════════════
