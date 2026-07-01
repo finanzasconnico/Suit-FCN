@@ -246,6 +246,15 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .hoy-tag-vto{background:rgba(217,137,43,.12);color:#E8B96A;border-color:rgba(217,137,43,.3);}
 .hoy-tag-sug{background:rgba(28,140,95,.12);color:#4ade80;border-color:rgba(28,140,95,.3);}
 .hoy-tag-seg{background:rgba(78,170,188,.1);color:#6BBFCC;border-color:rgba(78,170,188,.25);}
+.hoy-rotacion{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.06);}
+.rot-label{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-right:2px;}
+.rot-label-vender{color:#E8837E;}
+.rot-label-comprar{color:#4ade80;}
+.rot-item{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:6px;font-family:var(--font-mono);}
+.rot-vender{background:rgba(192,69,59,.12);color:#E8837E;border:1px solid rgba(192,69,59,.3);}
+.rot-comprar{background:rgba(28,140,95,.13);color:#4ade80;border:1px solid rgba(28,140,95,.3);}
+.rot-arrow{color:var(--ink-muted);font-size:11px;padding:0 2px;}
+.rot-tir{opacity:.75;}
 .hoy-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
 .hoy-tenencia{font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--ink);}
 .hoy-tenencia-lbl{font-size:9px;color:var(--ink-muted);text-align:right;}
@@ -1127,10 +1136,16 @@ function renderHoy() {
 
   const cardHTML = (c, idx) => {
     const tir = c.tirMinima !== null ? (c.tirMinima * 100).toFixed(2) + '%' : '—';
-    const sugTag = c.sugerido ? `<span class="hoy-tag hoy-tag-sug">Sugerido: ${c.sugerido.ticker} ${(c.sugerido.tir*100).toFixed(1)}%</span>` : '';
     const rotTag = c.bajasCount > 0 ? `<span class="hoy-tag hoy-tag-rot">${c.bajasCount} posic. bajo ${umbralTIR}%</span>` : '';
     const vtoTag = c.tieneVtoProximo ? `<span class="hoy-tag hoy-tag-vto">Vence &lt;90 días</span>` : '';
     const segTag = c.motivos.includes('seg') ? `<span class="hoy-tag hoy-tag-seg">+${Math.round(c.diasSinContacto/30)} meses sin contacto</span>` : '';
+    const bajasPos = c.posiciones.filter(d => d.tir !== null && d.tir < umbralTIR/100).sort((a,b) => a.tir - b.tir);
+    let rotacionHTML = '';
+    if (bajasPos.length > 0) {
+      const vendItems = bajasPos.map(p => `<span class="rot-item rot-vender">${p.ticker} <span class="rot-tir">${(p.tir*100).toFixed(1)}%</span></span>`).join('');
+      const comprarItem = c.sugerido ? `<span class="rot-arrow">&#8594;</span><span class="rot-label rot-label-comprar">Comprar</span><span class="rot-item rot-comprar">${c.sugerido.ticker} <span class="rot-tir">${(c.sugerido.tir*100).toFixed(1)}%</span></span>` : '';
+      rotacionHTML = `<div class="hoy-rotacion"><span class="rot-label rot-label-vender">Vender</span>${vendItems}${comprarItem}</div>`;
+    }
     const sub = c.bajasCount > 0
       ? `TIR mínima ${tir} · ${c.posiciones.length} posición${c.posiciones.length>1?'es':''} · ${Math.round(c.diasSinContacto)} días`
       : c.tieneVtoProximo
@@ -1146,7 +1161,8 @@ function renderHoy() {
       <div class="hoy-body">
         <div class="hoy-title">${c.cliente}</div>
         <div class="hoy-sub">${sub}</div>
-        <div class="hoy-tags">${rotTag}${vtoTag}${segTag}${sugTag}</div>
+        <div class="hoy-tags">${rotTag}${vtoTag}${segTag}</div>
+        ${rotacionHTML}
       </div>
       <div class="hoy-right">
         <div>
