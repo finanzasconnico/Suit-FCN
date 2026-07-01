@@ -120,6 +120,9 @@ tbody td{padding:8px 12px;color:var(--text);vertical-align:middle;}
 .range-num-input:focus{border-color:var(--ambar);background:rgba(255,255,255,.09);}
 .range-unit{font-size:11px;color:var(--ink-muted);flex-shrink:0;min-width:24px;}
 .range-sep{height:1px;background:var(--border);}
+.tir-modo-btn{flex:1;padding:4px 6px;font-size:10px;font-weight:500;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;font-family:var(--font-sans);transition:all .15s;}
+.tir-modo-btn.active{background:rgba(255,255,255,.1);color:var(--text);border-color:rgba(255,255,255,.3);}
+.tir-modo-btn:hover:not(.active){background:rgba(255,255,255,.05);}
 .empty-state{text-align:center;padding:60px 20px;color:var(--ink-muted);}
 .empty-icon{font-size:3rem;margin-bottom:14px;opacity:.5;}
 .empty-title{font-family:var(--font-display);font-size:18px;color:rgba(234,241,238,0.5);margin-bottom:6px;}
@@ -389,6 +392,12 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
           <input type="number" id="inp-tir-max" class="range-num-input" value="8.0" min="0" max="30" step="0.1" oninput="actualizarUmbralAlta()">
           <span class="range-unit">%</span>
         </div>
+        <div class="range-sep"></div>
+        <div style="display:flex;gap:4px;">
+          <button class="tir-modo-btn active" id="tir-modo-todos" onclick="setModoTIR('todos')">Todas</button>
+          <button class="tir-modo-btn" id="tir-modo-baja" onclick="setModoTIR('baja')" style="color:var(--danger);border-color:rgba(192,69,59,.35);">Solo baja</button>
+          <button class="tir-modo-btn" id="tir-modo-alta" onclick="setModoTIR('alta')" style="color:var(--jade);border-color:rgba(28,140,95,.35);">Solo alta</button>
+        </div>
       </div>
     </div>
     <div class="divider"></div>
@@ -606,6 +615,7 @@ let umbralTIR = 5.0;
 let umbralTIRAlta = 8.0;
 let umbralDurMax = 0;
 let umbralDurMin = 0;
+let modoTIRVis = 'todos'; // 'todos' | 'baja' | 'alta'
 let sortResumen = 'bajas';
 let sortState = { tabla: null, col: null, dir: 'asc' };
 let tirOriginales = {};
@@ -966,15 +976,8 @@ function aplicarFiltros() {
   const chkBop=document.getElementById('chk-bop')?.checked??true;
   const tipoMap={'corporativo':chkCorp,'soberano':chkSob,'provincial':chkProv,'bopreal':chkBop,'dollarlinked':chkSob};
   const filtrarTipo=!(chkCorp&&chkSob&&chkProv&&chkBop);
-  const modoTIR='todos';
   const minTIR=umbralTIR/100;
   const maxTIR=umbralTIRAlta/100;
-  if(false){
-    const textos={'alta':`Mostrando solo TIR ≥ ${umbralTIRAlta}%`,'media':`Mostrando solo TIR entre ${umbralTIR}% y ${umbralTIRAlta}%`,'baja':`Mostrando solo TIR < ${umbralTIR}%`};
-      descEl.textContent=textos[modoTIR]||'';
-      descEl.style.display='block';
-    }
-  }
   datosFiltrados=datosFusionados.filter(d=>{
     if(asesor&&!d.asesor.toLowerCase().includes(asesor)) return false;
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
@@ -983,11 +986,9 @@ function aplicarFiltros() {
     if(umbralDurMin>0&&d.duration!==null&&d.duration<umbralDurMin) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
     if(filtrarTipo&&!(tipoMap[d.tipo]??true)) return false;
-    // Filtro por rango TIR
-    if(modoTIR!=='todos'&&d.tir!==null){
-      if(modoTIR==='alta'&&d.tir<maxTIR) return false;
-      if(modoTIR==='media'&&(d.tir<minTIR||d.tir>=maxTIR)) return false;
-      if(modoTIR==='baja'&&d.tir>=minTIR) return false;
+    if(modoTIRVis!=='todos'&&d.tir!==null){
+      if(modoTIRVis==='baja'&&d.tir>=minTIR) return false;
+      if(modoTIRVis==='alta'&&d.tir<maxTIR) return false;
     }
     return true;
   });
@@ -1860,6 +1861,14 @@ function actualizarUmbralAlta() {
   const v=parseFloat(document.getElementById('inp-tir-max').value);
   if(isNaN(v)||v<0) return;
   umbralTIRAlta=v;
+  if(datosFusionados.length>0) aplicarFiltros();
+}
+
+function setModoTIR(modo) {
+  modoTIRVis=modo;
+  ['todos','baja','alta'].forEach(m=>{
+    document.getElementById('tir-modo-'+m)?.classList.toggle('active', m===modo);
+  });
   if(datosFusionados.length>0) aplicarFiltros();
 }
 
