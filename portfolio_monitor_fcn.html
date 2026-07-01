@@ -695,6 +695,8 @@ const MEP_HIST = {
 };
 
 let _mepLiveVal = null;
+let _historicalMepDaily = {}; // daily: "YYYY-MM-DD" -> number
+let _mepFromBoletos = {};     // daily TC extracted from dual-currency boletos
 
 async function fetchMepLive() {
   const dot = document.getElementById('mep-live-dot');
@@ -708,6 +710,8 @@ async function fetchMepLive() {
     _mepLiveVal = mid;
     const nowKey = new Date().toISOString().slice(0,7);
     MEP_HIST[nowKey] = mid;
+    const todayKey = new Date().toISOString().slice(0,10);
+    _historicalMepDaily[todayKey] = mid;
     if (dot) dot.style.background = '#1C8C5F';
     if (val) val.textContent = '$' + mid.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
   } catch(e) {
@@ -716,17 +720,77 @@ async function fetchMepLive() {
   }
 }
 
+async function fetchHistoricalMepDaily() {
+  try {
+    const r = await fetch('https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa',
+      {signal: AbortSignal.timeout(8000)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    data.forEach(function(d) {
+      if (d.fecha && (d.compra || d.venta)) {
+        _historicalMepDaily[d.fecha] = d.compra && d.venta ? (d.compra + d.venta) / 2 : (d.compra || d.venta);
+      }
+    });
+  } catch(e) {
+    // Fallback: Ambito 3-year chart
+    try {
+      const r2 = await fetch('https://mercados.ambito.com/dolarrava/mep/grafico/3-anios/datos',
+        {signal: AbortSignal.timeout(7000)});
+      if (!r2.ok) throw new Error();
+      const data2 = await r2.json();
+      for (var i = 1; i < data2.length; i++) {
+        var row = data2[i]; if (!row || row.length < 2) continue;
+        var iso = _normalizeDateStr(String(row[0]));
+        var val = parseFloat(String(row[1]).replace(',', '.'));
+        if (iso && val > 0) _historicalMepDaily[iso] = val;
+      }
+    } catch(e2) { console.warn('Historical MEP fetch failed:', e2.message); }
+  }
+}
+
+function _normalizeDateStr(s) {
+  if (!s) return null;
+  var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return s;
+  return null;
+}
+
 function getMepForDate(dateStr) {
-  if (!dateStr) return _mepLiveVal || 1458.42;
+  const fallback = _mepLiveVal || 1458.42;
+  if (!dateStr) return fallback;
   let d;
   if (typeof dateStr === 'number') d = new Date(Math.round((dateStr-25569)*86400*1000));
-  else d = new Date(String(dateStr).replace(/\//g,'-'));
-  if (isNaN(d.getTime())) return 1458.42;
-  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  if (MEP_HIST[key]) return MEP_HIST[key];
+  else {
+    var s = String(dateStr).trim();
+    // DD/MM/YYYY → YYYY-MM-DD
+    var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) s = m[3] + '-' + m[2] + '-' + m[1];
+    d = new Date(s);
+  }
+  if (isNaN(d.getTime())) return fallback;
+
+  // 1. Check boletos TC extracted from dual-currency ops
+  var isoKey = d.toISOString().slice(0,10);
+  if (_mepFromBoletos[isoKey]) return _mepFromBoletos[isoKey];
+
+  // 2. Daily historical (exact date or up to 7 days lookback for weekends/holidays)
+  if (Object.keys(_historicalMepDaily).length > 0) {
+    var dd = new Date(d);
+    for (var i = 0; i <= 7; i++) {
+      var k = dd.toISOString().slice(0,10);
+      if (_historicalMepDaily[k]) return _historicalMepDaily[k];
+      dd.setDate(dd.getDate() - 1);
+    }
+  }
+
+  // 3. Monthly fallback table
+  const monthKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  if (MEP_HIST[monthKey]) return MEP_HIST[monthKey];
   const keys = Object.keys(MEP_HIST).sort();
-  let best = 1458.42;
-  for (const k of keys) { if (k <= key) best = MEP_HIST[k]; else break; }
+  let best = fallback;
+  for (const k of keys) { if (k <= monthKey) best = MEP_HIST[k]; else break; }
   return best;
 }
 
@@ -1025,10 +1089,21 @@ function _procesarBoleto(grp, costos, ingresos, realizadas, ops, init) {
   if (!base.ticker || base.cantidad === 0) return;
   const ticker = base.ticker;
   init(ticker);
-  const mepF = getMepForDate(base.fecha);
   const cant = base.cantidad;
   const usdRow = grp.find(function(r){ return isUSD(r.moneda) && Math.abs(r.importe) > 1; });
   const pesRow = grp.find(function(r){ return r.moneda === 'Pesos' && Math.abs(r.importe) > 10; });
+
+  // Extract actual TC from dual-currency boleto (ARS leg / USD leg)
+  if (usdRow && pesRow && Math.abs(usdRow.importe) > 1) {
+    var tcReal = Math.abs(pesRow.importe) / Math.abs(usdRow.importe);
+    if (tcReal > 100) {
+      var isoFecha = _normalizeDateStr(String(base.fecha).trim()) ||
+        (function(s){ var m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m?m[3]+'-'+m[2]+'-'+m[1]:null; })(String(base.fecha).trim());
+      if (isoFecha && !_mepFromBoletos[isoFecha]) _mepFromBoletos[isoFecha] = tcReal;
+    }
+  }
+
+  const mepF = getMepForDate(base.fecha);
   var costoUSD = 0, precioARS = 0, importeARS = 0;
   if (usdRow) {
     costoUSD = Math.abs(usdRow.importe);
@@ -1761,6 +1836,10 @@ function showError(msg) {
 (function init() {
   setupDropZone('dz-pos','fi-pos','fn-pos','posBuffer', onPosLoaded);
   setupDropZone('dz-mov','fi-mov','fn-mov','movBuffer', onMovLoaded);
+
+  // Fetch daily MEP history in background for accurate conversions
+  fetchHistoricalMepDaily();
+  fetchMepLive();
 
   if (!_PRELOADED) {
     document.getElementById('upload-screen').style.display = 'block';
