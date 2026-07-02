@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precios Objetivo — FCN Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:      #081917;
+  --surface: #0E2622;
+  --surface2:#122B27;
+  --border:  #1E3A34;
+  --jade:    #1C8C5F;
+  --jade-d:  rgba(28,140,95,.12);
+  --ambar:   #DBA03C;
+  --ambar-d: rgba(219,160,60,.12);
+  --danger:  #C0453B;
+  --danger-d:rgba(192,69,59,.12);
+  --text:    #EAF1EE;
+  --muted:   #6C817C;
+  --dim:     #3C5752;
+  --font-d:  'Spectral', Georgia, serif;
+  --font-s:  'Hanken Grotesk', system-ui, sans-serif;
+  --font-m:  'IBM Plex Mono', ui-monospace, monospace;
+  --r: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:13px;}
+
+/* ── TOPBAR ── */
+.topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;}
+.topbar-title{font-family:var(--font-d);font-size:16px;font-weight:300;color:var(--text);}
+.topbar-title span{color:var(--ambar);}
+.topbar-badge{font-size:9px;font-family:var(--font-m);letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px;border:1px solid rgba(28,140,95,.4);color:var(--jade);background:var(--jade-d);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.ts-info{font-size:10px;color:var(--muted);}
+.badge-warn{font-size:9px;font-family:var(--font-m);letter-spacing:.06em;padding:2px 8px;border-radius:2px;border:1px solid rgba(219,160,60,.4);color:var(--ambar);background:var(--ambar-d);}
+
+/* ── LAYOUT ── */
+.page{display:flex;flex-direction:column;height:100vh;}
+.toolbar{flex-shrink:0;padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
+.search-wrap{position:relative;flex:1;min-width:160px;max-width:300px;}
+.search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px 7px 30px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;transition:border-color .2s;}
+.search-wrap input:focus{border-color:var(--jade);}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none;}
+.filter-chips{display:flex;gap:4px;flex-wrap:wrap;}
+.chip{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-s);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.chip:hover{border-color:rgba(28,140,95,.4);color:var(--text);}
+.chip.active{border-color:var(--jade);background:var(--jade-d);color:var(--jade);}
+.counter{font-size:11px;color:var(--muted);margin-left:auto;white-space:nowrap;flex-shrink:0;}
+.counter strong{color:var(--text);}
+
+/* ── TABLE AREA ── */
+.table-wrap{flex:1;overflow:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{position:sticky;top:0;background:var(--surface);z-index:10;padding:9px 12px;text-align:left;font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:var(--text);}
+thead th .sort-arrow{display:inline-block;margin-left:4px;opacity:.35;font-size:9px;}
+thead th.sorted .sort-arrow{opacity:1;color:var(--jade);}
+tbody tr{border-bottom:1px solid rgba(30,58,52,.5);transition:background .1s;}
+tbody tr:hover{background:var(--surface2);}
+tbody tr.muted-row{opacity:.4;}
+tbody td{padding:9px 12px;vertical-align:middle;}
+.td-ticker{font-family:var(--font-m);font-size:12px;font-weight:500;color:var(--text);}
+.td-empresa{font-size:12px;color:var(--text);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.td-mercado .badge-mkt{font-size:9px;font-family:var(--font-m);padding:2px 6px;border-radius:3px;letter-spacing:.06em;}
+.mkt-usa{background:rgba(26,110,245,.1);color:#6BA3FF;border:1px solid rgba(26,110,245,.25);}
+.mkt-ar{background:rgba(219,160,60,.1);color:var(--ambar);border:1px solid rgba(219,160,60,.25);}
+.mkt-br{background:rgba(78,170,80,.1);color:#6BC87A;border:1px solid rgba(78,170,80,.25);}
+.mkt-other{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);}
+.td-price{font-family:var(--font-m);font-size:12px;color:var(--text);}
+.td-price .currency{font-size:9px;color:var(--muted);margin-left:2px;}
+.td-target{font-family:var(--font-m);font-size:12px;color:var(--text);}
+.td-range{font-family:var(--font-m);font-size:10px;color:var(--muted);}
+.td-upside{font-family:var(--font-m);font-size:12px;font-weight:500;}
+.upside-pos{color:var(--jade);}
+.upside-neg{color:var(--danger);}
+.upside-none{color:var(--dim);}
+.td-analistas{font-size:11px;color:var(--muted);text-align:center;}
+.td-rec .rec-badge{display:inline-block;font-size:9px;font-family:var(--font-m);padding:2px 7px;border-radius:3px;letter-spacing:.04em;text-transform:uppercase;}
+.rec-sb{background:rgba(28,140,95,.15);color:#4ade80;border:1px solid rgba(28,140,95,.35);}
+.rec-b {background:rgba(28,140,95,.08);color:var(--jade);border:1px solid rgba(28,140,95,.2);}
+.rec-h {background:rgba(219,160,60,.08);color:var(--ambar);border:1px solid rgba(219,160,60,.2);}
+.rec-s {background:rgba(192,69,59,.08);color:#E8837E;border:1px solid rgba(192,69,59,.2);}
+.rec-ss{background:rgba(192,69,59,.15);color:var(--danger);border:1px solid rgba(192,69,59,.35);}
+
+/* ── EMPTY STATE ── */
+#empty-state{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:60px 20px;text-align:center;gap:14px;}
+.empty-icon{font-size:3rem;opacity:.4;}
+.empty-title{font-family:var(--font-d);font-size:20px;font-weight:300;color:var(--text);}
+.empty-sub{font-size:12px;color:var(--muted);line-height:1.8;max-width:380px;}
+.empty-sub code{font-family:var(--font-m);font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:3px;border:1px solid var(--border);color:var(--ambar);}
+</style>
+</head>
+<body>
+<div class="page" id="page">
+
+  <div class="topbar">
+    <div class="topbar-title">FCN · <span>Precios Objetivo</span></div>
+    <span class="topbar-badge">Research</span>
+    <div class="topbar-right">
+      <span class="ts-info" id="ts-info"></span>
+      <span class="badge-warn" id="badge-warn" style="display:none">⚠ Desactualizado — actualizá el Excel mensual</span>
+    </div>
+  </div>
+
+  <div class="toolbar" id="toolbar" style="display:none">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Buscar ticker o empresa…" oninput="applyFilters()">
+    </div>
+    <div class="filter-chips">
+      <button class="chip active" data-filter="todos"      onclick="setFilter(this,'todos')">Todos</button>
+      <button class="chip"        data-filter="con_target" onclick="setFilter(this,'con_target')">Con precio objetivo</button>
+      <button class="chip"        data-filter="sin_target" onclick="setFilter(this,'sin_target')">Sin precio objetivo</button>
+      <button class="chip"        data-filter="no_enc"     onclick="setFilter(this,'no_enc')">No encontrados</button>
+    </div>
+    <span class="counter" id="counter"></span>
+  </div>
+
+  <div id="empty-state">
+    <div class="empty-icon">🎯</div>
+    <div class="empty-title">Sin datos de precios objetivo</div>
+    <div class="empty-sub">
+      Subí el archivo <code>precios_objetivo.xlsx</code> desde la pestaña
+      <strong>Archivos</strong> de FCN Suite.<br><br>
+      Generalo con <code>precios_objetivo.py</code> una vez por mes.
+    </div>
+  </div>
+
+  <div class="table-wrap" id="table-wrap" style="display:none">
+    <table id="main-table">
+      <thead>
+        <tr>
+          <th onclick="sortBy('ticker')">Ticker <span class="sort-arrow" id="arr-ticker">↕</span></th>
+          <th onclick="sortBy('empresa')">Empresa <span class="sort-arrow" id="arr-empresa">↕</span></th>
+          <th onclick="sortBy('mercado')">Mercado <span class="sort-arrow" id="arr-mercado">↕</span></th>
+          <th onclick="sortBy('precio')">Precio actual <span class="sort-arrow" id="arr-precio">↕</span></th>
+          <th onclick="sortBy('target')">P. objetivo <span class="sort-arrow" id="arr-target">↕</span></th>
+          <th onclick="sortBy('rango')">Rango <span class="sort-arrow" id="arr-rango">↕</span></th>
+          <th onclick="sortBy('upside')" class="sorted">Upside % <span class="sort-arrow" id="arr-upside">↓</span></th>
+          <th onclick="sortBy('analistas')">Analistas <span class="sort-arrow" id="arr-analistas">↕</span></th>
+          <th onclick="sortBy('rec')">Recomendación <span class="sort-arrow" id="arr-rec">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  INDEXED DB — copiado exacto del Suite
+// ══════════════════════════════════════════
+const DB_NAME  = 'fcn_shared_v1';
+const DB_STORE = 'files';
+
+function openSharedDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+    req.onsuccess  = e => res(e.target.result);
+    req.onerror    = () => rej(new Error('IndexedDB no disponible'));
+  });
+}
+
+async function getSharedFile(key) {
+  try {
+    const db = await openSharedDB();
+    return new Promise(res => {
+      const tx  = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get(key);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => res(null);
+    });
+  } catch { return null; }
+}
+
+// ══════════════════════════════════════════
+//  BROADCAST CHANNEL
+// ══════════════════════════════════════════
+const BC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('fcn_shared') : null;
+if (BC) {
+  BC.onmessage = e => {
+    if (e.data?.type === 'file_updated' && e.data?.key === 'precios_objetivo') {
+      setTimeout(() => loadAndRender(), 300);
+    }
+  };
+}
+
+// ══════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════
+let allRows    = [];
+let sortCol    = 'upside';
+let sortAsc    = false;
+let activeFilter = 'todos';
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+function n(v) { return v === undefined || v === null || v === '' ? null : Number(v); }
+
+function deriveMercado(tickerUsado) {
+  if (!tickerUsado || tickerUsado === '-') return 'otro';
+  const t = String(tickerUsado).trim().toUpperCase();
+  if (t.endsWith('.BA')) return 'ar';
+  if (t.endsWith('.SA')) return 'br';
+  return 'usa';
+}
+
+function fmtNum(v, dec) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  return Number(v).toLocaleString('es-AR', { minimumFractionDigits: dec ?? 2, maximumFractionDigits: dec ?? 2 });
+}
+
+function recLabel(r) {
+  const map = { strongbuy:'Strong Buy', buy:'Buy', hold:'Hold', sell:'Sell', strongsell:'Strong Sell' };
+  return map[(r||'').toLowerCase().replace(/\s/g,'')] || r || '—';
+}
+
+function recClass(r) {
+  const k = (r||'').toLowerCase().replace(/\s/g,'');
+  return { strongbuy:'rec-sb', buy:'rec-b', hold:'rec-h', sell:'rec-s', strongsell:'rec-ss' }[k] || '';
+}
+
+function mktBadge(m) {
+  const cfg = {
+    usa: ['USA',  'mkt-usa'],
+    ar:  ['ARG',  'mkt-ar'],
+    br:  ['BRA',  'mkt-br'],
+    otro:['—',    'mkt-other']
+  };
+  const [label, cls] = cfg[m] || cfg.otro;
+  return `<span class="badge-mkt ${cls}">${label}</span>`;
+}
+
+// ══════════════════════════════════════════
+//  PARSE XLSX
+// ══════════════════════════════════════════
+function parseBuffer(entry) {
+  const wb   = XLSX.read(entry.data, { type: 'array' });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const raw  = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+  return raw.map(r => {
+    const precio  = n(r['Precio_actual']);
+    const target  = n(r['Precio_objetivo_promedio']);
+    const min_t   = n(r['Precio_objetivo_minimo']);
+    const max_t   = n(r['Precio_objetivo_maximo']);
+    const upside  = (target !== null && precio !== null && precio > 0)
+                    ? (target / precio - 1) * 100 : null;
+    const mercado = deriveMercado(r['Ticker_usado']);
+    return {
+      ticker:   String(r['Ticker_original'] || r['Ticker_usado'] || '').trim(),
+      tickerUsado: String(r['Ticker_usado'] || '').trim(),
+      empresa:  String(r['Empresa'] || '').trim(),
+      mercado,
+      precio,
+      moneda:   String(r['Moneda'] || '').trim(),
+      target,
+      min_t,
+      max_t,
+      upside,
+      analistas: n(r['N_analistas']),
+      rec:      String(r['Recomendacion'] || '').trim(),
+      estado:   String(r['Estado'] || '').trim(),
+      nota:     String(r['Nota'] || '').trim(),
+    };
+  });
+}
+
+// ══════════════════════════════════════════
+//  SORT
+// ══════════════════════════════════════════
+const SORT_KEYS = {
+  ticker:    r => r.ticker,
+  empresa:   r => r.empresa,
+  mercado:   r => r.mercado,
+  precio:    r => r.precio ?? -Infinity,
+  target:    r => r.target ?? -Infinity,
+  rango:     r => (r.max_t ?? 0) - (r.min_t ?? 0),
+  upside:    r => r.upside ?? -Infinity,
+  analistas: r => r.analistas ?? -1,
+  rec:       r => r.rec,
+};
+
+function sortBy(col) {
+  if (sortCol === col) { sortAsc = !sortAsc; }
+  else { sortCol = col; sortAsc = col !== 'upside'; }
+  // Update header arrows
+  document.querySelectorAll('thead th').forEach(th => th.classList.remove('sorted'));
+  const header = document.querySelector(`[onclick="sortBy('${col}')"]`);
+  if (header) header.classList.add('sorted');
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '↕');
+  const arr = document.getElementById('arr-' + col);
+  if (arr) arr.textContent = sortAsc ? '↑' : '↓';
+  render();
+}
+
+// ══════════════════════════════════════════
+//  FILTERS
+// ══════════════════════════════════════════
+function setFilter(btn, f) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = f;
+  applyFilters();
+}
+
+function applyFilters() { render(); }
+
+function filtered(rows) {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+  return rows.filter(r => {
+    if (q && !r.ticker.toLowerCase().includes(q) && !r.empresa.toLowerCase().includes(q)) return false;
+    if (activeFilter === 'con_target') return r.estado === 'OK' && r.target !== null;
+    if (activeFilter === 'sin_target') return r.estado === 'OK_SIN_TARGET';
+    if (activeFilter === 'no_enc')     return r.estado === 'NO_ENCONTRADO';
+    return true;
+  });
+}
+
+// ══════════════════════════════════════════
+//  RENDER TABLE
+// ══════════════════════════════════════════
+function render() {
+  const tbody = document.getElementById('tbody');
+  if (!tbody) return;
+
+  const sortFn = SORT_KEYS[sortCol] || (r => r.ticker);
+  const sorted = [...filtered(allRows)].sort((a, b) => {
+    const va = sortFn(a), vb = sortFn(b);
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  // Counter
+  const total   = allRows.length;
+  const conT    = allRows.filter(r => r.target !== null).length;
+  const noEnc   = allRows.filter(r => r.estado === 'NO_ENCONTRADO').length;
+  document.getElementById('counter').innerHTML =
+    `<strong>${total}</strong> tickers · <strong>${conT}</strong> con precio objetivo · <strong>${noEnc}</strong> no encontrados`;
+
+  tbody.innerHTML = sorted.map(r => {
+    const isMuted = r.estado === 'NO_ENCONTRADO';
+    const upsideHtml = r.upside !== null
+      ? `<span class="upside-${r.upside >= 0 ? 'pos' : 'neg'}">${r.upside >= 0 ? '+' : ''}${fmtNum(r.upside, 1)}%</span>`
+      : `<span class="upside-none">—</span>`;
+    const rangoHtml = (r.min_t !== null && r.max_t !== null)
+      ? `${fmtNum(r.min_t)} – ${fmtNum(r.max_t)}`
+      : '—';
+    const recHtml = r.rec
+      ? `<span class="rec-badge ${recClass(r.rec)}">${recLabel(r.rec)}</span>` : '—';
+    return `<tr class="${isMuted ? 'muted-row' : ''}">
+      <td class="td-ticker">${r.ticker}</td>
+      <td class="td-empresa" title="${r.empresa}">${r.empresa || '—'}</td>
+      <td class="td-mercado">${mktBadge(r.mercado)}</td>
+      <td class="td-price">${r.precio !== null ? fmtNum(r.precio) : '—'}<span class="currency">${r.moneda}</span></td>
+      <td class="td-target">${r.target !== null ? fmtNum(r.target) : '—'}</td>
+      <td class="td-range">${rangoHtml}</td>
+      <td class="td-upside">${upsideHtml}</td>
+      <td class="td-analistas">${r.analistas !== null ? r.analistas : '—'}</td>
+      <td class="td-rec">${recHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  TIMESTAMP
+// ══════════════════════════════════════════
+function showTimestamp(ts) {
+  if (!ts) return;
+  const diasPasados = Math.floor((Date.now() - ts) / 86400000);
+  const txt = diasPasados === 0 ? 'hoy' : diasPasados === 1 ? 'hace 1 día' : `hace ${diasPasados} días`;
+  document.getElementById('ts-info').textContent = `Última actualización: ${txt}`;
+  if (diasPasados > 35) {
+    document.getElementById('badge-warn').style.display = 'inline';
+  }
+}
+
+// ══════════════════════════════════════════
+//  LOAD & RENDER
+// ══════════════════════════════════════════
+async function loadAndRender() {
+  const entry = await getSharedFile('precios_objetivo');
+  if (!entry || !entry.data) {
+    document.getElementById('empty-state').style.display  = 'flex';
+    document.getElementById('table-wrap').style.display   = 'none';
+    document.getElementById('toolbar').style.display      = 'none';
+    return;
+  }
+
+  try {
+    allRows = parseBuffer(entry);
+  } catch(e) {
+    console.error('Error parseando precios_objetivo:', e);
+    return;
+  }
+
+  showTimestamp(entry.ts);
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('table-wrap').style.display   = 'block';
+  document.getElementById('toolbar').style.display      = 'flex';
+
+  // Set initial sort header state
+  const arrUpside = document.getElementById('arr-upside');
+  if (arrUpside) arrUpside.textContent = '↓';
+  document.querySelector(`[onclick="sortBy('upside')"]`)?.classList.add('sorted');
+
+  render();
+}
+
+// ── INIT ──
+loadAndRender();
+</script>
+</body>
+</html>

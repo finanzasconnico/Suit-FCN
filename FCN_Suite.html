@@ -253,7 +253,8 @@ const TOOLS = [
   { id:'scanner', name:'Scanner ONs',         icon:'🔍', desc:'Detecta ONs con TIR baja, compara con el Monitor y genera rotaciones.', badge:'Renta Fija',     file:'Scanner_ONs_FCN.html',                   color:'jade'  },
   { id:'armador', name:'Armador de Carteras', icon:'📊', desc:'Construí propuestas de portfolio en PDF con gráficos y rotaciones.',   badge:'Propuestas',   file:'Armador_Carteras_v4_3.html',               color:'jade'  },
   { id:'monitor', name:'Portfolio Monitor',   icon:'🗂',  desc:'Monitor personal de cartera: posiciones, cupones y ganancias.',       badge:'Cliente',      file:'portfolio_monitor_fcn.html',               color:'jade'  },
-  { id:'cleaner', name:'Excel Cleaner',        icon:'🧹', desc:'Limpieza de contactos: filtra mails vacíos, elimina duplicados y expande listas separadas por ";". Soporta archivos encriptados.', badge:'Contactos', file:'excel_cleaner_agent para mail.html', color:'amber' }
+  { id:'cleaner', name:'Excel Cleaner',        icon:'🧹', desc:'Limpieza de contactos: filtra mails vacíos, elimina duplicados y expande listas separadas por ";". Soporta archivos encriptados.', badge:'Contactos', file:'excel_cleaner_agent para mail.html', color:'amber' },
+  { id:'objetivo', name:'Precios Objetivo',    icon:'🎯', desc:'Precio actual vs. precio objetivo de analistas para toda la lista de tickers USA/Argentina/Brasil.', badge:'Research', file:'Precios_Objetivo_FCN.html', color:'jade' }
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -283,6 +284,14 @@ const SHARED_FILES = [
     hint:  'Archivo .xlsm directo desde Balanz · o .csv si tiene bloqueo IRM',
     usedBy: ['Armador de Carteras', 'Scanner ONs'],
     accept: '.xlsx,.xls,.xlsm,.csv'
+  },
+  {
+    key:    'precios_objetivo',
+    name:   'Precios Objetivo (mensual)',
+    icon:   '🎯',
+    hint:   'Generado con precios_objetivo.py una vez por mes · .xlsx',
+    usedBy: ['Precios Objetivo'],
+    accept: '.xlsx,.xls,.csv'
   }
 ];
 
