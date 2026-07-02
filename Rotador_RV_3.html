@@ -477,22 +477,22 @@ async function fetchYF(url) {
 }
 
 async function fetchTargetPriceRV(ticker) {
-  try {
-    const url = `https://finance.yahoo.com/quote/${ticker}/`;
-    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const resp = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
-    const json = await resp.json();
-    const html = json.contents || '';
-    // Buscar fin-streamer con data-field="targetMeanPrice"
-    const tagMatch = html.match(/<fin-streamer[^>]*data-field="targetMeanPrice"[^>]*>/);
-    if (tagMatch) {
-      const valMatch = tagMatch[0].match(/data-value="([^"]+)"/);
-      if (valMatch) {
-        const num = parseFloat(valMatch[1].replace(/,/g, ''));
-        if (!isNaN(num) && num > 0) return num;
-      }
-    }
-  } catch(e) { /* fallback */ }
+  const apiUrl = `https://query2.finance.yahoo.com/v11/finance/quoteSummary/${ticker}?modules=financialData`;
+  const proxies = [
+    `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`
+  ];
+  for (const proxy of proxies) {
+    try {
+      const resp = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+      const outer = await resp.json();
+      // allorigins wraps in {contents}, corsproxy returns directly
+      const text = typeof outer.contents === 'string' ? outer.contents : JSON.stringify(outer);
+      const data = JSON.parse(text);
+      const target = data?.quoteSummary?.result?.[0]?.financialData?.targetMeanPrice?.raw;
+      if (target && target > 0) return target;
+    } catch(e) { continue; }
+  }
   return null;
 }
 
