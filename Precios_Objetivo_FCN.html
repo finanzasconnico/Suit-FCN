@@ -218,14 +218,16 @@ function fmtNum(v, dec) {
   return Number(v).toLocaleString('es-AR', { minimumFractionDigits: dec ?? 2, maximumFractionDigits: dec ?? 2 });
 }
 
-function recLabel(r) {
-  const map = { strongbuy:'Strong Buy', buy:'Buy', hold:'Hold', sell:'Sell', strongsell:'Strong Sell' };
-  return map[(r||'').toLowerCase().replace(/\s/g,'')] || r || '—';
+function normalizeRec(r) {
+  return (r||'').toLowerCase().replace(/[\s_\-]/g,'');
 }
-
+function recLabel(r) {
+  const map = { strongbuy:'Strong Buy', buy:'Buy', hold:'Hold', sell:'Sell', strongsell:'Strong Sell', none:'—' };
+  return map[normalizeRec(r)] || r || '—';
+}
 function recClass(r) {
-  const k = (r||'').toLowerCase().replace(/\s/g,'');
-  return { strongbuy:'rec-sb', buy:'rec-b', hold:'rec-h', sell:'rec-s', strongsell:'rec-ss' }[k] || '';
+  const map = { strongbuy:'rec-sb', buy:'rec-b', hold:'rec-h', sell:'rec-s', strongsell:'rec-ss' };
+  return map[normalizeRec(r)] || '';
 }
 
 function mktBadge(m) {

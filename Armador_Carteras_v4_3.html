@@ -588,6 +588,65 @@ async function fetchTargetPrice(ticker) {
   return null;
 }
 
+// ══ PRECIOS OBJETIVO — cache local desde IndexedDB ══
+var _preciosObjMap = {}; // ticker.toUpperCase() → { precio, target, moneda, rec }
+
+(function loadPreciosObjetivo() {
+  var DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
+  function _openDB() {
+    return new Promise(function(res,rej){
+      var r = indexedDB.open(DB_NAME,1);
+      r.onupgradeneeded = function(e){e.target.result.createObjectStore(DB_STORE);};
+      r.onsuccess = function(e){res(e.target.result);};
+      r.onerror = function(){rej();};
+    });
+  }
+  function _getShared(key) {
+    return _openDB().then(function(db){
+      return new Promise(function(res){
+        var r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+        r.onsuccess = function(){res(r.result||null);};
+        r.onerror = function(){res(null);};
+      });
+    }).catch(function(){return null;});
+  }
+  function parse(entry) {
+    if (!entry || !entry.data) return;
+    try {
+      var wb = XLSX.read(entry.data, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      rows.forEach(function(r) {
+        var tk = String(r['Ticker_original']||r['Ticker_usado']||'').trim().toUpperCase();
+        if (!tk || tk === '-') return;
+        // Support comma-separated originals (duplicates merged by script)
+        tk.split(',').forEach(function(t) {
+          t = t.trim().toUpperCase();
+          if (!t) return;
+          var precio = parseFloat(r['Precio_actual'])||null;
+          var target = parseFloat(r['Precio_objetivo_promedio'])||null;
+          _preciosObjMap[t] = {
+            precio: precio, target: target,
+            moneda: String(r['Moneda']||'USD').trim(),
+            rec: String(r['Recomendacion']||'').trim(),
+            empresa: String(r['Empresa']||'').trim()
+          };
+        });
+      });
+    } catch(e) { console.warn('[PreciosObj] parse error', e); }
+  }
+  window.addEventListener('DOMContentLoaded', function() {
+    _getShared('precios_objetivo').then(parse);
+  });
+  if (typeof BroadcastChannel !== 'undefined') {
+    new BroadcastChannel('fcn_shared').onmessage = function(e) {
+      if (e.data && e.data.type === 'file_updated' && e.data.key === 'precios_objetivo') {
+        setTimeout(function(){ _getShared('precios_objetivo').then(parse); }, 500);
+      }
+    };
+  }
+})();
+
 async function fetchTickerData(ticker) {
   var candidatos = TICKERS_AR_AC.has(ticker) ? [ticker, ticker+'.BA'] : [ticker];
   for (var i=0; i<candidatos.length; i++) {
@@ -619,7 +678,22 @@ async function onTickerBlur() {
   var curEl = document.getElementById('f-price-current');
   var tgtEl = document.getElementById('f-price-target');
   var badgeEl = document.getElementById('yf-badge');
-  if (curEl.value && tgtEl.value) return; // ya tiene ambos valores
+  if (curEl.value && tgtEl.value) return;
+
+  // 1. Buscar en Precios Objetivo (local, sin red)
+  var local = _preciosObjMap[ticker];
+  if (local && local.precio) {
+    if (!curEl.value) curEl.value = local.precio.toFixed(2);
+    if (!tgtEl.value && local.target) tgtEl.value = local.target.toFixed(2);
+    calcRetFromPrice();
+    badgeEl.style.display = 'block';
+    var recTxt = local.rec ? ' · ' + local.rec.replace(/_/g,' ') : '';
+    badgeEl.innerHTML = '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">📊 Precios Objetivo' + recTxt + '</span>';
+    setTimeout(function(){ badgeEl.style.display='none'; }, 5000);
+    return;
+  }
+
+  // 2. Fallback: Yahoo Finance
   badgeEl.style.display = 'block';
   badgeEl.innerHTML = '<span style="color:var(--cream-dim)">⟳ Consultando Yahoo Finance...</span>';
   var data = await fetchTickerData(ticker);
@@ -627,11 +701,9 @@ async function onTickerBlur() {
     if (!curEl.value) curEl.value = data.precioActual.toFixed(2);
     if (!tgtEl.value && data.targetPrice) tgtEl.value = data.targetPrice.toFixed(2);
     calcRetFromPrice();
-    if (data.targetPrice) {
-      badgeEl.innerHTML = '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">Yahoo Finance ✓</span>';
-    } else {
-      badgeEl.innerHTML = '<span style="color:#D9892B;background:rgba(217,137,43,.1);border:1px solid rgba(217,137,43,.3);padding:1px 8px;border-radius:3px;">Solo precio</span>';
-    }
+    badgeEl.innerHTML = data.targetPrice
+      ? '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">Yahoo Finance ✓</span>'
+      : '<span style="color:#D9892B;background:rgba(217,137,43,.1);border:1px solid rgba(217,137,43,.3);padding:1px 8px;border-radius:3px;">Solo precio</span>';
   } else {
     badgeEl.innerHTML = '<span style="color:#C0453B;background:rgba(192,69,59,.08);border:1px solid rgba(192,69,59,.25);padding:1px 8px;border-radius:3px;">Sin datos</span>';
   }
