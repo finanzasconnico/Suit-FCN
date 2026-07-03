@@ -348,7 +348,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
         <div class="field"><label>Calificación</label><input type="text" id="f-calif" placeholder="AAA"></div>
       </div>
       <div class="field-row" id="cupon-row">
-        <div class="field"><label>Meses cupón</label><input type="text" id="f-meses" placeholder="ene y jul."></div>
+        <div class="field"><label>Meses cupón</label><input type="text" id="f-meses" placeholder="mensual · semestral · ene jul"></div>
         <div class="field"><label>Ley</label><input type="text" id="f-ley" placeholder="NY / ARG"></div>
       </div>
       <div class="field-row" id="letras-row" style="display:none;">
@@ -1250,7 +1250,16 @@ function updateYield(){
 
 // ═══ DOCUMENT BUILD ═══
 var MABR={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
-function parseMeses(str){if(!str)return[];var r=[];str.toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).forEach(function(w){if(MABR[w])r.push(MABR[w]);});return r;}
+function parseMeses(str){
+  if(!str)return[];
+  var low=str.toLowerCase().trim();
+  if(/mensual|mensualmente|todos|all|monthly/.test(low))return[1,2,3,4,5,6,7,8,9,10,11,12];
+  if(/bimestral/.test(low))return[2,4,6,8,10,12];
+  if(/trimestral/.test(low))return[3,6,9,12];
+  if(/semestral|semiannual/.test(low))return[6,12];
+  if(/^anual$|^annual$/.test(low))return[12];
+  var r=[];low.replace(/[^a-z ]/g,' ').split(/\s+/).forEach(function(w){if(MABR[w])r.push(MABR[w]);});return r;
+}
 
 function getCatBadge(type){
   if(!type)return'<span class="tbadge">—</span>';
@@ -1313,6 +1322,13 @@ function updateDoc(){
     else{vencDisp=a.venc?String(a.venc).slice(0,7):'—';cupDisp=isLet?(a.papel||'—'):a.meses||'—';}
     var y=getTIRorTNA(a);
     var yDisp=y?y.val.toFixed(2)+'% <span style="font-size:9px;color:#aaa;">'+y.label+'</span>':'—';
+    // Monthly TIR sub-line: compute frequency from meses field
+    var mesesSrc=(onD?onD.meses_cupon:null)||(sovD?sovD.meses:null)||a.meses||'';
+    var cm=parseMeses(mesesSrc);
+    if(y&&cm.length>1){
+      var tirMens=(Math.pow(1+y.val/100,1/cm.length)-1)*100;
+      yDisp+='<div style="font-size:9px;color:#888;margin-top:1px;">'+tirMens.toFixed(3)+'%/pago · '+cm.length+'×/año</div>';
+    }
     if(y&&totalAlloc>0)wY+=(a.pct/totalAlloc)*y.val;else allY=false;
     return'<tr><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:7px;height:7px;border-radius:50%;background:'+a.color+';flex-shrink:0;"></div>'+rn+' '+tk+'</div></td>'+
       '<td>'+getCatBadge(a.type)+'</td>'+
