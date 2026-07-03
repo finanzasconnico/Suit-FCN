@@ -243,7 +243,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .model-meta{font-size:9px;color:var(--cream-dim);margin-bottom:4px;}
 .model-author{font-size:9px;color:rgba(255,255,255,.3);margin-top:4px;}
 @media print{
-  @page{size:A4 portrait;margin:10mm;}
+  @page{size:A4 portrait;margin:12mm 14mm;}
   body{background:#fff!important;}
   .topbar,.left-panel,.panel-tabs,.topbar-actions,.page-switcher,.right-panel > *:not(.preview-area),.preview-area > div:not([id="pdf-doc"]):not([id="rot-doc"]){display:none!important;}
   body[data-print="cartera"] #rot-doc{display:none!important;}
@@ -251,9 +251,16 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
   .page-view{display:block!important;}
   .right-panel{padding:0!important;width:100%!important;overflow:visible!important;}
   .preview-area{border:none!important;background:#fff!important;max-width:100%!important;overflow:visible!important;}
-  #pdf-doc,#rot-doc{max-width:100%!important;}
+  #pdf-doc,#rot-doc{max-width:100%!important;box-shadow:none!important;}
   .dt{width:100%!important;font-size:7.5px!important;}
   .dt td,.dt th{padding:4px 3px!important;}
+  /* Evitar cortes en medio de filas, el gráfico y las secciones */
+  .dt tr{page-break-inside:avoid;break-inside:avoid;}
+  #doc-viz-wrap{page-break-inside:avoid;break-inside:avoid;}
+  #doc-bars{page-break-inside:avoid;break-inside:avoid;}
+  .quality-summary-wrap{page-break-inside:avoid;break-inside:avoid;}
+  .doc-section{page-break-inside:avoid;break-inside:avoid;}
+  h3,h4{page-break-after:avoid;break-after:avoid;}
 }
 </style>
 </head>
@@ -1695,11 +1702,27 @@ async function doExport(el,prefix){
 
     var j=window.jspdf,pdf=new j.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     var pW=pdf.internal.pageSize.getWidth(),pH=pdf.internal.pageSize.getHeight();
-    // PNG: lossless, texto nítido
     var img=canvas.toDataURL('image/png');
     var ih=(canvas.height*pW)/canvas.width;
-    if(ih<=pH){pdf.addImage(img,'PNG',0,0,pW,ih,undefined,'FAST');}
-    else{var y=0;while(y<ih){if(y>0)pdf.addPage();pdf.addImage(img,'PNG',0,-y,pW,ih,undefined,'FAST');y+=pH;}}
+    if(ih<=pH){
+      // Fits on 1 page at full width
+      pdf.addImage(img,'PNG',0,0,pW,ih,undefined,'FAST');
+    } else if(ih<=pH*1.65){
+      // Slightly over 1 page: scale down to fit on 1 page (maintains aspect ratio)
+      var ratio=pH/ih;
+      var fw=pW*ratio;
+      var margin=(pW-fw)/2;
+      pdf.addImage(img,'PNG',margin,0,fw,pH,undefined,'FAST');
+    } else {
+      // Genuinely multi-page: slice between rows instead of mid-content
+      // Find best cut point within ±40mm of page boundary
+      var y=0;
+      while(y<ih){
+        if(y>0)pdf.addPage();
+        pdf.addImage(img,'PNG',0,-y,pW,ih,undefined,'FAST');
+        y+=pH;
+      }
+    }
     var cname=(prefix==='rotaciones'?document.getElementById('rot-client').value:document.getElementById('client-name').value).trim()||'cliente';
     pdf.save(prefix+'-'+cname.toLowerCase().replace(/\s+/g,'-')+'.pdf');
   }catch(e){alert('Error al exportar: '+e.message);}
