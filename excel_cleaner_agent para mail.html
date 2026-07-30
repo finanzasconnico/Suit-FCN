@@ -27,7 +27,6 @@
   --r: 6px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 body {
   font-family: var(--font-s);
   background: var(--bg);
@@ -45,7 +44,6 @@ body::before {
   z-index: 0;
   opacity: .5;
 }
-
 .wrap {
   position: relative;
   z-index: 1;
@@ -65,310 +63,235 @@ body::before {
   padding-bottom: 20px;
   border-bottom: 1px solid var(--border);
 }
-.page-header-left h1 {
-  font-family: var(--font-d);
-  font-size: 22px;
-  font-weight: 300;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-.page-header-left p {
-  font-family: var(--font-m);
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
+.page-header-left h1 { font-family: var(--font-d); font-size: 22px; font-weight: 300; color: var(--text); margin-bottom: 4px; }
+.page-header-left p  { font-family: var(--font-m); font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
 .header-badge {
-  font-family: var(--font-m);
-  font-size: 8.5px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--ambar);
-  background: var(--ambar-d);
-  border: 1px solid rgba(219,160,60,.25);
-  padding: 4px 10px;
-  border-radius: 10px;
-  white-space: nowrap;
-  align-self: flex-start;
-  margin-top: 4px;
+  font-family: var(--font-m); font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ambar); background: var(--ambar-d); border: 1px solid rgba(219,160,60,.25);
+  padding: 4px 10px; border-radius: 10px; white-space: nowrap; align-self: flex-start; margin-top: 4px;
 }
 
 /* Shared file banner */
 .shared-banner {
-  background: var(--jade-d);
-  border: 1px solid rgba(28,140,95,.3);
-  border-radius: var(--r);
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  background: var(--jade-d); border: 1px solid rgba(28,140,95,.3); border-radius: var(--r);
+  padding: 14px 18px; display: flex; align-items: center; gap: 14px;
 }
 .shared-banner-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--jade);
-  flex-shrink: 0;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--jade); flex-shrink: 0;
   animation: glow 2s ease-in-out infinite;
 }
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(28,140,95,.5); }
-  50%       { box-shadow: 0 0 0 5px rgba(28,140,95,0); }
-}
+@keyframes glow { 0%,100%{box-shadow:0 0 0 0 rgba(28,140,95,.5);}50%{box-shadow:0 0 0 5px rgba(28,140,95,0);} }
 .shared-banner-text { flex: 1; }
-.shared-banner-text strong {
-  display: block;
-  font-size: 12px;
-  color: var(--text);
-  margin-bottom: 2px;
+.shared-banner-text strong { display: block; font-size: 12px; color: var(--text); margin-bottom: 2px; }
+.shared-banner-text span  { font-family: var(--font-m); font-size: 9.5px; color: var(--muted); }
+.btn-sm {
+  padding: 6px 12px; background: transparent; border: 1px solid rgba(28,140,95,.4); border-radius: var(--r);
+  color: var(--jade); font-family: var(--font-m); font-size: 9px; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; transition: all .15s; white-space: nowrap;
 }
-.shared-banner-text span {
-  font-family: var(--font-m);
-  font-size: 9.5px;
-  color: var(--muted);
-}
-.btn-reload {
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px solid rgba(28,140,95,.4);
-  border-radius: var(--r);
-  color: var(--jade);
-  font-family: var(--font-m);
-  font-size: 9px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
-  white-space: nowrap;
-}
-.btn-reload:hover { background: var(--jade-d); border-color: var(--jade); }
+.btn-sm:hover { background: var(--jade-d); border-color: var(--jade); }
 
-/* No shared file notice */
 .no-shared-notice {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-m);
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.6;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-m); font-size: 10px; color: var(--muted); line-height: 1.6;
 }
-.no-shared-notice .icon { font-size: 14px; flex-shrink: 0; }
 
 /* Rules */
-.rules-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--jade);
-  border-radius: var(--r);
-  padding: 14px 18px;
-}
-.rules-card h3 {
-  font-family: var(--font-m);
-  font-size: 9px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--jade);
-  margin-bottom: 10px;
-}
+.rules-card { background: var(--surface); border: 1px solid var(--border); border-left: 2px solid var(--jade); border-radius: var(--r); padding: 14px 18px; }
+.rules-card h3 { font-family: var(--font-m); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--jade); margin-bottom: 10px; }
 .rules-card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-.rules-card li {
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  line-height: 1.5;
-}
+.rules-card li { font-size: 12px; color: var(--muted); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
 .rules-card li::before { content: '›'; color: var(--jade); font-size: 14px; line-height: 1.1; flex-shrink: 0; }
 
 /* Divider */
 .divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-m);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--dim);
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-m); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim);
 }
 .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
 /* Tabs */
-.tabs {
-  display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 4px;
-  gap: 4px;
-}
-.tab-btn {
-  flex: 1;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--muted);
-  font-family: var(--font-m);
-  font-size: 10px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
-  text-align: center;
-}
+.tabs { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 4px; gap: 4px; }
+.tab-btn { flex: 1; padding: 8px 12px; border: none; border-radius: 4px; background: transparent; color: var(--muted); font-family: var(--font-m); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; transition: all .15s; text-align: center; }
 .tab-btn:hover { color: var(--text); background: var(--surface2); }
 .tab-btn.active       { background: var(--jade-d);  color: var(--jade);  border: 1px solid rgba(28,140,95,.25); }
 .tab-btn.active.amber { background: var(--ambar-d); color: var(--ambar); border-color: rgba(219,160,60,.25); }
 
 /* Drop zone */
-.drop-zone {
-  border: 1.5px dashed var(--border);
-  border-radius: var(--r);
-  padding: 44px 24px;
-  text-align: center;
-  cursor: pointer;
-  position: relative;
-  transition: all .2s;
-  background: var(--surface);
-}
+.drop-zone { border: 1.5px dashed var(--border); border-radius: var(--r); padding: 44px 24px; text-align: center; cursor: pointer; position: relative; transition: all .2s; background: var(--surface); }
 .drop-zone:hover, .drop-zone.drag-over { border-color: var(--jade); background: var(--jade-d); }
 .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .drop-icon { font-size: 2rem; display: block; margin-bottom: 10px; }
 .drop-zone h2 { font-family: var(--font-d); font-size: 16px; font-weight: 400; color: var(--text); margin-bottom: 5px; }
 .drop-zone p  { font-size: 11px; color: var(--muted); }
-.file-name    { font-family: var(--font-m); font-size: 10px; color: var(--jade); margin-top: 8px; }
+.file-name { font-family: var(--font-m); font-size: 10px; color: var(--jade); margin-top: 8px; }
 
 /* Paste panel */
 .paste-panel { display: flex; flex-direction: column; gap: 14px; }
-.steps-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--ambar);
-  border-radius: var(--r);
-  padding: 14px 18px;
-}
-.steps-card h3 {
-  font-family: var(--font-m);
-  font-size: 9px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--ambar);
-  margin-bottom: 12px;
-}
+.steps-card { background: var(--surface); border: 1px solid var(--border); border-left: 2px solid var(--ambar); border-radius: var(--r); padding: 14px 18px; }
+.steps-card h3 { font-family: var(--font-m); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--ambar); margin-bottom: 12px; }
 .step-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .step-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-.step-num {
-  width: 18px; height: 18px;
-  border-radius: 3px;
-  background: var(--ambar-d);
-  border: 1px solid rgba(219,160,60,.3);
-  color: var(--ambar);
-  font-family: var(--font-m);
-  font-size: 9px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 1px;
-}
-.kbd {
-  display: inline-block;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-bottom: 2px solid var(--dim);
-  border-radius: 3px;
-  padding: 1px 6px;
-  font-family: var(--font-m);
-  font-size: 10px;
-  color: var(--text);
-}
-.paste-area {
-  width: 100%;
-  min-height: 130px;
-  background: var(--surface);
-  border: 1.5px dashed var(--border);
-  border-radius: var(--r);
-  padding: 14px;
-  color: var(--text);
-  font-family: var(--font-m);
-  font-size: 11px;
-  resize: vertical;
-  outline: none;
-  transition: border-color .2s;
-  line-height: 1.6;
-}
+.step-num { width: 18px; height: 18px; border-radius: 3px; background: var(--ambar-d); border: 1px solid rgba(219,160,60,.3); color: var(--ambar); font-family: var(--font-m); font-size: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.kbd { display: inline-block; background: var(--surface2); border: 1px solid var(--border); border-bottom: 2px solid var(--dim); border-radius: 3px; padding: 1px 6px; font-family: var(--font-m); font-size: 10px; color: var(--text); }
+.paste-area { width: 100%; min-height: 130px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: var(--r); padding: 14px; color: var(--text); font-family: var(--font-m); font-size: 11px; resize: vertical; outline: none; transition: border-color .2s; line-height: 1.6; }
 .paste-area:focus { border-color: var(--ambar); background: rgba(219,160,60,.03); }
 .paste-area::placeholder { color: var(--dim); }
-.paste-hint {
-  display: flex; align-items: center; gap: 7px;
-  font-family: var(--font-m); font-size: 9px; color: var(--muted); letter-spacing: .04em;
-}
-.pulse {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--ambar);
-  animation: pulse 1.8s ease-in-out infinite;
-  flex-shrink: 0;
-}
-@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.75); } }
+.paste-hint { display: flex; align-items: center; gap: 7px; font-family: var(--font-m); font-size: 9px; color: var(--muted); letter-spacing: .04em; }
+.pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--ambar); animation: pulse 1.8s ease-in-out infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.75);} }
 
 /* Stats */
-.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 12px; text-align: center; }
-.stat-card .num { font-family: var(--font-d); font-size: 28px; font-weight: 300; color: var(--jade); line-height: 1; }
-.stat-card .label { font-family: var(--font-m); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 5px; line-height: 1.4; }
-.stat-card.warn .num { color: var(--danger); }
+.stat-card .num { font-family: var(--font-d); font-size: 26px; font-weight: 300; color: var(--jade); line-height: 1; }
+.stat-card .label { font-family: var(--font-m); font-size: 8px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+.stat-card.warn   .num { color: var(--danger); }
+.stat-card.suppressed .num { color: var(--ambar); }
 
 /* Buttons */
-.btn-primary {
-  width: 100%;
-  padding: 12px;
-  background: var(--jade);
-  color: #fff;
-  border: none;
-  border-radius: var(--r);
-  font-family: var(--font-s);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background .15s;
-}
+.btn-primary { width: 100%; padding: 12px; background: var(--jade); color: #fff; border: none; border-radius: var(--r); font-family: var(--font-s); font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s; }
 .btn-primary:hover    { background: #22a870; }
 .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
-.btn-secondary {
-  width: 100%;
-  padding: 11px;
-  background: transparent;
-  color: var(--ambar);
-  border: 1px solid rgba(219,160,60,.4);
-  border-radius: var(--r);
-  font-family: var(--font-s);
-  font-size: 13px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all .15s;
-}
+.btn-secondary { width: 100%; padding: 11px; background: transparent; color: var(--ambar); border: 1px solid rgba(219,160,60,.4); border-radius: var(--r); font-family: var(--font-s); font-size: 13px; font-weight: 400; cursor: pointer; transition: all .15s; }
 .btn-secondary:hover { background: var(--ambar-d); border-color: var(--ambar); }
 
 /* Log */
-.log-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 150px;
-  overflow-y: auto;
-}
+.log-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; }
 .log-line { font-family: var(--font-m); font-size: 10px; color: var(--muted); line-height: 1.6; }
 .log-line.ok   { color: var(--jade); }
 .log-line.warn { color: var(--danger); }
+.log-line.info { color: var(--ambar); }
+
+/* ── LISTA DE SUPRESIÓN ── */
+.suppression-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--danger);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.suppression-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s;
+}
+.suppression-header:hover { background: rgba(255,255,255,.02); }
+.suppression-header-left { display: flex; align-items: center; gap: 10px; }
+.suppression-header-left h3 { font-family: var(--font-m); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--danger); }
+.suppression-count {
+  font-family: var(--font-m); font-size: 9px;
+  background: var(--danger-d); border: 1px solid rgba(192,69,59,.3);
+  color: var(--danger); padding: 2px 8px; border-radius: 10px;
+}
+.suppression-chevron { font-size: 10px; color: var(--muted); transition: transform .2s; }
+.suppression-chevron.open { transform: rotate(180deg); }
+
+.suppression-body { display: none; padding: 0 18px 18px; }
+.suppression-body.open { display: block; }
+
+.unsubscribe-notice {
+  background: rgba(192,69,59,.06);
+  border: 1px solid rgba(192,69,59,.2);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.unsubscribe-notice strong { color: var(--text); }
+.unsubscribe-link {
+  font-family: var(--font-m);
+  font-size: 10px;
+  color: var(--jade);
+  word-break: break-all;
+  display: block;
+  margin-top: 6px;
+  text-decoration: none;
+}
+.unsubscribe-link:hover { text-decoration: underline; }
+
+.add-email-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.add-email-input {
+  flex: 1;
+  padding: 9px 12px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: var(--font-m);
+  font-size: 11px;
+  outline: none;
+  transition: border-color .2s;
+}
+.add-email-input:focus { border-color: var(--danger); }
+.add-email-input::placeholder { color: var(--dim); }
+.btn-add {
+  padding: 9px 16px;
+  background: var(--danger-d);
+  border: 1px solid rgba(192,69,59,.4);
+  border-radius: var(--r);
+  color: var(--danger);
+  font-family: var(--font-m);
+  font-size: 10px;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-add:hover { background: rgba(192,69,59,.2); border-color: var(--danger); }
+
+.suppression-list-wrap {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.suppression-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  background: rgba(0,0,0,.2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.suppression-item-mail { font-family: var(--font-m); font-size: 10px; color: var(--muted); word-break: break-all; }
+.btn-remove-mail { background: none; border: none; color: var(--dim); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; transition: color .15s; flex-shrink: 0; }
+.btn-remove-mail:hover { color: var(--danger); }
+
+.suppression-empty { font-family: var(--font-m); font-size: 10px; color: var(--dim); text-align: center; padding: 16px 0; }
+
+.suppression-actions { display: flex; gap: 8px; }
+.btn-action {
+  flex: 1;
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--muted);
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.btn-action:hover { border-color: rgba(255,255,255,.2); color: var(--text); }
 
 .hidden { display: none !important; }
 </style>
@@ -385,19 +308,17 @@ body::before {
     <span class="header-badge">Contactos</span>
   </div>
 
-  <!-- Banner: archivo compartido detectado -->
+  <!-- Banner: archivo compartido -->
   <div class="shared-banner hidden" id="sharedBanner">
     <div class="shared-banner-dot"></div>
     <div class="shared-banner-text">
-      <strong id="sharedFileName">Stock de cuentas cargado desde el Suite</strong>
+      <strong id="sharedFileName">Stock cargado desde el Suite</strong>
       <span id="sharedFileTs"></span>
     </div>
-    <button class="btn-reload" onclick="loadFromShared()">↺ Reprocesar</button>
+    <button class="btn-sm" onclick="loadFromShared()">↺ Reprocesar</button>
   </div>
-
-  <!-- Notice: sin archivo compartido -->
   <div class="no-shared-notice hidden" id="noSharedNotice">
-    <span class="icon">ℹ</span>
+    <span>ℹ</span>
     <span>No hay Stock de cuentas cargado en el Suite. Podés subir el archivo acá abajo o pegarlo manualmente.</span>
   </div>
 
@@ -406,13 +327,13 @@ body::before {
     <h3>Reglas aplicadas</h3>
     <ul>
       <li>Conserva solo las columnas <strong style="color:var(--text)">Nombre</strong> y <strong style="color:var(--text)">Mail</strong></li>
-      <li>Elimina filas sin mail</li>
+      <li>Elimina filas sin mail o duplicadas</li>
       <li>Si hay varios mails separados por <strong style="color:var(--text)">";"</strong>, el primero queda en su fila y los demás se agregan al final</li>
-      <li>Elimina mails duplicados — conserva la primera aparición</li>
+      <li>Elimina mails de la <strong style="color:var(--danger)">lista de bajas</strong> automáticamente</li>
     </ul>
   </div>
 
-  <!-- Stats (se muestran cuando hay resultado) -->
+  <!-- Stats -->
   <div class="stats-grid hidden" id="statsGrid">
     <div class="stat-card">
       <div class="num" id="statTotal">0</div>
@@ -426,6 +347,10 @@ body::before {
       <div class="num" id="statRemoved">0</div>
       <div class="label">Eliminados</div>
     </div>
+    <div class="stat-card suppressed">
+      <div class="num" id="statSuppressed">0</div>
+      <div class="label">Bajas aplicadas</div>
+    </div>
   </div>
 
   <!-- Descarga -->
@@ -434,7 +359,7 @@ body::before {
   <!-- Log -->
   <div class="log-box hidden" id="log"></div>
 
-  <!-- Separador manual -->
+  <!-- Separador -->
   <div class="divider" id="manualDivider">o cargá manualmente</div>
 
   <!-- Tabs -->
@@ -460,41 +385,63 @@ body::before {
       <div class="steps-card">
         <h3>Cómo usar con archivo encriptado</h3>
         <ol class="step-list">
-          <li><span class="step-num">1</span><span>Abrí el archivo en Excel e ingresá la contraseña para desbloquearlo</span></li>
+          <li><span class="step-num">1</span><span>Abrí el archivo en Excel e ingresá la contraseña</span></li>
           <li><span class="step-num">2</span><span>Seleccioná toda la hoja con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">E</kbd></span></li>
-          <li><span class="step-num">3</span><span>Copiá el contenido con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">C</kbd></span></li>
-          <li><span class="step-num">4</span><span>Hacé click en el área de abajo y pegá con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">V</kbd></span></li>
+          <li><span class="step-num">3</span><span>Copiá con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">C</kbd></span></li>
+          <li><span class="step-num">4</span><span>Pegá abajo con <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">V</kbd></span></li>
           <li><span class="step-num">5</span><span>Presioná <strong style="color:var(--ambar)">Procesar datos</strong></span></li>
         </ol>
       </div>
       <textarea class="paste-area" id="pasteArea" placeholder="Pegá acá el contenido copiado del Excel (Ctrl+V)…"></textarea>
-      <div class="paste-hint">
-        <span class="pulse"></span>
-        <span>Esperando datos pegados desde Excel</span>
-      </div>
+      <div class="paste-hint"><span class="pulse"></span><span>Esperando datos pegados desde Excel</span></div>
       <button class="btn-secondary" onclick="processPasted()">▶ Procesar datos</button>
+    </div>
+  </div>
+
+  <!-- ── LISTA DE BAJAS ── -->
+  <div class="suppression-card">
+    <div class="suppression-header" onclick="toggleSuppressionPanel()">
+      <div class="suppression-header-left">
+        <h3>🚫 Lista de bajas</h3>
+        <span class="suppression-count" id="suppressionCount">0 mails</span>
+      </div>
+      <span class="suppression-chevron" id="suppressionChevron">▼</span>
+    </div>
+
+    <div class="suppression-body" id="suppressionBody">
+
+      <div class="unsubscribe-notice">
+        <strong>Link de baja para pegar en tus mails de Word:</strong>
+        <a class="unsubscribe-link" href="https://fcn-suite.netlify.app/unsubscribe" target="_blank">https://fcn-suite.netlify.app/unsubscribe</a>
+        Cuando un cliente complete el formulario, recibís una notificación por mail. Copiá el mail que te llega y agregalo acá abajo — se va a filtrar automáticamente la próxima vez que proceses el Stock.
+      </div>
+
+      <div class="add-email-row">
+        <input class="add-email-input" type="email" id="newMailInput" placeholder="mail@ejemplo.com" onkeydown="if(event.key==='Enter') addToSuppressionList()">
+        <button class="btn-add" onclick="addToSuppressionList()">+ Agregar</button>
+      </div>
+
+      <div class="suppression-list-wrap" id="suppressionListWrap"></div>
+
+      <div class="suppression-actions">
+        <button class="btn-action" onclick="exportSuppressionList()">⬇ Exportar lista</button>
+        <button class="btn-action" onclick="document.getElementById('importInput').click()">⬆ Importar lista</button>
+        <input type="file" id="importInput" accept=".txt,.csv" style="display:none" onchange="importSuppressionList(this)">
+        <button class="btn-action" style="color:var(--danger);border-color:rgba(192,69,59,.3)" onclick="clearSuppressionList()">🗑 Vaciar lista</button>
+      </div>
     </div>
   </div>
 
 </div>
 
 <script>
-// ── Config IndexedDB (igual que el SUIT) ──────────────────────
+// ── IndexedDB (Suite) ─────────────────────────────────────────
 const DB_NAME  = 'fcn_shared_v1';
 const DB_STORE = 'files';
 const SHARED_KEY = 'stock';
-
-// Leer el usuario del query param que inyecta el SUIT (?u=username)
-const urlUser = new URLSearchParams(location.search).get('u') || '';
+const urlUser  = new URLSearchParams(location.search).get('u') || '';
 function userKey(k) { return urlUser ? urlUser + '_' + k : k; }
 
-let cleanedData = null;
-
-const statsGrid  = document.getElementById('statsGrid');
-const downloadBtn= document.getElementById('downloadBtn');
-const logEl      = document.getElementById('log');
-
-// ── IndexedDB ─────────────────────────────────────────────────
 function openDB() {
   return new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -503,7 +450,6 @@ function openDB() {
     req.onerror    = () => rej(new Error('IndexedDB no disponible'));
   });
 }
-
 async function getSharedFile(key) {
   try {
     const db = await openDB();
@@ -516,51 +462,117 @@ async function getSharedFile(key) {
   } catch { return null; }
 }
 
-// ── BroadcastChannel: escucha actualizaciones del SUIT ────────
+// BroadcastChannel
 if (typeof BroadcastChannel !== 'undefined') {
-  const bc = new BroadcastChannel('fcn_shared');
-  bc.onmessage = e => {
-    if (e.data?.type === 'file_updated' && e.data?.rawKey === SHARED_KEY) {
-      loadFromShared();
-    }
+  new BroadcastChannel('fcn_shared').onmessage = e => {
+    if (e.data?.type === 'file_updated' && e.data?.rawKey === SHARED_KEY) loadFromShared();
   };
 }
 
-// ── Carga automática desde el SUIT ───────────────────────────
+// ── Lista de supresión (localStorage) ────────────────────────
+const SUPPRESSION_KEY = 'fcn_suppression_list';
+
+function getSuppressionList() {
+  try { return JSON.parse(localStorage.getItem(SUPPRESSION_KEY)) || []; }
+  catch { return []; }
+}
+function saveSuppressionList(list) {
+  localStorage.setItem(SUPPRESSION_KEY, JSON.stringify(list));
+  renderSuppressionList();
+}
+function addToSuppressionList() {
+  const input = document.getElementById('newMailInput');
+  const mail  = input.value.trim().toLowerCase();
+  if (!mail || !mail.includes('@')) return;
+  const list = getSuppressionList();
+  if (!list.includes(mail)) { list.push(mail); saveSuppressionList(list); }
+  input.value = '';
+  input.focus();
+}
+function removeFromSuppressionList(mail) {
+  saveSuppressionList(getSuppressionList().filter(m => m !== mail));
+}
+function clearSuppressionList() {
+  if (!confirm('¿Vaciar toda la lista de bajas?')) return;
+  saveSuppressionList([]);
+}
+function renderSuppressionList() {
+  const list = getSuppressionList();
+  const wrap = document.getElementById('suppressionListWrap');
+  document.getElementById('suppressionCount').textContent = list.length + (list.length === 1 ? ' mail' : ' mails');
+
+  if (!list.length) {
+    wrap.innerHTML = '<div class="suppression-empty">La lista está vacía — los mails agregados acá se filtran automáticamente del resultado.</div>';
+    return;
+  }
+  wrap.innerHTML = list.map(mail => `
+    <div class="suppression-item">
+      <span class="suppression-item-mail">${mail}</span>
+      <button class="btn-remove-mail" onclick="removeFromSuppressionList('${mail}')" title="Quitar">×</button>
+    </div>`).join('');
+}
+function exportSuppressionList() {
+  const list = getSuppressionList();
+  if (!list.length) return;
+  const blob = new Blob([list.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'bajas_fcn.txt';
+  a.click();
+}
+function importSuppressionList(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split(/\r?\n/).map(l => l.trim().toLowerCase()).filter(l => l.includes('@'));
+    const list  = [...new Set([...getSuppressionList(), ...lines])];
+    saveSuppressionList(list);
+    addLog('Importados ' + lines.length + ' mails a la lista de bajas.', 'info');
+    logEl.classList.remove('hidden');
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+function toggleSuppressionPanel() {
+  const body    = document.getElementById('suppressionBody');
+  const chevron = document.getElementById('suppressionChevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ── Variables globales ────────────────────────────────────────
+let cleanedData = null;
+const statsGrid  = document.getElementById('statsGrid');
+const downloadBtn= document.getElementById('downloadBtn');
+const logEl      = document.getElementById('log');
+
+// ── Carga desde Suite ─────────────────────────────────────────
 async function loadFromShared() {
   const entry = await getSharedFile(userKey(SHARED_KEY));
   const banner = document.getElementById('sharedBanner');
   const notice = document.getElementById('noSharedNotice');
+  if (!entry) { banner.classList.add('hidden'); notice.classList.remove('hidden'); return; }
 
-  if (!entry) {
-    banner.classList.add('hidden');
-    notice.classList.remove('hidden');
-    return;
-  }
-
-  // Mostrar banner con nombre y timestamp
   const ts = new Date(entry.ts).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   document.getElementById('sharedFileName').textContent = '✓ ' + entry.name + ' — cargado desde el Suite';
   document.getElementById('sharedFileTs').textContent   = 'Última actualización: ' + ts;
   banner.classList.remove('hidden');
   notice.classList.add('hidden');
 
-  // Procesar
   resetResults();
   addLog('Leyendo "' + entry.name + '" desde archivos compartidos…');
   try {
-    const wb   = XLSX.read(entry.data, { type: 'array' });
-    const ws   = wb.Sheets[wb.SheetNames[0]];
-    const raw  = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const wb  = XLSX.read(entry.data, { type: 'array' });
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
     addLog('Filas encontradas: ' + raw.length);
-
     const keys      = Object.keys(raw[0] || {});
     const nombreKey = keys.find(k => k.toLowerCase().includes('nombre')) || 'Nombre';
     const mailKey   = keys.find(k => k.toLowerCase().includes('mail'))   || 'Mail';
     addLog('Columnas: "' + nombreKey + '" · "' + mailKey + '"');
-
     showResults(processRows(raw, nombreKey, mailKey));
-  } catch (err) { addLog('Error procesando: ' + err.message, 'warn'); }
+  } catch (err) { addLog('Error: ' + err.message, 'warn'); }
 }
 
 // ── Tabs ──────────────────────────────────────────────────────
@@ -573,10 +585,8 @@ function switchTab(tab) {
 }
 
 function resetResults() {
-  logEl.innerHTML = '';
-  logEl.classList.add('hidden');
-  statsGrid.classList.add('hidden');
-  downloadBtn.classList.add('hidden');
+  logEl.innerHTML = ''; logEl.classList.add('hidden');
+  statsGrid.classList.add('hidden'); downloadBtn.classList.add('hidden');
   cleanedData = null;
 }
 
@@ -589,11 +599,13 @@ function addLog(msg, type = '') {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-// ── Lógica compartida de limpieza ─────────────────────────────
+// ── Limpieza ──────────────────────────────────────────────────
 function processRows(raw, nombreKey, mailKey) {
-  const seenMails  = new Set();
-  const mainRows   = [];
-  const extraMails = [];
+  const suppressed   = new Set(getSuppressionList());
+  const seenMails    = new Set();
+  const mainRows     = [];
+  const extraMails   = [];
+  let   suppressedCount = 0;
 
   for (const row of raw) {
     const nombre  = String(row[nombreKey] || '').trim();
@@ -602,29 +614,34 @@ function processRows(raw, nombreKey, mailKey) {
 
     const parts     = mailRaw.split(';').map(m => m.trim()).filter(Boolean);
     const firstMail = parts[0].toLowerCase();
-    if (seenMails.has(firstMail)) continue;
+
+    if (suppressed.has(firstMail)) { suppressedCount++; continue; }
+    if (seenMails.has(firstMail))  continue;
 
     seenMails.add(firstMail);
     mainRows.push({ Nombre: nombre, Mail: parts[0] });
 
     for (let i = 1; i < parts.length; i++) {
       const extra = parts[i].toLowerCase();
+      if (suppressed.has(extra)) { suppressedCount++; continue; }
       if (!seenMails.has(extra)) { seenMails.add(extra); extraMails.push(parts[i]); }
     }
   }
 
   const extraRows = extraMails.map(m => ({ Nombre: '', Mail: m }));
-  return { finalRows: [...mainRows, ...extraRows], originalCount: raw.length, extraRows };
+  return { finalRows: [...mainRows, ...extraRows], originalCount: raw.length, extraRows, suppressedCount };
 }
 
-function showResults({ finalRows, originalCount, extraRows }) {
-  addLog('Sin mail o duplicados eliminados: ' + (originalCount - finalRows.length), 'warn');
+function showResults({ finalRows, originalCount, extraRows, suppressedCount }) {
+  addLog('Sin mail o duplicados eliminados: ' + (originalCount - finalRows.length - suppressedCount), 'warn');
+  if (suppressedCount) addLog('Mails de la lista de bajas filtrados: ' + suppressedCount, 'info');
   if (extraRows.length) addLog('Mails extra (sin titular) al final: ' + extraRows.length);
   addLog('Total filas en resultado: ' + finalRows.length, 'ok');
 
-  document.getElementById('statTotal').textContent   = originalCount;
-  document.getElementById('statClean').textContent   = finalRows.length;
-  document.getElementById('statRemoved').textContent = Math.max(0, originalCount - finalRows.length);
+  document.getElementById('statTotal').textContent     = originalCount;
+  document.getElementById('statClean').textContent     = finalRows.length;
+  document.getElementById('statRemoved').textContent   = Math.max(0, originalCount - finalRows.length - suppressedCount);
+  document.getElementById('statSuppressed').textContent= suppressedCount;
   statsGrid.classList.remove('hidden');
 
   cleanedData = finalRows;
@@ -632,63 +649,50 @@ function showResults({ finalRows, originalCount, extraRows }) {
   addLog('¡Listo! Hacé click en descargar.', 'ok');
 }
 
-// ── Tab: subir archivo manualmente ────────────────────────────
-const dropZone  = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const fileNameEl= document.getElementById('fileName');
+// ── Subir archivo ─────────────────────────────────────────────
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
+const fileNameEl = document.getElementById('fileName');
 
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(file) {
   resetResults();
-  fileNameEl.textContent = file.name;
-  fileNameEl.classList.remove('hidden');
+  fileNameEl.textContent = file.name; fileNameEl.classList.remove('hidden');
   addLog('Leyendo archivo: ' + file.name);
-
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb   = XLSX.read(e.target.result, { type: 'array' });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const raw  = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const wb  = XLSX.read(e.target.result, { type: 'array' });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
       addLog('Filas encontradas: ' + raw.length);
-
       const keys      = Object.keys(raw[0] || {});
       const nombreKey = keys.find(k => k.toLowerCase().includes('nombre')) || 'Nombre';
       const mailKey   = keys.find(k => k.toLowerCase().includes('mail'))   || 'Mail';
       addLog('Columnas: "' + nombreKey + '" · "' + mailKey + '"');
-
       showResults(processRows(raw, nombreKey, mailKey));
     } catch (err) { addLog('Error: ' + err.message, 'warn'); }
   };
   reader.readAsArrayBuffer(file);
 }
 
-// ── Tab: pegar desde Excel encriptado ─────────────────────────
+// ── Pegar ─────────────────────────────────────────────────────
 function processPasted() {
   const text = document.getElementById('pasteArea').value.trim();
   if (!text) { resetResults(); addLog('No hay datos. Pegá el contenido del Excel primero.', 'warn'); logEl.classList.remove('hidden'); return; }
-
   resetResults();
   addLog('Procesando datos pegados…');
-
   const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) { addLog('Se necesita al menos una fila de encabezado y una de datos.', 'warn'); logEl.classList.remove('hidden'); return; }
-
+  if (lines.length < 2) { addLog('Se necesita encabezado y al menos una fila.', 'warn'); logEl.classList.remove('hidden'); return; }
   const headers   = lines[0].split('\t').map(h => h.trim());
   const nombreIdx = headers.findIndex(h => h.toLowerCase().includes('nombre'));
   const mailIdx   = headers.findIndex(h => h.toLowerCase().includes('mail'));
-
   addLog('Encabezados: ' + headers.join(' · '));
-  if (mailIdx === -1) { addLog('No se encontró columna "Mail" en los encabezados.', 'warn'); logEl.classList.remove('hidden'); return; }
-
+  if (mailIdx === -1) { addLog('No se encontró columna "Mail".', 'warn'); logEl.classList.remove('hidden'); return; }
   const raw = lines.slice(1).map(line => {
     const cols = line.split('\t');
     return { Nombre: nombreIdx >= 0 ? (cols[nombreIdx] || '') : '', Mail: cols[mailIdx] || '' };
@@ -708,7 +712,8 @@ function download() {
   addLog('Archivo descargado correctamente.', 'ok');
 }
 
-// ── Init: intentar cargar desde el Suite al abrir ────────────
+// ── Init ──────────────────────────────────────────────────────
+renderSuppressionList();
 loadFromShared();
 </script>
 </body>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Darme de baja — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #081917;
+  --surface: #0E2622;
+  --border:  #1E3A34;
+  --jade:    #1C8C5F;
+  --jade-d:  rgba(28,140,95,.12);
+  --ambar:   #DBA03C;
+  --danger:  #C0453B;
+  --text:    #EAF1EE;
+  --muted:   #6C817C;
+  --dim:     #3C5752;
+  --font-d:  'Spectral', Georgia, serif;
+  --font-s:  'Hanken Grotesk', system-ui, sans-serif;
+  --font-m:  'IBM Plex Mono', ui-monospace, monospace;
+  --r: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100vh; }
+body {
+  font-family: var(--font-s);
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: .5;
+}
+.card {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 44px 40px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--ambar);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 13px;
+  color: var(--ambar);
+}
+.brand-name {
+  font-family: var(--font-d);
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--text);
+}
+.brand-name span { color: var(--ambar); }
+
+h1 {
+  font-family: var(--font-d);
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 32px;
+}
+
+/* Form */
+.form-group { text-align: left; margin-bottom: 16px; }
+label {
+  display: block;
+  font-family: var(--font-m);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+input[type="email"], input[type="text"] {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: var(--font-s);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+input:focus { border-color: var(--jade); }
+input::placeholder { color: var(--dim); }
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--jade);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-family: var(--font-s);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+  margin-top: 4px;
+}
+.btn:hover { background: #22a870; }
+
+/* Success state */
+.success {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--jade-d);
+  border: 1.5px solid rgba(28,140,95,.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.success h2 {
+  font-family: var(--font-d);
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--text);
+}
+.success p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 300px;
+  text-align: center;
+}
+.footer-note {
+  margin-top: 28px;
+  font-family: var(--font-m);
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: .06em;
+}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="brand">
+    <div class="brand-mark">FN</div>
+    <span class="brand-name">finanzascon<span>nico</span></span>
+  </div>
+
+  <!-- Formulario -->
+  <div id="formSection">
+    <h1>Darme de baja</h1>
+    <p class="subtitle">Si no querés recibir más comunicaciones de nuestro equipo, completá tu dirección de mail y te removemos de la lista.</p>
+
+    <form name="bajas" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="unsubForm">
+      <input type="hidden" name="form-name" value="bajas">
+      <div style="display:none"><input name="bot-field"></div>
+
+      <div class="form-group">
+        <label for="email">Tu dirección de mail</label>
+        <input type="email" id="email" name="email" placeholder="ejemplo@mail.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="nombre">Tu nombre <span style="color:var(--dim)">(opcional)</span></label>
+        <input type="text" id="nombre" name="nombre" placeholder="Juan García">
+      </div>
+
+      <button type="submit" class="btn">Darme de baja</button>
+    </form>
+
+    <p class="footer-note">FinanzasconNico · Acceso al equipo interno</p>
+  </div>
+
+  <!-- Éxito -->
+  <div class="success" id="successSection">
+    <div class="success-icon">✓</div>
+    <h2>¡Listo!</h2>
+    <p>Recibimos tu solicitud. En las próximas 48 horas tu mail quedará removido de todas nuestras listas.</p>
+    <p class="footer-note">FinanzasconNico · Si tenés dudas escribinos directamente.</p>
+  </div>
+
+</div>
+
+<script>
+  const form = document.getElementById('unsubForm');
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = new FormData(form);
+    try {
+      await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(data).toString() });
+      document.getElementById('formSection').style.display = 'none';
+      const s = document.getElementById('successSection');
+      s.style.display = 'flex';
+    } catch {
+      alert('Hubo un error. Por favor intentá de nuevo o escribinos directamente.');
+    }
+  });
+</script>
+</body>
+</html>
