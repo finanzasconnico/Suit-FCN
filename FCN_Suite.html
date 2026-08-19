@@ -1163,6 +1163,25 @@ function renderOnboardBanner(list) {
     </label>`).join('');
 }
 
+// Recordatorio suave (toast, no bloqueante) cuando algún archivo quedó
+// desactualizado — solo al abrir el Suite (no en cada upload) y como
+// máximo una vez por día por archivo, para que no moleste.
+const STALE_REMINDER_KEY = 'fcn_stale_reminder_seen';
+let isFirstDashboardLoad = true;
+function maybeShowStaleReminder(list) {
+  const stale = list.filter(x => x.status === 'stale');
+  if (!stale.length) return;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  let seen = {};
+  try { seen = JSON.parse(localStorage.getItem(STALE_REMINDER_KEY) || '{}'); } catch {}
+  const pending = stale.filter(x => seen[x.sf.key] !== todayKey);
+  if (!pending.length) return;
+  pending.forEach(x => { seen[x.sf.key] = todayKey; });
+  localStorage.setItem(STALE_REMINDER_KEY, JSON.stringify(seen));
+  const names = pending.map(x => x.sf.name).join(' y ');
+  showToast(`🔔 ${names} ${pending.length > 1 ? 'están desactualizados' : 'está desactualizado'} — capaz conviene actualizarlo`, 6500);
+}
+
 async function buildDashboard() {
   const [tenenciaEntry, preciosEntry] = await Promise.all([
     getSharedFile(userKey('tenencia')),
@@ -1181,6 +1200,7 @@ async function buildDashboard() {
   await renderDashFilesStatus(filesList);
   updateFilesStatusPill(filesList);
   renderOnboardBanner(filesList);
+  if (isFirstDashboardLoad) { isFirstDashboardLoad = false; maybeShowStaleReminder(filesList); }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1478,12 +1498,12 @@ function setActiveTab(toolId) {
 
 // ── TOAST ──
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, duration = 3000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.remove('hidden');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), duration);
 }
 
 // ── UTILS ──
