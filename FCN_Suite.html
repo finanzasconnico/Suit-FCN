@@ -90,6 +90,40 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn-logout{background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:4px 11px;color:var(--muted);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;cursor:pointer;transition:all .15s;text-transform:uppercase;}
 .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
 
+/* ── ESTADO DE ARCHIVOS (pill persistente en el topbar) ── */
+.files-status-picker{position:relative;flex-shrink:0;}
+.files-status-pill{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 10px;cursor:pointer;transition:all .2s;font-family:var(--font-s);}
+.files-status-pill:hover{border-color:rgba(28,140,95,.5);}
+.files-status-icon{font-size:12px;flex-shrink:0;}
+.files-status-text{font-size:12px;color:var(--muted);white-space:nowrap;}
+.files-status-badge{font-family:var(--font-m);font-size:9px;font-weight:700;color:#fff;background:var(--dim);border-radius:9px;min-width:16px;height:16px;padding:0 5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+/* ok: todo cargado y fresco → pill discreta, sin badge */
+.files-status-pill.ok .files-status-icon{opacity:.55;}
+/* warn: archivos con fallback automático o desactualizados → ámbar */
+.files-status-pill.warn{border-color:rgba(219,160,60,.55);background:var(--ambar-d);}
+.files-status-pill.warn .files-status-text{color:var(--ambar);}
+.files-status-pill.warn .files-status-badge{background:var(--ambar);color:#1a1400;}
+/* critical: falta un archivo sin fallback (Tenencia / Stock) → rojo, pulsa para llamar la atención */
+.files-status-pill.critical{border-color:rgba(192,69,59,.6);background:var(--danger-d);}
+.files-status-pill.critical .files-status-text{color:var(--danger);}
+.files-status-pill.critical .files-status-badge{background:var(--danger);animation:fsdPulse 1.8s ease-in-out infinite;}
+@keyframes fsdPulse{0%,100%{box-shadow:0 0 0 0 rgba(192,69,59,.55);}50%{box-shadow:0 0 0 4px rgba(192,69,59,0);}}
+.files-status-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;width:300px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;overflow:hidden;}
+.files-status-dropdown.open{display:block;}
+.fsd-head{padding:11px 14px;font-family:var(--font-d);font-size:12.5px;color:var(--text);border-bottom:1px solid var(--border);}
+.fsd-list{max-height:280px;overflow-y:auto;}
+.fsd-row{display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);}
+.fsd-row:last-child{border-bottom:none;}
+.fsd-row:hover{background:var(--jade-d);}
+.fsd-name{font-size:11.5px;color:var(--text);flex-shrink:0;}
+.fsd-sub{font-size:10px;color:var(--muted);text-align:right;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fsd-row.miss .fsd-sub{color:var(--danger);}
+.fsd-row.miss .dash-filedot{background:var(--danger);}
+.fsd-row.auto .fsd-sub,.fsd-row.stale .fsd-sub{color:var(--ambar);}
+.fsd-foot{padding:8px;border-top:1px solid var(--border);}
+.fsd-go-btn{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:7px;color:var(--text);font-family:var(--font-s);font-size:11px;cursor:pointer;transition:all .15s;}
+.fsd-go-btn:hover{border-color:var(--jade);color:var(--jade);}
+
 /* ── CLIENTE ACTIVO ── */
 .client-picker{position:relative;flex-shrink:0;}
 .client-pill{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 10px;cursor:pointer;transition:border-color .2s;font-family:var(--font-s);max-width:200px;}
@@ -125,6 +159,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .hub-panel.active{display:block;}
 
 /* ── HOME ── */
+.onboard-banner{max-width:960px;margin:0 auto 20px;display:flex;gap:14px;align-items:flex-start;background:var(--danger-d);border:1px solid rgba(192,69,59,.4);border-radius:10px;padding:18px 20px;}
+.onboard-banner-icon{font-size:22px;flex-shrink:0;line-height:1;}
+.onboard-banner-title{font-family:var(--font-d);font-size:14px;color:var(--text);margin-bottom:4px;}
+.onboard-banner-sub{font-size:11.5px;color:var(--muted);line-height:1.6;max-width:640px;margin-bottom:12px;}
+.onboard-banner-files{display:flex;flex-wrap:wrap;gap:10px;}
+.onboard-file-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--danger);color:var(--danger);border-radius:var(--r);padding:8px 14px;font-family:var(--font-s);font-size:11.5px;cursor:pointer;transition:all .15s;}
+.onboard-file-btn:hover{background:var(--danger-d);}
+.onboard-file-btn input{display:none;}
 .home-hero{max-width:960px;margin:0 auto 24px;}
 .home-greeting{font-family:var(--font-d);font-size:13px;color:var(--muted);margin-bottom:4px;}
 .home-hero h1{font-family:var(--font-d);font-size:26px;font-weight:300;color:var(--text);margin-bottom:6px;}
@@ -246,6 +288,20 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="topbar-tools" id="topbar-tools"></div>
     <button class="topbar-scroll-hint" id="topbar-scroll-hint" onclick="document.getElementById('topbar-tools').scrollBy({left:160,behavior:'smooth'})" title="Más herramientas →">›</button>
     <div class="topbar-right">
+      <div class="files-status-picker" id="files-status-picker">
+        <button class="files-status-pill" id="files-status-pill" onclick="toggleFilesStatusDropdown(event)" title="Estado de los archivos compartidos">
+          <span class="files-status-icon">🗂</span>
+          <span class="files-status-text">Archivos</span>
+          <span class="files-status-badge" id="files-status-badge" style="display:none;"></span>
+        </button>
+        <div class="files-status-dropdown" id="files-status-dropdown">
+          <div class="fsd-head">Estado de archivos</div>
+          <div class="fsd-list" id="files-status-list"></div>
+          <div class="fsd-foot">
+            <button class="fsd-go-btn" onclick="closeFilesStatusDropdown();showFiles();">🗂 Ir a Archivos →</button>
+          </div>
+        </div>
+      </div>
       <div class="client-picker" id="client-picker">
         <button class="client-pill" id="client-pill-btn" onclick="toggleClientPicker()" title="Elegir cliente activo — precarga su cartera en Rotador RV y Scanner ONs">
           <span class="client-pill-icon">👤</span>
@@ -273,6 +329,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
     <!-- HOME PANEL -->
     <div class="hub-panel" id="home-panel">
+      <div class="onboard-banner" id="onboard-banner" style="display:none;">
+        <div class="onboard-banner-icon">👋</div>
+        <div class="onboard-banner-body">
+          <div class="onboard-banner-title">Para arrancar, subí estos archivos</div>
+          <div class="onboard-banner-sub">Sin esto la Suite no tiene datos de tus clientes para mostrar — dashboard, holders por ticker, alertas de cartera, etc. Se sube una sola vez por navegador.</div>
+          <div class="onboard-banner-files" id="onboard-banner-files"></div>
+        </div>
+      </div>
       <div class="home-hero">
         <div class="home-greeting" id="home-greeting">Buen día</div>
         <h1>¿Qué herramienta necesitás hoy?</h1>
@@ -601,6 +665,7 @@ function showApp() {
   buildDashboard();
   buildFilesPanel();
   initClientePicker();
+  initFilesStatusPicker();
   showHome();
   setupTopbarScroll();
 }
@@ -965,20 +1030,137 @@ function renderDashVentaSugerida(tenencia, precios) {
 
 function dashStaleMs(key) { return key === 'precios_objetivo' ? 40 * 86400000 : 10 * 86400000; }
 
-async function renderDashFilesStatus() {
-  const el = document.getElementById('dash-files-status');
-  if (!el) return;
-  const rows = [];
+// ══════════════════════════════════════════════════════════════
+//  ESTADO DE ARCHIVOS — fuente única de verdad, usada por la pill del
+//  topbar (siempre visible, sea cual sea la herramienta abierta), el
+//  cartelito de bienvenida en Inicio y la tarjeta "Estado de archivos"
+//  del dashboard. Un archivo "crítico" (Tenencia, Stock) tiene datos de
+//  clientes y NUNCA se publica: si falta acá, hay que subirlo sí o sí en
+//  esta compu. Monitor y Precios Objetivo sí pueden autocargarse desde
+//  data/ (ver STATIC_PUBLISH_KEYS) — si ese fallback funciona, no son un
+//  bloqueo real aunque no estén subidos puntualmente en este navegador.
+//
+//  status: 'ok' (cargado y fresco) · 'stale' (cargado pero viejo) ·
+//  'auto' (no subido acá, pero se autocarga desde data/) · 'miss' (bloqueo real)
+// ══════════════════════════════════════════════════════════════
+const staticFallbackCache = {};
+async function hasStaticFallback(key) {
+  const fixedName = STATIC_PUBLISH_KEYS[key];
+  if (!fixedName) return false;
+  if (key in staticFallbackCache) return staticFallbackCache[key];
+  try {
+    const r = await fetch('data/' + fixedName, { method: 'HEAD', cache: 'no-store' });
+    staticFallbackCache[key] = !!r.ok;
+  } catch { staticFallbackCache[key] = false; }
+  return staticFallbackCache[key];
+}
+
+async function getFilesStatusList() {
+  const out = [];
   for (const sf of SHARED_FILES) {
     const entry = await getSharedFile(userKey(sf.key));
-    let cls = 'miss', text = 'Sin archivo';
+    let status;
     if (entry) {
-      cls = (Date.now() - entry.ts > dashStaleMs(sf.key)) ? 'stale' : '';
-      text = relTime(entry.ts);
+      status = (Date.now() - entry.ts > dashStaleMs(sf.key)) ? 'stale' : 'ok';
+    } else if (await hasStaticFallback(sf.key)) {
+      status = 'auto';
+    } else {
+      status = 'miss';
     }
-    rows.push(`<div class="dash-row"><span class="dash-filedot ${cls}"></span><span class="dash-row-name">${escHtml(sf.name)}</span><span class="dash-row-pct" style="color:var(--muted);font-weight:400">${text}</span></div>`);
+    out.push({ sf, entry, status });
   }
-  el.innerHTML = rows.join('');
+  return out;
+}
+
+function filesStatusSubtext({ sf, entry, status }) {
+  if (status === 'ok')    return relTime(entry.ts);
+  if (status === 'stale') return 'Desactualizado · ' + relTime(entry.ts);
+  if (status === 'auto')  return 'Autocargado desde la web · no subido en esta compu';
+  return 'Sin archivo — necesario acá';
+}
+
+async function renderDashFilesStatus(list) {
+  const el = document.getElementById('dash-files-status');
+  if (!el) return;
+  el.innerHTML = list.map(row => {
+    const cls = row.status === 'ok' ? '' : (row.status === 'miss' ? 'miss' : 'stale');
+    return `<div class="dash-row"><span class="dash-filedot ${cls}"></span><span class="dash-row-name">${escHtml(row.sf.name)}</span><span class="dash-row-pct" style="color:var(--muted);font-weight:400">${filesStatusSubtext(row)}</span></div>`;
+  }).join('');
+}
+
+function renderFilesStatusDropdown(list) {
+  const box = document.getElementById('files-status-list');
+  if (!box) return;
+  box.innerHTML = list.map(row => {
+    const dotCls = row.status === 'ok' ? '' : (row.status === 'miss' ? 'miss' : 'stale');
+    return `<div class="fsd-row ${row.status}" onclick="closeFilesStatusDropdown();showFiles();">
+      <span class="dash-filedot ${dotCls}"></span>
+      <span class="fsd-name">${escHtml(row.sf.name)}</span>
+      <span class="fsd-sub">${filesStatusSubtext(row)}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateFilesStatusPill(list) {
+  const pill  = document.getElementById('files-status-pill');
+  const badge = document.getElementById('files-status-badge');
+  if (!pill || !badge) return;
+  renderFilesStatusDropdown(list);
+  const missing  = list.filter(x => x.status === 'miss');
+  const toReview = list.filter(x => x.status === 'stale' || x.status === 'auto');
+  pill.classList.remove('ok', 'warn', 'critical');
+  if (missing.length) {
+    pill.classList.add('critical');
+    badge.style.display = 'flex';
+    badge.textContent = String(missing.length);
+    pill.title = '⚠ Falta subir: ' + missing.map(x => x.sf.name).join(', ');
+  } else if (toReview.length) {
+    pill.classList.add('warn');
+    badge.style.display = 'flex';
+    badge.textContent = String(toReview.length);
+    pill.title = 'Para revisar: ' + toReview.map(x => x.sf.name).join(', ');
+  } else {
+    pill.classList.add('ok');
+    badge.style.display = 'none';
+    pill.title = 'Todos los archivos están cargados y al día';
+  }
+}
+
+function toggleFilesStatusDropdown(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('files-status-dropdown');
+  if (!dd) return;
+  if (dd.classList.contains('open')) { closeFilesStatusDropdown(); return; }
+  closeClientPicker();
+  dd.classList.add('open');
+}
+
+function closeFilesStatusDropdown() {
+  const dd = document.getElementById('files-status-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function initFilesStatusPicker() {
+  document.addEventListener('click', e => {
+    const picker = document.getElementById('files-status-picker');
+    if (picker && !picker.contains(e.target)) closeFilesStatusDropdown();
+  });
+}
+
+// Cartelito de bienvenida en Inicio: aparece solo si falta algún archivo
+// crítico (sin fallback público) y ofrece subirlo ahí mismo, sin navegar.
+function renderOnboardBanner(list) {
+  const banner = document.getElementById('onboard-banner');
+  const box    = document.getElementById('onboard-banner-files');
+  if (!banner || !box) return;
+  const missing = list.filter(x => x.status === 'miss');
+  if (!missing.length) { banner.style.display = 'none'; return; }
+  banner.style.display = 'flex';
+  box.innerHTML = missing.map(({ sf }) => `
+    <label class="onboard-file-btn" title="${escHtml(sf.hint)}">
+      <input type="file" accept="${sf.accept}" onchange="onFileSelected('${sf.key}', this)">
+      ${sf.icon} Subir ${escHtml(sf.name)}
+    </label>`).join('');
 }
 
 async function buildDashboard() {
@@ -995,7 +1177,10 @@ async function buildDashboard() {
   renderDashTopTickers(tenencia);
   renderDashOportunidades(precios);
   renderDashVentaSugerida(tenencia, precios);
-  await renderDashFilesStatus();
+  const filesList = await getFilesStatusList();
+  await renderDashFilesStatus(filesList);
+  updateFilesStatusPill(filesList);
+  renderOnboardBanner(filesList);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1039,6 +1224,7 @@ function toggleClientPicker() {
   const dd = document.getElementById('client-dropdown');
   if (!dd) return;
   if (dd.classList.contains('open')) { closeClientPicker(); return; }
+  closeFilesStatusDropdown();
   dd.classList.add('open');
   renderClientResults();
   const input = document.getElementById('client-search-input');
