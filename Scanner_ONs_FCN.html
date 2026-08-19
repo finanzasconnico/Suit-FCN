@@ -147,70 +147,18 @@ tbody tr.highlight-high{background:rgba(28,140,95,0.05);}
 tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .export-row{display:flex;gap:8px;flex-wrap:wrap;}
 
-/* ── ROTACION TAB ── */
-.rot-selector{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
-.rot-selector label{font-size:11px;color:var(--ink-muted);font-weight:500;white-space:nowrap;font-family:var(--font-sans);}
-.rot-section-title{font-family:var(--font-display);font-size:16px;font-weight:400;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-.rot-section{margin-bottom:24px;}
 .razones-cell{display:flex;gap:4px;flex-wrap:wrap;}
 .razon-pill{display:inline-flex;align-items:center;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:500;background:rgba(28,140,95,0.12);color:#4ade80;border:1px solid rgba(28,140,95,0.25);}
-
-/* ── AUTOCOMPLETE ── */
-.autocomplete-wrap{position:relative;min-width:240px;}
-.autocomplete-wrap input{width:100%;padding:7px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:12px;outline:none;transition:border-color .2s;}
-.autocomplete-wrap input::placeholder{color:var(--ink-muted);}
-.autocomplete-wrap input:focus{border-color:var(--ambar);}
-.autocomplete-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);max-height:220px;overflow-y:auto;z-index:100;display:none;}
-.autocomplete-dropdown.open{display:block;}
-.autocomplete-dropdown::-webkit-scrollbar{width:3px;}
-.autocomplete-dropdown::-webkit-scrollbar-thumb{background:var(--jade);}
-.autocomplete-option{padding:8px 12px;font-size:12px;color:var(--text);cursor:pointer;transition:background .12s;font-family:var(--font-sans);}
-.autocomplete-option:hover,.autocomplete-option.focused{background:rgba(219,160,60,0.1);}
 
 /* ── EDIT TIR ── */
 .tir-edit-btn{font-size:10px;color:var(--ink-muted);cursor:pointer;margin-left:5px;opacity:.7;transition:opacity .15s;user-select:none;}
 .tir-edit-btn:hover{opacity:1;}
 .tir-input-inline{width:65px;padding:2px 5px;background:rgba(255,255,255,.06);border:1px solid rgba(219,160,60,.5);border-radius:3px;color:var(--ambar);font-family:var(--font-mono);font-size:12px;outline:none;}
 
-/* ── FILTRO CALIFICACION SUGERIDAS ── */
-.calif-toggles{display:flex;gap:4px;flex-wrap:wrap;}
-.calif-toggle{padding:3px 9px;border-radius:10px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--ink-muted);transition:all .15s;font-family:var(--font-sans);}
-.calif-toggle.active{background:var(--ambar);color:var(--bg);border-color:var(--ambar);}
-
 /* ── TOOLTIP ── */
 .tooltip-wrap{position:relative;}
 .tooltip-bubble{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-size:10px;color:var(--text);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:50;}
 .tooltip-wrap:hover .tooltip-bubble{opacity:1;}
-
-/* ── FORM LICITACION ── */
-.lic-form{background:rgba(46,125,140,0.06);border:1px solid rgba(46,125,140,0.2);border-radius:var(--radius);padding:16px;margin-top:12px;display:none;}
-.lic-form.open{display:block;}
-.lic-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
-.lic-form-grid input,.lic-form-grid select{width:100%;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:11px;outline:none;}
-.lic-form-grid input::placeholder{color:var(--ink-muted);}
-.lic-form-actions{display:flex;gap:8px;}
-
-/* ── PREVIEW ROTACION ── */
-.preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
-@media(max-width:700px){.preview-grid{grid-template-columns:1fr;}}
-.preview-col-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-family:var(--font-sans);}
-.badge-sale{background:rgba(192,69,59,0.15);color:#E8837E;border:1px solid rgba(192,69,59,0.3);padding:2px 8px;border-radius:8px;font-size:9px;font-weight:600;}
-.badge-buy{background:rgba(28,140,95,0.15);color:#4ade80;border:1px solid rgba(28,140,95,0.3);padding:2px 8px;border-radius:8px;font-size:9px;font-weight:600;}
-.preview-card{background:rgba(14,38,34,0.8);border:1px solid var(--border);border-left:2px solid var(--ambar);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;position:relative;}
-.preview-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
-.preview-card-ticker{font-weight:700;color:var(--text);font-size:12px;font-family:var(--font-mono);}
-.preview-card-meta{font-size:10px;color:var(--ink-muted);margin-bottom:6px;font-family:var(--font-sans);}
-.preview-card-nums{font-size:11px;margin-bottom:6px;display:flex;gap:10px;flex-wrap:wrap;font-family:var(--font-mono);}
-.preview-card-remove{background:none;border:none;color:var(--ink-muted);cursor:pointer;font-size:14px;padding:0 2px;line-height:1;transition:color .15s;}
-.preview-card-remove:hover{color:var(--danger);}
-.preview-motivo{width:100%;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:3px;color:var(--text);font-family:var(--font-sans);font-size:10px;resize:none;outline:none;line-height:1.4;}
-.preview-motivo:focus{border-color:var(--ambar);}
-.preview-texto-wrap{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;}
-.preview-texto-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.preview-texto-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);font-family:var(--font-sans);}
-.preview-textarea{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:3px;color:var(--text);font-family:var(--font-sans);font-size:11px;line-height:1.7;padding:8px 10px;resize:vertical;outline:none;min-height:110px;}
-.preview-textarea:focus{border-color:var(--ambar);}
-.preview-empty{font-size:11px;color:var(--ink-muted);text-align:center;padding:16px 0;font-style:italic;font-family:var(--font-sans);}
 
 /* ── WPP ── */
 .wpp-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:var(--radius);font-family:var(--font-mono);font-size:9px;letter-spacing:.05em;cursor:pointer;border:1px solid rgba(37,211,102,.35);background:rgba(37,211,102,.1);color:#4ade80;transition:all .15s;text-decoration:none;}
@@ -446,7 +394,6 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
         <button class="tab-btn active" onclick="switchTab('tab-hoy')">⚡ Hoy</button>
         <button class="tab-btn" onclick="switchTab('tab-todas')">📋 Todas</button>
         <button class="tab-btn" onclick="switchTab('tab-resumen')">👤 Por cliente</button>
-        <button class="tab-btn" onclick="switchTab('tab-rotacion')">🔄 Rotación</button>
       </div>
 
       <!-- TAB: HOY -->
@@ -558,26 +505,6 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
         <div id="resumen-clientes"></div>
       </div>
 
-      <!-- TAB: ROTACIÓN (MEJORA 2) -->
-      <div class="tab-pane" id="tab-rotacion">
-        <div class="rot-selector">
-          <label>Cliente:</label>
-          <div class="autocomplete-wrap" id="autocomplete-wrap">
-            <input type="text" id="rot-cliente-input" placeholder="Buscar cliente..." autocomplete="off"
-              oninput="onRotClienteInput()" onfocus="onRotClienteFocus()" onkeydown="onRotClienteKey(event)">
-            <div class="autocomplete-dropdown" id="rot-dropdown"></div>
-          </div>
-          <button class="btn btn-gold btn-sm" onclick="descargarPresentacion()">⬇ Descargar presentación</button>
-        </div>
-        <div id="rot-content">
-          <div class="empty-state" style="padding:40px 0">
-            <div class="empty-icon">🔄</div>
-            <div class="empty-title">Buscá un cliente para ver su análisis de rotación</div>
-            <div class="empty-sub">Escribí el nombre en el buscador de arriba.</div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -595,7 +522,6 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     <div class="wpp-tpl-row">
       <button class="wpp-tpl-btn" onclick="usarTpl(this,'buenas')">📈 Buenas noticias</button>
       <button class="wpp-tpl-btn" onclick="usarTpl(this,'atencion')">⚠️ Atención</button>
-      <button class="wpp-tpl-btn" onclick="usarTpl(this,'rotacion')">🔄 Rotación sugerida</button>
       <button class="wpp-tpl-btn" onclick="usarTpl(this,'vencimiento')">📅 Vencimiento próximo</button>
       <button class="wpp-tpl-btn" onclick="usarTpl(this,'seguimiento')">👋 Seguimiento</button>
     </div>
@@ -644,55 +570,6 @@ let licitaciones = (() => {
 function saveLicitaciones() {
   try { localStorage.setItem('fcn-licitaciones', JSON.stringify(licitaciones)); } catch(e){}
 }
-
-// =================== AUTOCOMPLETE ===================
-
-function getClientesLista() {
-  return [...new Set(datosFusionados.map(d => d.cliente).filter(Boolean))].sort();
-}
-function onRotClienteInput() {
-  const val = document.getElementById('rot-cliente-input').value.toLowerCase().trim();
-  if (!val) { clienteActivo=''; cerrarDropdown(); renderRotacion(); return; }
-  mostrarDropdown(getClientesLista().filter(c => c.toLowerCase().includes(val)));
-  if (clienteActivo && clienteActivo.toLowerCase() !== document.getElementById('rot-cliente-input').value.toLowerCase()) clienteActivo='';
-}
-function onRotClienteFocus() {
-  const val = document.getElementById('rot-cliente-input').value.toLowerCase().trim();
-  const lista = val ? getClientesLista().filter(c=>c.toLowerCase().includes(val)) : getClientesLista();
-  if (lista.length>0) mostrarDropdown(lista);
-}
-function onRotClienteKey(e) {
-  const dd = document.getElementById('rot-dropdown');
-  const opts = dd.querySelectorAll('.autocomplete-option');
-  if (e.key==='ArrowDown') { e.preventDefault(); dropdownFocusIdx=Math.min(dropdownFocusIdx+1,opts.length-1); actualizarFocusDropdown(opts); }
-  else if (e.key==='ArrowUp') { e.preventDefault(); dropdownFocusIdx=Math.max(dropdownFocusIdx-1,0); actualizarFocusDropdown(opts); }
-  else if (e.key==='Enter') { if(dropdownFocusIdx>=0&&opts[dropdownFocusIdx]) seleccionarCliente(opts[dropdownFocusIdx].dataset.value); }
-  else if (e.key==='Escape') cerrarDropdown();
-}
-function actualizarFocusDropdown(opts) {
-  opts.forEach((o,i)=>o.classList.toggle('focused',i===dropdownFocusIdx));
-  if(opts[dropdownFocusIdx]) opts[dropdownFocusIdx].scrollIntoView({block:'nearest'});
-}
-function mostrarDropdown(lista) {
-  dropdownFocusIdx=-1;
-  const dd=document.getElementById('rot-dropdown');
-  if(!lista.length) { cerrarDropdown(); return; }
-  dd.innerHTML=lista.map(c=>`<div class="autocomplete-option" data-value="${c}" onmousedown="seleccionarCliente('${c.replace(/'/g,"\\'")}')">
-    ${c}${esUrgente(c)?'<span class="badge-urgente" style="float:right">🔴 Urgente</span>':''}
-  </div>`).join('');
-  dd.classList.add('open');
-}
-function cerrarDropdown() { document.getElementById('rot-dropdown').classList.remove('open'); dropdownFocusIdx=-1; }
-function seleccionarCliente(nombre) {
-  clienteActivo=nombre;
-  document.getElementById('rot-cliente-input').value=nombre;
-  // Resetear preview al cambiar cliente
-  previewExcluidas=new Set(); previewExcluidasSug=new Set(); previewTexto='';
-  cerrarDropdown(); renderRotacion();
-}
-document.addEventListener('click', e => {
-  if(!document.getElementById('autocomplete-wrap').contains(e.target)) cerrarDropdown();
-});
 
 // =================== FILE LOADERS ===================
 
@@ -1209,7 +1086,6 @@ function renderHoy() {
 function renderTablas() {
   renderHoy(); renderStats(); renderTablaBajas(); renderTablaTodasONs();
   renderTablaTop(); renderResumenClientes();
-  if(clienteActivo) renderRotacion();
 }
 
 function renderStats() {
@@ -1319,210 +1195,7 @@ function vtoToMs(v) {
   const d=new Date(v);return isNaN(d)?0:d.getTime();
 }
 
-// =================== ROTACION TAB (MEJORA 2) ===================
-
-function renderRotacion() {
-  const container=document.getElementById('rot-content');
-  if(!clienteActivo){
-    container.innerHTML=`<div class="empty-state" style="padding:40px 0"><div class="empty-icon">🔄</div><div class="empty-title">Buscá un cliente para ver su análisis</div></div>`;
-    return;
-  }
-  const posiciones=datosFusionados.filter(d=>d.cliente===clienteActivo);
-  const bajasCliente=posiciones.filter(d=>d.tir!==null&&d.tir<umbralTIR/100).filter(d=>!previewExcluidas.has(d.ticker));
-  const bajasAll=posiciones.filter(d=>d.tir!==null&&d.tir<umbralTIR/100);
-  const tenTotal=posiciones.reduce((a,d)=>a+d.tenencia,0);
-  const cobradoTotal=posiciones.reduce((a,d)=>a+calcCobrado(d),0);
-  const sugeridas=getSugeridas(bajasAll).filter(s=>!previewExcluidasSug.has(s.ticker));
-  const tenBajas=bajasAll.reduce((a,d)=>a+d.tenencia,0);
-
-  // Generar texto narrativo si no hay uno editado
-  const textoAuto=generarTextoNarrativo(posiciones,bajasAll,sugeridas);
-  if(!previewTexto) previewTexto=textoAuto;
-
-  container.innerHTML=`
-    <div class="rot-section">
-      <div class="stats-strip-4">
-        <div class="stat-box"><div class="stat-val">${posiciones.length}</div><div class="stat-lbl">ONs en cartera</div></div>
-        <div class="stat-box danger"><div class="stat-val">${bajasAll.length}</div><div class="stat-lbl">Con TIR baja</div></div>
-        <div class="stat-box"><div class="stat-val">$${formatNum(tenTotal)}</div><div class="stat-lbl">Tenencia total</div></div>
-        <div class="stat-box good"><div class="stat-val">$${formatNum(cobradoTotal)}</div><div class="stat-lbl">Cobrado estimado</div></div>
-      </div>
-    </div>
-
-    <div class="preview-grid">
-      <div>
-        <div class="preview-col-title">📤 ONs que salen <span class="badge-sale">Bajo rendimiento</span></div>
-        <div id="preview-salen">
-          ${bajasAll.length===0
-            ? '<div class="preview-empty">✓ Sin ONs candidatas a rotar con el umbral actual</div>'
-            : bajasAll.sort((a,b)=>a.tir-b.tir).map(d=>tarjetaSale(d)).join('')
-          }
-        </div>
-      </div>
-      <div>
-        <div class="preview-col-title">📥 ONs que entran <span class="badge-buy">Mayor rendimiento</span></div>
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-          <div class="calif-toggles">
-            <button class="calif-toggle ${califFiltroSugeridas===''?'active':''}" onclick="setCalifFiltro('')">Todas</button>
-            <button class="calif-toggle ${califFiltroSugeridas==='AAA'?'active':''}" onclick="setCalifFiltro('AAA')">AAA</button>
-            <button class="calif-toggle ${califFiltroSugeridas==='AA'?'active':''}" onclick="setCalifFiltro('AA')">AA</button>
-            <button class="calif-toggle ${califFiltroSugeridas==='A'?'active':''}" onclick="setCalifFiltro('A')">A</button>
-          </div>
-          <button class="btn btn-sm" style="background:rgba(46,125,140,0.15);color:#6BBFCC;border:1px solid rgba(46,125,140,0.3);font-family:var(--font-sans);" onclick="toggleLicForm()">+ Licitación</button>
-        </div>
-        <div class="lic-form" id="lic-form">
-          <div style="font-size:11px;color:var(--ink-muted);margin-bottom:10px;font-weight:500;font-family:var(--font-sans);">Nueva ON de licitación</div>
-          <div class="lic-form-grid">
-            <input id="lic-ticker" placeholder="Ticker (ej: XYZVO)">
-            <input id="lic-nombre" placeholder="Nombre / Emisor">
-            <input id="lic-tir" placeholder="TIR estimada (%)" type="number" step="0.01">
-            <input id="lic-cupon" placeholder="Cupón (%)" type="number" step="0.01">
-            <input id="lic-vto" placeholder="Vencimiento (ej: 2027-06)" type="text">
-            <select id="lic-calif"><option>AAA</option><option>AA+</option><option>AA</option><option>AA-</option><option>A+</option><option>A</option><option>A-</option></select>
-          </div>
-          <input id="lic-notas" placeholder="Notas opcionales" style="width:100%;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-sans);font-size:11px;outline:none;margin-bottom:10px;">
-          <div class="lic-form-actions">
-            <button class="btn btn-sm" style="background:rgba(46,125,140,0.2);color:#6BBFCC;border:1px solid rgba(46,125,140,0.3);font-family:var(--font-sans);" onclick="agregarLicitacion()">Agregar</button>
-            <button class="btn btn-outline btn-sm" onclick="toggleLicForm()">Cancelar</button>
-          </div>
-        </div>
-        <div id="preview-entran">
-          ${getSugeridas(bajasAll).length===0
-            ? '<div class="preview-empty">Sin sugerencias disponibles con los criterios actuales</div>'
-            : getSugeridas(bajasAll).filter(s=>!previewExcluidasSug.has(s.ticker)).map(s=>tarjetaBuy(s,tenBajas,bajasAll)).join('')
-          }
-        </div>
-      </div>
-    </div>
-
-    <div class="preview-texto-wrap">
-      <div class="preview-texto-header">
-        <span class="preview-texto-label">✏️ Texto de la presentación</span>
-        <button class="btn btn-outline btn-sm" onclick="regenerarTexto()">↺ Regenerar texto</button>
-      </div>
-      <textarea class="preview-textarea" id="preview-texto" oninput="previewTexto=this.value">${escHtml(previewTexto)}</textarea>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button class="btn btn-gold" onclick="descargarPresentacion()">⬇ Descargar presentación</button>
-    </div>`;
-}
-
-function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function tarjetaSale(d) {
-  const tirPct=(d.tir*100).toFixed(2);
-  const motivo=`TIR de ${tirPct}% por debajo del umbral de ${umbralTIR}%`;
-  const excluida=previewExcluidas.has(d.ticker);
-  const durStr=d.duration!==null?` · ${d.duration.toFixed(1)}y dur`:'';
-  return `<div class="preview-card" style="${excluida?'opacity:.4;':''}">
-    <div class="preview-card-head">
-      <span class="preview-card-ticker">${d.ticker}</span>
-      <div style="display:flex;gap:6px;align-items:center;">
-        ${califBadge(d.calificacion)}
-        <button class="preview-card-remove" onclick="toggleExcluir('${d.ticker}','sale')" title="${excluida?'Volver a incluir':'Excluir de la presentación'}">${excluida?'↩':'✕'}</button>
-      </div>
-    </div>
-    <div class="preview-card-meta">${d.instrumento||d.emisor||'—'}</div>
-    <div class="preview-card-nums">
-      <span style="color:var(--danger);font-weight:600;">${tirPct}% TIR</span>
-      <span>${d.cupon!==null?(d.cupon*100).toFixed(2)+'% cup':''}</span>
-      <span>${formatVto(d.vencimiento)}${durStr}</span>
-      <span style="color:var(--ink-muted);">$${formatNum(d.tenencia)}</span>
-    </div>
-    <div style="font-size:10px;color:var(--ink-muted);margin-bottom:5px;font-family:var(--font-mono);">
-      Nominales actuales: <strong style="color:var(--text)">${formatNum(d.nominales)}</strong>
-    </div>
-    <textarea class="preview-motivo" id="motivo-${d.ticker}" rows="1" placeholder="Motivo...">${escHtml(motivo)}</textarea>
-  </div>`;
-}
-
-function tarjetaBuy(s, tenBajas, bajasAll) {
-  const tirPct=(s.tir*100).toFixed(2);
-  const tirPromBajas=bajasAll.filter(d=>d.tir).reduce((a,d)=>a+d.tir,0)/(bajasAll.filter(d=>d.tir).length||1);
-  const delta=((s.tir-tirPromBajas)*100).toFixed(2);
-  const proy12m=s.tir&&tenBajas>0?`$${formatNum(tenBajas*s.tir)} est./año`:'';
-  const arg=`TIR de ${tirPct}% · +${delta}pp vs. ONs que salen · Calificación ${s.calificacion||'—'}`;
-  const excluida=previewExcluidasSug.has(s.ticker);
-  // Nominales estimados: capital disponible / precio implícito asumiendo par (100)
-  // Precio implícito: si hay clientes en datosFusionados con esa ON, usar tenencia/nominales*100
-  const posExist=datosFusionados.filter(d=>d.ticker===s.ticker&&d.nominales>0&&d.tenencia>0);
-  const precioEst=posExist.length>0
-    ? posExist.reduce((a,d)=>a+d.tenencia/d.nominales*100,0)/posExist.length
-    : 100;
-  const nomNuevos=tenBajas>0?Math.floor(tenBajas/precioEst*100):null;
-  const monitorData=dataMonitor[s.ticker]||s;
-  const lamMin=monitorData.laminaMin||s.laminaMin||null;
-  const lamOk=lamMin===null||(nomNuevos!==null&&nomNuevos>=lamMin);
-  const lamLabel=lamMin!==null
-    ? `<span style="font-size:9px;font-family:var(--font-mono);color:${lamOk?'var(--jade)':'var(--danger)'};">Lám. mín: ${formatNum(lamMin)}${!lamOk?' ⚠ capital insuficiente':''}</span>`
-    : '';
-  const nomLabel=nomNuevos!==null
-    ? `<span style="font-size:10px;font-family:var(--font-mono);color:var(--jade);">→ ~${formatNum(nomNuevos)} nominales</span>`
-    : '';
-  const durStr=s.duration!=null?` · ${s.duration.toFixed(1)}y`:'';
-  return `<div class="preview-card" style="${excluida?'opacity:.4;':''}">
-    <div class="preview-card-head">
-      <span class="preview-card-ticker">${s.ticker}${s.esLicitacion?' <span class="badge badge-lic">LIC</span>':''}</span>
-      <div style="display:flex;gap:6px;align-items:center;">
-        ${califBadge(s.calificacion)}
-        <button class="preview-card-remove" onclick="toggleExcluir('${s.ticker}','buy')" title="${excluida?'Volver a incluir':'Excluir de la presentación'}">${excluida?'↩':'✕'}</button>
-      </div>
-    </div>
-    <div class="preview-card-meta">${s.emisor||'—'}</div>
-    <div class="preview-card-nums">
-      <span style="color:var(--jade);font-weight:600;">${tirPct}% TIR</span>
-      <span>${s.cupon!==null?(s.cupon*100).toFixed(2)+'% cup':''}</span>
-      <span>${formatVto(s.vencimiento)}${durStr}</span>
-      ${proy12m?`<span style="color:var(--jade);font-size:10px;">${proy12m}</span>`:''}
-    </div>
-    ${nomLabel||lamLabel?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;flex-wrap:wrap;">${nomLabel}${lamLabel}</div>`:''}
-    <textarea class="preview-motivo" id="arg-${s.ticker}" rows="1" placeholder="Argumento...">${escHtml(arg)}</textarea>
-  </div>`;
-}
-
-function toggleExcluir(ticker, lado) {
-  if(lado==='sale') {
-    if(previewExcluidas.has(ticker)) previewExcluidas.delete(ticker);
-    else previewExcluidas.add(ticker);
-  } else {
-    if(previewExcluidasSug.has(ticker)) previewExcluidasSug.delete(ticker);
-    else previewExcluidasSug.add(ticker);
-  }
-  // Guardar el texto editado antes de re-renderizar
-  const ta=document.getElementById('preview-texto');
-  if(ta) previewTexto=ta.value;
-  renderRotacion();
-}
-
-function regenerarTexto() {
-  const posiciones=datosFusionados.filter(d=>d.cliente===clienteActivo);
-  const bajasAll=posiciones.filter(d=>d.tir!==null&&d.tir<umbralTIR/100);
-  const sugeridas=getSugeridas(bajasAll).filter(s=>!previewExcluidasSug.has(s.ticker));
-  previewTexto=generarTextoNarrativo(posiciones,bajasAll,sugeridas);
-  const ta=document.getElementById('preview-texto');
-  if(ta) ta.value=previewTexto;
-}
-
-function generarTextoNarrativo(posiciones, bajas, sugeridas) {
-  const tenTotal=posiciones.reduce((a,d)=>a+d.tenencia,0);
-  const tenBajas=bajas.reduce((a,d)=>a+d.tenencia,0);
-  const tirPond=posiciones.filter(d=>d.tir!==null&&d.tenencia>0).reduce((a,d)=>a+d.tir*d.tenencia,0)/(tenTotal||1);
-  const tirBajas=bajas.filter(d=>d.tir!==null&&d.tenencia>0).reduce((a,d)=>a+d.tir*d.tenencia,0)/(tenBajas||1);
-  const tirSug=sugeridas.filter(s=>s.tir).reduce((a,s)=>a+s.tir,0)/(sugeridas.filter(s=>s.tir).length||1);
-  const pctCartera=tenTotal>0?((tenBajas/tenTotal)*100).toFixed(1):'0';
-  const mejoraP=((tirSug-tirBajas)*100).toFixed(2);
-  const cupones12mAct=posiciones.reduce((a,d)=>a+(d.tir&&d.tenencia?d.tir*d.tenencia:0),0);
-  const cupones12mSug=tenBajas*tirSug;
-  return `${clienteActivo} tiene actualmente ${posiciones.length} ONs en cartera por un total de $${Math.round(tenTotal).toLocaleString('es-AR')} USD, con una TIR promedio ponderada de ${(tirPond*100).toFixed(2)}% anual.
-
-De esas ONs, ${bajas.length} están rindiendo por debajo del umbral definido de ${umbralTIR}%, representando $${Math.round(tenBajas).toLocaleString('es-AR')} USD — el ${pctCartera}% de la cartera.
-
-Nuestra recomendación es rotar esas posiciones hacia las ONs detalladas arriba, que ofrecen una TIR promedio de ${(tirSug*100).toFixed(2)}%, ${mejoraP} puntos porcentuales por encima de las actuales, con igual o mejor calificación crediticia.
-
-En un horizonte de 12 meses, reinvertir $${Math.round(tenBajas).toLocaleString('es-AR')} USD en las ONs sugeridas generaría aproximadamente $${Math.round(cupones12mSug).toLocaleString('es-AR')} USD en cupones, versus $${Math.round(cupones12mAct).toLocaleString('es-AR')} USD con la cartera actual. Esta estrategia está orientada a inversores con horizonte de largo plazo que buscan maximizar el rendimiento sobre el capital.`;
-}
-
-// MEJORA 2: edición inline TIR (Rotación y Top)
+// MEJORA 2: edición inline TIR (Top ONs)
 function editarTIR(idxFusion) {
   const d=datosFusionados[idxFusion];
   const td=document.getElementById(`tir-cell-${idxFusion}`);
@@ -1530,7 +1203,7 @@ function editarTIR(idxFusion) {
   td.innerHTML=`<input class="tir-input-inline" type="number" step="0.01" value="${(d.tir*100).toFixed(2)}"
     id="tir-inp-${idxFusion}"
     onblur="guardarTIR(${idxFusion})"
-    onkeydown="if(event.key==='Enter')guardarTIR(${idxFusion});if(event.key==='Escape'){renderRotacion();renderTablaTop();}">`;
+    onkeydown="if(event.key==='Enter')guardarTIR(${idxFusion});if(event.key==='Escape'){renderTablaTop();}">`;
   setTimeout(()=>{const inp=document.getElementById(`tir-inp-${idxFusion}`);if(inp){inp.focus();inp.select();}},50);
 }
 
@@ -1543,186 +1216,10 @@ function guardarTIR(idxFusion) {
   if(clienteActivo){const ta=document.getElementById('preview-texto');if(ta)previewTexto=ta.value;}
 }
 
-function resetearTIRs() {
-  Object.entries(tirOriginales).forEach(([i,tir])=>{datosFusionados[i].tir=tir;datosFusionados[i].tirEditada=false;});
-  previewTexto=''; renderRotacion(); aplicarFiltros();
-}
-
 function resetearTIRsTop() {
   Object.entries(tirOriginales).forEach(([i,tir])=>{datosFusionados[i].tir=tir;datosFusionados[i].tirEditada=false;});
   aplicarFiltros();
 }
-
-function setCalifFiltro(c) { califFiltroSugeridas=c; renderRotacion(); }
-
-function getSugeridas(bajasCliente) {
-  const cr=c=>{c=(c||'').toUpperCase();if(c==='AAA')return 3;if(c==='AA+')return 2.5;if(c==='AA')return 2;if(c==='AA-')return 1.5;if(c==='A+')return 1.2;if(c==='A')return 1;if(c==='A-')return 0.8;return 0.5;};
-  const minCalif=bajasCliente.length>0?Math.min(...bajasCliente.map(d=>cr(d.calificacion))):1;
-  const tickersCliente=new Set(datosFusionados.filter(d=>d.cliente===clienteActivo).map(d=>d.ticker));
-  let sug=Object.entries(dataMonitor)
-    .filter(([tk,m])=>m.tir&&m.tir>0&&!tickersCliente.has(tk)&&cr(m.calificacion)>=minCalif)
-    .map(([tk,m])=>({ticker:tk,...m,esLicitacion:false}));
-  licitaciones.forEach(l=>{if(!tickersCliente.has(l.ticker)) sug.push(l);});
-  if(califFiltroSugeridas){
-    sug=sug.filter(s=>{const c=(s.calificacion||'').toUpperCase();
-      if(califFiltroSugeridas==='AAA') return c==='AAA';
-      if(califFiltroSugeridas==='AA') return c.startsWith('AA');
-      if(califFiltroSugeridas==='A') return c.startsWith('A')&&!c.startsWith('AA');
-      return true;
-    });
-  }
-  sug.sort((a,b)=>(b.tir||0)-(a.tir||0));
-  return sug.slice(0,5);
-}
-
-function toggleLicForm() { document.getElementById('lic-form').classList.toggle('open'); }
-
-function agregarLicitacion() {
-  const ticker=document.getElementById('lic-ticker').value.trim().toUpperCase();
-  const nombre=document.getElementById('lic-nombre').value.trim();
-  const tir=parseFloat(document.getElementById('lic-tir').value)/100;
-  const cupon=parseFloat(document.getElementById('lic-cupon').value)/100;
-  const vto=document.getElementById('lic-vto').value.trim();
-  const calif=document.getElementById('lic-calif').value;
-  const notas=document.getElementById('lic-notas').value.trim();
-  if(!ticker||isNaN(tir)){alert('Ticker y TIR son obligatorios.');return;}
-  licitaciones.push({ticker,emisor:nombre,instrumento:nombre,tir,cupon:isNaN(cupon)?null:cupon,vencimiento:vto,calificacion:calif,notas,esLicitacion:true});
-  saveLicitaciones();
-  ['lic-ticker','lic-nombre','lic-tir','lic-cupon','lic-vto','lic-notas'].forEach(id=>document.getElementById(id).value='');
-  const ta=document.getElementById('preview-texto');if(ta)previewTexto=ta.value;
-  toggleLicForm(); renderRotacion();
-}
-
-// =================== DESCARGA PRESENTACION (MEJORA 3) ===================
-
-function descargarPresentacion() {
-  if(!clienteActivo){alert('Seleccioná un cliente primero.');return;}
-  const cliente=clienteActivo;
-  const posiciones=datosFusionados.filter(d=>d.cliente===cliente);
-  const bajasAll=posiciones.filter(d=>d.tir!==null&&d.tir<umbralTIR/100);
-  const asesor=posiciones[0]?.asesor||'';
-  const fecha=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
-
-  // Leer motivoss y argumentos de los textareas de la preview
-  const bajasIncluidas=bajasAll.filter(d=>!previewExcluidas.has(d.ticker));
-  const sugIncluidas=getSugeridas(bajasAll).filter(s=>!previewExcluidasSug.has(s.ticker));
-  const tenBajas=bajasAll.reduce((a,d)=>a+d.tenencia,0);
-
-  // Leer texto narrativo del textarea
-  const taTexto=document.getElementById('preview-texto');
-  const textoNarrativo=taTexto?taTexto.value:(previewTexto||generarTextoNarrativo(posiciones,bajasAll,sugIncluidas));
-
-  const rowsSalen=bajasIncluidas.map(d=>{
-    const motivo=(document.getElementById(`motivo-${d.ticker}`)?.value||`TIR de ${(d.tir*100).toFixed(2)}% por debajo del umbral de ${umbralTIR}%`);
-    return `<tr>
-      <td style="font-weight:700">${d.ticker}</td>
-      <td>${d.instrumento}</td>
-      <td style="color:#dc2626;font-weight:700">${(d.tir*100).toFixed(2)}%</td>
-      <td>${d.cupon!==null?(d.cupon*100).toFixed(2)+'%':'-'}</td>
-      <td>${formatVto(d.vencimiento)}</td>
-      <td>$${fmtN(d.tenencia)}</td>
-      <td>${d.calificacion||'-'}</td>
-      <td style="font-size:11px;color:#374151">${motivo}</td>
-    </tr>`;
-  }).join('');
-
-  const rowsEntran=sugIncluidas.map(s=>{
-    const arg=(document.getElementById(`arg-${s.ticker}`)?.value||`TIR de ${(s.tir*100).toFixed(2)}% · Calificación ${s.calificacion||'—'}`);
-    const proy12m=s.tir&&tenBajas>0?`$${fmtN(tenBajas*s.tir)} / año`:'—';
-    return `<tr>
-      <td style="font-weight:700">${s.ticker}${s.esLicitacion?' <span style="background:#f3e8ff;color:#7c3aed;padding:1px 5px;border-radius:6px;font-size:10px">LIC</span>':''}</td>
-      <td>${s.emisor||'—'}</td>
-      <td style="color:#16a34a;font-weight:700">${s.tir!==null?(s.tir*100).toFixed(2)+'%':'-'}</td>
-      <td>${s.cupon!==null?(s.cupon*100).toFixed(2)+'%':'-'}</td>
-      <td>${formatVto(s.vencimiento)}</td>
-      <td>${s.calificacion||'-'}</td>
-      <td style="color:#16a34a;font-weight:600">${proy12m}</td>
-      <td style="font-size:11px;color:#374151">${arg}</td>
-    </tr>`;
-  }).join('');
-
-  // Escapar HTML para el textarea
-  const textoParaHTML=textoNarrativo.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-
-  const html=`<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Rotación de Cartera — ${cliente}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#102E2A;background:#f8f9fc;}
-.page{max-width:900px;margin:0 auto;background:#fff;min-height:100vh;}
-.header{background:#07211D;padding:36px 48px 30px;color:#fff;}
-.header-logo{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:12px;}
-.header-title{font-size:24px;font-weight:300;margin-bottom:4px;}
-.header-title strong{font-weight:700;}
-.header-meta{font-size:12px;color:rgba(255,255,255,0.65);margin-top:4px;}
-.body{padding:36px 48px;}
-.section{margin-bottom:32px;}
-.section-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
-.badge-sale{background:#fef2f2;color:#dc2626;}
-.badge-buy{background:#f0fdf4;color:#16a34a;}
-.section-title{font-size:19px;font-weight:300;color:#102E2A;margin-bottom:4px;}
-.section-sub{font-size:11px;color:#9ca3af;margin-bottom:14px;}
-table{width:100%;border-collapse:collapse;font-size:12px;}
-thead tr{background:#f3f4f6;}
-thead th{padding:8px 10px;text-align:left;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;border-bottom:2px solid #e5e7eb;}
-tbody tr{border-bottom:1px solid #f3f4f6;}
-tbody tr:hover{background:#fafafa;}
-tbody td{padding:9px 10px;vertical-align:middle;}
-.narrativo{background:#f7f3ea;border-left:4px solid #DBA03C;border-radius:0 8px 8px 0;padding:20px 24px;font-size:13px;color:#102E2A;line-height:1.85;}
-.footer{background:#f9fafb;border-top:1px solid #e5e7eb;padding:14px 48px;font-size:11px;color:#9ca3af;}
-</style>
-</head><body><div class="page">
-<div class="header">
-  <div class="header-logo">finanzasconnico · propuesta de rotación</div>
-  <div class="header-title">Rotación de <strong>Cartera de ONs</strong></div>
-  <div class="header-meta">${cliente}${asesor?' · Asesor: '+asesor:''} · ${fecha}</div>
-</div>
-<div class="body">
-
-<div class="section">
-  <div class="section-badge badge-sale">ONs que salen</div>
-  <div class="section-title">Posiciones recomendadas a rotar</div>
-  <div class="section-sub">Posiciones con rendimiento por debajo del umbral definido</div>
-  ${bajasIncluidas.length===0
-    ? '<p style="color:#6b7280;font-style:italic;padding:12px 0">No hay posiciones seleccionadas para rotar.</p>'
-    : `<table>
-      <thead><tr><th>Ticker</th><th>ON</th><th>TIR actual</th><th>Cupón</th><th>Vencimiento</th><th>Tenencia USD</th><th>Calificación</th><th>Motivo</th></tr></thead>
-      <tbody>${rowsSalen}</tbody>
-    </table>`
-  }
-</div>
-
-<div class="section">
-  <div class="section-badge badge-buy">ONs que entran</div>
-  <div class="section-title">Alternativas sugeridas</div>
-  <div class="section-sub">Alternativas de mayor rendimiento con igual o mejor calificación</div>
-  ${sugIncluidas.length===0
-    ? '<p style="color:#6b7280;font-style:italic;padding:12px 0">No hay sugerencias seleccionadas.</p>'
-    : `<table>
-      <thead><tr><th>Ticker</th><th>Emisor</th><th>TIR</th><th>Cupón</th><th>Vencimiento</th><th>Calificación</th><th>Proy. 12m</th><th>Argumento</th></tr></thead>
-      <tbody>${rowsEntran}</tbody>
-    </table>`
-  }
-</div>
-
-<div class="section">
-  <div class="section-title">Análisis</div>
-  <div class="narrativo">${textoParaHTML}</div>
-</div>
-
-</div>
-<div class="footer">finanzasconnico · Elaborado el ${fecha}${asesor?' · Asesor: '+asesor:''} · Documento informativo, no constituye asesoramiento financiero.</div>
-</div></body></html>`;
-
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=`Rotacion_${cliente.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.html`;
-  a.click(); URL.revokeObjectURL(url);
-}
-
-function fmtN(n) { if(!n&&n!==0) return '—'; return Math.round(n).toLocaleString('es-AR'); }
 
 // =================== EXPORT POR CLIENTE ===================
 
@@ -1891,7 +1388,7 @@ function setModoTIR(modo) {
 function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const idx=['tab-hoy','tab-todas','tab-resumen','tab-rotacion'].indexOf(id);
+  const idx=['tab-hoy','tab-todas','tab-resumen'].indexOf(id);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById(id).classList.add('active');
 }
@@ -1931,7 +1428,6 @@ let wppCtx = null;
 const WPP_TEMPLATES = {
   buenas:      ctx => `¡Hola ${ctx.nombre||ctx.cliente}! 🎉\n\nQuería contarte que tu ON *${ctx.ticker}* está rindiendo bien. La TIR actual es de *${ctx.tir||''}* anual en dólares.\n\nSi querés conversarlo o revisar la cartera completa, avisame. ¡Saludos! 👋`,
   atencion:    ctx => `Hola ${ctx.nombre||ctx.cliente}, te escribo para que estés al tanto de una situación en tu cartera.\n\nTu posición en *${ctx.ticker}* tiene una TIR de *${ctx.tir||''}*, que está por debajo del umbral que definimos. Conviene que hablemos para evaluar opciones. ¿Cuándo tenés unos minutos? 📞`,
-  rotacion:    ctx => `Hola ${ctx.nombre||ctx.cliente}, analizando tu cartera identifiqué una oportunidad de mejora.\n\nTu ON *${ctx.ticker}* (TIR: ${ctx.tir||''}) podría rotarse hacia una alternativa con mejor rendimiento y calificación similar.\n\nHablamos cuando puedas para contarte los detalles. 🔄`,
   vencimiento: ctx => `Hola ${ctx.nombre||ctx.cliente}, te aviso que tu ON *${ctx.ticker}* tiene el vencimiento próximo.\n\nEs un buen momento para definir qué hacemos con esos fondos cuando se liberen. ¿Hablamos esta semana? 📅`,
   seguimiento: ctx => `Hola ${ctx.nombre||ctx.cliente}! 👋\n\nPasaba a saludarte y contarte que estuve revisando tu cartera. Todo en orden con tus posiciones en ONs.\n\nSi tenés alguna consulta o querés revisar algo, estoy disponible. ¡Saludos!`,
 };
@@ -2072,19 +1568,8 @@ function actualizarFiltrosDur() {
     } catch { return null; }
   }
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
-  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
-  // cae a la copia publicada en la carpeta data/ del sitio.
-  async function fetchStaticFallback(url) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) return null;
-      const buf = await r.arrayBuffer();
-      return { data: buf, name: url.split('/').pop() };
-    } catch { return null; }
-  }
   async function loadShared() {
-    let [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
-    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
+    const [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
     if (ten || mon) _pendienteAutoAnalizar = true;
     if (ten) cargarTenencia(fakeInput(ten));
     if (stk) cargarStock(fakeInput(stk));
@@ -2102,6 +1587,52 @@ function actualizarFiltrosDur() {
       if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
       if (raw === 'stock')    cargarStock(fakeInput(entry));
       if (raw === 'monitor')  cargarMonitor(fakeInput(entry));
+    };
+  }
+})();
+
+// ── CLIENTE ACTIVO (desde el Suite) ──
+(function() {
+  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
+  function openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = () => rej();
+    });
+  }
+  async function getActiveClient() {
+    try {
+      const db = await openDB();
+      return new Promise(res => {
+        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get('activeClient');
+        r.onsuccess = () => res(r.result ? r.result.cliente : null);
+        r.onerror = () => res(null);
+      });
+    } catch { return null; }
+  }
+  function applyClientFilter(cliente) {
+    const inp = document.getElementById('inp-cliente');
+    if (!inp) return;
+    inp.value = cliente || '';
+    if (typeof aplicarFiltros === 'function') aplicarFiltros();
+  }
+  function waitForDataAndApply(cliente, tries) {
+    tries = tries || 0;
+    if (typeof datosFusionados !== 'undefined' && datosFusionados.length > 0) { applyClientFilter(cliente); return; }
+    if (tries > 20) { applyClientFilter(cliente); return; } // ~10s de espera máx, después aplica igual
+    setTimeout(() => waitForDataAndApply(cliente, tries + 1), 500);
+  }
+  async function init() {
+    const cliente = await getActiveClient();
+    if (cliente) waitForDataAndApply(cliente);
+  }
+  window.addEventListener('DOMContentLoaded', init);
+  if (typeof BroadcastChannel !== 'undefined') {
+    new BroadcastChannel('fcn_shared').onmessage = e => {
+      if (!e.data || e.data.type !== 'client_selected') return;
+      applyClientFilter(e.data.cliente);
     };
   }
 })();
