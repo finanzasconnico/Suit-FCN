@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Cleaner — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #060e24;
+  --navy-mid: #0c1a3c;
+  --border: rgba(255,255,255,0.1);
+  --cream: #dce6f8;
+  --cream-dim: #6a84b8;
+  --balanz: #1f3b9e;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy);
+  color: var(--cream);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  gap: 20px;
+}
+
+.card {
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.brand-logo {
+  width: 30px; height: 30px;
+  background: var(--balanz);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; color: #fff; font-weight: 600;
+}
+.brand-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 17px; font-weight: 300;
+  letter-spacing: .05em;
+}
+.brand-name span { font-weight: 600; }
+
+h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 400;
+  color: #fff; margin-bottom: 6px;
+}
+.subtitle {
+  font-size: 11px; color: var(--cream-dim);
+  letter-spacing: .05em; text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+/* DROP ZONE */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  margin-bottom: 16px;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,.04);
+}
+.drop-zone.loaded {
+  border-style: solid;
+  border-color: rgba(34,197,94,0.4);
+  background: rgba(34,197,94,0.04);
+}
+.drop-zone input {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+.drop-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+.drop-title { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.drop-hint { font-size: 11px; color: var(--cream-dim); }
+.drop-filename { font-size: 11px; color: var(--green); margin-top: 6px; font-weight: 500; }
+
+/* STATS */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  text-align: center;
+}
+.stat-val {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 600; color: #fff; line-height: 1;
+}
+.stat-lbl {
+  font-size: 9px; color: var(--cream-dim);
+  text-transform: uppercase; letter-spacing: .07em; margin-top: 3px;
+}
+
+/* LOG */
+.log {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  display: flex; flex-direction: column; gap: 3px;
+  max-height: 120px; overflow-y: auto;
+  display: none;
+}
+.log::-webkit-scrollbar { width: 3px; }
+.log::-webkit-scrollbar-thumb { background: var(--balanz); }
+.log-line { font-size: 11px; color: var(--cream-dim); line-height: 1.5; }
+.log-line.ok { color: var(--green); }
+.log-line.warn { color: var(--yellow); }
+.log-line.err { color: var(--red); }
+
+/* BTN */
+.btn {
+  width: 100%; padding: 12px;
+  background: var(--balanz); color: #fff;
+  border: none; border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn:hover { background: #2d4fce; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.ready {
+  background: var(--green); color: #000;
+  font-weight: 600;
+}
+.btn.ready:hover { background: #16a34a; }
+
+/* PROGRESS BAR */
+.progress-wrap {
+  height: 3px; background: rgba(255,255,255,.08);
+  border-radius: 2px; overflow: hidden;
+  margin-bottom: 16px; display: none;
+}
+.progress-bar {
+  height: 100%; background: var(--balanz);
+  border-radius: 2px; width: 0%;
+  transition: width .3s ease;
+}
+
+/* INFO BOX */
+.info-box {
+  background: rgba(31,59,158,0.15);
+  border: 1px solid rgba(31,59,158,0.4);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 11px; color: var(--cream-dim);
+  line-height: 1.6;
+}
+.info-box strong { color: var(--cream); }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <div class="brand-logo">B</div>
+    <div class="brand-name">finanzascon<span>nico</span></div>
+  </div>
+
+  <h2>Monitor Cleaner</h2>
+  <div class="subtitle">Convierte Monitor Individuos → Corporativos limpio</div>
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm">
+    <span class="drop-icon" id="dropIcon">📂</span>
+    <div class="drop-title">Soltá el archivo acá</div>
+    <div class="drop-hint">Monitor_Individuos_2_0.xlsm · o cualquier versión</div>
+    <div class="drop-filename" id="dropFilename"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats" id="statsRow" style="display:none">
+    <div class="stat"><div class="stat-val" id="statTickers">—</div><div class="stat-lbl">Tickers</div></div>
+    <div class="stat"><div class="stat-val" id="statCols">—</div><div class="stat-lbl">Columnas</div></div>
+    <div class="stat"><div class="stat-val" id="statRows">—</div><div class="stat-lbl">Filas totales</div></div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="log" id="log"></div>
+
+  <!-- BTN -->
+  <button class="btn" id="btnDescargar" disabled onclick="descargar()">
+    ⬇ Generar Corporativos.xlsx
+  </button>
+</div>
+
+<div class="info-box" style="max-width:480px;width:100%">
+  <strong>Qué hace este cleaner:</strong><br>
+  Lee la hoja <em>Corporativos</em> del Monitor Individuos, extrae todos los valores 
+  (sin fórmulas ni macros) y genera un <em>Corporativos.xlsx</em> limpio con una sola 
+  pestaña llamada <strong>Corporativos</strong> — listo para subir a la web.
+</div>
+
+<script>
+let outputData = null; // { headers, rows, colCount }
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+// Drag & drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function log(msg, type = '') {
+  const el = document.getElementById('log');
+  el.style.display = 'flex';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = '› ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function handleFile(file) {
+  // Reset
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('log').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('btnDescargar').disabled = true;
+  document.getElementById('btnDescargar').className = 'btn';
+  document.getElementById('btnDescargar').textContent = '⬇ Generar Corporativos.xlsx';
+  dropZone.classList.remove('loaded');
+  outputData = null;
+
+  document.getElementById('dropFilename').textContent = file.name;
+  log('Leyendo: ' + file.name);
+  setProgress(10);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      setProgress(30);
+
+      // cellFormula:false → lee valores cacheados en xlsm
+      // cellDates:false → fechas como número serial de Excel (igual que el archivo destino)
+      const wb = XLSX.read(e.target.result, {
+        type: 'array',
+        cellFormula: false,
+        cellDates: false,
+        cellNF: false,
+        raw: true
+      });
+
+      setProgress(50);
+      log('Archivo leído · Hojas: ' + wb.SheetNames.join(', '));
+
+      // Buscar hoja Corporativos (exacto o similar)
+      let sheetName = wb.SheetNames.find(s => s === 'Corporativos')
+        || wb.SheetNames.find(s => s.toLowerCase().includes('corporativ'))
+        || null;
+
+      if (!sheetName) {
+        // Buscar la hoja que tenga "Ticker" en las primeras filas
+        for (const sn of wb.SheetNames) {
+          const ws = wb.Sheets[sn];
+          const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1 });
+          const found = raw.slice(0, 15).some(row => row.some(v => v === 'Ticker'));
+          if (found) { sheetName = sn; break; }
+        }
+      }
+
+      if (!sheetName) throw new Error('No encontré la hoja Corporativos. ¿Es el archivo correcto?');
+      log('Hoja encontrada: "' + sheetName + '"');
+      setProgress(60);
+
+      const ws = wb.Sheets[sheetName];
+
+      // Leer como array de arrays para preservar todo incluyendo celdas vacías
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1, raw: true });
+
+      setProgress(70);
+
+      // Encontrar fila de header buscando "Ticker"
+      let headerRowIdx = -1;
+      let tickerColIdx = -1;
+      for (let i = 0; i < Math.min(raw.length, 15); i++) {
+        for (let j = 0; j < raw[i].length; j++) {
+          if (raw[i][j] === 'Ticker') {
+            headerRowIdx = i;
+            tickerColIdx = j;
+            break;
+          }
+        }
+        if (headerRowIdx >= 0) break;
+      }
+
+      if (headerRowIdx < 0) throw new Error('No encontré la columna "Ticker". Verificá que el archivo tenga la hoja Corporativos.');
+      log('Header en fila ' + (headerRowIdx + 1) + ', Ticker en col ' + tickerColIdx);
+
+      // Determinar cuántas columnas hay en el header
+      const headerRow = raw[headerRowIdx];
+      let lastCol = headerRow.length - 1;
+      while (lastCol > 0 && (headerRow[lastCol] === null || headerRow[lastCol] === undefined || headerRow[lastCol] === '')) {
+        lastCol--;
+      }
+      const colCount = lastCol + 1; // total columns incluyendo col A vacía
+
+      log('Columnas detectadas: ' + colCount + ' (A a ' + colLetter(lastCol) + ')');
+
+      setProgress(80);
+
+      // Extraer desde fila 2 hasta el final (igual que el archivo destino)
+      // El archivo destino empieza en fila 2 con el título
+      const outputRows = [];
+      for (let i = 1; i < raw.length; i++) { // i=1 → fila 2 (saltamos fila 1 vacía)
+        const row = raw[i];
+        // Aseguramos que tenga exactamente colCount columnas
+        const outRow = [];
+        for (let j = 0; j < colCount; j++) {
+          const v = row[j] !== undefined ? row[j] : null;
+          outRow.push(v);
+        }
+        outputRows.push(outRow);
+      }
+
+      // Contar tickers válidos (filas con ticker en col tickerColIdx)
+      const tickers = outputRows.filter(r => {
+        const v = r[tickerColIdx];
+        return v && typeof v === 'string' && /^[A-Z0-9]{3,8}$/i.test(v.trim());
+      });
+
+      setProgress(90);
+
+      outputData = { rows: outputRows, colCount, totalRows: raw.length - 1 };
+
+      // Stats
+      document.getElementById('statTickers').textContent = tickers.length;
+      document.getElementById('statCols').textContent = colCount;
+      document.getElementById('statRows').textContent = outputRows.length;
+      document.getElementById('statsRow').style.display = 'grid';
+
+      log('✓ ' + tickers.length + ' tickers extraídos · ' + outputRows.length + ' filas en total', 'ok');
+      log('¡Listo! Hacé click para descargar.', 'ok');
+
+      setProgress(100);
+      dropZone.classList.add('loaded');
+      document.getElementById('dropIcon').textContent = '✅';
+
+      const btn = document.getElementById('btnDescargar');
+      btn.disabled = false;
+      btn.className = 'btn ready';
+      btn.textContent = '⬇ Descargar Corporativos.xlsx';
+
+    } catch(err) {
+      log('❌ ' + err.message, 'err');
+      setProgress(0);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function colLetter(idx) {
+  // 0=A, 1=B, etc.
+  let result = '';
+  idx++;
+  while (idx > 0) {
+    idx--;
+    result = String.fromCharCode(65 + (idx % 26)) + result;
+    idx = Math.floor(idx / 26);
+  }
+  return result;
+}
+
+function descargar() {
+  if (!outputData) return;
+
+  const { rows, colCount } = outputData;
+
+  // Crear workbook nuevo con una sola hoja "Corporativos"
+  const wb = XLSX.utils.book_new();
+
+  // Convertir rows a worksheet
+  // Usamos aoa_to_sheet (array of arrays) para preservar estructura exacta
+  // Agregamos fila 1 vacía (como en el destino, que tiene fila 1 vacía)
+  const aoaData = [
+    new Array(colCount).fill(null), // fila 1 vacía
+    ...rows
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoaData, { raw: true });
+
+  // Ancho de columnas aproximado
+  const wscols = [];
+  for (let i = 0; i < colCount; i++) {
+    wscols.push({ wch: i === 0 ? 4 : i <= 2 ? 22 : 14 });
+  }
+  ws['!cols'] = wscols;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Corporativos');
+
+  XLSX.writeFile(wb, 'Corporativos.xlsx');
+  log('✓ Corporativos.xlsx descargado correctamente', 'ok');
+}
+</script>
+</body>
+</html>

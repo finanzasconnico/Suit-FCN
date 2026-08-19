@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor de Individuos — Web · FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #081917;
+  --navy-mid: #0E2622;
+  --navy-card: #122B27;
+  --border: rgba(255,255,255,0.1);
+  --cream: #EAF1EE;
+  --cream-dim: #6C817C;
+  --balanz: #1C8C5F;
+  --gold: #DBA03C;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --radius: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  background: var(--navy);
+  color: var(--cream);
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; }
+
+/* HEADER */
+.topbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:22px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo { width: 32px; height: 32px; background: var(--balanz); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'Spectral', Georgia, serif; font-size: 16px; color: #fff; font-weight: 600; }
+.brand-name { font-family: 'Spectral', Georgia, serif; font-size: 19px; font-weight: 300; letter-spacing: .05em; }
+.brand-name span { font-weight: 600; color: var(--gold); }
+.brand-titles h1 { font-family:'Spectral', Georgia, serif; font-size: 24px; font-weight: 500; color:#fff; }
+.brand-titles .sub { font-size: 10.5px; color: var(--cream-dim); text-transform: uppercase; letter-spacing:.07em; margin-top:2px; }
+
+.status-pill { font-size: 11px; color: var(--cream-dim); background: rgba(255,255,255,.04); border:1px solid var(--border); border-radius: 20px; padding: 6px 14px; display:flex; align-items:center; gap:8px; }
+.status-dot { width:7px; height:7px; border-radius:50%; background: var(--cream-dim); }
+.status-dot.ok { background: var(--green); box-shadow:0 0 6px var(--green); }
+
+/* DROP CARD (estado inicial) */
+.card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; }
+.drop-card { max-width: 520px; margin: 40px auto; text-align:center; }
+.drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; cursor: pointer; transition: all .2s; position: relative; margin-bottom: 6px; }
+.drop-zone:hover, .drop-zone.drag-over { border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.04); }
+.drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%; height:100%; }
+.drop-icon { font-size: 2.2rem; margin-bottom: 10px; display:block; }
+.drop-title { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.drop-hint { font-size: 11px; color: var(--cream-dim); }
+.drop-err { font-size: 11.5px; color: var(--red); margin-top: 12px; display:none; }
+
+/* CONTROLS */
+.controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom: 16px; }
+.tabs { display:flex; gap:6px; background: rgba(255,255,255,.03); border:1px solid var(--border); border-radius: 10px; padding: 4px; }
+.tab-btn { border:none; background:transparent; color: var(--cream-dim); font-family:'Hanken Grotesk',system-ui,sans-serif; font-size:12.5px; font-weight:500; padding: 8px 14px; border-radius: 7px; cursor:pointer; transition: all .15s; }
+.tab-btn.active { background: var(--balanz); color:#fff; }
+.spacer { flex:1; }
+.search-input { background: rgba(255,255,255,.04); border:1px solid var(--border); border-radius:7px; color:var(--cream); font-family:'Hanken Grotesk',system-ui,sans-serif; font-size:12.5px; padding:8px 12px; width:200px; }
+.search-input::placeholder { color: var(--cream-dim); }
+.view-toggle { display:flex; background: rgba(255,255,255,.03); border:1px solid var(--border); border-radius:10px; padding:4px; gap:4px; }
+.view-toggle button { border:none; background:transparent; color:var(--cream-dim); font-size:12px; font-weight:500; padding:8px 12px; border-radius:7px; cursor:pointer; }
+.view-toggle button.active { background: var(--gold); color:#081917; }
+.btn-mini { background: rgba(255,255,255,.05); border:1px solid var(--border); color:var(--cream-dim); font-size:11.5px; padding:8px 12px; border-radius:7px; cursor:pointer; }
+.btn-mini:hover { color:#fff; border-color: rgba(255,255,255,.3); }
+
+/* TABLE */
+.table-wrap { background: var(--navy-mid); border:1px solid var(--border); border-radius:10px; overflow:auto; max-height: 68vh; }
+table { width:100%; border-collapse: collapse; font-size: 12.5px; }
+thead th { position: sticky; top:0; background: #0E2622; text-align:left; padding: 10px 12px; font-size: 10.5px; text-transform:uppercase; letter-spacing:.05em; color: var(--cream-dim); border-bottom: 1px solid var(--border); cursor:pointer; white-space:nowrap; user-select:none; }
+thead th:hover { color:#fff; }
+thead th.sorted { color: var(--gold); }
+tbody td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.05); white-space:nowrap; }
+tbody tr:hover { background: rgba(255,255,255,.03); }
+.tk { font-weight:700; color:#fff; letter-spacing:.02em; }
+.tir-verde { color: var(--green); font-weight:600; }
+.tir-amarillo { color: var(--yellow); font-weight:600; }
+.tir-rojo { color: var(--red); font-weight:600; }
+.tir-sospechoso { color: var(--cream-dim); font-weight:600; font-style: italic; }
+.tir-sospechoso::after { content: ' ⚠'; }
+.badge { font-size:10px; padding: 3px 8px; border-radius: 20px; font-weight:600; letter-spacing:.02em; }
+.badge-bajo { background: rgba(34,197,94,.15); color: var(--green); }
+.badge-medio { background: rgba(245,158,11,.15); color: var(--yellow); }
+.badge-alto { background: rgba(239,68,68,.15); color: var(--red); }
+.empty-row td { text-align:center; padding: 40px; color: var(--cream-dim); }
+
+/* CLIENT CARDS */
+.cards-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 14px; }
+.tcard { background: var(--navy-mid); border:1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.tcard-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.tcard-tk { font-family:'Spectral', Georgia, serif; font-size:19px; font-weight:600; color:#fff; }
+.tcard-name { font-size: 11.5px; color: var(--cream-dim); margin-bottom: 12px; min-height: 15px; }
+.tcard-row { display:flex; justify-content:space-between; font-size:12px; padding: 4px 0; border-top: 1px dashed rgba(255,255,255,.06); }
+.tcard-row .l { color: var(--cream-dim); }
+.tcard-row .v { color:#fff; font-weight:600; }
+.tcard-tir { font-family:'Spectral', Georgia, serif; font-size: 26px; font-weight:600; margin: 6px 0; }
+
+.foot-note { font-size:11px; color: var(--cream-dim); margin-top: 14px; line-height:1.7; }
+.hidden { display:none !important; }
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-thumb { background: var(--balanz); border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">B</div>
+      <div class="brand-titles">
+        <h1>Monitor de Individuos — Web</h1>
+        <div class="sub">Corporativos · Soberanos · Letras · Research Equity</div>
+      </div>
+    </div>
+    <div class="status-pill" id="statusPill">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Sin archivo cargado</span>
+    </div>
+  </div>
+
+  <!-- DROP CARD -->
+  <div class="card drop-card" id="dropCard">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm">
+      <span class="drop-icon">📂</span>
+      <div class="drop-title">Soltá acá el Monitor Individuos</div>
+      <div class="drop-hint">Monitor_Individuos_2_0.xlsm · o cualquier versión / export</div>
+    </div>
+    <div class="drop-err" id="dropErr"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden">
+    <div class="controls">
+      <div class="tabs" id="tabs">
+        <button class="tab-btn active" data-tab="ons">ONs</button>
+        <button class="tab-btn" data-tab="soberanos">Soberanos</button>
+        <button class="tab-btn" data-tab="letras">Letras $</button>
+        <button class="tab-btn" data-tab="equity">Research Equity</button>
+      </div>
+      <input class="search-input" id="searchBox" placeholder="Buscar ticker o emisor…">
+      <div class="spacer"></div>
+      <div class="view-toggle">
+        <button class="active" data-view="interna">Vista interna</button>
+        <button data-view="cliente">Vista cliente</button>
+      </div>
+      <button class="btn-mini" id="btnReload">↺ Cargar otro archivo</button>
+    </div>
+
+    <div class="table-wrap"><table id="tblInterna">
+      <thead><tr id="theadRow"></tr></thead>
+      <tbody id="tbodyInterna"></tbody>
+    </table></div>
+
+    <div class="cards-grid hidden" id="cardsCliente"></div>
+
+    <div class="foot-note" id="footNote"></div>
+  </div>
+
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const TIR_BAJO = 5;   // % — debajo: rojo
+const TIR_ALTO = 8;   // % — arriba: verde
+
+const SHEETS = {
+  ons: {
+    label: 'ONs (Corporativos)',
+    names: ['Corporativos'],
+    dedupe: true,
+    fields: { ticker:0, emisor:1, precioMep:2, vencimiento:3, tir:4, duration:5, amortizacion:6, cupon:7, mesCupon:8, dolar:9, ley:10, calif:11, laminaMin:12, sector:13, paridad:14, precioCable:15, tirCable:16, durationCable:17 },
+    interna: [
+      {k:'ticker', h:'Ticker'}, {k:'emisor', h:'Emisor'}, {k:'sector', h:'Sector'},
+      {k:'tir', h:'TIR', type:'pctColor'}, {k:'tirCable', h:'TIR Cable', type:'pct'},
+      {k:'vencimiento', h:'Vencimiento', type:'date'}, {k:'duration', h:'Duration', type:'num2'},
+      {k:'cupon', h:'Cupón', type:'pct'}, {k:'mesCupon', h:'Mes cupón'}, {k:'amortizacion', h:'Amort.'},
+      {k:'dolar', h:'Dólar'}, {k:'ley', h:'Ley'}, {k:'calif', h:'Calif.'},
+      {k:'precioMep', h:'Precio MEP', type:'num3'}, {k:'precioCable', h:'Precio Cable', type:'num3'},
+      {k:'laminaMin', h:'Lámina min.'}
+    ],
+    cliente: {sub:'emisor', tir:'tir', tirCable:'tirCable', vto:'vencimiento', calif:'calif', cupon:'cupon', extra:'sector'}
+  },
+  soberanos: {
+    label: 'Soberanos',
+    names: ['Soberanos'],
+    dedupe: true,
+    fields: { ticker:0, emisor:1, precioMep:2, vencimiento:3, tir:4, duration:5, amortizacion:6, cupon:7, mesCupon:8, dolar:9, ley:10, calif:11, nominMin:12, paridad:13, varDiaria:14, precioCable:15, tirCable:16, durationCable:17 },
+    interna: [
+      {k:'ticker', h:'Ticker'}, {k:'emisor', h:'Emisor'},
+      {k:'tir', h:'TIR', type:'pctColor'}, {k:'tirCable', h:'TIR Cable', type:'pct'},
+      {k:'vencimiento', h:'Vencimiento', type:'date'}, {k:'duration', h:'Duration', type:'num2'},
+      {k:'cupon', h:'Cupón', type:'pct'}, {k:'mesCupon', h:'Mes cupón'}, {k:'amortizacion', h:'Amort.'},
+      {k:'dolar', h:'Dólar'}, {k:'ley', h:'Ley'}, {k:'calif', h:'Calif.'},
+      {k:'precioMep', h:'Precio MEP', type:'num3'}, {k:'precioCable', h:'Precio Cable', type:'num3'},
+      {k:'varDiaria', h:'Var. diaria', type:'pct'}
+    ],
+    cliente: {sub:'emisor', tir:'tir', tirCable:'tirCable', vto:'vencimiento', calif:'calif', cupon:'cupon', extra:'ley'}
+  },
+  letras: {
+    label: 'Letras / Bonos $',
+    names: ['Letras-Bonos $', 'Letras-Bonos'],
+    dedupe: true,
+    fields: { ticker:0, papel:1, precio:2, vencimiento:3, diasVcto:4, duration:5, tir:6, tna:7, tem:8, retDirecto:9, varDiaria:10 },
+    interna: [
+      {k:'ticker', h:'Ticker'}, {k:'papel', h:'Tipo'},
+      {k:'tir', h:'TIR', type:'pctColor'}, {k:'tna', h:'TNA', type:'pct'}, {k:'tem', h:'TEM', type:'pct'},
+      {k:'vencimiento', h:'Vencimiento', type:'date'}, {k:'diasVcto', h:'Días vcto.'}, {k:'duration', h:'Duration', type:'num2'},
+      {k:'precio', h:'Precio', type:'num3'}, {k:'retDirecto', h:'Ret. directo', type:'pct'}, {k:'varDiaria', h:'Var. diaria', type:'pct'}
+    ],
+    cliente: {sub:'papel', tir:'tir', vto:'vencimiento', extra:'diasVcto'}
+  },
+  equity: {
+    label: 'Research Equity (CEDEARs / Acciones)',
+    names: ['Equity'],
+    fields: { update:-1, ticker:0, ratio:1, rating:2, tpUsd:3, tpArs:4, precioHoyUsd:5, pctATp:6 },
+    interna: [
+      {k:'ticker', h:'Ticker'}, {k:'rating', h:'Rating'},
+      {k:'precioHoyUsd', h:'Precio hoy USD', type:'num2'}, {k:'tpUsd', h:'Target USD', type:'num2'},
+      {k:'pctATp', h:'% a target', type:'pctColor'}, {k:'ratio', h:'Ratio'}, {k:'update', h:'Última nota', type:'date'}
+    ],
+    cliente: {sub:'rating', tir:'pctATp', extra:'precioHoyUsd'},
+    dedupeByLatestUpdate: true
+  }
+};
+
+let DATA = {};      // { ons: [...], soberanos: [...], letras: [...], equity: [...] }
+let currentTab = 'ons';
+let currentView = 'interna';
+let sortState = {};  // per tab: {key, dir}
+let freshnessTxt = '';
+
+// ===================== FILE HANDLING =====================
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+document.getElementById('btnReload').addEventListener('click', () => {
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('dropCard').classList.remove('hidden');
+  document.getElementById('statusDot').classList.remove('ok');
+  document.getElementById('statusText').textContent = 'Sin archivo cargado';
+});
+
+function showErr(msg) {
+  const el = document.getElementById('dropErr');
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+}
+
+function handleFile(file) {
+  document.getElementById('dropErr').style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true, raw: true });
+      DATA = {};
+      for (const key in SHEETS) {
+        const cfg = SHEETS[key];
+        const sheetName = cfg.names.find(n => wb.SheetNames.includes(n))
+          || wb.SheetNames.find(n => cfg.names.some(c => n.toLowerCase().includes(c.toLowerCase().split(' ')[0])));
+        if (!sheetName) { DATA[key] = []; continue; }
+        let rows = parseBlock(wb.Sheets[sheetName], cfg.fields);
+        if (cfg.dedupeByLatestUpdate) rows = dedupeLatest(rows);
+        else if (cfg.dedupe) rows = dedupeFirst(rows);
+        DATA[key] = rows;
+        if (!freshnessTxt) freshnessTxt = findFreshness(wb.Sheets[sheetName]);
+      }
+      const totalRows = Object.values(DATA).reduce((a, r) => a + r.length, 0);
+      if (totalRows === 0) { showErr('No encontré ninguna hoja reconocible (Corporativos / Soberanos / Letras-Bonos $ / Equity). ¿Es el Monitor Individuos correcto?'); return; }
+
+      document.getElementById('dropCard').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      document.getElementById('statusDot').classList.add('ok');
+      const now = new Date();
+      document.getElementById('statusText').textContent = 'Cargado ' + now.toLocaleDateString('es-AR') + ' ' + now.toLocaleTimeString('es-AR', {hour:'2-digit',minute:'2-digit'}) + (freshnessTxt ? ' · ' + freshnessTxt : '');
+      updateFootNote();
+      renderTab();
+    } catch (err) {
+      showErr(err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function findFreshness(ws) {
+  const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1, raw: true });
+  for (let i = 0; i < Math.min(raw.length, 10); i++) {
+    for (const v of (raw[i] || [])) {
+      if (typeof v === 'string' && v.toLowerCase().startsWith('updated at')) return v;
+    }
+  }
+  return '';
+}
+
+function dedupeFirst(rows) {
+  const map = new Map();
+  for (const r of rows) if (!map.has(r.ticker)) map.set(r.ticker, r);
+  return [...map.values()];
+}
+
+function dedupeLatest(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const prev = map.get(r.ticker);
+    const d = r.update instanceof Date ? r.update.getTime() : 0;
+    const pd = prev && prev.update instanceof Date ? prev.update.getTime() : -1;
+    if (!prev || d >= pd) map.set(r.ticker, r);
+  }
+  return [...map.values()];
+}
+
+function parseBlock(ws, fieldOffsets) {
+  const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1, raw: true });
+  let hIdx = -1, tIdx = -1;
+  for (let i = 0; i < Math.min(raw.length, 20); i++) {
+    const row = raw[i] || [];
+    for (let j = 0; j < row.length; j++) {
+      if (row[j] === 'Ticker') { hIdx = i; tIdx = j; break; }
+    }
+    if (hIdx >= 0) break;
+  }
+  if (hIdx < 0) return [];
+  const out = [];
+  for (let i = hIdx + 1; i < raw.length; i++) {
+    const row = raw[i] || [];
+    const tkRaw = row[tIdx + fieldOffsets.ticker];
+    const tk = String(tkRaw || '').trim();
+    if (!tk || tk.toLowerCase() === 'ticker' || !/^[A-Za-z0-9][A-Za-z0-9.\-]{1,9}$/.test(tk)) continue;
+    const rec = {};
+    for (const key in fieldOffsets) {
+      const off = fieldOffsets[key];
+      rec[key] = row[tIdx + off] !== undefined ? row[tIdx + off] : null;
+    }
+    rec.ticker = tk.toUpperCase();
+    out.push(rec);
+  }
+  return out;
+}
+
+// ===================== RENDER =====================
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTab = btn.dataset.tab;
+  renderTab();
+});
+document.querySelector('.view-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentView = btn.dataset.view;
+  renderTab();
+});
+document.getElementById('searchBox').addEventListener('input', renderTab);
+
+function getFiltered() {
+  const cfg = SHEETS[currentTab];
+  let rows = DATA[currentTab] || [];
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(r => {
+      const hay = [r.ticker, r.emisor, r.papel].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  const st = sortState[currentTab];
+  if (st) {
+    rows = [...rows].sort((a, b) => {
+      let va = a[st.key], vb = b[st.key];
+      if (va instanceof Date) va = va.getTime(); if (vb instanceof Date) vb = vb.getTime();
+      if (typeof va === 'string') va = va.toLowerCase(); if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va == null) return 1; if (vb == null) return -1;
+      if (va < vb) return st.dir === 'asc' ? -1 : 1;
+      if (va > vb) return st.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  return rows;
+}
+
+function fmt(val, type) {
+  if (val === null || val === undefined || val === '') return '—';
+  if (type === 'date') { const d = val instanceof Date ? val : new Date(val); return isNaN(d) ? String(val) : d.toLocaleDateString('es-AR'); }
+  if (type === 'pct' || type === 'pctColor') { const n = parseFloat(val); return isNaN(n) ? String(val) : (n * 100).toFixed(2) + '%'; }
+  if (type === 'num2') { const n = parseFloat(val); return isNaN(n) ? String(val) : n.toFixed(2); }
+  if (type === 'num3') { const n = parseFloat(val); return isNaN(n) ? String(val) : n.toFixed(3); }
+  return String(val);
+}
+
+// Una ON o soberano en este mercado no debería mostrar TIR negativa ni > 35% —
+// si aparece, es casi siempre un dato roto (RIC caído / archivo guardado sin conexión viva),
+// no una tasa real. Lo marcamos en vez de pintarlo como si fuera confiable.
+function isTirSuspicious(val) {
+  const n = parseFloat(val) * 100;
+  if (isNaN(n)) return false;
+  return n < 0 || n > 35;
+}
+function tirClassFinal(val) {
+  if (isTirSuspicious(val)) return 'tir-sospechoso';
+  const n = parseFloat(val) * 100;
+  if (isNaN(n)) return '';
+  if (n < TIR_BAJO) return 'tir-rojo';
+  if (n >= TIR_ALTO) return 'tir-verde';
+  return 'tir-amarillo';
+}
+
+function califRiesgo(calif) {
+  const c = String(calif || '').toUpperCase();
+  if (!c || c === '-' || c === 'N/A') return {label:'Sin calif.', cls:'badge-medio'};
+  if (c.includes('AAA') || c.includes('AA')) return {label:'Bajo', cls:'badge-bajo'};
+  if (c.includes('BBB') || (c.includes('A') && !c.includes('AA'))) return {label:'Medio', cls:'badge-medio'};
+  return {label:'Alto', cls:'badge-alto'};
+}
+
+function renderTab() {
+  const cfg = SHEETS[currentTab];
+  const rows = getFiltered();
+
+  const table = document.getElementById('tblInterna').parentElement;
+  const cards = document.getElementById('cardsCliente');
+
+  if (currentView === 'interna') {
+    table.classList.remove('hidden'); cards.classList.add('hidden');
+    renderTableInterna(cfg, rows);
+  } else {
+    table.classList.add('hidden'); cards.classList.remove('hidden');
+    renderCardsCliente(cfg, rows);
+  }
+  updateFootNote(rows.length);
+}
+
+function renderTableInterna(cfg, rows) {
+  const thead = document.getElementById('theadRow');
+  thead.innerHTML = cfg.interna.map(c => {
+    const st = sortState[currentTab];
+    const sorted = st && st.key === c.k ? 'sorted' : '';
+    const arrow = sorted ? (st.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    return `<th class="${sorted}" data-k="${c.k}">${c.h}${arrow}</th>`;
+  }).join('');
+  thead.querySelectorAll('th').forEach(th => {
+    th.onclick = () => {
+      const k = th.dataset.k;
+      const st = sortState[currentTab];
+      sortState[currentTab] = { key: k, dir: st && st.key === k && st.dir === 'asc' ? 'desc' : 'asc' };
+      renderTab();
+    };
+  });
+
+  const tbody = document.getElementById('tbodyInterna');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.interna.length}">Sin resultados</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    return '<tr>' + cfg.interna.map(c => {
+      const raw = r[c.k];
+      const text = fmt(raw, c.type);
+      if (c.k === 'ticker') return `<td class="tk">${text}</td>`;
+      if (c.type === 'pctColor') return `<td class="${tirClassFinal(raw)}">${text}</td>`;
+      return `<td>${text}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+function renderCardsCliente(cfg, rows) {
+  const cl = cfg.cliente || {};
+  const grid = document.getElementById('cardsCliente');
+  if (!rows.length) { grid.innerHTML = `<div class="foot-note">Sin resultados</div>`; return; }
+  grid.innerHTML = rows.map(r => {
+    const tirVal = cl.tir ? r[cl.tir] : null;
+    const suspicious = tirVal != null && isTirSuspicious(tirVal);
+    const tirTxt = tirVal == null ? '—' : (suspicious ? 'Dato a verificar' : fmt(tirVal, 'pct'));
+    const califInfo = cl.calif ? califRiesgo(r[cl.calif]) : null;
+    const sub = cl.sub ? (r[cl.sub] || '') : '';
+    const vto = cl.vto ? fmt(r[cl.vto], 'date') : null;
+    const cuponTxt = cl.cupon && r[cl.cupon] != null ? fmt(r[cl.cupon], 'pct') : null;
+    return `
+      <div class="tcard">
+        <div class="tcard-head">
+          <span class="tcard-tk">${r.ticker}</span>
+          ${califInfo ? `<span class="badge ${califInfo.cls}">${califInfo.label}</span>` : ''}
+        </div>
+        <div class="tcard-name">${sub}</div>
+        ${cl.tir ? `<div class="tcard-tir ${suspicious ? 'tir-sospechoso' : tirClassFinal(tirVal)}" style="${suspicious ? 'font-size:15px;' : ''}">${tirTxt}</div>` : ''}
+        ${vto ? `<div class="tcard-row"><span class="l">Vencimiento</span><span class="v">${vto}</span></div>` : ''}
+        ${cuponTxt ? `<div class="tcard-row"><span class="l">Cupón</span><span class="v">${cuponTxt}</span></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function updateFootNote(count) {
+  const cfg = SHEETS[currentTab];
+  document.getElementById('footNote').innerHTML =
+    `${count != null ? count + ' instrumentos · ' : ''}Fuente: Monitor Individuos (Balanz / Refinitiv), cargado manualmente. ` +
+    `Precios de referencia, no vinculantes. Consultá con Nico antes de operar.`;
+}
+</script>
+</body>
+</html>

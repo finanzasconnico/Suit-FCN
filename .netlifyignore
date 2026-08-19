@@ -1,0 +1,36 @@
+# NUNCA publicar en la web — carpetas y archivos con datos de clientes o personales.
+# El deploy manual de Netlify (netlify deploy --dir .) sube TODO lo que hay en esta
+# carpeta, sin mirar el .gitignore. Este archivo es el que realmente protege qué
+# se sube al sitio público.
+
+# Carpetas con datos de clientes / personales
+Bot precio objetivo/
+Reportes cltes tickers bonos acc y cedears/
+Documentos clave Balanz/
+BeaNico/
+bot/
+Skills/
+Tutoriales/
+inactivas/
+intrade/
+En desarrollo/
+
+# Archivos de datos — nunca deberían estar en el sitio público
+*.xlsx
+*.xls
+*.xlsm
+*.pdf
+*.docx
+*.csv
+*.txt
+
+# Fotos personales
+*.jpg
+*.jpeg
+*.jfif
+*.png
+
+# Infraestructura — no hace falta publicarla
+.git/
+.netlify/
+node_modules/

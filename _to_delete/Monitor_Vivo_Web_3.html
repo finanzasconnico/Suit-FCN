@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Vivo — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #081917; --navy-mid: #0E2622; --border: #1E3A34;
+  --cream: #EAF1EE; --cream-dim: #6C817C; --balanz: #1C8C5F; --gold: #DBA03C;
+  --green: #22c55e; --red: #C0453B; --yellow: #DBA03C; --radius: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Hanken Grotesk', sans-serif; background: var(--navy); color: var(--cream); min-height: 100vh; padding: 24px 16px 60px; }
+.wrap { max-width: 1320px; margin: 0 auto; }
+
+.topbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:18px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-logo { width: 32px; height: 32px; background: var(--balanz); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'Spectral', serif; font-size: 16px; color: #fff; font-weight: 600; }
+.brand-titles h1 { font-family:'Spectral', serif; font-size: 24px; font-weight: 500; color:#fff; }
+.brand-titles .sub { font-size: 10.5px; color: var(--cream-dim); text-transform: uppercase; letter-spacing:.07em; margin-top:2px; }
+
+.pills { display:flex; gap:8px; flex-wrap:wrap; }
+.status-pill { font-size: 10.5px; color: var(--cream-dim); background: rgba(255,255,255,.04); border:1px solid var(--border); border-radius: 20px; padding: 5px 12px; display:flex; align-items:center; gap:7px; }
+.dot { width:7px; height:7px; border-radius:50%; background: var(--cream-dim); flex-shrink:0; }
+.dot.ok { background: var(--green); box-shadow:0 0 6px var(--green); }
+.dot.err { background: var(--red); box-shadow:0 0 6px var(--red); }
+.dot.loading { background: var(--yellow); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+
+/* CONFIG BAR */
+.config-bar { background: var(--navy-mid); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.config-bar label { font-size:11px; color:var(--cream-dim); white-space:nowrap; }
+.config-bar input { flex:1; min-width:220px; background: rgba(255,255,255,.04); border:1px solid var(--border); border-radius:7px; color:var(--cream); font-family:'Hanken Grotesk',sans-serif; font-size:12px; padding:8px 12px; }
+.config-bar .btn-mini { background: var(--balanz); border:none; color:#fff; font-size:11.5px; font-weight:500; padding:9px 16px; border-radius:7px; cursor:pointer; }
+.config-bar .btn-mini:hover { background:#22a870; }
+.config-help { font-size:10.5px; color: var(--cream-dim); width:100%; line-height:1.6; }
+.config-help a { color: var(--gold); }
+
+.controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom: 12px; }
+.tabs { display:flex; gap:6px; background: rgba(255,255,255,.03); border:1px solid var(--border); border-radius: 10px; padding: 4px; }
+.tab-btn { border:none; background:transparent; color: var(--cream-dim); font-family:'Hanken Grotesk',sans-serif; font-size:12.5px; font-weight:500; padding: 8px 14px; border-radius: 7px; cursor:pointer; }
+.tab-btn.active { background: var(--balanz); color:#fff; }
+.spacer { flex:1; }
+.search-input { background: rgba(255,255,255,.04); border:1px solid var(--border); border-radius:7px; color:var(--cream); font-family:'Hanken Grotesk',sans-serif; font-size:12.5px; padding:8px 12px; width:190px; }
+.view-toggle { display:flex; background: rgba(255,255,255,.03); border:1px solid var(--border); border-radius:10px; padding:4px; gap:4px; }
+.view-toggle button { border:none; background:transparent; color:var(--cream-dim); font-size:12px; font-weight:500; padding:8px 12px; border-radius:7px; cursor:pointer; }
+.view-toggle button.active { background: var(--gold); color:#081917; }
+.btn-mini2 { background: rgba(255,255,255,.05); border:1px solid var(--border); color:var(--cream-dim); font-size:11.5px; padding:8px 12px; border-radius:7px; cursor:pointer; }
+.btn-mini2:hover { color:#fff; }
+
+/* CALIF FILTER CHIPS */
+.chip-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 12px; }
+.chip { font-size:11px; padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--cream-dim); cursor:pointer; user-select:none; }
+.chip.active { background: var(--gold); color:#081917; border-color: var(--gold); font-weight:600; }
+
+/* TABLE */
+.table-wrap { background: var(--navy-mid); border:1px solid var(--border); border-radius:10px; overflow:auto; max-height: 66vh; }
+table { width:100%; border-collapse: collapse; font-size: 12px; }
+thead th { position: sticky; top:0; background: #0E2622; text-align:left; padding: 9px 11px; font-size: 10px; text-transform:uppercase; letter-spacing:.05em; color: var(--cream-dim); border-bottom: 1px solid var(--border); cursor:pointer; white-space:nowrap; user-select:none; }
+thead th:hover { color:#fff; }
+thead th.sorted { color: var(--gold); }
+tbody td { padding: 8px 11px; border-bottom: 1px solid rgba(255,255,255,.05); white-space:nowrap; }
+tbody tr:hover { background: rgba(255,255,255,.03); }
+.tk { font-weight:700; color:#fff; }
+.tir-verde { color: var(--green); font-weight:600; }
+.tir-amarillo { color: var(--yellow); font-weight:600; }
+.tir-rojo { color: var(--red); font-weight:600; }
+.tir-sospechoso { color: var(--cream-dim); font-weight:600; font-style: italic; }
+.tir-sospechoso::after { content: ' ⚠'; }
+.badge { font-size:10px; padding: 3px 8px; border-radius: 20px; font-weight:600; }
+.badge-bajo { background: rgba(34,197,94,.15); color: var(--green); }
+.badge-medio { background: rgba(245,158,11,.15); color: var(--yellow); }
+.badge-alto { background: rgba(239,68,68,.15); color: var(--red); }
+.vol-si { color: var(--green); }
+.vol-no { color: var(--cream-dim); font-style: italic; }
+.empty-row td, .empty-state { text-align:center; padding: 40px; color: var(--cream-dim); }
+.empty-state { background: var(--navy-mid); border:1px dashed var(--border); border-radius:10px; }
+
+/* UPLOAD (ONs/Equity) */
+.drop-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 30px 20px; cursor: pointer; transition: all .2s; position: relative; text-align:center; max-width:440px; margin: 20px auto; }
+.drop-zone:hover { border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.04); }
+.drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%; height:100%; }
+.drop-icon { font-size: 1.8rem; margin-bottom: 8px; display:block; }
+.drop-title { font-size: 13px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.drop-hint { font-size: 10.5px; color: var(--cream-dim); }
+
+/* CARDS */
+.cards-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 14px; }
+.tcard { background: var(--navy-mid); border:1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.tcard-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.tcard-tk { font-family:'Spectral', serif; font-size:19px; font-weight:600; color:#fff; }
+.tcard-name { font-size: 11.5px; color: var(--cream-dim); margin-bottom: 12px; min-height: 15px; }
+.tcard-row { display:flex; justify-content:space-between; font-size:12px; padding: 4px 0; border-top: 1px dashed rgba(255,255,255,.06); }
+.tcard-row .l { color: var(--cream-dim); }
+.tcard-row .v { color:#fff; font-weight:600; }
+.tcard-tir { font-family:'Spectral', serif; font-size: 26px; font-weight:600; margin: 6px 0; }
+
+.foot-note { font-size:11px; color: var(--cream-dim); margin-top: 14px; line-height:1.7; }
+.hidden { display:none !important; }
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-thumb { background: var(--balanz); border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">B</div>
+      <div class="brand-titles">
+        <h1>Monitor Vivo</h1>
+        <div class="sub">Soberanos y Letras en vivo (MAE + bonistas) · ONs y Equity desde el Monitor Individuos</div>
+      </div>
+    </div>
+    <div class="pills">
+      <div class="status-pill"><span class="dot" id="dotMae"></span><span id="txtMae">MAE: sin conectar</span></div>
+      <div class="status-pill"><span class="dot" id="dotBon"></span><span id="txtBon">Bonistas: sin conectar</span></div>
+    </div>
+  </div>
+
+  <div class="config-bar">
+    <label for="proxyInput">URL de tu proxy:</label>
+    <input id="proxyInput" placeholder="https://tu-proxy.workers.dev" value="https://finanzasconnico-proxy.nicostrijland.workers.dev">
+    <button class="btn-mini" id="btnConectar">Conectar</button>
+    <div class="config-help">
+      Soberanos y Letras se actualizan solos desde acá — necesitás desplegar el proxy incluido (<code>proxy-worker.js</code>, Cloudflare Workers, gratis, 5 min) y pegar la URL que te da. Mientras tanto podés seguir usando ONs / Equity subiendo el Excel como siempre.
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="soberanos">Soberanos <span style="opacity:.5">· vivo</span></button>
+      <button class="tab-btn" data-tab="letras">Letras $ <span style="opacity:.5">· vivo</span></button>
+      <button class="tab-btn" data-tab="ons">ONs <span style="opacity:.5">· vivo + Excel</span></button>
+      <button class="tab-btn" data-tab="equity">Equity <span style="opacity:.5">· Excel</span></button>
+    </div>
+    <input class="search-input" id="searchBox" placeholder="Buscar ticker o emisor…">
+    <div class="spacer"></div>
+    <div class="view-toggle">
+      <button class="active" data-view="interna">Vista interna</button>
+      <button data-view="cliente">Vista cliente</button>
+    </div>
+    <button class="btn-mini2" id="btnReloadExcel">↺ Excel</button>
+  </div>
+
+  <div class="chip-row" id="califChips"></div>
+
+  <div id="contentArea">
+    <div class="table-wrap"><table id="tblInterna">
+      <thead><tr id="theadRow"></tr></thead>
+      <tbody id="tbodyInterna"></tbody>
+    </table></div>
+    <div class="cards-grid hidden" id="cardsCliente"></div>
+    <div class="empty-state hidden" id="emptyState"></div>
+  </div>
+
+  <div class="foot-note" id="footNote"></div>
+</div>
+
+<input type="file" id="fileInputHidden" accept=".xlsx,.xls,.xlsm" style="display:none">
+
+<script>
+// ============================================================
+// REFERENCIA ESTÁTICA (extraída una vez del Monitor Individuos)
+// ticker base -> {emisor, calif, sector, ley, tipo}
+// No cambia en vivo — calificación crediticia se mueve poco.
+// Se puede regenerar subiendo un Excel más nuevo (botón "↺ Excel").
+// ============================================================
+const REFERENCE = {"CS45":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"LMS8":{"emisor":"Aluar","calif":"AAA","sector":"Metales y minería","ley":"ARG","tipo":"ON"},"PNDC":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"VSCO":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"LMS7":{"emisor":"Aluar","calif":"AAA","sector":"Metales y minería","ley":"ARG","tipo":"ON"},"VSCY":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"IRCF":{"emisor":"IRSA","calif":"AAA","sector":"Bienes raíces","ley":"NY","tipo":"ON"},"BF48":{"emisor":"Banco BBVA","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"YMCI":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"MGCQ":{"emisor":"Pampa Energía","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"BYCH":{"emisor":"Banco Galicia","calif":"AAA","sector":"Bancos","ley":"NY","tipo":"ON"},"YMCZ":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"YMCY":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"BACG":{"emisor":"Banco Macro","calif":"AAA","sector":"Bancos","ley":"NY","tipo":"ON"},"NPCC":{"emisor":"Central Puerto","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"VSCU":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TLCM":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"NY","tipo":"ON"},"YM39":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"VSCR":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TTCD":{"emisor":"Tecpetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"YMCX":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"BACH":{"emisor":"Banco Macro","calif":"AAA","sector":"Bancos","ley":"NY","tipo":"ON"},"PNXC":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"PLC5":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"TSC3":{"emisor":"Transportadora de Gas del Sur","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"MGCM":{"emisor":"Pampa Energía","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"YFCJ":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"NY","tipo":"ON"},"TTCA":{"emisor":"Tecpetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"YMCJ":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"PLC4":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"VSCV":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"TLCP":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"NY","tipo":"ON"},"RC1C":{"emisor":"Árcor","calif":"AAA","sector":"Alimentos y bebidas","ley":"NY","tipo":"ON"},"YM34":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"IRCP":{"emisor":"IRSA","calif":"AAA","sector":"Bienes raíces","ley":"NY","tipo":"ON"},"MGCO":{"emisor":"Pampa Energía","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"VSCT":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"TLCT":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"NY","tipo":"ON"},"TSC4":{"emisor":"Transportadora de Gas del Sur","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"PN43":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"PLC7":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"VSCX":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"MGCR":{"emisor":"Pampa Energía","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"BF37":{"emisor":"Banco BBVA","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"YFCN":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"OTS5":{"emisor":"OTAMERICA","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"CIC7":{"emisor":"CNH Industrial Capital","calif":"AAA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"YFCK":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"BF39":{"emisor":"Banco BBVA","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"YM41":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"CS51":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"CS44":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"IRCJ":{"emisor":"IRSA","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"YM35":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"OTS2":{"emisor":"OTAMERICA","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"RC2C":{"emisor":"Árcor","calif":"AAA","sector":"Alimentos y bebidas","ley":"ARG","tipo":"ON"},"YM37":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"RCCR":{"emisor":"Árcor","calif":"AAA","sector":"Alimentos y bebidas","ley":"ARG","tipo":"ON"},"YFCM":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"CIC9":{"emisor":"CNH Industrial Capital","calif":"AAA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"TLCV":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"ARG","tipo":"ON"},"IRCQ":{"emisor":"IRSA","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"TLCQ":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"ARG","tipo":"ON"},"EMC1":{"emisor":"Compañia Mega","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PFC2":{"emisor":"Profertil","calif":"AAA","sector":"Agroindustria","ley":"ARG","tipo":"ON"},"YM38":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"LOC5":{"emisor":"Loma Negra","calif":"AAA","sector":"Construcción","ley":"ARG","tipo":"ON"},"BF49":{"emisor":"Banco BBVA","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"PN38":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"CS49":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"PN34":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TTC8":{"emisor":"Tecpetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"IRCN":{"emisor":"IRSA","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"OT41":{"emisor":"OTAMERICA","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PLC1":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PLC3":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"CICA":{"emisor":"CNH Industrial Capital","calif":"AAA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"OLC5":{"emisor":"OLDELVAL","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"CS48":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"VSCP":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"BF50":{"emisor":"Banco BBVA","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"YM40":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"OTS3":{"emisor":"OTAMERICA","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"CIC8":{"emisor":"CNH Industrial Capital","calif":"AAA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"CS47":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"YFCL":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"YFCO":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"PN37":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TLCO":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"ARG","tipo":"ON"},"CS50":{"emisor":"Cresud S.A.","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"LOC6":{"emisor":"Loma Negra","calif":"AAA","sector":"Construcción","ley":"ARG","tipo":"ON"},"CICB":{"emisor":"CNH Industrial Capital","calif":"AAA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"PLC6":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TLCU":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"ARG","tipo":"ON"},"YM42":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"MGCT":{"emisor":"Pampa Energía","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"NZC2":{"emisor":"Banco de la Nación Argentina","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"OLC6":{"emisor":"OLDELVAL","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TTCE":{"emisor":"Tecpetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"TLCW":{"emisor":"Telecom","calif":"AAA","sector":"Telecomunicaciones","ley":"ARG","tipo":"ON"},"OTS6":{"emisor":"OTAMERICA","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PN41":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"NZC5":{"emisor":"Banco de la Nación Argentina","calif":"AAA","sector":"Bancos","ley":"ARG","tipo":"ON"},"VSCZ":{"emisor":"Vista Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"NPCE":{"emisor":"Central Puerto","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"PN35":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"YFCP":{"emisor":"YPF Energía Eléctrica","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"TTC9":{"emisor":"Tecpetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"IRCO":{"emisor":"IRSA","calif":"AAA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"PFC3":{"emisor":"Profertil","calif":"AAA","sector":"Agroindustria","ley":"ARG","tipo":"ON"},"OT42":{"emisor":"OTAMERICA","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PLC2":{"emisor":"Pluspetrol","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"OLC7":{"emisor":"OLDELVAL","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"YM43":{"emisor":"YPF","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"NPCD":{"emisor":"Central Puerto","calif":"AAA","sector":"Electricidad","ley":"ARG","tipo":"ON"},"PN36":{"emisor":"Pan American Energy","calif":"AAA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"AFCH":{"emisor":"Banco Comafi","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"HBCA":{"emisor":"Banco Hipotecario","calif":"AA-","sector":"Bancos","ley":"ARG","tipo":"ON"},"T662":{"emisor":"Tarjeta Naranja","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"AFCI":{"emisor":"Banco Comafi","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"BGC4":{"emisor":"Banco Patagonia","calif":"AA+","sector":"Bancos","ley":"ARG","tipo":"ON"},"HBCD":{"emisor":"Banco Hipotecario","calif":"AA-","sector":"Bancos","ley":"ARG","tipo":"ON"},"DNC3":{"emisor":"Edenor","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"PVC3":{"emisor":"BAPRO","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"BPCU":{"emisor":"Banco Supervielle","calif":"AA+","sector":"Bancos","ley":"ARG","tipo":"ON"},"AERB":{"emisor":"Aeropuertos Argentina 2000","calif":"AA+","sector":"Infraestructura","ley":"ARG","tipo":"ON"},"AFCJ":{"emisor":"Banco Comafi","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"ZZC1":{"emisor":"Camuzzi","calif":"AA-","sector":"Energía","ley":"ARG","tipo":"ON"},"HBCF":{"emisor":"Banco Hipotecario","calif":"AA-","sector":"Bancos","ley":"ARG","tipo":"ON"},"T672":{"emisor":"Tarjeta Naranja","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"GN43":{"emisor":"Genneia S.A.","calif":"AA+","sector":"Electricidad","ley":"ARG","tipo":"ON"},"SBC1":{"emisor":"Scania Credit","calif":"AA","sector":"Servicios Financieros","ley":"ARG","tipo":"ON"},"VBC1":{"emisor":"Banco de Valores","calif":"AA+","sector":"Bancos","ley":"ARG","tipo":"ON"},"T641":{"emisor":"Tarjeta Naranja","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"HJCI":{"emisor":"John Deere Credit","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"MCC2":{"emisor":"PECOM","calif":"AA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PVC5":{"emisor":"BAPRO","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"HJCJ":{"emisor":"John Deere Credit","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"XMC1":{"emisor":"Minera Exar","calif":"AA","sector":"Minería","ley":"ARG","tipo":"ON"},"AFCL":{"emisor":"Banco Comafi","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"CAC5":{"emisor":"Capex S.A.","calif":"AA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"ZPC3":{"emisor":"Plaza Logística","calif":"AA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"RUCE":{"emisor":"MSU Energy","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"LDCG":{"emisor":"Ledesma","calif":"AA-","sector":"Agroindustria","ley":"ARG","tipo":"ON"},"OZC3":{"emisor":"EDEMSA","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"SBC2":{"emisor":"Scania Credit","calif":"AA","sector":"Servicios Financieros","ley":"ARG","tipo":"ON"},"HJCH":{"emisor":"John Deere Credit","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"SBC3":{"emisor":"Scania Credit","calif":"AA","sector":"Servicios Financieros","ley":"ARG","tipo":"ON"},"CP40":{"emisor":"Compañía General de Combustibles","calif":"AA-","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"PZCG":{"emisor":"Plaza Logística","calif":"AA","sector":"Bienes raíces","ley":"ARG","tipo":"ON"},"PQCT":{"emisor":"PCR","calif":"AA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"DNC5":{"emisor":"Edenor","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"AEC3":{"emisor":"AES","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"PQCR":{"emisor":"PCR","calif":"AA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"HJCG":{"emisor":"John Deere Credit","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"EAC3":{"emisor":"MSU Green Energy","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"HJCL":{"emisor":"John Deere Credit","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"HJCK":{"emisor":"John Deere Credit","calif":"AA","sector":"Servicios financieros","ley":"ARG","tipo":"ON"},"MCC1":{"emisor":"PECOM","calif":"AA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"AFCK":{"emisor":"Banco Comafi","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"DNCB":{"emisor":"Edenor","calif":"AA-","sector":"Electricidad","ley":"ARG","tipo":"ON"},"ARC1":{"emisor":"Aeropuertos Argentina 2000","calif":"AA+","sector":"Infraestructura","ley":"NY","tipo":"ON"},"DNC7":{"emisor":"Edenor","calif":"AA-","sector":"Electricidad","ley":"NY","tipo":"ON"},"COC4":{"emisor":"BANCOR","calif":"AA","sector":"Bancos","ley":"ARG","tipo":"ON"},"RUCD":{"emisor":"MSU Energy","calif":"AA-","sector":"Electricidad","ley":"NY","tipo":"ON"},"MCC3":{"emisor":"PECOM","calif":"AA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"OZC6":{"emisor":"EDEMSA","calif":"AA-","sector":"Electricidad","ley":"NY","tipo":"ON"},"CP38":{"emisor":"Compañía General de Combustibles","calif":"AA-","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"PQCS":{"emisor":"PCR","calif":"AA","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"DNCA":{"emisor":"Edenor","calif":"AA-","sector":"Electricidad","ley":"NY","tipo":"ON"},"GN49":{"emisor":"Genneia S.A.","calif":"AA+","sector":"Electricidad","ley":"NY","tipo":"ON"},"LQC1":{"emisor":"PCR y Luz de Tres Picos","calif":"AA","sector":"Energía - Petróleo y gas","ley":"NY","tipo":"ON"},"EAC4":{"emisor":"MSU Green Energy","calif":"AA-","sector":"Electricidad","ley":"NY","tipo":"ON"},"MIC3":{"emisor":"Mirgor","calif":"A+","sector":"Consumo masivo","ley":"ARG","tipo":"ON"},"SIC1":{"emisor":"SIDERSA","calif":"A+","sector":"Metales y minería","ley":"ARG","tipo":"ON"},"DEC2":{"emisor":"EDESA","calif":"A+","sector":"Electricidad","ley":"ARG","tipo":"ON"},"MSSF":{"emisor":"MSU","calif":"A+","sector":"Agroindustria","ley":"ARG","tipo":"ON"},"GYC5":{"emisor":"360 Energy Solar","calif":"A","sector":"Electricidad","ley":"ARG","tipo":"ON"},"GYC4":{"emisor":"360 Energy Solar","calif":"A","sector":"Electricidad","ley":"ARG","tipo":"ON"},"MTC2":{"emisor":"Mastellone","calif":"A","sector":"Alimentos y bebidas","ley":"ARG","tipo":"ON"},"DEC4":{"emisor":"EDESA","calif":"A+","sector":"Electricidad","ley":"ARG","tipo":"ON"},"MSSG":{"emisor":"MSU","calif":"A+","sector":"Agroindustria","ley":"ARG","tipo":"ON"},"SIC2":{"emisor":"SIDERSA","calif":"A+","sector":"Metales y minería","ley":"ARG","tipo":"ON"},"CRCJ":{"emisor":" Celulosa Argentina","calif":"D","sector":"Celulosa y papel","ley":"ARG","tipo":"ON"},"RZ9B":{"emisor":"Rizobacter","calif":"CC","sector":"Agroindustria","ley":"ARG","tipo":"ON"},"SNEB":{"emisor":"San Miguel","calif":"BBB-","sector":"Alimentos y bebidas","ley":"ARG","tipo":"ON"},"SNAB":{"emisor":"San Miguel","calif":"BBB-","sector":"Alimentos y bebidas","ley":"ARG","tipo":"ON"},"SNSB":{"emisor":"San Miguel","calif":"BBB-","sector":"Alimentos y bebidas","ley":"ARG","tipo":"ON"},"MR46":{"emisor":"Generación Mediterránea","calif":"D","sector":"Electricidad","ley":"NY","tipo":"ON"},"MR47":{"emisor":"Generación Mediterránea","calif":"D","sector":"Electricidad","ley":"NY","tipo":"ON"},"PECN":{"emisor":"TanGo Energy","calif":"BBB","sector":"Energía - Petróleo y gas","ley":"ARG","tipo":"ON"},"MR48":{"emisor":"Generación Mediterránea","calif":"D","sector":"Electricidad","ley":"ARG","tipo":"ON"},"AO27":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AL29":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AL30":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AO28":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AO29":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AN29":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AE38":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AL35":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"AL41":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"GD29":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"GD30":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"GD38":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"GD35":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"GD41":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"GD46":{"emisor":"Tesoro Nacional","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"BONOS":{"emisor":"Ratio","calif":null,"sector":null,"ley":null,"tipo":"SOBERANO"},"CO26":{"emisor":"Provincia de Córdoba","calif":"B- (Fitch)","sector":null,"ley":"ARG","tipo":"SOBERANO"},"SA24":{"emisor":"Provincia de Salta","calif":"BBB- (arg)","sector":null,"ley":"NY","tipo":"SOBERANO"},"ERF25":{"emisor":"Provincia de Entre Ríos","calif":"B-","sector":null,"ley":"NY","tipo":"SOBERANO"},"PMM29":{"emisor":"Provincia de Mendoza","calif":"-","sector":null,"ley":"NY","tipo":"SOBERANO"},"NDT25":{"emisor":"Provincia de Neuquén","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"CO32":{"emisor":"Provincia de Córdoba","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"BA37":{"emisor":"Provincia de Buenos Aires","calif":"-","sector":null,"ley":"NY","tipo":"SOBERANO"},"PUA36":{"emisor":"Provincia de Chubut","calif":"-","sector":null,"ley":"NY","tipo":"SOBERANO"},"BDC33":{"emisor":"Ciudad de Buenos Aires","calif":"AAA (arg)","sector":null,"ley":"NY","tipo":"SOBERANO"},"SFD34":{"emisor":"Provincia de Santa Fe","calif":"AA+ (arg)","sector":null,"ley":"NY","tipo":"SOBERANO"},"CO35":{"emisor":"Provincia de Córdoba","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"NDG34":{"emisor":"Provincia de Neuquén","calif":"B- (Fitch)","sector":null,"ley":"NY","tipo":"SOBERANO"},"BDC36":{"emisor":"Ciudad de Buenos Aires","calif":"AAA (arg)","sector":null,"ley":"NY","tipo":"SOBERANO"},"BOPREALES":{"emisor":null,"calif":null,"sector":null,"ley":null,"tipo":"SOBERANO"},"BPOA7":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"BPOB7":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"BPOC7PUT":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"BPOC7":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"BPOD7":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"BPOA8":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"BPOB8":{"emisor":"BCRA","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"D31G6":{"emisor":"Tesoro Nacional","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"D30S6":{"emisor":"Tesoro Nacional","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"D31M7":{"emisor":"Tesoro Nacional","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"TZV27":{"emisor":"Tesoro Nacional","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"TZV28":{"emisor":"Tesoro Nacional","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"},"TZVD8":{"emisor":"Tesoro Nacional","calif":"-","sector":null,"ley":"ARG","tipo":"SOBERANO"}};
+
+const TIR_BAJO = 5, TIR_ALTO = 8;
+
+// ============================================================
+// HELPERS
+// ============================================================
+function baseCode(tk) {
+  let t = String(tk || '').toUpperCase().trim();
+  t = t.replace(/\/(24HS|CI|48HS)$/, '');
+  if (t.length > 3 && /[ODCL]$/.test(t)) t = t.slice(0, -1);
+  return t;
+}
+
+function isTirSuspicious(fracOrPct, isFraction) {
+  const n = isFraction ? fracOrPct * 100 : fracOrPct;
+  if (n == null || isNaN(n)) return false;
+  return n < 0 || n > 35;
+}
+
+function tirClass(pct) {
+  if (pct == null || isNaN(pct)) return '';
+  if (isTirSuspicious(pct, false)) return 'tir-sospechoso';
+  if (pct < TIR_BAJO) return 'tir-rojo';
+  if (pct >= TIR_ALTO) return 'tir-verde';
+  return 'tir-amarillo';
+}
+
+function califBucket(calif) {
+  const c = String(calif || '').toUpperCase();
+  if (!c || c === '-' || c === 'NULL' || c === 'NONE') return 'Sin calif.';
+  if (c.startsWith('AAA')) return 'AAA';
+  if (c.startsWith('AA')) return 'AA';
+  if (c.startsWith('A')) return 'A';
+  if (c.startsWith('BBB')) return 'BBB';
+  if (c.startsWith('BB')) return 'BB';
+  if (c.startsWith('B')) return 'B';
+  if (c === 'CC' || c === 'CCC' || c === 'D') return 'CCC/D';
+  return 'Otras';
+}
+
+function califRiesgo(calif) {
+  const b = califBucket(calif);
+  if (b === 'AAA' || b === 'AA') return { label: 'Bajo', cls: 'badge-bajo' };
+  if (b === 'A' || b === 'BBB') return { label: 'Medio', cls: 'badge-medio' };
+  if (b === 'Sin calif.') return { label: 'Sin calif.', cls: 'badge-medio' };
+  return { label: 'Alto', cls: 'badge-alto' };
+}
+
+function fmtNum(n, dec) {
+  if (n == null || isNaN(n)) return '—';
+  return n.toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtPct(frac, dec) {
+  if (frac == null || isNaN(frac)) return '—';
+  return (frac * 100).toFixed(dec == null ? 2 : dec) + '%';
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = d instanceof Date ? d : new Date(d);
+  return isNaN(dt) ? '—' : dt.toLocaleDateString('es-AR');
+}
+
+// XIRR por bisección — validado contra AL30 (7.51% calculado vs 7.26% del
+// Excel de Balanz para el mismo bono con precio similar). No ajusta interés
+// corrido ni feriados de liquidación: es una aproximación para asesoramiento,
+// no para ejecución.
+function xirr(price, cashflows, asOf) {
+  if (!cashflows || !cashflows.length || !price || price <= 0) return null;
+  const t = cashflows.map(cf => (cf.date - asOf) / (1000 * 60 * 60 * 24 * 365));
+  const amt = cashflows.map(cf => cf.amount);
+  function npv(r) {
+    let total = -price;
+    for (let i = 0; i < amt.length; i++) total += amt[i] / Math.pow(1 + r, t[i]);
+    return total;
+  }
+  let lo = -0.5, hi = 3.0, flo = npv(lo), fhi = npv(hi);
+  if (isNaN(flo) || isNaN(fhi)) return null;
+  if ((flo > 0) === (fhi > 0)) { hi = 10; fhi = npv(hi); if ((flo > 0) === (fhi > 0)) return null; }
+  let mid = lo;
+  for (let i = 0; i < 200; i++) {
+    mid = (lo + hi) / 2;
+    const fm = npv(mid);
+    if (Math.abs(fm) < 1e-9) break;
+    if ((flo > 0) === (fm > 0)) { lo = mid; flo = fm; } else { hi = mid; }
+  }
+  return mid;
+}
+
+// ============================================================
+// ESTADO
+// ============================================================
+let DATA = { soberanos: [], letras: [], ons: [], equity: [] };
+let currentTab = 'soberanos';
+let currentView = 'interna';
+let sortState = {};
+let califActive = {}; // per tab: Set of active calif buckets (vacío = todas)
+
+const TAB_CFG = {
+  soberanos: {
+    hasCalif: true,
+    interna: [
+      { k: 'ticker', h: 'Ticker' }, { k: 'emisor', h: 'Emisor' }, { k: 'calif', h: 'Calif.' },
+      { k: 'tir', h: 'TIR (calculada)', type: 'tirpct' },
+      { k: 'precioMep', h: 'Precio MEP', type: 'num2' }, { k: 'precioCable', h: 'Precio Cable', type: 'num2' },
+      { k: 'volumen', h: 'Volumen', type: 'int' }, { k: 'monto', h: 'Monto operado', type: 'int' },
+      { k: 'vencimiento', h: 'Vencimiento', type: 'date' }, { k: 'ley', h: 'Ley' },
+      { k: 'fuente', h: 'Fuente (auditoría)' }
+    ],
+    cliente: { sub: 'emisor', tir: 'tir', tirIsFraction: true, vto: 'vencimiento', calif: 'calif' }
+  },
+  letras: {
+    hasCalif: false,
+    interna: [
+      { k: 'ticker', h: 'Ticker' }, { k: 'familia', h: 'Familia' },
+      { k: 'tir', h: 'TIR (calculada)', type: 'tirpct' },
+      { k: 'precio', h: 'Precio', type: 'num2' }, { k: 'moneda', h: 'Moneda' },
+      { k: 'volumen', h: 'Volumen', type: 'int' }, { k: 'monto', h: 'Monto operado', type: 'int' },
+      { k: 'vencimiento', h: 'Vencimiento', type: 'date' }, { k: 'fuente', h: 'Fuente (auditoría)' }
+    ],
+    cliente: { sub: 'familia', tir: 'tir', tirIsFraction: true, vto: 'vencimiento' }
+  },
+  ons: {
+    hasCalif: true,
+    needsExcel: true,
+    hybrid: true,
+    interna: [
+      { k: 'ticker', h: 'Ticker' }, { k: 'emisor', h: 'Emisor' }, { k: 'sector', h: 'Sector' }, { k: 'calif', h: 'Calif.' },
+      { k: 'tir', h: 'TIR', type: 'tirpct100' }, { k: 'tirCable', h: 'TIR Cable', type: 'pct' },
+      { k: 'volumen', h: 'Volumen (MAE)', type: 'int' },
+      { k: 'vencimiento', h: 'Vencimiento', type: 'date' }, { k: 'duration', h: 'Duration', type: 'num2' },
+      { k: 'cupon', h: 'Cupón', type: 'pct' }, { k: 'dolar', h: 'Dólar' }, { k: 'ley', h: 'Ley' },
+      { k: 'precioMep', h: 'Precio MEP', type: 'num3' }, { k: 'precioCable', h: 'Precio Cable', type: 'num3' }
+    ],
+    cliente: { sub: 'emisor', tir: 'tir', tirIsFraction: true, vto: 'vencimiento', calif: 'calif', cupon: 'cupon' }
+  },
+  equity: {
+    hasCalif: false,
+    needsExcel: true,
+    interna: [
+      { k: 'ticker', h: 'Ticker' }, { k: 'rating', h: 'Rating' },
+      { k: 'precioHoyUsd', h: 'Precio hoy USD', type: 'num2' }, { k: 'tpUsd', h: 'Target USD', type: 'num2' },
+      { k: 'pctATp', h: '% a target', type: 'pctColor100' }, { k: 'ratio', h: 'Ratio' }, { k: 'update', h: 'Última nota', type: 'date' }
+    ],
+    cliente: { sub: 'rating', tir: 'pctATp', tirIsFraction: true, extra: 'precioHoyUsd' }
+  }
+};
+
+// ============================================================
+// CONEXIÓN AL PROXY (Soberanos + Letras en vivo)
+// ============================================================
+const params = new URLSearchParams(location.search);
+const qProxy = params.get('proxy');
+if (qProxy) document.getElementById('proxyInput').value = qProxy;
+
+document.getElementById('btnConectar').addEventListener('click', () => conectarProxy());
+if (qProxy) conectarProxy();
+
+async function conectarProxy() {
+  let proxy = document.getElementById('proxyInput').value.trim().replace(/\/$/, '');
+  if (!proxy) return;
+  setDot('Mae', 'loading', 'MAE: conectando…');
+  setDot('Bon', 'loading', 'Bonistas: conectando…');
+
+  let maeData = null, bonData = null;
+  try {
+    const r = await fetch(proxy + '/mae');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    maeData = j.data;
+    setDot('Mae', 'ok', 'MAE: ' + j.count + ' instrumentos');
+  } catch (e) {
+    setDot('Mae', 'err', 'MAE: error (' + e.message + ')');
+  }
+  try {
+    const r = await fetch(proxy + '/bonistas');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    bonData = j.data;
+    setDot('Bon', 'ok', 'Bonistas: ' + j.count + ' pagos');
+  } catch (e) {
+    setDot('Bon', 'err', 'Bonistas: error (' + e.message + ')');
+  }
+
+  if (maeData || bonData) { buildLiveTabs(maeData || [], bonData || []); mergeOnsLive(); }
+  renderTab();
+}
+
+function setDot(which, state, text) {
+  document.getElementById('dot' + which).className = 'dot ' + state;
+  document.getElementById('txt' + which).textContent = text;
+}
+
+const SOBERANO_FAMILIES = new Set(['BONO-USD-LDA', 'BONO-USD-LDNY']);
+const LETRA_FAMILIES = new Set(['BONO-BADLAR', 'BONO-CER', 'BONO-FIJA', 'BONO-TAMAR', 'BOPREAL', 'DOLAR-LINKED', 'DUAL', 'DUAL-CER-TAMAR', 'DUAL-CER-TAMAR-CER-LEG', 'LETRA-TAMAR', 'LETRAS-CER', 'LETRAS-FIJO']);
+const ON_FAMILIES = new Set(['ONS']);
+// Últimos registros de ONs armados en vivo (MAE + bonistas). Se guardan
+// aparte de DATA.ons porque esa pestaña combina esto con el Excel: no
+// queremos que una reconexión al proxy borre lo que ya se cargó del Excel,
+// ni que un Excel recién subido borre lo que ya se armó en vivo.
+let lastOnsLive = [];
+
+function buildLiveTabs(maeRows, bonRows) {
+  const asOf = new Date();
+
+  // Indexar MAE por base
+  const maeByBase = {};
+  for (const r of maeRows) {
+    const b = baseCode(r.ticker);
+    (maeByBase[b] = maeByBase[b] || []).push(r);
+  }
+  // MAE publica algunos precios en dólares (D/C) como fracción del nominal
+  // (ej. 0.582) en vez de "por 100" (58,2) — pasa sobre todo en la variante
+  // sin sufijo /24hs de algunos soberanos ley NY (GD30, GD35, etc.). Un
+  // precio real de bono nunca es < 10 "por 100", así que si aparece un
+  // valor así lo normalizamos multiplicando por 100.
+  function normalizePrice(u) {
+    if (u == null) return null;
+    return (u > 0 && u < 10) ? u * 100 : u;
+  }
+  function bestRow(rows, moneda) {
+    const cands = (rows || []).filter(r => r.moneda === moneda);
+    if (!cands.length) return null;
+    const with24 = cands.filter(r => /24hs/i.test(r.ticker));
+    const pool = with24.length ? with24 : cands;
+    const picked = pool.slice().sort((a, b) => (b.volumen || 0) - (a.volumen || 0))[0];
+    return picked ? { ...picked, ultimo: normalizePrice(picked.ultimo) } : null;
+  }
+
+  // Indexar bonistas por base -> cashflows futuros ordenados
+  const bonByBase = {};
+  for (const r of bonRows) {
+    const b = baseCode(r.symbol || r.bond_name);
+    (bonByBase[b] = bonByBase[b] || []).push(r);
+  }
+  for (const b in bonByBase) bonByBase[b].sort((a, c) => new Date(a.fecha) - new Date(c.fecha));
+
+  function buildRecord(base, family) {
+    const maeRowsB = maeByBase[base] || [];
+    const cfRows = bonByBase[base] || [];
+    const mepRow = bestRow(maeRowsB, 'D');
+    const cableRow = bestRow(maeRowsB, 'C');
+    const arsRow = bestRow(maeRowsB, '$');
+    const volumenTotal = maeRowsB.reduce((s, r) => s + (r.volumen || 0), 0);
+    const montoTotal = maeRowsB.reduce((s, r) => s + (r.monto || 0), 0);
+
+    // El precio usado para la TIR TIENE que estar en la misma moneda que el
+    // cronograma de pagos (si no, la TIR sale sin sentido). bonistas indica
+    // la moneda de cada bono: "USD MEP" (ley Argentina, como AL30) prefiere
+    // el precio MEP; "USD CABLE" (ley NY, como GD30) prefiere el precio
+    // Cable — pero MAE no siempre publica los dos, así que si falta uno se
+    // usa el otro (ambos son USD/100, orden de magnitud compatible). Para
+    // "ARS" (letras/bonos $) NO hay fallback: mezclar con precio en dólares
+    // daría una TIR sin sentido (son órdenes de magnitud distintos).
+    const cfMoneda = cfRows.length ? String(cfRows[0].moneda || '').toUpperCase() : '';
+    let priceRow = null;
+    if (cfMoneda === 'USD MEP') priceRow = mepRow || cableRow;
+    else if (cfMoneda === 'USD CABLE') priceRow = cableRow || mepRow;
+    else if (cfMoneda === 'USD') priceRow = mepRow || cableRow;
+    else if (cfMoneda === 'ARS') priceRow = arsRow;
+    else priceRow = mepRow || arsRow || cableRow; // sin cronograma todavía: mejor esfuerzo, no se usa para TIR
+
+    const price = priceRow ? priceRow.ultimo : null;
+
+    let tir = null, vencimiento = null;
+    if (cfRows.length) {
+      vencimiento = new Date(cfRows[cfRows.length - 1].fecha);
+      if (price != null) {
+        const cashflows = cfRows.map(r => ({ date: new Date(r.fecha), amount: r.total != null ? r.total : (r.cupon || 0) + (r.principal || 0) }));
+        tir = xirr(price, cashflows, asOf);
+      }
+    }
+
+    const ref = REFERENCE[base] || {};
+    const fuenteParts = [];
+    fuenteParts.push(priceRow ? ('precio: ' + priceRow.ticker) : 'precio: sin dato MAE');
+    fuenteParts.push(cfRows.length ? (cfRows.length + ' pagos bonistas') : 'sin cronograma bonistas');
+
+    return {
+      ticker: base,
+      emisor: ref.emisor || (family ? family : '—'),
+      calif: ref.calif || null,
+      ley: ref.ley || (cfRows[0] && cfRows[0].ley) || null,
+      familia: family || (ref.tipo || ''),
+      tir: tir,
+      precioMep: mepRow ? mepRow.ultimo : null,
+      precioCable: cableRow ? cableRow.ultimo : null,
+      precio: price,
+      moneda: priceRow ? priceRow.moneda : null,
+      volumen: volumenTotal,
+      monto: montoTotal,
+      vencimiento: vencimiento,
+      fuente: fuenteParts.join(' · ')
+    };
+  }
+
+  // SOBERANOS: bases presentes en bonistas con familia soberana, o en MAE tipoEmision TPN con match en referencia SOBERANO
+  const soberanoBases = new Set();
+  for (const b in bonByBase) if (SOBERANO_FAMILIES.has(bonByBase[b][0].bond_family)) soberanoBases.add(b);
+  for (const b in maeByBase) if (maeByBase[b][0].tipoEmision === 'TPN' && REFERENCE[b] && REFERENCE[b].tipo === 'SOBERANO') soberanoBases.add(b);
+  DATA.soberanos = [...soberanoBases].map(b => buildRecord(b, 'Tesoro Nacional / Provincia')).sort((a, c) => a.ticker.localeCompare(c.ticker));
+
+  // LETRAS: bases con familia "letra"
+  const letraBases = new Set();
+  for (const b in bonByBase) if (LETRA_FAMILIES.has(bonByBase[b][0].bond_family)) letraBases.add(b);
+  DATA.letras = [...letraBases].map(b => buildRecord(b, (bonByBase[b][0] || {}).bond_family_label || '')).sort((a, c) => a.ticker.localeCompare(c.ticker));
+
+  // ONs (obligaciones negociables): bases con familia "ONS" en bonistas, o
+  // en MAE con tipoEmision "ON" y match en la referencia. Cobertura de
+  // precio en vivo es baja (MAE cotiza muy pocas ONs corporativas) — la
+  // mayoría de estos registros van a mostrar "sin dato MAE" y solo aportan
+  // cronograma/vencimiento. Se combinan con el Excel en mergeOnsLive().
+  const onBases = new Set();
+  for (const b in bonByBase) if (ON_FAMILIES.has(bonByBase[b][0].bond_family)) onBases.add(b);
+  for (const b in maeByBase) if (maeByBase[b][0].tipoEmision === 'ON' && REFERENCE[b] && REFERENCE[b].tipo === 'ON') onBases.add(b);
+  lastOnsLive = [...onBases].map(b => buildRecord(b, null)).sort((a, c) => a.ticker.localeCompare(c.ticker));
+}
+
+// Combina los registros de ONs armados en vivo (lastOnsLive) con lo que
+// haya en DATA.ons (del Excel). Si un ticker está en los dos, el vivo
+// aporta TIR/precio/volumen frescos y el Excel aporta lo que el vivo no
+// tiene (sector, cupón, duration, TIR/precio Cable, dólar, lámina mínima).
+// Si un ticker solo está en vivo, se agrega igual (antes no aparecía en
+// absoluto sin subir el Excel).
+function mergeOnsLive() {
+  if (!lastOnsLive.length) return;
+  const liveByBase = {};
+  lastOnsLive.forEach(r => { liveByBase[r.ticker] = r; });
+
+  const usedBases = new Set();
+  DATA.ons = (DATA.ons || []).map(row => {
+    const base = baseCode(row.ticker);
+    const live = liveByBase[base];
+    if (!live) return row;
+    usedBases.add(base);
+    return {
+      ...row,
+      tir: live.tir != null ? live.tir : row.tir,
+      precioMep: live.precioMep != null ? live.precioMep : row.precioMep,
+      precioCable: live.precioCable != null ? live.precioCable : row.precioCable,
+      volumen: live.volumen,
+      monto: live.monto,
+      fuenteLive: live.fuente
+    };
+  });
+
+  lastOnsLive.forEach(live => {
+    if (usedBases.has(live.ticker)) return;
+    DATA.ons.push({
+      ticker: live.ticker, emisor: live.emisor, sector: null, calif: live.calif,
+      tir: live.tir, tirCable: null, vencimiento: live.vencimiento, duration: null,
+      cupon: null, mesCupon: null, dolar: null, ley: live.ley,
+      precioMep: live.precioMep, precioCable: live.precioCable,
+      volumen: live.volumen, monto: live.monto, fuenteLive: live.fuente
+    });
+  });
+}
+
+// ============================================================
+// EXCEL (ONs + Equity) — igual que Monitor Individuos Web
+// ============================================================
+document.getElementById('btnReloadExcel').addEventListener('click', () => document.getElementById('fileInputHidden').click());
+document.getElementById('fileInputHidden').addEventListener('change', e => { if (e.target.files[0]) handleExcel(e.target.files[0]); });
+
+const EXCEL_SHEETS = {
+  ons: { names: ['Corporativos'], dedupe: true, fields: { ticker: 0, emisor: 1, precioMep: 2, vencimiento: 3, tir: 4, duration: 5, amortizacion: 6, cupon: 7, mesCupon: 8, dolar: 9, ley: 10, calif: 11, laminaMin: 12, sector: 13, paridad: 14, precioCable: 15, tirCable: 16, durationCable: 17 } },
+  equity: { names: ['Equity'], fields: { update: -1, ticker: 0, ratio: 1, rating: 2, tpUsd: 3, tpArs: 4, precioHoyUsd: 5, pctATp: 6 }, dedupeByLatestUpdate: true }
+};
+
+function handleExcel(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true, raw: true });
+      for (const key in EXCEL_SHEETS) {
+        const cfg = EXCEL_SHEETS[key];
+        const sheetName = cfg.names.find(n => wb.SheetNames.includes(n));
+        if (!sheetName) continue;
+        let rows = parseExcelBlock(wb.Sheets[sheetName], cfg.fields);
+        if (cfg.dedupeByLatestUpdate) rows = dedupeLatest(rows);
+        else if (cfg.dedupe) rows = dedupeFirst(rows);
+        DATA[key] = rows;
+      }
+      mergeOnsLive();
+      renderTab();
+    } catch (err) {
+      alert('Error leyendo el Excel: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function dedupeFirst(rows) { const m = new Map(); for (const r of rows) if (!m.has(r.ticker)) m.set(r.ticker, r); return [...m.values()]; }
+function dedupeLatest(rows) { const m = new Map(); for (const r of rows) { const p = m.get(r.ticker); const d = r.update instanceof Date ? r.update.getTime() : 0; const pd = p && p.update instanceof Date ? p.update.getTime() : -1; if (!p || d >= pd) m.set(r.ticker, r); } return [...m.values()]; }
+function parseExcelBlock(ws, fieldOffsets) {
+  const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1, raw: true });
+  let hIdx = -1, tIdx = -1;
+  for (let i = 0; i < Math.min(raw.length, 20); i++) {
+    const row = raw[i] || [];
+    for (let j = 0; j < row.length; j++) if (row[j] === 'Ticker') { hIdx = i; tIdx = j; break; }
+    if (hIdx >= 0) break;
+  }
+  if (hIdx < 0) return [];
+  const out = [];
+  for (let i = hIdx + 1; i < raw.length; i++) {
+    const row = raw[i] || [];
+    const tk = String(row[tIdx + fieldOffsets.ticker] || '').trim();
+    if (!tk || tk.toLowerCase() === 'ticker' || !/^[A-Za-z0-9][A-Za-z0-9.\-]{1,9}$/.test(tk)) continue;
+    const rec = {};
+    for (const key in fieldOffsets) rec[key] = row[tIdx + fieldOffsets[key]] !== undefined ? row[tIdx + fieldOffsets[key]] : null;
+    rec.ticker = tk.toUpperCase();
+    out.push(rec);
+  }
+  return out;
+}
+
+// ============================================================
+// FILTROS Y RENDER
+// ============================================================
+document.getElementById('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn'); if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTab = btn.dataset.tab;
+  renderTab();
+});
+document.querySelector('.view-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  document.querySelectorAll('.view-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentView = btn.dataset.view;
+  renderTab();
+});
+document.getElementById('searchBox').addEventListener('input', renderTab);
+
+function getRowsForTab() {
+  return DATA[currentTab] || [];
+}
+
+function renderCalifChips() {
+  const cfg = TAB_CFG[currentTab];
+  const box = document.getElementById('califChips');
+  if (!cfg.hasCalif) { box.innerHTML = ''; return; }
+  const rows = getRowsForTab();
+  const buckets = ['AAA', 'AA', 'A', 'BBB', 'BB', 'B', 'CCC/D', 'Otras', 'Sin calif.'];
+  const present = new Set(rows.map(r => califBucket(r.calif)));
+  const activeSet = califActive[currentTab] || new Set();
+  box.innerHTML = buckets.filter(b => present.has(b)).map(b => {
+    const on = activeSet.size === 0 || activeSet.has(b);
+    return `<span class="chip ${on ? 'active' : ''}" data-b="${b}">${b}</span>`;
+  }).join('');
+  box.querySelectorAll('.chip').forEach(chip => {
+    chip.onclick = () => {
+      const b = chip.dataset.b;
+      let s = califActive[currentTab] || new Set();
+      if (s.size === 0) s = new Set(buckets.filter(x => present.has(x)));
+      if (s.has(b)) s.delete(b); else s.add(b);
+      if (s.size === buckets.filter(x => present.has(x)).length) s = new Set();
+      califActive[currentTab] = s;
+      renderTab();
+    };
+  });
+}
+
+function getFiltered() {
+  const cfg = TAB_CFG[currentTab];
+  let rows = getRowsForTab();
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  if (q) rows = rows.filter(r => [r.ticker, r.emisor, r.papel, r.familia].filter(Boolean).join(' ').toLowerCase().includes(q));
+  if (cfg.hasCalif) {
+    const activeSet = califActive[currentTab];
+    if (activeSet && activeSet.size > 0) rows = rows.filter(r => activeSet.has(califBucket(r.calif)));
+  }
+  const st = sortState[currentTab];
+  if (st) {
+    rows = [...rows].sort((a, b) => {
+      let va = a[st.key], vb = b[st.key];
+      if (va instanceof Date) va = va.getTime(); if (vb instanceof Date) vb = vb.getTime();
+      if (typeof va === 'string') va = va.toLowerCase(); if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va == null) return 1; if (vb == null) return -1;
+      if (va < vb) return st.dir === 'asc' ? -1 : 1;
+      if (va > vb) return st.dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  return rows;
+}
+
+function fmt(val, type) {
+  if (val === null || val === undefined || val === '' || val === '-') return '—';
+  if ((type === 'num2' || type === 'num3' || type === 'int' || type === 'pct' || type === 'tirpct' || type === 'tirpct100' || type === 'pctColor100') && isNaN(+val)) return '—';
+  if (type === 'date') return fmtDate(val);
+  if (type === 'int') return Math.round(val).toLocaleString('es-AR');
+  if (type === 'num2') return (+val).toFixed(2);
+  if (type === 'num3') return (+val).toFixed(3);
+  if (type === 'pct') return fmtPct(val, 2);
+  if (type === 'tirpct') return val == null ? '—' : (isTirSuspicious(val, true) ? 'Dato a verificar ⚠' : (val * 100).toFixed(2) + '%');
+  if (type === 'tirpct100') return val == null ? '—' : (isTirSuspicious(val, true) ? 'Dato a verificar ⚠' : (val * 100).toFixed(2) + '%');
+  if (type === 'pctColor100') return fmtPct(val, 2);
+  return String(val);
+}
+
+function renderTab() {
+  renderCalifChips();
+  const cfg = TAB_CFG[currentTab];
+  const rows = getFiltered();
+  const table = document.getElementById('tblInterna').parentElement;
+  const cards = document.getElementById('cardsCliente');
+  const empty = document.getElementById('emptyState');
+
+  if (cfg.needsExcel && (DATA[currentTab] || []).length === 0) {
+    table.classList.add('hidden'); cards.classList.add('hidden'); empty.classList.remove('hidden');
+    empty.innerHTML = `<div class="drop-zone" onclick="document.getElementById('fileInputHidden').click()">
+        <span class="drop-icon">📂</span>
+        <div class="drop-title">Subí el Monitor Individuos para ver esta pestaña</div>
+        <div class="drop-hint">.xlsm / .xlsx${cfg.hybrid ? ' — o conectá el proxy arriba: vas a ver las ONs que sí cotizan en MAE sin necesidad de Excel' : ' — solo hace falta para ONs y Equity'}</div>
+      </div>`;
+    updateFootNote(0);
+    return;
+  }
+  empty.classList.add('hidden');
+
+  if (currentView === 'interna') {
+    table.classList.remove('hidden'); cards.classList.add('hidden');
+    renderTableInterna(cfg, rows);
+  } else {
+    table.classList.add('hidden'); cards.classList.remove('hidden');
+    renderCardsCliente(cfg, rows);
+  }
+  updateFootNote(rows.length);
+}
+
+function renderTableInterna(cfg, rows) {
+  const thead = document.getElementById('theadRow');
+  thead.innerHTML = cfg.interna.map(c => {
+    const st = sortState[currentTab];
+    const sorted = st && st.key === c.k ? 'sorted' : '';
+    const arrow = sorted ? (st.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    return `<th class="${sorted}" data-k="${c.k}">${c.h}${arrow}</th>`;
+  }).join('');
+  thead.querySelectorAll('th').forEach(th => {
+    th.onclick = () => {
+      const k = th.dataset.k;
+      const st = sortState[currentTab];
+      sortState[currentTab] = { key: k, dir: st && st.key === k && st.dir === 'asc' ? 'desc' : 'asc' };
+      renderTab();
+    };
+  });
+  const tbody = document.getElementById('tbodyInterna');
+  if (!rows.length) { tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.interna.length}">Sin resultados</td></tr>`; return; }
+  tbody.innerHTML = rows.map(r => '<tr>' + cfg.interna.map(c => {
+    const raw = r[c.k];
+    const text = fmt(raw, c.type);
+    if (c.k === 'ticker') return `<td class="tk">${text}</td>`;
+    if (c.k === 'tir') return `<td class="${tirClass(raw == null ? null : raw * 100)}">${text}</td>`;
+    if (c.k === 'volumen') return `<td class="${raw > 0 ? 'vol-si' : 'vol-no'}">${raw > 0 ? '● ' : '○ '}${text}</td>`;
+    if (c.type === 'tirpct100' || c.type === 'pctColor100') return `<td class="${tirClass((raw || 0) * 100)}">${text}</td>`;
+    return `<td>${text}</td>`;
+  }).join('') + '</tr>').join('');
+}
+
+function renderCardsCliente(cfg, rows) {
+  const cl = cfg.cliente || {};
+  const grid = document.getElementById('cardsCliente');
+  if (!rows.length) { grid.innerHTML = `<div class="foot-note">Sin resultados</div>`; return; }
+  grid.innerHTML = rows.map(r => {
+    let tirVal = cl.tir ? r[cl.tir] : null;
+    const tirPct = tirVal == null ? null : (cl.tirIsFraction ? tirVal * 100 : tirVal);
+    const suspicious = tirPct != null && isTirSuspicious(tirPct, false);
+    const tirTxt = tirPct == null ? '—' : (suspicious ? 'Dato a verificar' : tirPct.toFixed(2) + '%');
+    const califInfo = cl.calif ? califRiesgo(r[cl.calif]) : null;
+    const sub = cl.sub ? (r[cl.sub] || '') : '';
+    const vto = cl.vto ? fmtDate(r[cl.vto]) : null;
+    const cuponTxt = cl.cupon && r[cl.cupon] != null ? fmtPct(r[cl.cupon], 2) : null;
+    return `<div class="tcard">
+        <div class="tcard-head"><span class="tcard-tk">${r.ticker}</span>${califInfo ? `<span class="badge ${califInfo.cls}">${califInfo.label}</span>` : ''}</div>
+        <div class="tcard-name">${sub}</div>
+        ${cl.tir ? `<div class="tcard-tir ${suspicious ? 'tir-sospechoso' : tirClass(tirPct)}" style="${suspicious ? 'font-size:15px;' : ''}">${tirTxt}</div>` : ''}
+        ${vto ? `<div class="tcard-row"><span class="l">Vencimiento</span><span class="v">${vto}</span></div>` : ''}
+        ${cuponTxt ? `<div class="tcard-row"><span class="l">Cupón</span><span class="v">${cuponTxt}</span></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function updateFootNote(count) {
+  const cfg = TAB_CFG[currentTab];
+  let srcNote;
+  if (cfg.hybrid) {
+    srcNote = 'Fuente: combinación de Monitor Individuos (Balanz/Refinitiv, manual) con precio/volumen en vivo de A3 Mercados/MAE y cronograma de bonistas.com donde hay dato — la mayoría de las ONs corporativas no cotizan en MAE, así que para esas se ve solo el dato del Excel.';
+  } else if (cfg.needsExcel) {
+    srcNote = 'Fuente: Monitor Individuos (Balanz/Refinitiv), cargado manualmente.';
+  } else {
+    srcNote = 'Fuente: precio y volumen en vivo de A3 Mercados/MAE · cronograma de pagos de bonistas.com · TIR calculada por esta herramienta (aproximada, sin interés corrido).';
+  }
+  document.getElementById('footNote').innerHTML = `${count} instrumentos · ${srcNote} Precios de referencia, no vinculantes. Consultá con Nico antes de operar.`;
+}
+
+renderTab();
+
+// ── SHARED FILES AUTO-LOAD ──
+(function() {
+  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
+  function openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = () => rej();
+    });
+  }
+  async function getShared(key) {
+    try {
+      const db = await openDB();
+      return new Promise(res => {
+        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    } catch { return null; }
+  }
+  function fakeFile(entry) { return new File([entry.data], entry.name); }
+  async function loadShared() {
+    const mon = await getShared('monitor');
+    if (mon) handleExcel(fakeFile(mon));
+  }
+  window.addEventListener('DOMContentLoaded', loadShared);
+  if (typeof BroadcastChannel !== 'undefined') {
+    new BroadcastChannel('fcn_shared').onmessage = async e => {
+      if (!e.data || e.data.type !== 'file_updated') return;
+      const raw = e.data.rawKey || e.data.key;
+      if (raw !== 'monitor') return;
+      await new Promise(r => setTimeout(r, 1500));
+      const entry = await getShared('monitor');
+      if (!entry) return;
+      handleExcel(fakeFile(entry));
+    };
+  }
+})();
+</script>
+</body>
+</html>

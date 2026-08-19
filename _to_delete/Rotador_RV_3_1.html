@@ -151,8 +151,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .sig-mantener{background:rgba(217,137,43,.15);color:#E8B96A;border:1px solid rgba(217,137,43,.3);}
 .sig-acumular{background:rgba(46,125,140,.15);color:#6BBFCC;border:1px solid rgba(46,125,140,.3);}
 .sig-esperar{background:rgba(108,129,124,.15);color:var(--ink-muted);border:1px solid rgba(108,129,124,.3);}
-.col-senal{display:none;}
-body.modo-avanzado .col-senal{display:table-cell;}
 
 /* ── DETALLE PANEL ── */
 .detail-panel{background:rgba(14,38,34,.8);border:1px solid var(--border);border-left:2px solid var(--ambar);border-radius:var(--radius);padding:16px 18px;margin-top:-2px;}
@@ -313,7 +311,43 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="slabel">4 · Filtros</div>
+      <div class="slabel">4 · Umbrales de señal</div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Aplicar umbral a:</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);cursor:pointer;">
+            <input type="checkbox" id="chk-tp" checked onchange="renderTablaActiva()" style="accent-color:var(--jade);width:12px;height:12px;">
+            🔴 Tomar ganancia (Take Profit)
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);cursor:pointer;">
+            <input type="checkbox" id="chk-sl" checked onchange="renderTablaActiva()" style="accent-color:var(--jade);width:12px;height:12px;">
+            ⚠ Stop-loss
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);cursor:pointer;">
+            <input type="checkbox" id="chk-otros" checked onchange="renderTablaActiva()" style="accent-color:var(--jade);width:12px;height:12px;">
+            🔵🟡🟣 Acumular / Mantener / Esperar
+          </label>
+        </div>
+        <div class="ctrl-label">Umbral manual de TP — usado cuando no hay target de analistas (%) ≥</div>
+        <div class="thresh-row">
+          <input type="range" id="sl-tp" min="10" max="100" step="5" value="30" oninput="actualizarUmbrales()">
+          <span class="thresh-val" id="v-tp">30%</span>
+        </div>
+        <div class="ctrl-label" style="margin-top:6px;">Stop-loss — alerta pérdida (%) ≤ −</div>
+        <div class="thresh-row">
+          <input type="range" id="sl-sl" min="5" max="40" step="5" value="15" oninput="actualizarUmbrales()">
+          <span class="thresh-val" id="v-sl">−15%</span>
+        </div>
+        <div class="ctrl-label" style="margin-top:6px;">Días mínimos para señal técnica</div>
+        <div class="thresh-row">
+          <input type="range" id="sl-dias" min="5" max="365" step="5" value="30" oninput="actualizarUmbrales()">
+          <span class="thresh-val" id="v-dias">30d</span>
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="slabel">5 · Filtros</div>
       <div class="ctrl-group">
         <div class="ctrl-label">Tipo de activo</div>
         <select class="ctrl-input" id="f-tipo" onchange="renderTablaActiva()">
@@ -321,71 +355,17 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
           <option value="Cedears">Solo CEDEARs</option>
           <option value="Acciones">Solo Acciones</option>
         </select>
-        <div class="ctrl-label" style="margin-top:6px;">Rentabilidad (%)</div>
-        <div style="display:flex;gap:6px;">
-          <input class="ctrl-input" type="number" id="f-rent-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
-          <input class="ctrl-input" type="number" id="f-rent-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
-        </div>
-        <div class="ctrl-label" style="margin-top:6px;">Días de tenencia</div>
-        <div style="display:flex;gap:6px;">
-          <input class="ctrl-input" type="number" id="f-dias-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
-          <input class="ctrl-input" type="number" id="f-dias-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
-        </div>
-        <div style="font-size:9px;color:var(--ink-muted);margin-top:4px;line-height:1.5;">💡 Ej: rentabilidad mín 15% + días máx 7 = compró hace poco y ya ganó bastante — posible oportunidad de venta.</div>
-        <div class="ctrl-label" style="margin-top:8px;">Buscar ticker / cliente</div>
+        <div class="ctrl-label" style="margin-top:6px;">Señal</div>
+        <select class="ctrl-input" id="f-senal" onchange="renderTablaActiva()">
+          <option value="">Todas las señales</option>
+          <option value="VENDER">🔴 Tomar ganancia</option>
+          <option value="ACUMULAR">🔵 Acumular</option>
+          <option value="MANTENER">🟡 Mantener</option>
+          <option value="ESPERAR">🟣 Esperar</option>
+          <option value="STOP">⚠ Stop-loss</option>
+        </select>
+        <div class="ctrl-label" style="margin-top:6px;">Buscar ticker / cliente</div>
         <input class="ctrl-input" id="f-buscar" placeholder="Ej: NVDA, Juan..." oninput="renderTablaActiva()">
-      </div>
-    </div>
-    <div class="divider"></div>
-    <div>
-      <div class="slabel">5 · Señales (avanzado)</div>
-      <div class="ctrl-group">
-        <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink);cursor:pointer;">
-          <input type="checkbox" id="chk-modo-avanzado" onchange="toggleModoAvanzado()" style="accent-color:var(--jade);width:13px;height:13px;">
-          Activar sistema de señales
-        </label>
-        <div style="font-size:9px;color:var(--ink-muted);margin-top:4px;line-height:1.5;">Agrega la columna Señal (reglas de Druckenmiller, Livermore, Lynch...) y te deja filtrar por tipo de señal.</div>
-        <div id="panel-avanzado" style="display:none;margin-top:10px;">
-          <div class="ctrl-label">Aplicar umbral a:</div>
-          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
-            <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);cursor:pointer;">
-              <input type="checkbox" id="chk-tp" checked onchange="renderTablaActiva()" style="accent-color:var(--jade);width:12px;height:12px;">
-              🔴 Tomar ganancia (Take Profit)
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);cursor:pointer;">
-              <input type="checkbox" id="chk-sl" checked onchange="renderTablaActiva()" style="accent-color:var(--jade);width:12px;height:12px;">
-              ⚠ Stop-loss
-            </label>
-            <label style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);cursor:pointer;">
-              <input type="checkbox" id="chk-otros" checked onchange="renderTablaActiva()" style="accent-color:var(--jade);width:12px;height:12px;">
-              🔵🟡🟣 Acumular / Mantener / Esperar
-            </label>
-          </div>
-          <div class="ctrl-label">Umbral manual de TP — usado cuando no hay target de analistas (%) ≥</div>
-          <div class="thresh-row">
-            <input type="range" id="sl-tp" min="10" max="100" step="5" value="30" oninput="actualizarUmbrales()">
-            <span class="thresh-val" id="v-tp">30%</span>
-          </div>
-          <div class="ctrl-label" style="margin-top:6px;">Stop-loss — alerta pérdida (%) ≤ −</div>
-          <div class="thresh-row">
-            <input type="range" id="sl-sl" min="5" max="40" step="5" value="15" oninput="actualizarUmbrales()">
-            <span class="thresh-val" id="v-sl">−15%</span>
-          </div>
-          <div class="ctrl-label" style="margin-top:6px;">Días mínimos — separa STOP de ESPERAR en la regla técnica</div>
-          <div class="thresh-row">
-            <input type="range" id="sl-dias" min="5" max="365" step="5" value="30" oninput="actualizarUmbrales()">
-            <span class="thresh-val" id="v-dias">30d</span>
-          </div>
-          <div class="ctrl-label" style="margin-top:6px;">Filtrar por señal</div>
-          <select class="ctrl-input" id="f-senal" onchange="renderTablaActiva()">
-            <option value="">Todas las señales</option>
-            <option value="VENDER">🔴 Tomar ganancia</option>
-            <option value="ACUMULAR">🔵 Acumular</option>
-            <option value="MANTENER">🟡 Mantener</option>
-            <option value="ESPERAR">🟣 Esperar</option>
-            <option value="STOP">⚠ Stop-loss</option>
-          </select>
-        </div>
       </div>
     </div>
   </div>
@@ -425,7 +405,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
             <thead><tr>
               <th>Ticker</th><th>Activo</th><th>Cliente</th><th>Prec. compra</th>
               <th>Precio actual</th><th>Rentabilidad</th><th>Tenencia USD</th>
-              <th>G/P est.</th><th>Días</th><th class="col-senal">Señal</th><th>WPP</th><th>Mail</th>
+              <th>G/P est.</th><th>Días</th><th>Señal</th><th>WPP</th><th>Mail</th>
             </tr></thead>
             <tbody id="tbody-tabla"></tbody>
           </table></div>
@@ -907,45 +887,22 @@ function getPrecioActual(p){return p.precioLive!==null?p.precioLive:p.precioImpl
 
 function filtrarPosiciones(){
   const tipo=document.getElementById('f-tipo')?.value||'';
+  const senal=document.getElementById('f-senal')?.value||'';
   const qRaw=(document.getElementById('f-buscar')?.value||'').trim();
   const qs=qRaw?qRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean):[];
-  const rentMinRaw=document.getElementById('f-rent-min')?.value;
-  const rentMaxRaw=document.getElementById('f-rent-max')?.value;
-  const diasMinRaw=document.getElementById('f-dias-min')?.value;
-  const diasMaxRaw=document.getElementById('f-dias-max')?.value;
-  const rentMin=rentMinRaw!==''&&rentMinRaw!=null?parseFloat(rentMinRaw):null;
-  const rentMax=rentMaxRaw!==''&&rentMaxRaw!=null?parseFloat(rentMaxRaw):null;
-  const filtroDiasMin=diasMinRaw!==''&&diasMinRaw!=null?parseFloat(diasMinRaw):null;
-  const filtroDiasMax=diasMaxRaw!==''&&diasMaxRaw!=null?parseFloat(diasMaxRaw):null;
-  const avanzado=document.getElementById('chk-modo-avanzado')?.checked||false;
-  const senal=avanzado?(document.getElementById('f-senal')?.value||''):'';
-  const chkTP=avanzado?(document.getElementById('chk-tp')?.checked!==false):true;
-  const chkSL=avanzado?(document.getElementById('chk-sl')?.checked!==false):true;
-  const chkOtros=avanzado?(document.getElementById('chk-otros')?.checked!==false):true;
+  const chkTP=document.getElementById('chk-tp')?.checked!==false;
+  const chkSL=document.getElementById('chk-sl')?.checked!==false;
+  const chkOtros=document.getElementById('chk-otros')?.checked!==false;
   return posiciones.filter(p=>{
     if(tipo&&p.tipo!==tipo) return false;
-    const rentP=getRentEfectiva(p);
-    if(rentMin!==null&&(rentP===null||rentP<rentMin)) return false;
-    if(rentMax!==null&&(rentP===null||rentP>rentMax)) return false;
-    if(filtroDiasMin!==null&&p.dias<filtroDiasMin) return false;
-    if(filtroDiasMax!==null&&p.dias>filtroDiasMax) return false;
-    if(avanzado){
-      const s=aplicarReglas(p).senal;
-      if(senal&&s!==senal) return false;
-      if(!chkTP&&s==='VENDER') return false;
-      if(!chkSL&&s==='STOP') return false;
-      if(!chkOtros&&(s==='ACUMULAR'||s==='MANTENER'||s==='ESPERAR')) return false;
-    }
+    const s=aplicarReglas(p).senal;
+    if(senal&&s!==senal) return false;
+    if(!chkTP&&s==='VENDER') return false;
+    if(!chkSL&&s==='STOP') return false;
+    if(!chkOtros&&(s==='ACUMULAR'||s==='MANTENER'||s==='ESPERAR')) return false;
     if(qs.length&&!qs.some(q=>p.ticker.toLowerCase().includes(q)||p.cliente.toLowerCase().includes(q)||p.instrumento.toLowerCase().includes(q))) return false;
     return true;
   });
-}
-
-function toggleModoAvanzado(){
-  const on=document.getElementById('chk-modo-avanzado').checked;
-  document.getElementById('panel-avanzado').style.display=on?'block':'none';
-  document.body.classList.toggle('modo-avanzado',on);
-  renderTablaActiva();
 }
 
 function renderStats(){
@@ -1011,7 +968,7 @@ function renderTabla(){
       <td style="font-family:var(--font-mono);font-size:10px">$${fmtN(p.tenencia)}</td>
       <td>${ganStr}</td>
       <td style="font-family:var(--font-mono);font-size:10px;color:var(--ink-muted)">${p.dias}d</td>
-      <td class="col-senal">${senalBadge(r.senal)}</td>
+      <td>${senalBadge(r.senal)}</td>
       <td>${wppBtnHtml(p)}</td>
       <td>${mailBtnHtml(p)}</td>
     </tr>`;

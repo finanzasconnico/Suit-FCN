@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Rotaciones — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#081917;--navy-mid:#0E2622;--navy-light:#122B27;--cream:#EAF1EE;--cream-dim:#6C817C;--border:rgba(255,255,255,0.1);--radius:6px;--balanz:#1C8C5F;
+--series-mantener:#3987e5;--series-rotar:#d95926;--good:#0ca30c;--critical:#d03b3b;--yellow:#c98500;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;font-size:13px;}
+.topbar{background:var(--navy-mid);border-bottom:1px solid var(--border);padding:14px 26px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;}
+.topbar-left{display:flex;align-items:center;gap:14px;}
+.modo-toggle-wrap{display:flex;align-items:center;gap:9px;}
+.modo-toggle{position:relative;display:inline-block;width:38px;height:20px;flex-shrink:0;}
+.modo-toggle input{opacity:0;width:0;height:0;}
+.modo-toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.15);border:1px solid var(--border);border-radius:20px;transition:.2s;}
+.modo-toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;}
+.modo-toggle input:checked + .modo-toggle-slider{background:var(--balanz);}
+.modo-toggle input:checked + .modo-toggle-slider:before{transform:translateX(18px);}
+.modo-toggle-label{font-size:10.5px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.05em;min-width:98px;}
+body.modo-cliente .advisor-only{display:none !important;}
+body.modo-cliente details.cond-details{display:none !important;}
+.flujo-real-chip{border-color:rgba(12,163,12,0.4) !important;color:#8fe28f !important;}
+.topbar-logo{width:34px;height:34px;border-radius:7px;background:var(--balanz);display:flex;align-items:center;justify-content:center;font-family:'Spectral',Georgia,serif;font-size:17px;color:#fff;font-weight:600;}
+.topbar-title{font-family:'Spectral',Georgia,serif;font-size:20px;font-weight:300;letter-spacing:.05em;color:var(--cream);}
+.topbar-title span{color:#fff;font-weight:600;}
+.topbar-subtitle{font-size:10px;color:var(--cream-dim);letter-spacing:.07em;text-transform:uppercase;margin-top:1px;}
+.container{max-width:1200px;margin:0 auto;padding:22px 26px 60px;}
+
+.upload-card{background:rgba(255,255,255,.04);border:1px dashed var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:all .2s;position:relative;display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.upload-card:hover{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,.07);}
+.upload-card.loaded{border-style:solid;border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.05);}
+.upload-card input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:1.6rem;}
+.upload-txt{flex:1;}
+.upload-name{font-size:12.5px;font-weight:500;color:#fff;margin-bottom:2px;}
+.upload-hint{font-size:10.5px;color:var(--cream-dim);}
+.upload-status{font-size:11px;color:#4ade80;font-weight:500;margin-top:2px;}
+
+.info-box{background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:var(--radius);padding:9px 12px;font-size:10.5px;color:#93c5fd;line-height:1.55;margin-bottom:16px;}
+.info-box b{color:#bfdbfe;}
+
+.legs-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+@media(max-width:900px){.legs-grid{grid-template-columns:1fr;}}
+.leg-card{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+.leg-card.venta{border-top:3px solid var(--series-mantener);}
+.leg-card.compra{border-top:3px solid var(--series-rotar);}
+.leg-title{font-family:'Spectral',Georgia,serif;font-size:17px;font-weight:500;color:#fff;margin-bottom:2px;}
+.leg-sub{font-size:10px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+.field{margin-bottom:10px;}
+.field label{display:block;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:4px;}
+.field input,.field select{width:100%;padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:12px;outline:none;transition:border-color .2s;}
+.field input:focus,.field select:focus{border-color:rgba(255,255,255,0.4);}
+.field select option{background:#0E2622;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.field-big input{font-size:16px;font-weight:600;padding:9px 10px;}
+.ac-wrap{position:relative;}
+.ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#0E2622;border:1px solid rgba(255,255,255,0.2);border-top:none;border-radius:0 0 3px 3px;z-index:300;max-height:220px;overflow-y:auto;display:none;}
+.ac-dropdown.open{display:block;}
+.ac-item{padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.05);}
+.ac-item:hover{background:rgba(31,59,158,0.4);}
+.ac-ticker{font-size:11px;font-weight:600;color:#fff;min-width:52px;}
+.ac-name{font-size:10px;color:var(--cream);flex:1;}
+.ac-tir{font-size:10px;color:#4ade80;font-weight:600;}
+.toggle-row{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.toggle-btn{flex:1;padding:7px 8px;font-size:10.5px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--cream-dim);font-family:'Hanken Grotesk',system-ui,sans-serif;transition:all .15s;text-align:center;}
+.toggle-btn.active{background:var(--balanz);color:#fff;}
+.btn{padding:8px 16px;border-radius:var(--radius);font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:11.5px;font-weight:500;cursor:pointer;border:none;transition:all .2s;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;justify-content:center;}
+.btn-primary{background:var(--balanz);color:#fff;}
+.btn-primary:hover{background:#2d4fce;}
+.btn-outline{background:transparent;color:var(--cream);border:1px solid var(--border);width:100%;}
+.btn-outline:hover{border-color:rgba(255,255,255,0.4);color:#fff;}
+.btn-outline.small{width:auto;padding:5px 10px;font-size:10.5px;}
+.divider{height:1px;background:var(--border);margin:12px 0;}
+.warn-box{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius);padding:8px 10px;font-size:10.5px;color:#fbbf24;line-height:1.5;margin-bottom:10px;}
+
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px;}
+.chip{font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--cream);}
+.chip b{color:#fff;}
+
+details.cond-details{margin-top:2px;}
+details.cond-details summary{cursor:pointer;font-size:11px;color:var(--cream-dim);list-style:none;padding:6px 0;user-select:none;display:flex;align-items:center;gap:4px;}
+details.cond-details summary::-webkit-details-marker{display:none;}
+details.cond-details summary:before{content:'▸';display:inline-block;transition:transform .15s;}
+details.cond-details[open] summary:before{transform:rotate(90deg);}
+details.cond-details summary:hover{color:#fff;}
+.cond-body{padding-top:8px;}
+
+.autolink-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--cream-dim);margin:8px 0 4px;}
+.autolink-row input[type=checkbox]{width:auto;accent-color:var(--balanz);}
+
+.section-block{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:18px;}
+.section-block h3{font-family:'Spectral',Georgia,serif;font-size:17px;font-weight:400;color:#fff;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+.params-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:6px;}
+.params-row .field{min-width:110px;margin-bottom:0;}
+
+.horizon-box{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:18px;}
+.horizon-label-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.horizon-label-row .h-title{font-family:'Spectral',Georgia,serif;font-size:17px;color:#fff;}
+.horizon-label-row .h-value{font-family:'Spectral',Georgia,serif;font-size:22px;color:#fff;font-weight:600;}
+.horizon-slider{width:100%;accent-color:var(--balanz);height:6px;margin:10px 0 12px;}
+.preset-chips{display:flex;flex-wrap:wrap;gap:7px;}
+.preset-chip{padding:6px 12px;border-radius:20px;font-size:10.5px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--cream-dim);transition:all .15s;}
+.preset-chip:hover{border-color:rgba(255,255,255,0.35);color:#fff;}
+.preset-chip.active{background:var(--balanz);color:#fff;border-color:var(--balanz);}
+
+.verdict-banner{border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;display:flex;align-items:center;gap:16px;}
+.verdict-banner.rotar{background:rgba(12,163,12,0.12);border:1px solid rgba(12,163,12,0.35);}
+.verdict-banner.mantener{background:rgba(57,135,229,0.12);border:1px solid rgba(57,135,229,0.35);}
+.verdict-banner.neutral{background:rgba(255,255,255,0.05);border:1px solid var(--border);}
+.verdict-icon{font-size:2rem;line-height:1;}
+.verdict-text .verdict-head{font-family:'Spectral',Georgia,serif;font-size:22px;font-weight:600;color:#fff;margin-bottom:4px;}
+.verdict-text .verdict-sub{font-size:12.5px;color:var(--cream);line-height:1.6;}
+.verdict-text .verdict-sub b{color:#fff;}
+
+.samemoney-box{background:rgba(255,255,255,.03);border-left:3px solid var(--series-rotar);border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;font-size:12px;line-height:1.65;color:var(--cream);margin-bottom:18px;}
+.samemoney-box b{color:#fff;}
+
+.chart-legend{display:flex;gap:18px;margin-bottom:8px;font-size:11.5px;}
+.chart-legend .lg-item{display:flex;align-items:center;gap:6px;}
+.chart-legend .lg-swatch{width:14px;height:3px;border-radius:2px;}
+.chart-wrap{position:relative;}
+.chart-tooltip{position:absolute;pointer-events:none;background:#0E2622;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:7px 10px;font-size:11px;color:var(--cream);white-space:nowrap;display:none;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.4);}
+.chart-tooltip .tt-row{display:flex;justify-content:space-between;gap:14px;}
+.chart-tooltip .tt-date{color:var(--cream-dim);font-size:10px;margin-bottom:4px;}
+
+table.compare-table{width:100%;border-collapse:collapse;font-size:12px;}
+table.compare-table th{padding:8px 10px;text-align:left;font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-dim);border-bottom:1px solid var(--border);}
+table.compare-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);}
+table.compare-table td.lbl{color:var(--cream-dim);font-weight:500;}
+table.compare-table tr.hl td{background:rgba(255,255,255,.03);font-weight:600;}
+.col-head-venta{color:var(--series-mantener);}
+.col-head-compra{color:var(--series-rotar);}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--cream-dim);}
+.empty-icon{font-size:3rem;margin-bottom:14px;opacity:.5;}
+.empty-title{font-family:'Spectral',Georgia,serif;font-size:19px;color:rgba(255,255,255,0.5);margin-bottom:8px;}
+.empty-sub{font-size:12px;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">B</div>
+    <div>
+      <div class="topbar-title">finanzasconnico · <span>Calculadora de Rotaciones</span></div>
+      <div class="topbar-subtitle">¿Conviene cambiar de bono? — simple y directo</div>
+    </div>
+  </div>
+  <div class="modo-toggle-wrap">
+    <span class="modo-toggle-label" id="modo-toggle-label">Modo asesor</span>
+    <label class="modo-toggle">
+      <input type="checkbox" id="chk-modo-cliente" onchange="toggleModoCliente()">
+      <span class="modo-toggle-slider"></span>
+    </label>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="upload-card advisor-only" id="card-excel" onclick="document.getElementById('inp-excel').click()">
+    <input type="file" id="inp-excel" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="cargarExcel(this)">
+    <span class="upload-icon" id="icon-excel">📥</span>
+    <div class="upload-txt">
+      <div class="upload-name">Monitor de Individuos</div>
+      <div class="upload-hint">Subilo una vez — se guarda en este navegador. Después solo escribís ticker, nominales y precio: el resto se completa solo.</div>
+      <div class="upload-status" id="status-excel"></div>
+    </div>
+  </div>
+
+  <div class="legs-grid">
+    <div class="leg-card venta">
+      <div class="leg-title">Bono a VENDER (mantener)</div>
+      <div class="leg-sub">El que ya tenés en cartera</div>
+      <div class="field ac-wrap advisor-only">
+        <label>Ticker</label>
+        <input type="text" id="buscar-venta" placeholder="Ej: TLCMO, YM40O…" autocomplete="off" style="text-transform:uppercase;"
+          oninput="buscarBonoInput('venta', this.value)" onblur="setTimeout(function(){cerrarAC('venta')},180)">
+        <div class="ac-dropdown" id="ac-dd-venta"></div>
+      </div>
+      <div class="field-row field-big">
+        <div class="field"><label>Nominales</label><input type="number" step="1" id="v-nominales" value="10000" oninput="onCondChange('venta')"></div>
+        <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="v-precio" oninput="onCondChange('venta')"></div>
+      </div>
+      <div class="chip-row" id="v-chips"></div>
+
+      <details class="cond-details" id="v-details">
+        <summary>Condiciones (autocompletadas) — editar si hace falta</summary>
+        <div class="cond-body">
+          <button class="btn btn-outline small" style="margin-bottom:10px;" onclick="cargarManual('venta')">✎ Cargar a mano (ticker no está en el Excel)</button>
+          <div class="field"><label>Ticker (interno)</label><input type="text" id="v-ticker" style="text-transform:uppercase;" oninput="onCondChange('venta')"></div>
+          <div class="field"><label>Emisor</label><input type="text" id="v-emisor" oninput="onCondChange('venta')"></div>
+          <div class="field-row">
+            <div class="field"><label>TIR (%)</label><input type="number" step="0.01" id="v-tir" oninput="onCondChange('venta')"></div>
+            <div class="field"><label>Duration (calculada)</label><input type="text" id="v-duration" readonly style="opacity:.7;cursor:not-allowed;" placeholder="—"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Cupón anual (%)</label><input type="number" step="0.01" id="v-cupon" oninput="onCondChange('venta')"></div>
+            <div class="field"><label>Pagos por año</label>
+              <select id="v-freq" onchange="onCondChange('venta')"><option value="1">1 (Anual)</option><option value="2" selected>2 (Semestral)</option><option value="4">4 (Trimestral)</option><option value="12">12 (Mensual)</option></select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Fecha de emisión</label><input type="date" id="v-emision" oninput="onCondChange('venta')"></div>
+            <div class="field"><label>Fecha de vencimiento</label><input type="date" id="v-venc" oninput="onCondChange('venta')"></div>
+          </div>
+          <div class="field">
+            <label>Amortización</label>
+            <div class="toggle-row">
+              <button class="toggle-btn active" id="v-btn-bullet" onclick="setAmortType('venta','bullet')">Bullet</button>
+              <button class="toggle-btn" id="v-btn-amortizable" onclick="setAmortType('venta','amortizable')">Amortizable</button>
+            </div>
+          </div>
+          <div id="v-warn-emision" class="warn-box" style="display:none;">⚠ Fecha de emisión estimada y amortización repartida en partes iguales — ajustá si conocés el cronograma real (cambia el USD proyectado y la duration).</div>
+          <div class="field" id="v-row-amort-inicio" style="display:none;">
+            <label>Inicio de amortización</label>
+            <input type="date" id="v-amort-inicio" oninput="onCondChange('venta')">
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Ley</label><input type="text" id="v-ley" oninput="onCondChange('venta')"></div>
+            <div class="field"><label>Calificación</label><input type="text" id="v-calif" oninput="onCondChange('venta')"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="leg-card compra">
+      <div class="leg-title">Bono a COMPRAR (rotar)</div>
+      <div class="leg-sub">El nuevo, hacia donde rotás</div>
+      <div class="field ac-wrap advisor-only">
+        <label>Ticker</label>
+        <input type="text" id="buscar-compra" placeholder="Ej: TLCPO, YM40O…" autocomplete="off" style="text-transform:uppercase;"
+          oninput="buscarBonoInput('compra', this.value)" onblur="setTimeout(function(){cerrarAC('compra')},180)">
+        <div class="ac-dropdown" id="ac-dd-compra"></div>
+      </div>
+      <div class="field-row field-big">
+        <div class="field"><label>Nominales</label><input type="number" step="1" id="c-nominales" value="0" oninput="onNominalesCompraManual()"></div>
+        <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="c-precio" oninput="onCondChange('compra')"></div>
+      </div>
+      <div class="autolink-row advisor-only">
+        <input type="checkbox" id="chk-automatch" checked onchange="onGlobalChange()">
+        <label for="chk-automatch" style="margin:0;text-transform:none;color:var(--cream-dim);">🔗 Calcular nominales solo (cash matcheado con la venta) — desmarcá para poner un número vos</label>
+      </div>
+      <div class="chip-row" id="c-chips"></div>
+
+      <details class="cond-details" id="c-details">
+        <summary>Condiciones (autocompletadas) — editar si hace falta</summary>
+        <div class="cond-body">
+          <button class="btn btn-outline small" style="margin-bottom:10px;" onclick="cargarManual('compra')">✎ Cargar a mano (ticker no está en el Excel)</button>
+          <div class="field"><label>Ticker (interno)</label><input type="text" id="c-ticker" style="text-transform:uppercase;" oninput="onCondChange('compra')"></div>
+          <div class="field"><label>Emisor</label><input type="text" id="c-emisor" oninput="onCondChange('compra')"></div>
+          <div class="field-row">
+            <div class="field"><label>TIR (%)</label><input type="number" step="0.01" id="c-tir" oninput="onCondChange('compra')"></div>
+            <div class="field"><label>Duration (calculada)</label><input type="text" id="c-duration" readonly style="opacity:.7;cursor:not-allowed;" placeholder="—"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Cupón anual (%)</label><input type="number" step="0.01" id="c-cupon" oninput="onCondChange('compra')"></div>
+            <div class="field"><label>Pagos por año</label>
+              <select id="c-freq" onchange="onCondChange('compra')"><option value="1">1 (Anual)</option><option value="2" selected>2 (Semestral)</option><option value="4">4 (Trimestral)</option><option value="12">12 (Mensual)</option></select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Fecha de emisión</label><input type="date" id="c-emision" oninput="onCondChange('compra')"></div>
+            <div class="field"><label>Fecha de vencimiento</label><input type="date" id="c-venc" oninput="onCondChange('compra')"></div>
+          </div>
+          <div class="field">
+            <label>Amortización</label>
+            <div class="toggle-row">
+              <button class="toggle-btn active" id="c-btn-bullet" onclick="setAmortType('compra','bullet')">Bullet</button>
+              <button class="toggle-btn" id="c-btn-amortizable" onclick="setAmortType('compra','amortizable')">Amortizable</button>
+            </div>
+          </div>
+          <div id="c-warn-emision" class="warn-box" style="display:none;">⚠ Fecha de emisión estimada y amortización repartida en partes iguales — ajustá si conocés el cronograma real (cambia el USD proyectado y la duration).</div>
+          <div class="field" id="c-row-amort-inicio" style="display:none;">
+            <label>Inicio de amortización</label>
+            <input type="date" id="c-amort-inicio" oninput="onCondChange('compra')">
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Ley</label><input type="text" id="c-ley" oninput="onCondChange('compra')"></div>
+            <div class="field"><label>Calificación</label><input type="text" id="c-calif" oninput="onCondChange('compra')"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <details class="cond-details" style="margin-bottom:16px;">
+    <summary>Parámetros generales (comisión, fecha de hoy, tipo de precio)</summary>
+    <div class="cond-body">
+      <div class="params-row">
+        <div class="field"><label>Fecha de hoy</label><input type="date" id="p-hoy" onchange="onGlobalChange()"></div>
+        <div class="field"><label>Comisión (%, ambas puntas)</label><input type="number" step="0.01" id="p-comision" value="0.50" onchange="onGlobalChange()"></div>
+        <div class="field"><label>Precios a usar del Excel</label>
+          <select id="p-precio-tipo" onchange="onGlobalChange()"><option value="cable" selected>Cable</option><option value="mep">MEP</option></select>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <div id="empty-state" class="empty-state">
+    <div class="empty-icon">🔄</div>
+    <div class="empty-title">Cargá los dos bonos para ver si conviene rotar</div>
+    <div class="empty-sub">Escribí el ticker de cada uno (si ya subiste el Excel, se completa solo) y cargá nominales y precio actual.</div>
+  </div>
+
+  <div id="results-area" style="display:none;">
+
+    <div class="horizon-box">
+      <div class="horizon-label-row">
+        <div class="h-title">¿Hasta cuándo pensás mantenerlo?</div>
+        <div class="h-value" id="horizon-value-label">2,0 años</div>
+      </div>
+      <input type="range" class="horizon-slider" id="horizon-slider" min="0.25" max="10" step="0.25" value="2" oninput="onHorizonSlide()">
+      <div class="preset-chips" id="preset-chips"></div>
+    </div>
+
+    <div id="verdict-banner-wrap"></div>
+    <div id="samemoney-wrap"></div>
+
+    <div class="section-block">
+      <h3>Retorno proyectado a lo largo del tiempo</h3>
+      <div class="chart-legend" id="chart-legend"></div>
+      <div class="chart-wrap" id="chart-wrap"></div>
+    </div>
+
+    <details class="cond-details">
+      <summary>Ver ficha completa de ambos bonos</summary>
+      <div class="cond-body">
+        <div style="overflow-x:auto;">
+          <table class="compare-table">
+            <thead><tr><th>Diferencias</th><th class="col-head-venta">Venta</th><th class="col-head-compra">Compra</th></tr></thead>
+            <tbody id="tbl-condiciones"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// UTILIDADES
+// ═══════════════════════════════════════════════════════
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseISO(s){ if(!s) return null; var p=s.split('-'); return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); }
+function fmtDateAR(d){ if(!d) return '—'; return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtNum(n,dec){ if(n===null||n===undefined||isNaN(n)) return '—'; dec=dec===undefined?2:dec; return Number(n).toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmtUSD(n){ if(n===null||n===undefined||isNaN(n)) return '—'; var sign = n<0?'-':''; return sign+'$'+fmtNum(Math.abs(n),0); }
+function fmtPct(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return fmtNum(n*100,2)+'%'; }
+function daysBetween(d1,d2){ return Math.round((d2-d1)/86400000); }
+function yearFrac(d1,d2){ return daysBetween(d1,d2)/365; }
+var MONTH_ABR = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+function parseMesesCupon(str){
+  if(!str) return [];
+  var res=[];
+  String(str).toLowerCase().replace(/[^a-záéíóúñ ]/g,' ').split(/\s+/).forEach(function(w){
+    var m = MONTH_ABR[w.slice(0,3)];
+    if(m && res.indexOf(m)<0) res.push(m);
+  });
+  return res.sort(function(a,b){return a-b;});
+}
+
+// ═══════════════════════════════════════════════════════
+// CRONOGRAMA DE CUPONES
+// ═══════════════════════════════════════════════════════
+function addMonthsClamp(date, n){
+  var d = new Date(date.getTime());
+  var day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth()+n);
+  var lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+  return d;
+}
+function buildCouponDates(fechaEmision, fechaVenc, freq){
+  var step = 12/freq;
+  var dates = [fechaVenc];
+  var cur = fechaVenc;
+  var guard = 0;
+  while(guard<400){
+    var prev = addMonthsClamp(cur, -step);
+    if(prev <= fechaEmision) break;
+    dates.unshift(prev);
+    cur = prev;
+    guard++;
+  }
+  return dates;
+}
+function buildSchedule(bond){
+  var freq = bond.freq;
+  var dates = buildCouponDates(bond.fechaEmision, bond.fechaVenc, freq);
+  var n = dates.length;
+  var amortStart = bond.amortStart || bond.fechaEmision;
+  var amortIdx = [];
+  if(bond.amortType==='amortizable'){
+    dates.forEach(function(d,i){ if(d.getTime() >= amortStart.getTime()) amortIdx.push(i); });
+  }
+  var defaultPct = amortIdx.length>0 ? 100/amortIdx.length : 0;
+  var vnResidual = 100;
+  var schedule = [];
+  dates.forEach(function(d,i){
+    var isLast = (i===n-1);
+    var pct;
+    if(bond.amortType==='bullet'){ pct = isLast ? 100 : 0; }
+    else if(amortIdx.indexOf(i)>=0){ pct = defaultPct; }
+    else { pct = 0; }
+    var vnStart = vnResidual;
+    var cuponMonto = vnStart * (bond.cuponAnual/100) / freq;
+    var amortMonto = pct;
+    vnResidual = Math.max(0, vnResidual - amortMonto);
+    schedule.push({date:d, vnStart:vnStart, vnEnd:vnResidual, cupon:cuponMonto, amort:amortMonto, total:cuponMonto+amortMonto});
+  });
+  return schedule;
+}
+function scaleSchedule(schedule, nominales){
+  var f = nominales/100;
+  return schedule.map(function(cf){
+    return {date:cf.date, cupon:cf.cupon*f, amort:cf.amort*f, total:cf.total*f};
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// DURATION (MACAULAY) — automática, nunca se carga a mano
+// ═══════════════════════════════════════════════════════
+function macaulayDuration(scheduleUSD, tirDecimal, hoy){
+  var sumPV = 0, sumTPV = 0;
+  scheduleUSD.forEach(function(cf){
+    var t = yearFrac(hoy, cf.date);
+    if(t<=0) return;
+    var pv = cf.total / Math.pow(1+tirDecimal, t);
+    sumPV += pv;
+    sumTPV += t*pv;
+  });
+  return sumPV>0 ? sumTPV/sumPV : null;
+}
+
+// ═══════════════════════════════════════════════════════
+// RETORNO TOTAL A UN HORIZONTE (años desde "hoy")
+// ═══════════════════════════════════════════════════════
+function retornoAHorizonteAnios(scheduleUSD, tirDecimal, hoy, comisionPct, anios){
+  var horizonDate = new Date(hoy.getTime());
+  horizonDate.setDate(horizonDate.getDate() + Math.round(anios*365));
+  var realized = 0, interes = 0, remanentePV = 0;
+  scheduleUSD.forEach(function(cf){
+    if(cf.date.getTime() <= horizonDate.getTime()){
+      realized += cf.total;
+      var yrs = yearFrac(cf.date, horizonDate);
+      interes += yrs*cf.total*tirDecimal - cf.total*(comisionPct/100);
+    } else {
+      var t = yearFrac(horizonDate, cf.date);
+      remanentePV += cf.total / Math.pow(1+tirDecimal, t);
+    }
+  });
+  return {date:horizonDate, valorHorizonte:realized+interes+remanentePV};
+}
+
+// ═══════════════════════════════════════════════════════
+// PARSER DEL EXCEL — Monitor de Individuos (Corporativos + Soberanos)
+// ═══════════════════════════════════════════════════════
+var BOND_DB = {};
+var LS_KEYS_READ = ['fcn-rotaciones-db','fcn-bond-calc-db','fcn-on-db','fcn-sov-db'];
+var LS_KEY_WRITE = 'fcn-rotaciones-db';
+
+// FLUJO_DB: cronograma REAL de cada ticker, leído directo de su hoja individual
+// en el Monitor de Individuos (mucho más preciso que la aproximación de buildSchedule).
+var FLUJO_DB = {};
+var LS_KEY_FLUJO = 'fcn-rotaciones-flujo-db';
+
+function excelDateToISO(v){
+  if(v===null||v===undefined||v==='') return '';
+  if(typeof v==='number'){ var d=new Date(Math.round((v-25569)*86400*1000)); return isoDate(d); }
+  if(typeof v==='string' && v.length>=10) return v.slice(0,10);
+  return '';
+}
+function parseBlock(ws, fieldOffsets){
+  var raw = XLSX.utils.sheet_to_json(ws, {defval:null, header:1, raw:true});
+  var hIdx=-1, tIdx=-1;
+  for(var i=0;i<Math.min(raw.length,20);i++){
+    var row = raw[i]||[];
+    for(var j=0;j<row.length;j++){ if(row[j]==='Ticker'){ hIdx=i; tIdx=j; break; } }
+    if(hIdx>=0) break;
+  }
+  if(hIdx<0) return [];
+  var out=[];
+  for(var r=hIdx+1;r<raw.length;r++){
+    var row2 = raw[r]||[];
+    var tkRaw = row2[tIdx+fieldOffsets.ticker];
+    var tk = String(tkRaw||'').trim();
+    if(!tk || tk.toLowerCase()==='ticker' || !/^[A-Za-z0-9][A-Za-z0-9.\-]{1,9}$/.test(tk)) continue;
+    var rec={};
+    for(var key in fieldOffsets){
+      var off = fieldOffsets[key];
+      rec[key] = row2[tIdx+off]!==undefined ? row2[tIdx+off] : null;
+    }
+    rec.ticker = tk.toUpperCase();
+    out.push(rec);
+  }
+  return out;
+}
+var FIELDS_CORP = {ticker:0,emisor:1,precioMep:2,vencimiento:3,tir:4,duration:5,amortizacion:6,cupon:7,mesCupon:8,dolar:9,ley:10,calif:11,laminaMin:12,sector:13,paridad:14,precioCable:15,tirCable:16,durationCable:17};
+var FIELDS_SOB  = {ticker:0,emisor:1,precioMep:2,vencimiento:3,tir:4,duration:5,amortizacion:6,cupon:7,mesCupon:8,dolar:9,ley:10,calif:11,nominMin:12,paridad:13,varDiaria:14,precioCable:15,tirCable:16,durationCable:17};
+
+function ingestRows(rows, categoria){
+  var count=0;
+  rows.forEach(function(r){
+    var tirMep = parseFloat(r.tir); var tirCable = parseFloat(r.tirCable);
+    if((isNaN(tirMep)||tirMep<=0) && (isNaN(tirCable)||tirCable<=0)) return;
+    BOND_DB[r.ticker] = {
+      ticker:r.ticker, emisor:r.emisor||'', categoria:categoria,
+      cuponAnual: isNaN(parseFloat(r.cupon)) ? null : Math.round(parseFloat(r.cupon)*10000)/100,
+      mesCupon: r.mesCupon||'',
+      vencimiento: excelDateToISO(r.vencimiento),
+      amortizacion: String(r.amortizacion||'').trim(),
+      moneda: String(r.dolar||'').trim(),
+      ley: String(r.ley||'').trim(),
+      calif: String(r.calif||'').trim(),
+      laminaMin: r.laminaMin || r.nominMin || null,
+      tirMep: isNaN(tirMep)?null:Math.round(tirMep*10000)/100,
+      tirCable: isNaN(tirCable)?null:Math.round(tirCable*10000)/100,
+      precioMep: parseFloat(r.precioMep)||null,
+      precioCable: parseFloat(r.precioCable)||null
+    };
+    count++;
+  });
+  return count;
+}
+
+// ═══════════════════════════════════════════════════════
+// PARSER DE HOJAS INDIVIDUALES POR TICKER — cronograma REAL
+// Cada bono tiene su propia hoja (nombre = ticker) con celdas fijas:
+// B3/C3=Emisor, C4=Sector, C5=Calif, C6=Moneda cobro, C7=Tipo tasa,
+// C8=Interés anual (decimal), C9=Frecuencia (texto), C11=Amortización (texto),
+// C12=Fecha emisión, C13=Fecha vencimiento, C15=Ley, C16=Nominales mínimos,
+// C20=Nominales base de la tabla de flujo, F3=TIR efectiva, I9=Duration.
+// Tabla de flujo: header en E15:J15 (Fecha, Valor residual, Amort%, Amort USD, Interés, Total),
+// datos desde la fila 16. La fila de "hoy" (liquidación) tiene la columna F (Valor residual) vacía —
+// se descarta porque no es un flujo de cobro real.
+// ═══════════════════════════════════════════════════════
+function parseTickerSheets(wb){
+  var count = 0;
+  wb.SheetNames.forEach(function(name){
+    var ws = wb.Sheets[name];
+    if(!ws) return;
+    var b3 = ws['B3'];
+    if(!b3 || String(b3.v).trim()!=='Emisor') return;
+    var cellVal = function(addr){ var c = ws[addr]; return (c && c.v!==undefined) ? c.v : null; };
+
+    var ticker = name.trim().toUpperCase();
+    var emisor = cellVal('C3');
+    var sector = cellVal('C4');
+    var calif = cellVal('C5');
+    var monedaCobro = cellVal('C6');
+    var tipoTasa = cellVal('C7');
+    var interesAnual = cellVal('C8');
+    var freqTexto = cellVal('C9');
+    var amortDesc = cellVal('C11');
+    var fechaEmision = excelDateToISO(cellVal('C12'));
+    var fechaVenc = excelDateToISO(cellVal('C13'));
+    var ley = cellVal('C15');
+    var nominalesMin = cellVal('C16');
+    var nominalBase = cellVal('C20');
+    var tirEfectiva = cellVal('F3');
+    var duration = cellVal('I9');
+
+    if(!fechaVenc || !nominalBase || isNaN(parseFloat(nominalBase)) || parseFloat(nominalBase)<=0) return;
+
+    var freqMap = {'anual':1,'semestral':2,'trimestral':4,'mensual':12};
+    var freqTxt = String(freqTexto||'').toLowerCase();
+    var freq = 2;
+    for(var k in freqMap){ if(freqTxt.indexOf(k)>=0){ freq=freqMap[k]; break; } }
+
+    var rows = [];
+    for(var r=16; r<10000; r++){
+      var eVal = cellVal('E'+r);
+      if(eVal===null || eVal===undefined) break;
+      var valorResidual = cellVal('F'+r);
+      if(valorResidual===null || valorResidual===undefined) continue; // fila "hoy"/liquidación — sin flujo real
+      var amortUSD = cellVal('H'+r);
+      var interes = cellVal('I'+r);
+      var total = cellVal('J'+r);
+      var fechaISO = excelDateToISO(eVal);
+      if(!fechaISO) continue;
+      rows.push({date:fechaISO, amort:(amortUSD!=null?amortUSD:0), cupon:(interes!=null?interes:0), total:(total!=null?total:((amortUSD||0)+(interes||0)))});
+    }
+    if(!rows.length) return;
+
+    var factor = 100/parseFloat(nominalBase);
+    var schedule100 = rows.map(function(cf){
+      return {date:cf.date, cupon:cf.cupon*factor, amort:cf.amort*factor, total:cf.total*factor};
+    });
+
+    FLUJO_DB[ticker] = {
+      ticker:ticker, emisor:emisor||'', sector:sector||'', calif:calif||'',
+      monedaCobro:monedaCobro||'', tipoTasa:tipoTasa||'',
+      cuponAnual: (interesAnual!=null && !isNaN(parseFloat(interesAnual))) ? Math.round(parseFloat(interesAnual)*10000)/100 : null,
+      freq:freq, freqTexto:freqTexto||'', amortDesc:String(amortDesc||''),
+      ley:ley||'', fechaEmision:fechaEmision, fechaVenc:fechaVenc,
+      nominalesMin: (nominalesMin!=null && !isNaN(parseFloat(nominalesMin))) ? parseFloat(nominalesMin) : null,
+      nominalBase: parseFloat(nominalBase),
+      tirEfectiva: (tirEfectiva!=null && !isNaN(parseFloat(tirEfectiva))) ? Math.round(parseFloat(tirEfectiva)*10000)/100 : null,
+      duration: (duration!=null && !isNaN(parseFloat(duration))) ? parseFloat(duration) : null,
+      schedule100: schedule100
+    };
+    count++;
+  });
+  return count;
+}
+
+// Devuelve el cronograma de flujos (en USD, ya escalado a los nominales del bono) a usar en los cálculos:
+// si hay cronograma real (FLUJO_DB) lo usa tal cual viene del Monitor; si no, cae a la aproximación estimada.
+function getScheduleForLeg(bond, hoy){
+  var real = FLUJO_DB[bond.ticker];
+  if(real && real.schedule100 && real.schedule100.length){
+    var f = bond.nominales/100;
+    return real.schedule100.map(function(cf){
+      return {date:parseISO(cf.date), cupon:cf.cupon*f, amort:cf.amort*f, total:cf.total*f};
+    }).filter(function(cf){ return cf.date && cf.date.getTime()>hoy.getTime(); });
+  }
+  return scaleSchedule(buildSchedule(bond), bond.nominales).filter(function(cf){ return cf.date.getTime()>hoy.getTime(); });
+}
+
+function cargarExcel(input){
+  var file = input.files[0];
+  if(!file) return;
+  var status = document.getElementById('status-excel');
+  status.style.color = 'rgba(255,200,100,.8)';
+  status.textContent = 'Leyendo Monitor Individuos…';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:false, raw:true});
+      var count = 0;
+      var shCorp = wb.SheetNames.find(function(n){return n==='Corporativos';}) || wb.SheetNames.find(function(n){return n.toLowerCase().includes('corporativ');});
+      var shSob  = wb.SheetNames.find(function(n){return n==='Soberanos';}) || wb.SheetNames.find(function(n){return n.toLowerCase().includes('sobera');});
+      if(shCorp) count += ingestRows(parseBlock(wb.Sheets[shCorp], FIELDS_CORP), 'ON');
+      if(shSob)  count += ingestRows(parseBlock(wb.Sheets[shSob], FIELDS_SOB), 'Soberano');
+      var countFlujo = parseTickerSheets(wb);
+      saveDBToStorage();
+      saveFlujoDBToStorage();
+      status.style.color = '#6dc27a';
+      status.textContent = '✓ '+count+' bonos cargados'+(countFlujo>0?' · '+countFlujo+' con cronograma real de flujos 📋':'')+' — ahora solo escribís ticker, nominales y precio';
+      document.getElementById('icon-excel').textContent = '✅';
+      document.getElementById('card-excel').classList.add('loaded');
+      input.value = '';
+    }catch(err){
+      status.style.color = '#ff6b6b';
+      status.textContent = '✗ Error: '+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function saveDBToStorage(){ try{ localStorage.setItem(LS_KEY_WRITE, JSON.stringify(BOND_DB)); }catch(e){} }
+function saveFlujoDBToStorage(){ try{ localStorage.setItem(LS_KEY_FLUJO, JSON.stringify(FLUJO_DB)); }catch(e){} }
+function loadFlujoDBFromStorage(){
+  try{
+    var raw = localStorage.getItem(LS_KEY_FLUJO);
+    if(!raw) return;
+    var parsed = JSON.parse(raw);
+    Object.keys(parsed).forEach(function(tk){ FLUJO_DB[tk] = parsed[tk]; });
+  }catch(e){}
+}
+function loadDBFromStorage(){
+  LS_KEYS_READ.forEach(function(key){
+    try{
+      var raw = localStorage.getItem(key);
+      if(!raw) return;
+      var parsed = JSON.parse(raw);
+      Object.keys(parsed).forEach(function(tk){
+        if(BOND_DB[tk]) return;
+        var o = parsed[tk];
+        BOND_DB[tk] = {
+          ticker:tk, emisor:o.emisor||'', categoria:o.categoria||'ON',
+          cuponAnual: o.cuponAnual!==undefined?o.cuponAnual:o.cupon_anual,
+          mesCupon: o.mesCupon||o.meses_cupon||'',
+          vencimiento: o.vencimiento,
+          amortizacion: o.amortizacion||o.amort||'',
+          moneda: o.moneda||'',
+          ley: o.ley||'',
+          calif: o.calif||o.calificacion||'',
+          laminaMin: o.laminaMin||null,
+          tirMep: o.tirMep!==undefined?o.tirMep:(o.tir_ref!==undefined?o.tir_ref:o.tir),
+          tirCable: o.tirCable!==undefined?o.tirCable:null,
+          precioMep: o.precioMep!==undefined?o.precioMep:o.precio_ref,
+          precioCable: o.precioCable!==undefined?o.precioCable:null
+        };
+      });
+    }catch(e){}
+  });
+  if(Object.keys(BOND_DB).length>0){
+    document.getElementById('status-excel').style.color='#6dc27a';
+    document.getElementById('status-excel').textContent='✓ '+Object.keys(BOND_DB).length+' bonos disponibles (guardados en este navegador)';
+    document.getElementById('icon-excel').textContent='✅';
+    document.getElementById('card-excel').classList.add('loaded');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// BUSCADOR / AUTOCOMPLETE POR PATA (venta / compra)
+// ═══════════════════════════════════════════════════════
+function buscarBonoInput(pata, q){
+  var dd = document.getElementById('ac-dd-'+pata);
+  if(!q || q.length<1){ dd.classList.remove('open'); return; }
+  var lq = q.toLowerCase();
+  var list = Object.values(BOND_DB).slice();
+  var seen = {}; list.forEach(function(b){ seen[b.ticker]=true; });
+  Object.keys(FLUJO_DB).forEach(function(tk){
+    if(seen[tk]) return;
+    var r = FLUJO_DB[tk];
+    list.push({ticker:tk, emisor:r.emisor, cuponAnual:r.cuponAnual, vencimiento:r.fechaVenc, tirCable:r.tirEfectiva, tirMep:null});
+  });
+  var matches = list.filter(function(b){
+    return b.ticker.toLowerCase().includes(lq) || (b.emisor||'').toLowerCase().includes(lq);
+  }).slice(0,12);
+  if(!matches.length){ dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.map(function(b){
+    var tirShow = b.tirCable!==null&&b.tirCable!==undefined ? b.tirCable : b.tirMep;
+    return '<div class="ac-item" onmousedown="seleccionarBono(\''+pata+'\',\''+b.ticker+'\')">'+
+      '<span class="ac-ticker">'+b.ticker+'</span>'+
+      '<span class="ac-name">'+(b.emisor||'')+' · '+(b.cuponAnual!=null?b.cuponAnual+'%':'')+' · '+(b.vencimiento||'')+'</span>'+
+      '<span class="ac-tir">'+(tirShow!=null?tirShow.toFixed(2)+'%':'')+'</span>'+
+    '</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+function cerrarAC(pata){ document.getElementById('ac-dd-'+pata).classList.remove('open'); }
+
+function seleccionarBono(pata, ticker){
+  var b = BOND_DB[ticker];
+  var real = FLUJO_DB[ticker];
+  if(!b && !real) return;
+  document.getElementById('buscar-'+pata).value = ticker;
+  cerrarAC(pata);
+  var p = pata==='venta' ? 'v' : 'c';
+
+  document.getElementById(p+'-ticker').value = ticker;
+  document.getElementById(p+'-emisor').value = (real ? real.emisor : (b?b.emisor:'')) || '';
+
+  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  var tir = null;
+  if(real && real.tirEfectiva!=null) tir = real.tirEfectiva;
+  else if(b) tir = tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
+  var precio = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
+  document.getElementById(p+'-tir').value = tir!=null ? tir : '';
+  document.getElementById(p+'-precio').value = precio!=null ? precio : '';
+
+  var cuponAnual = (real && real.cuponAnual!=null) ? real.cuponAnual : (b?b.cuponAnual:null);
+  document.getElementById(p+'-cupon').value = cuponAnual!=null ? cuponAnual : '';
+
+  var freq, fechaVencStr, ley, calif;
+  if(real){
+    freq = real.freq || 2;
+    fechaVencStr = real.fechaVenc;
+    ley = real.ley;
+    calif = real.calif;
+  } else {
+    var meses = parseMesesCupon(b.mesCupon);
+    freq = meses.length>0 ? meses.length : 2;
+    fechaVencStr = b.vencimiento;
+    ley = b.ley;
+    calif = b.calif;
+  }
+  document.getElementById(p+'-freq').value = String(freq);
+  document.getElementById(p+'-venc').value = fechaVencStr || '';
+
+  var warnEl = document.getElementById(p+'-warn-emision');
+  if(real && real.schedule100 && real.schedule100.length){
+    // tenemos el cronograma real de flujos — no hace falta estimar nada
+    document.getElementById(p+'-emision').value = real.fechaEmision || '';
+    warnEl.style.display = 'none';
+  } else {
+    var vencD = parseISO(fechaVencStr);
+    if(vencD){
+      var est = new Date(vencD.getTime());
+      est.setFullYear(est.getFullYear()-5);
+      document.getElementById(p+'-emision').value = isoDate(est);
+      warnEl.style.display = 'block';
+    } else {
+      document.getElementById(p+'-emision').value = '';
+      warnEl.style.display = 'none';
+    }
+  }
+
+  var isBullet;
+  if(real){ isBullet = !/cuota|amortiz/i.test(real.amortDesc || ''); }
+  else if(b){ isBullet = !((b.amortizacion||'').toLowerCase().includes('amortiz')); }
+  else { isBullet = true; }
+  setAmortType(pata, isBullet ? 'bullet' : 'amortizable');
+
+  document.getElementById(p+'-ley').value = ley || '';
+  document.getElementById(p+'-calif').value = calif || '';
+
+  onCondChange(pata);
+}
+
+function cargarManual(pata){
+  var p = pata==='venta' ? 'v' : 'c';
+  document.getElementById(p+'-details').open = true;
+  ['ticker','emisor','tir','cupon','venc'].forEach(function(f){ document.getElementById(p+'-'+f).value=''; });
+  document.getElementById(p+'-freq').value='2';
+  document.getElementById(p+'-ley').value='';
+  document.getElementById(p+'-calif').value='';
+  document.getElementById(p+'-warn-emision').style.display='none';
+  document.getElementById(p+'-amort-inicio').value='';
+  var today = new Date();
+  document.getElementById(p+'-emision').value = isoDate(today);
+  setAmortType(pata,'bullet');
+  document.getElementById(p+'-ticker').focus();
+  onCondChange(pata);
+}
+
+var amortTypes = {venta:'bullet', compra:'bullet'};
+function setAmortType(pata, type){
+  var p = pata==='venta' ? 'v' : 'c';
+  document.getElementById(p+'-btn-bullet').classList.toggle('active', type==='bullet');
+  document.getElementById(p+'-btn-amortizable').classList.toggle('active', type==='amortizable');
+  document.getElementById(p+'-row-amort-inicio').style.display = type==='amortizable' ? '' : 'none';
+  if(type==='amortizable' && !document.getElementById(p+'-amort-inicio').value){
+    document.getElementById(p+'-amort-inicio').value = document.getElementById(p+'-emision').value;
+  }
+  amortTypes[pata] = type;
+  onCondChange(pata);
+}
+
+function onCondChange(pata){ renderAll(); }
+function onGlobalChange(){ renderAll(); }
+function onNominalesCompraManual(){
+  // si el usuario toca el campo a mano, apagamos el auto-match para no pisarle el número
+  document.getElementById('chk-automatch').checked = false;
+  renderAll();
+}
+
+function computeMatchedNominales(){
+  var comision = (parseFloat(document.getElementById('p-comision').value)||0)/100;
+  var nomV = parseFloat(document.getElementById('v-nominales').value)||0;
+  var precioV = parseFloat(document.getElementById('v-precio').value)||0;
+  var precioC = parseFloat(document.getElementById('c-precio').value)||0;
+  if(!nomV || !precioV || !precioC) return;
+  var loteMin = 1;
+  var tkC = document.getElementById('c-ticker').value.trim().toUpperCase();
+  var realC = FLUJO_DB[tkC];
+  if(realC && realC.nominalesMin && parseFloat(realC.nominalesMin)>0){
+    loteMin = parseFloat(realC.nominalesMin);
+  } else {
+    var bC = BOND_DB[tkC];
+    if(bC && bC.laminaMin && parseFloat(bC.laminaMin)>0) loteMin = parseFloat(bC.laminaMin);
+  }
+  var cashVenta = nomV*precioV*(1-comision);
+  var nomC = Math.floor((cashVenta/(precioC*(1+comision)))/loteMin)*loteMin;
+  document.getElementById('c-nominales').value = nomC;
+}
+
+// ═══════════════════════════════════════════════════════
+// LECTURA DE FORMULARIO
+// ═══════════════════════════════════════════════════════
+function readBond(pata){
+  var p = pata==='venta' ? 'v' : 'c';
+  var ticker = document.getElementById(p+'-ticker').value.trim();
+  var tir = parseFloat(document.getElementById(p+'-tir').value);
+  var cuponAnual = parseFloat(document.getElementById(p+'-cupon').value);
+  var freq = parseInt(document.getElementById(p+'-freq').value);
+  var fechaEmision = parseISO(document.getElementById(p+'-emision').value);
+  var fechaVenc = parseISO(document.getElementById(p+'-venc').value);
+  var precio = parseFloat(document.getElementById(p+'-precio').value);
+  var nominales = parseFloat(document.getElementById(p+'-nominales').value);
+  if(!ticker||isNaN(tir)||isNaN(cuponAnual)||!fechaEmision||!fechaVenc||fechaVenc<=fechaEmision||isNaN(precio)||isNaN(nominales)||!nominales) return null;
+  var amortInicioVal = document.getElementById(p+'-amort-inicio').value;
+  var amortStart = amortInicioVal ? parseISO(amortInicioVal) : fechaEmision;
+  return {
+    ticker:ticker, emisor:document.getElementById(p+'-emisor').value,
+    tir:tir, duration:null,
+    cuponAnual:cuponAnual, freq:freq,
+    fechaEmision:fechaEmision, fechaVenc:fechaVenc,
+    amortType:amortTypes[pata], amortStart:amortStart,
+    ley:document.getElementById(p+'-ley').value, calif:document.getElementById(p+'-calif').value,
+    precio:precio, nominales:nominales
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ═══════════════════════════════════════════════════════
+var currentHorizonAnios = 2;
+var lastCtx = null;
+
+function renderAll(){
+  var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+  var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
+
+  if(document.getElementById('chk-automatch').checked) computeMatchedNominales();
+
+  var venta = readBond('venta');
+  var compra = readBond('compra');
+
+  if(!venta || !compra){
+    document.getElementById('empty-state').style.display='';
+    document.getElementById('results-area').style.display='none';
+    return;
+  }
+
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('results-area').style.display='';
+
+  var schedV = getScheduleForLeg(venta, hoy);
+  var schedC = getScheduleForLeg(compra, hoy);
+
+  venta.duration = macaulayDuration(schedV, venta.tir/100, hoy);
+  compra.duration = macaulayDuration(schedC, compra.tir/100, hoy);
+  document.getElementById('v-duration').value = venta.duration!=null ? fmtNum(venta.duration) : '—';
+  document.getElementById('c-duration').value = compra.duration!=null ? fmtNum(compra.duration) : '—';
+
+  renderChips('v', venta);
+  renderChips('c', compra);
+
+  var difCash = venta.nominales*venta.precio*(1-comisionPct/100) - compra.nominales*compra.precio*(1+comisionPct/100);
+
+  var vencAniosV = yearFrac(hoy, venta.fechaVenc);
+  var vencAniosC = yearFrac(hoy, compra.fechaVenc);
+  var tMax = Math.max(vencAniosV, vencAniosC, 1);
+
+  var slider = document.getElementById('horizon-slider');
+  slider.max = Math.ceil(tMax*4)/4;
+  if(currentHorizonAnios > tMax) currentHorizonAnios = Math.round(tMax*4)/4;
+  slider.value = currentHorizonAnios;
+  document.getElementById('horizon-value-label').textContent = fmtNum(currentHorizonAnios,2).replace(',00','').replace(/,(\d)0$/,',$1')+' años';
+
+  renderPresetChips(venta, compra, vencAniosV, vencAniosC, tMax);
+
+  function retV(anios){ return retornoAHorizonteAnios(schedV, venta.tir/100, hoy, comisionPct, anios).valorHorizonte - venta.nominales*venta.precio; }
+  function retC(anios){ return retornoAHorizonteAnios(schedC, compra.tir/100, hoy, comisionPct, anios).valorHorizonte - compra.nominales*compra.precio; }
+
+  // muestreo para el gráfico y para hallar el cruce (breakeven)
+  var N = 100;
+  var points = [];
+  for(var i=0;i<=N;i++){
+    var t = tMax*i/N;
+    points.push({t:t, v:retV(t), c:retC(t)});
+  }
+
+  var atH = {t:currentHorizonAnios, v:retV(currentHorizonAnios), c:retC(currentHorizonAnios)};
+  var ventajaHoy = (atH.c + difCash) - atH.v;
+
+  renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy);
+  renderSameMoney(venta, compra, points, difCash, atH, currentHorizonAnios, hoy, tMax);
+  renderChart(points, venta, compra, difCash, currentHorizonAnios, hoy, tMax);
+  renderCondiciones(venta, compra, difCash);
+
+  lastCtx = {venta:venta, compra:compra, difCash:difCash, hoy:hoy, comisionPct:comisionPct, tMax:tMax, retV:retV, retC:retC};
+}
+
+function renderChips(p, bond){
+  var el = document.getElementById(p+'-chips');
+  var real = FLUJO_DB[bond.ticker];
+  var esReal = !!(real && real.schedule100 && real.schedule100.length);
+  var flujoTag = esReal
+    ? '<span class="chip flujo-real-chip">📋 Cronograma real</span>'
+    : '<span class="chip">≈ Cronograma estimado</span>';
+  el.innerHTML =
+    '<span class="chip">'+(bond.emisor||'—')+'</span>'+
+    '<span class="chip">TIR <b>'+fmtNum(bond.tir)+'%</b></span>'+
+    '<span class="chip">Duration <b>'+(bond.duration!=null?fmtNum(bond.duration):'—')+' a.</b></span>'+
+    '<span class="chip">Vence <b>'+fmtDateAR(bond.fechaVenc)+'</b></span>'+
+    '<span class="chip">'+(bond.amortType==='bullet'?'Bullet':'Amortizable')+'</span>'+
+    flujoTag+
+    (bond.calif ? '<span class="chip">'+bond.calif+'</span>' : '');
+}
+
+function onHorizonSlide(){
+  currentHorizonAnios = parseFloat(document.getElementById('horizon-slider').value);
+  document.querySelectorAll('.preset-chip').forEach(function(c){ c.classList.remove('active'); });
+  renderAll();
+}
+function setHorizon(anios){
+  currentHorizonAnios = Math.round(anios*4)/4;
+  renderAll();
+}
+
+function renderPresetChips(venta, compra, vencAniosV, vencAniosC, tMax){
+  var presets = [
+    {lbl:'Vto. más cercano', val:Math.min(vencAniosV, vencAniosC)},
+    {lbl:'Vto. más lejano', val:Math.max(vencAniosV, vencAniosC)},
+    {lbl:'Duration de '+venta.ticker, val:venta.duration},
+    {lbl:'Duration de '+compra.ticker, val:compra.duration},
+    {lbl:'2 años', val:2}
+  ].filter(function(p){ return p.val!=null && p.val>0; });
+  var el = document.getElementById('preset-chips');
+  el.innerHTML = presets.map(function(p){
+    var isActive = Math.abs(p.val - currentHorizonAnios) < 0.05;
+    return '<div class="preset-chip'+(isActive?' active':'')+'" onclick="setHorizon('+p.val+')">'+p.lbl+' ('+fmtNum(Math.min(p.val,tMax),1)+' a.)</div>';
+  }).join('');
+}
+
+function renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy){
+  var wrap = document.getElementById('verdict-banner-wrap');
+  var horizDate = new Date(hoy.getTime()); horizDate.setDate(horizDate.getDate()+Math.round(currentHorizonAnios*365));
+  var absVentaja = Math.abs(ventajaHoy);
+  var pctVentaja = atH.v!==0 ? (ventajaHoy/Math.abs(atH.v))*100 : null;
+  var cls, icon, head, sub;
+  if(absVentaja < 1){
+    cls='neutral'; icon='⚖️';
+    head = 'Da prácticamente lo mismo';
+    sub = 'A '+fmtNum(currentHorizonAnios,2)+' años ('+fmtDateAR(horizDate)+'), mantener <b>'+venta.ticker+'</b> o rotar a <b>'+compra.ticker+'</b> te dejan un resultado muy parecido.';
+  } else if(ventajaHoy > 0){
+    cls='rotar'; icon='✅';
+    head = 'Conviene ROTAR a '+compra.ticker;
+    sub = 'A '+fmtNum(currentHorizonAnios,2)+' años ('+fmtDateAR(horizDate)+'), rotar te deja <b>'+fmtUSD(absVentaja)+' más</b>'+(pctVentaja!=null?' ('+fmtNum(Math.abs(pctVentaja))+'% más)':'')+' que quedarte con <b>'+venta.ticker+'</b>.';
+  } else {
+    cls='mantener'; icon='🛑';
+    head = 'Conviene MANTENER '+venta.ticker;
+    sub = 'A '+fmtNum(currentHorizonAnios,2)+' años ('+fmtDateAR(horizDate)+'), rotar a <b>'+compra.ticker+'</b> te dejaría <b>'+fmtUSD(absVentaja)+' menos</b> que quedarte como estás.';
+  }
+  var cashNote = Math.abs(difCash) >= 1
+    ? (difCash>0 ? ' Además, hoy la rotación libera '+fmtUSD(difCash)+' de cash.' : ' Además, hoy la rotación requiere poner '+fmtUSD(Math.abs(difCash))+' extra de cash.')
+    : '';
+  wrap.innerHTML = '<div class="verdict-banner '+cls+'"><div class="verdict-icon">'+icon+'</div><div class="verdict-text"><div class="verdict-head">'+head+'</div><div class="verdict-sub">'+sub+cashNote+'</div></div></div>';
+}
+
+function renderSameMoney(venta, compra, points, difCash, atH, horizonElegido, hoy, tMax){
+  var wrap = document.getElementById('samemoney-wrap');
+  var target = atH.v; // lo que te da mantener, a tu horizonte elegido
+  // buscamos el primer t (en la grilla de puntos) donde rotar (incl. difCash) alcanza ese monto
+  var found = null;
+  for(var i=0;i<points.length;i++){
+    if((points[i].c + difCash) >= target){ found = points[i]; break; }
+  }
+  if(!found){
+    wrap.innerHTML = '<div class="samemoney-box">Rotando a <b>'+compra.ticker+'</b>, dentro del rango mostrado (hasta '+fmtNum(tMax,1)+' años) no llegás a igualar los '+fmtUSD(target)+' que te da mantener <b>'+venta.ticker+'</b> a tus '+fmtNum(horizonElegido,2)+' años.</div>';
+    return;
+  }
+  if(found.t >= horizonElegido - 0.01){
+    wrap.innerHTML = '<div class="samemoney-box">Rotando a <b>'+compra.ticker+'</b> no ganás tiempo: llegás a esa misma plata recién a los '+fmtNum(found.t,2)+' años, después de tu horizonte de '+fmtNum(horizonElegido,2)+' años.</div>';
+    return;
+  }
+  var ahorroAnios = horizonElegido - found.t;
+  var fechaFound = new Date(hoy.getTime()); fechaFound.setDate(fechaFound.getDate()+Math.round(found.t*365));
+  wrap.innerHTML = '<div class="samemoney-box">💡 <b>Misma plata, menos tiempo:</b> rotando a <b>'+compra.ticker+'</b> alcanzás los mismos '+fmtUSD(target)+' que te daría mantener '+venta.ticker+' a los '+fmtNum(horizonElegido,2)+' años, pero ya a los <b>'+fmtNum(found.t,2)+' años</b> ('+fmtDateAR(fechaFound)+') — <b>'+fmtNum(ahorroAnios,2)+' años antes</b>.</div>';
+}
+
+// ═══════════════════════════════════════════════════════
+// GRÁFICO (SVG simple, sin librerías — 2 series categóricas)
+// ═══════════════════════════════════════════════════════
+function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax){
+  document.getElementById('chart-legend').innerHTML =
+    '<div class="lg-item"><span class="lg-swatch" style="background:var(--series-mantener);"></span>Mantener '+venta.ticker+'</div>'+
+    '<div class="lg-item"><span class="lg-swatch" style="background:var(--series-rotar);"></span>Rotar a '+compra.ticker+' <span style="color:var(--cream-dim);">(incl. ajuste de cash día 1)</span></div>';
+
+  var W=900, H=280, padL=54, padR=16, padT=16, padB=32;
+  var innerW = W-padL-padR, innerH = H-padT-padB;
+
+  var vals = [];
+  points.forEach(function(p){ vals.push(p.v, p.c+difCash); });
+  var yMin = Math.min(0, Math.min.apply(null, vals));
+  var yMax = Math.max.apply(null, vals);
+  if(yMax===yMin){ yMax+=1; yMin-=1; }
+  var yPad = (yMax-yMin)*0.08;
+  yMin -= yPad; yMax += yPad;
+
+  function xPix(t){ return padL + (t/tMax)*innerW; }
+  function yPix(v){ return padT + innerH - ((v-yMin)/(yMax-yMin))*innerH; }
+
+  function pathFor(key, extra){
+    return points.map(function(p,i){
+      var val = key==='v' ? p.v : (p.c+extra);
+      return (i===0?'M':'L')+xPix(p.t).toFixed(1)+','+yPix(val).toFixed(1);
+    }).join(' ');
+  }
+  var pathV = pathFor('v', 0);
+  var pathC = pathFor('c', difCash);
+
+  // gridlines horizontales (incluye la línea de cero)
+  var ticksY = 4;
+  var gridLines = '';
+  for(var g=0; g<=ticksY; g++){
+    var val = yMin + (yMax-yMin)*g/ticksY;
+    var y = yPix(val);
+    gridLines += '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y.toFixed(1)+'" stroke="#2c2c2a" stroke-width="1"/>';
+    gridLines += '<text x="'+(padL-8)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="10" fill="#898781">'+fmtUSD(val)+'</text>';
+  }
+  var zeroY = yPix(0);
+  var zeroLine = '<line x1="'+padL+'" y1="'+zeroY.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+zeroY.toFixed(1)+'" stroke="#c3c2b7" stroke-width="1.2"/>';
+
+  // eje X: ticks cada año (o cada 6 meses si tMax chico)
+  var stepX = tMax<=3 ? 0.5 : (tMax<=8 ? 1 : 2);
+  var ticksX = '';
+  for(var tx=0; tx<=tMax+0.001; tx+=stepX){
+    var x = xPix(tx);
+    ticksX += '<text x="'+x.toFixed(1)+'" y="'+(H-10)+'" text-anchor="middle" font-size="10" fill="#898781">'+fmtNum(tx,1)+'a</text>';
+  }
+
+  // marcador vertical en el horizonte elegido
+  var hx = xPix(horizonElegido);
+  var marker = '<line x1="'+hx.toFixed(1)+'" y1="'+padT+'" x2="'+hx.toFixed(1)+'" y2="'+(padT+innerH)+'" stroke="#DBA03C" stroke-width="1.4" stroke-dasharray="4,3"/>';
+
+  // valores en el horizonte elegido para los dos puntos + labels directos
+  var vAtH = points.reduce(function(best,p){ return Math.abs(p.t-horizonElegido)<Math.abs(best.t-horizonElegido)?p:best; }, points[0]);
+  var dotV = '<circle cx="'+hx.toFixed(1)+'" cy="'+yPix(vAtH.v).toFixed(1)+'" r="4" fill="var(--series-mantener)"/>';
+  var dotC = '<circle cx="'+hx.toFixed(1)+'" cy="'+yPix(vAtH.c+difCash).toFixed(1)+'" r="4" fill="var(--series-rotar)"/>';
+
+  // labels directos al final de cada línea
+  var lastP = points[points.length-1];
+  var lblV = '<text x="'+(xPix(lastP.t)-4).toFixed(1)+'" y="'+(yPix(lastP.v)-6).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="var(--series-mantener)" font-weight="600">'+venta.ticker+'</text>';
+  var lblC = '<text x="'+(xPix(lastP.t)-4).toFixed(1)+'" y="'+(yPix(lastP.c+difCash)-6).toFixed(1)+'" text-anchor="end" font-size="10.5" fill="var(--series-rotar)" font-weight="600">'+compra.ticker+'</text>';
+
+  var svg = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;" id="chart-svg">'+
+    gridLines + zeroLine + ticksX +
+    '<path d="'+pathV+'" fill="none" stroke="var(--series-mantener)" stroke-width="2.2"/>'+
+    '<path d="'+pathC+'" fill="none" stroke="var(--series-rotar)" stroke-width="2.2"/>'+
+    marker + dotV + dotC + lblV + lblC +
+    '<rect id="chart-hover-rect" x="'+padL+'" y="'+padT+'" width="'+innerW+'" height="'+innerH+'" fill="transparent" style="cursor:crosshair;"/>'+
+  '</svg>'+
+  '<div class="chart-tooltip" id="chart-tooltip"></div>';
+
+  var chartWrap = document.getElementById('chart-wrap');
+  chartWrap.innerHTML = svg;
+
+  var svgEl = document.getElementById('chart-svg');
+  var hoverRect = document.getElementById('chart-hover-rect');
+  var tooltip = document.getElementById('chart-tooltip');
+  hoverRect.addEventListener('mousemove', function(evt){
+    var rect = svgEl.getBoundingClientRect();
+    var scaleX = W/rect.width;
+    var mx = (evt.clientX-rect.left)*scaleX;
+    var t = Math.max(0, Math.min(tMax, ((mx-padL)/innerW)*tMax));
+    var nearest = points.reduce(function(best,p){ return Math.abs(p.t-t)<Math.abs(best.t-t)?p:best; }, points[0]);
+    var fecha = new Date(hoy.getTime()); fecha.setDate(fecha.getDate()+Math.round(nearest.t*365));
+    tooltip.style.display='block';
+    tooltip.style.left = Math.min(rect.width-160, (mx/scaleX)+12)+'px';
+    tooltip.style.top = '8px';
+    tooltip.innerHTML = '<div class="tt-date">'+fmtNum(nearest.t,2)+' años · '+fmtDateAR(fecha)+'</div>'+
+      '<div class="tt-row"><span style="color:var(--series-mantener);">Mantener</span><b>'+fmtUSD(nearest.v)+'</b></div>'+
+      '<div class="tt-row"><span style="color:var(--series-rotar);">Rotar</span><b>'+fmtUSD(nearest.c+difCash)+'</b></div>';
+  });
+  hoverRect.addEventListener('mouseleave', function(){ tooltip.style.display='none'; });
+}
+
+function renderCondiciones(v, c, difCash){
+  var rows = [
+    ['Emisor', v.emisor||'—', c.emisor||'—'],
+    ['TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%'],
+    ['Duration', v.duration!=null?fmtNum(v.duration):'—', c.duration!=null?fmtNum(c.duration):'—'],
+    ['Vencimiento', fmtDateAR(v.fechaVenc), fmtDateAR(c.fechaVenc)],
+    ['Cupón anual', fmtNum(v.cuponAnual)+'%', fmtNum(c.cuponAnual)+'%'],
+    ['Pagos por año', v.freq, c.freq],
+    ['Amortización', v.amortType==='bullet'?'Bullet':'Amortizable', c.amortType==='bullet'?'Bullet':'Amortizable'],
+    ['Ley', v.ley||'—', c.ley||'—'],
+    ['Calificación', v.calif||'—', c.calif||'—'],
+    ['Precio referencia', fmtNum(v.precio,4), fmtNum(c.precio,4)],
+    ['Nominales', fmtNum(v.nominales,0), fmtNum(c.nominales,0)],
+    ['Cash de la operación hoy', '—', fmtUSD(difCash) + (Math.abs(difCash)<1?' (matcheado)':'')]
+  ];
+  document.getElementById('tbl-condiciones').innerHTML = rows.map(function(r,i){
+    var hl = (i===rows.length-1) ? ' hl' : '';
+    return '<tr class="'+hl.trim()+'"><td class="lbl">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// MODO CLIENTE — esconde comisión, upload, buscador y fichas técnicas
+// para presentarle la pantalla al cliente sin exponer el detrás de escena.
+// ═══════════════════════════════════════════════════════
+function toggleModoCliente(){
+  var checked = document.getElementById('chk-modo-cliente').checked;
+  document.body.classList.toggle('modo-cliente', checked);
+  document.getElementById('modo-toggle-label').textContent = checked ? 'Modo cliente' : 'Modo asesor';
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('p-hoy').value = isoDate(new Date());
+  loadDBFromStorage();
+  loadFlujoDBFromStorage();
+});
+</script>
+</body>
+</html>

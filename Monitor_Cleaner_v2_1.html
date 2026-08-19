@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Cleaner v2 — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #060e24;
+  --navy-mid: #0c1a3c;
+  --border: rgba(255,255,255,0.1);
+  --cream: #dce6f8;
+  --cream-dim: #6a84b8;
+  --balanz: #1f3b9e;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --radius: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy);
+  color: var(--cream);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px 16px 60px;
+  gap: 20px;
+}
+.card {
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px;
+  width: 100%;
+  max-width: 520px;
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.brand-logo {
+  width: 30px; height: 30px; background: var(--balanz); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif; font-size: 15px; color: #fff; font-weight: 600;
+}
+.brand-name { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 300; letter-spacing: .05em; }
+.brand-name span { font-weight: 600; }
+h2 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: #fff; margin-bottom: 4px; }
+.version-tag {
+  display: inline-block; background: var(--balanz); color: #fff;
+  font-size: 9px; font-weight: 600; letter-spacing: .1em;
+  padding: 2px 7px; border-radius: 20px; vertical-align: middle; margin-left: 8px;
+}
+.subtitle { font-size: 11px; color: var(--cream-dim); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 24px; margin-top: 4px; }
+.drop-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 36px 20px; text-align: center; cursor: pointer;
+  transition: all .2s; position: relative; margin-bottom: 20px;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,.04); }
+.drop-zone.loaded { border-style: solid; border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.04); }
+.drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+.drop-title { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+.drop-hint { font-size: 11px; color: var(--cream-dim); }
+.drop-filename { font-size: 11px; color: var(--green); margin-top: 6px; font-weight: 500; }
+.sheets-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.sheet-card {
+  background: rgba(255,255,255,.04); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 8px; text-align: center; transition: all .3s;
+}
+.sheet-card.found { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); }
+.sheet-card.missing { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.06); }
+.sheet-icon { font-size: 1.2rem; margin-bottom: 4px; display: block; }
+.sheet-name { font-size: 10px; font-weight: 600; color: var(--cream); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.sheet-status { font-size: 9px; color: var(--cream-dim); }
+.sheet-card.found .sheet-status { color: var(--green); }
+.sheet-card.missing .sheet-status { color: var(--red); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.stat { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; }
+.stat-val { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600; color: #fff; line-height: 1; }
+.stat-lbl { font-size: 9px; color: var(--cream-dim); text-transform: uppercase; letter-spacing: .07em; margin-top: 3px; }
+.log {
+  background: rgba(0,0,0,.3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px;
+  display: none; flex-direction: column; gap: 3px; max-height: 130px; overflow-y: auto;
+}
+.log::-webkit-scrollbar { width: 3px; }
+.log::-webkit-scrollbar-thumb { background: var(--balanz); }
+.log-line { font-size: 11px; color: var(--cream-dim); line-height: 1.5; }
+.log-line.ok { color: var(--green); }
+.log-line.warn { color: var(--yellow); }
+.log-line.err { color: var(--red); }
+.progress-wrap { height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-bottom: 16px; display: none; }
+.progress-bar { height: 100%; background: var(--balanz); border-radius: 2px; width: 0%; transition: width .3s ease; }
+.btn {
+  width: 100%; padding: 13px; background: var(--balanz); color: #fff;
+  border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn:hover { background: #2d4fce; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.ready { background: var(--green); color: #000; font-weight: 600; }
+.btn.ready:hover { background: #16a34a; }
+.info-box {
+  background: rgba(31,59,158,0.15); border: 1px solid rgba(31,59,158,0.4);
+  border-radius: var(--radius); padding: 12px 16px;
+  font-size: 11px; color: var(--cream-dim); line-height: 1.7;
+  max-width: 520px; width: 100%;
+}
+.info-box strong { color: var(--cream); }
+.sheet-pill {
+  display: inline-block; background: rgba(31,59,158,0.5); border-radius: 4px;
+  padding: 1px 6px; font-size: 10px; font-weight: 600; color: var(--cream); margin: 0 2px;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <div class="brand-logo">B</div>
+    <div class="brand-name">finanzascon<span>nico</span></div>
+  </div>
+
+  <h2>Monitor Cleaner <span class="version-tag">v2</span></h2>
+  <div class="subtitle">Una sola hoja · Corporativos + Soberanos + Letras</div>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm">
+    <span class="drop-icon" id="dropIcon">📂</span>
+    <div class="drop-title">Soltá el archivo acá</div>
+    <div class="drop-hint">Monitor_Individuos_2_0.xlsm · o cualquier versión</div>
+    <div class="drop-filename" id="dropFilename"></div>
+  </div>
+
+  <div class="sheets-grid">
+    <div class="sheet-card" id="sc-corp">
+      <span class="sheet-icon">🏢</span>
+      <div class="sheet-name">Corporativos</div>
+      <div class="sheet-status" id="ss-corp">Esperando archivo</div>
+    </div>
+    <div class="sheet-card" id="sc-sob">
+      <span class="sheet-icon">🇦🇷</span>
+      <div class="sheet-name">Soberanos</div>
+      <div class="sheet-status" id="ss-sob">Esperando archivo</div>
+    </div>
+    <div class="sheet-card" id="sc-let">
+      <span class="sheet-icon">💵</span>
+      <div class="sheet-name">Letras / $</div>
+      <div class="sheet-status" id="ss-let">Esperando archivo</div>
+    </div>
+  </div>
+
+  <div class="stats" id="statsRow" style="display:none">
+    <div class="stat"><div class="stat-val" id="statCorp">—</div><div class="stat-lbl">Corp. filas</div></div>
+    <div class="stat"><div class="stat-val" id="statSob">—</div><div class="stat-lbl">Sob. filas</div></div>
+    <div class="stat"><div class="stat-val" id="statLet">—</div><div class="stat-lbl">Letras filas</div></div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="log" id="log"></div>
+
+  <button class="btn" id="btnDescargar" disabled onclick="descargar()">
+    ⬇ Generar Monitor_Limpio.xlsx
+  </button>
+</div>
+
+<div class="info-box">
+  <strong>Una sola hoja, todo junto:</strong><br>
+  Apila las 3 secciones verticalmente en la pestaña <span class="sheet-pill">Monitor</span>:<br>
+  <span class="sheet-pill">Corporativos</span> primero ·
+  <span class="sheet-pill">Soberanos</span> debajo ·
+  <span class="sheet-pill">Letras/$</span> al final<br><br>
+  Sin fórmulas, sin macros — valores cacheados listos para el Armador de Carteras.
+</div>
+
+<script>
+let outputData = null;
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function log(msg, type='') {
+  const el = document.getElementById('log');
+  el.style.display = 'flex';
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = '› ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function setProgress(pct) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+function setSheetStatus(k, msg, found) {
+  const card = document.getElementById('sc-' + k);
+  card.classList.remove('found','missing');
+  card.classList.add(found ? 'found' : 'missing');
+  document.getElementById('ss-' + k).textContent = msg;
+}
+function resetUI() {
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('log').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('btnDescargar').disabled = true;
+  document.getElementById('btnDescargar').className = 'btn';
+  document.getElementById('btnDescargar').textContent = '⬇ Generar Monitor_Limpio.xlsx';
+  dropZone.classList.remove('loaded');
+  outputData = null;
+  ['corp','sob','let'].forEach(k => {
+    document.getElementById('sc-' + k).classList.remove('found','missing');
+    document.getElementById('ss-' + k).textContent = 'Procesando...';
+  });
+}
+
+function findSheetByKeywords(names, kws) {
+  for (const kw of kws) { const f = names.find(s => s.toLowerCase() === kw.toLowerCase()); if (f) return f; }
+  for (const kw of kws) { const f = names.find(s => s.toLowerCase().includes(kw.toLowerCase())); if (f) return f; }
+  return null;
+}
+
+function extractSheet(wb, sheetName) {
+  const ws = wb.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1, raw: true });
+  let maxCols = 0;
+  for (const row of raw) if (row && row.length > maxCols) maxCols = row.length;
+  const rows = raw.map(row => {
+    const out = [];
+    for (let j = 0; j < maxCols; j++) out.push((row && row[j] !== undefined) ? row[j] : null);
+    return out;
+  });
+  return { rows, colCount: maxCols };
+}
+
+function handleFile(file) {
+  resetUI();
+  document.getElementById('dropFilename').textContent = file.name;
+  log('Leyendo: ' + file.name);
+  setProgress(10);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      setProgress(25);
+      const wb = XLSX.read(e.target.result, { type:'array', cellFormula:false, cellDates:false, cellNF:false, raw:true });
+      setProgress(40);
+      log('Archivo leído · Hojas: ' + wb.SheetNames.join(', '));
+      const names = wb.SheetNames;
+
+      // ── CORPORATIVOS ──
+      let corpName = findSheetByKeywords(names, ['Corporativos','Corporativo','Corp']);
+      if (!corpName) {
+        for (const sn of names) {
+          const raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:null,header:1});
+          if (raw.slice(0,20).some(r => r && r.some(v => v==='Ticker'))) { corpName = sn; break; }
+        }
+      }
+      setProgress(55);
+      let corpData = null;
+      if (corpName) {
+        corpData = extractSheet(wb, corpName);
+        setSheetStatus('corp', `✓ "${corpName}" · ${corpData.rows.length} filas`, true);
+        document.getElementById('statCorp').textContent = corpData.rows.length;
+        log('Corporativos → "' + corpName + '" · ' + corpData.rows.length + ' filas', 'ok');
+      } else {
+        setSheetStatus('corp', 'No encontrada', false);
+        log('⚠ Corporativos no encontrada', 'warn');
+      }
+
+      // ── SOBERANOS ──
+      let sobName = findSheetByKeywords(names, ['Soberanos','Soberano','Sovereign','Bonos USD','Bonos Dolar']);
+      if (!sobName) {
+        for (const sn of names) {
+          const raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:null,header:1});
+          const flat = raw.slice(0,30).flat().filter(Boolean);
+          if (flat.some(v => typeof v==='string' && ['GD30','AL30','GD35','GD29','AL29','GD46','AO27','AO28'].includes(v.trim()))) {
+            sobName = sn; break;
+          }
+        }
+      }
+      setProgress(70);
+      let sobData = null;
+      if (sobName) {
+        sobData = extractSheet(wb, sobName);
+        setSheetStatus('sob', `✓ "${sobName}" · ${sobData.rows.length} filas`, true);
+        document.getElementById('statSob').textContent = sobData.rows.length;
+        log('Soberanos → "' + sobName + '" · ' + sobData.rows.length + ' filas', 'ok');
+      } else {
+        setSheetStatus('sob', 'No encontrada', false);
+        log('⚠ Soberanos no encontrada', 'warn');
+      }
+
+      // ── LETRAS / BONOS $ ──
+      let letName = findSheetByKeywords(names, ['Letras','Letra','Pesos','Bonos $','Tasa Fija','Renta Pesos','Locales','Bonos Pesos']);
+      if (!letName) {
+        for (const sn of names) {
+          if (sn === corpName || sn === sobName) continue;
+          const raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:null,header:1});
+          const flat = raw.slice(0,35).flat().filter(Boolean);
+          if (flat.some(v => typeof v==='string' && /^(TX26|TZX|S12|T30|S30|S31|TO26|TTJ|TTS|TMF|TMG|X30|TZXD)/i.test(v.trim()))) {
+            letName = sn; break;
+          }
+        }
+      }
+      setProgress(85);
+      let letData = null;
+      if (letName) {
+        letData = extractSheet(wb, letName);
+        setSheetStatus('let', `✓ "${letName}" · ${letData.rows.length} filas`, true);
+        document.getElementById('statLet').textContent = letData.rows.length;
+        log('Letras/$ → "' + letName + '" · ' + letData.rows.length + ' filas', 'ok');
+      } else {
+        setSheetStatus('let', 'No encontrada', false);
+        log('⚠ Letras/Bonos $ no encontrada', 'warn');
+      }
+
+      if (!corpData && !sobData && !letData) throw new Error('No encontré ninguna hoja válida.');
+
+      setProgress(95);
+      outputData = { corpData, sobData, letData };
+      document.getElementById('statsRow').style.display = 'grid';
+
+      const found = [corpData, sobData, letData].filter(Boolean).length;
+      log(`✓ ${found}/3 secciones listas — se apilarán en una sola hoja`, 'ok');
+      log('Hacé click para descargar.', 'ok');
+      setProgress(100);
+      dropZone.classList.add('loaded');
+      document.getElementById('dropIcon').textContent = '✅';
+
+      const btn = document.getElementById('btnDescargar');
+      btn.disabled = false;
+      btn.className = 'btn ready';
+      btn.textContent = `⬇ Descargar Monitor_Limpio.xlsx`;
+
+    } catch(err) {
+      log('❌ ' + err.message, 'err');
+      setProgress(0);
+      ['corp','sob','let'].forEach(k => {
+        if (!document.getElementById('sc-' + k).classList.contains('found')) setSheetStatus(k,'Error',false);
+      });
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function descargar() {
+  if (!outputData) return;
+
+  const { corpData, sobData, letData } = outputData;
+
+  // Calcular el número máximo de columnas entre todas las secciones
+  let maxCols = 0;
+  if (corpData) maxCols = Math.max(maxCols, corpData.colCount);
+  if (sobData)  maxCols = Math.max(maxCols, sobData.colCount);
+  if (letData)  maxCols = Math.max(maxCols, letData.colCount);
+
+  // Función para normalizar una fila al ancho máximo
+  function padRow(row, cols) {
+    const out = [...row];
+    while (out.length < cols) out.push(null);
+    return out;
+  }
+
+  // Separador visual entre secciones: 2 filas vacías
+  const separator = [new Array(maxCols).fill(null), new Array(maxCols).fill(null)];
+
+  // Armar el array completo apilando secciones
+  const allRows = [];
+
+  if (corpData) {
+    for (const row of corpData.rows) allRows.push(padRow(row, maxCols));
+  }
+  if (sobData) {
+    allRows.push(...separator);
+    for (const row of sobData.rows) allRows.push(padRow(row, maxCols));
+  }
+  if (letData) {
+    allRows.push(...separator);
+    for (const row of letData.rows) allRows.push(padRow(row, maxCols));
+  }
+
+  // Crear workbook con una sola hoja "Monitor"
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(allRows, { raw: true });
+
+  // Anchos de columna
+  const wscols = [];
+  for (let i = 0; i < maxCols; i++) wscols.push({ wch: i === 0 ? 4 : i <= 2 ? 22 : 14 });
+  ws['!cols'] = wscols;
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Monitor');
+  XLSX.writeFile(wb, 'Monitor_Limpio.xlsx');
+  log('✓ Monitor_Limpio.xlsx descargado · 1 hoja con 3 secciones apiladas', 'ok');
+}
+</script>
+</body>
+</html>

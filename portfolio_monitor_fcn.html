@@ -429,13 +429,17 @@ table{width:100%;border-collapse:collapse;}
   </div>
 
   <div class="main">
+    <!-- SNAPSHOT NOTE -->
+    <div id="snapshot-note" style="font-size:11px;color:var(--text-muted);background:rgba(219,160,60,0.08);border:1px solid rgba(219,160,60,0.25);border-radius:var(--r);padding:8px 14px;margin-bottom:14px;display:none;">
+      📅 <strong id="snapshot-note-fecha">—</strong> · los precios pueden variar levemente respecto a lo que veas ahora mismo en Balanz, porque esto es una foto de ese momento, no una cotización en vivo.
+    </div>
     <!-- KPI STRIP -->
     <div class="section-label" style="margin-top:4px;">Resumen de tu cartera</div>
     <div class="kpi-strip">
       <div class="kpi-card">
         <div class="kpi-label">Valor de tu cartera hoy</div>
         <div class="kpi-val" id="kpi-valor">—</div>
-        <div class="kpi-sub" id="kpi-valor-sub">al precio actual del mercado</div>
+        <div class="kpi-sub" id="kpi-valor-sub">según tu Posición Consolidada</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total que invertiste</div>
@@ -875,7 +879,7 @@ function clasificarTicker(ticker) {
 // ══════════════════════════════════════════════════
 var posBuffer = null, movBuffer = null;
 var posiciones = [], incomeList = [], realizadasData = [], historialOps = [];
-var evolData = null, mepDoc = 1458.42, clientName = '';
+var evolData = null, mepDoc = 1458.42, clientName = '', cashUSD = 0, fechaResumen = '';
 var currentFilter = 'todos', currentDetFilter = 'todos';
 var sortSimpleCol = 'valor_actual_usd', sortSimpleAsc = false;
 var sortDetalleCol = 'valor_actual_usd', sortDetalleAsc = false;
@@ -903,6 +907,8 @@ function loadPreloaded() {
   historialOps = d.historialOps || [];
   mepDoc = d.mepDoc || 1458.42;
   clientName = d.clientName || '';
+  cashUSD = d.cashUSD || 0;
+  fechaResumen = d.fechaResumen || '';
   evolData = d.evolData || null;
   IS_CLIENT_MODE = true;
   showDashboard();
@@ -1006,6 +1012,22 @@ function parsePosicion(text) {
   const clientM = text.match(/Cuenta\s+([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑa-záéíóúüñ\s]+?)(?:\n|\r|Fecha|N°)/);
   if (clientM) client = clientM[1].trim();
 
+  // Fecha del resumen — para dejarle claro al cliente que esto es una foto de ese momento,
+  // no una cotización en vivo (los precios individuales no se actualizan después de generar el PDF).
+  let fechaResumen = '';
+  const fechaM = text.match(/Fecha resumen\s+(\d{2}\/\d{2}\/\d{4})/i);
+  if (fechaM) fechaResumen = fechaM[1];
+
+  // Efectivo disponible (sección "Monedas" del resumen) — Balanz lo suma al TOTAL en dólares,
+  // así que hay que incluirlo o el valor de cartera queda sistemáticamente por debajo del de la app.
+  let cashUSD = 0;
+  const pesosM = text.match(/Pesos\s*\$\s*([\d.,]+)/);
+  if (pesosM) cashUSD += parseArgNum(pesosM[1]) / mep;
+  const dolaresM = text.match(/Dólares\s+USD\s*([\d.,]+)/i);
+  if (dolaresM) cashUSD += parseArgNum(dolaresM[1]);
+  const cableM = text.match(/US Dollar\s*\(Cable\)\s*USD\s*([\d.,]+)/i);
+  if (cableM) cashUSD += parseArgNum(cableM[1]);
+
   const sMap = {'acciones':'a','bonos':'b','cedears':'c','corporativos':'o','fondos':'fci'};
   const lines = text.split(/\r?\n/);
 
@@ -1018,7 +1040,7 @@ function parsePosicion(text) {
     const pos = parsePosLine(t, section, mep);
     if (pos) result[pos.ticker] = pos;
   }
-  return { positions: result, mep, client };
+  return { positions: result, mep, client, cashUSD, fechaResumen };
 }
 
 function parsePosLine(line, section, mep) {
@@ -1350,6 +1372,8 @@ function generateDashboard() {
       historialOps = movResult.ops;
       mepDoc = posParsed.mep;
       clientName = posParsed.client || posBuffer.name.split('.')[0];
+      cashUSD = posParsed.cashUSD || 0;
+      fechaResumen = posParsed.fechaResumen || '';
 
       incomeList = [];
       for (const p of posiciones) {
@@ -1377,7 +1401,13 @@ function showDashboard() {
   document.getElementById('client-badge').style.display = 'block';
   document.getElementById('client-name-top').textContent = clientName;
   document.getElementById('ph-client-name').textContent = clientName;
-  document.getElementById('ph-date').textContent = 'Actualizado: ' + new Date().toLocaleDateString('es-AR');
+  const fechaLbl = fechaResumen || new Date().toLocaleDateString('es-AR');
+  document.getElementById('ph-date').textContent = 'Posición al ' + fechaLbl;
+  const noteEl = document.getElementById('snapshot-note');
+  if (noteEl) {
+    document.getElementById('snapshot-note-fecha').textContent = 'Datos de tu Posición Consolidada al ' + fechaLbl + '.';
+    noteEl.style.display = 'block';
+  }
   hideLoading();
   fetchMepLive();
 }
@@ -1406,13 +1436,17 @@ function renderAll() {
 
 // ── KPIs ──
 function renderKPIs() {
-  const totalVal   = posiciones.reduce((a,p) => a + p.valor_actual_usd, 0);
+  const totalPos   = posiciones.reduce((a,p) => a + p.valor_actual_usd, 0);
+  const totalVal   = totalPos + cashUSD;
   const totalCosto = posiciones.reduce((a,p) => a + p.costo_usd, 0);
   const totalApre  = posiciones.reduce((a,p) => a + p.apreciacion_usd, 0);
   const totalInc   = posiciones.reduce((a,p) => a + p.income_usd, 0);
   const aprePct    = totalCosto > 0 ? (totalApre / totalCosto)*100 : 0;
 
   document.getElementById('kpi-valor').textContent = fmtUSD(totalVal, 0);
+  document.getElementById('kpi-valor-sub').textContent = cashUSD > 0.5
+    ? `incluye ${fmtUSD(cashUSD, 0)} en efectivo disponible`
+    : 'al precio actual del mercado';
   document.getElementById('kpi-invertido').textContent = fmtUSD(totalCosto, 0);
   document.getElementById('kpi-income').textContent = fmtUSD(totalInc, 0);
 
@@ -1733,7 +1767,7 @@ function exportarParaCliente() {
   const dataJSON = JSON.stringify({
     posiciones, incomeList, realizadasData,
     historialOps: historialOps.slice(0, 300),
-    mepDoc, clientName, evolData
+    mepDoc, clientName, evolData, cashUSD, fechaResumen
   });
 
   // Usar el template LIMPIO (capturado al inicio, sin DOM renderizado)

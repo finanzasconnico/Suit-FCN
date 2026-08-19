@@ -1,0 +1,143 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; }
+  .wrap { padding: 1.5rem 0; }
+  .card { background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.5rem; max-width: 600px; }
+  h2 { font-size: 15px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.25rem; }
+  .sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+  .dropzone { border: 2px dashed var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 2rem 1rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .dropzone.over { border-color: var(--color-text-info); background: var(--color-background-info); }
+  .dropzone i { font-size: 32px; color: var(--color-text-secondary); display: block; margin-bottom: 0.5rem; }
+  .dropzone p { font-size: 13px; color: var(--color-text-secondary); }
+  .dropzone p strong { color: var(--color-text-primary); font-weight: 500; }
+  #fileInput { display: none; }
+  .file-info { margin-top: 1rem; padding: 0.75rem 1rem; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); display: none; }
+  .file-info .name { font-size: 13px; color: var(--color-text-primary); font-weight: 500; word-break: break-all; }
+  .file-info .path-label { font-size: 11px; color: var(--color-text-secondary); margin-top: 0.25rem; }
+  .cmd-box { margin-top: 1rem; display: none; }
+  .cmd-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 0.35rem; }
+  .cmd-code { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 0.75rem; font-size: 11px; color: var(--color-text-primary); word-break: break-all; line-height: 1.6; position: relative; }
+  .copy-btn { margin-top: 0.75rem; width: 100%; padding: 0.6rem; background: var(--color-text-primary); color: var(--color-background-primary); border: none; border-radius: var(--border-radius-md); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem; transition: opacity 0.15s; }
+  .copy-btn:hover { opacity: 0.85; }
+  .copy-btn.copied { background: var(--color-background-success); color: var(--color-text-success); border: 1px solid var(--color-border-success); }
+  .steps { margin-top: 1.25rem; display: none; }
+  .step { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.6rem; }
+  .step-num { min-width: 20px; height: 20px; border-radius: 50%; background: var(--color-text-primary); color: var(--color-background-primary); font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .step-text { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .step-text strong { color: var(--color-text-primary); font-weight: 500; }
+  .note { margin-top: 1rem; padding: 0.6rem 0.75rem; background: var(--color-background-warning); border-left: 3px solid var(--color-text-warning); border-radius: 0; font-size: 12px; color: var(--color-text-warning); display: none; }
+</style>
+
+<div class="wrap">
+  <h2 class="sr-only">Convertidor de archivos a Markdown para Windows</h2>
+  <div class="card">
+    <h2>Convertidor a .md</h2>
+    <p class="sub">Arrastrá tu archivo o hacé clic para seleccionarlo</p>
+
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <i class="ti ti-file-upload" aria-hidden="true"></i>
+      <p><strong>Arrastrá el archivo acá</strong></p>
+      <p>o hacé clic para buscarlo</p>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.xlsx,.xlsm,.docx,.pptx,.xls">
+
+    <div class="file-info" id="fileInfo">
+      <div class="name" id="fileName"></div>
+      <div class="path-label">Copiá la ruta completa desde el Explorador de archivos (clic derecho → "Copiar como ruta de acceso")</div>
+    </div>
+
+    <div class="cmd-box" id="cmdBox">
+      <div class="cmd-label">Pegá esto en el CMD:</div>
+      <div class="cmd-code" id="cmdCode"></div>
+      <button class="copy-btn" id="copyBtn" onclick="copyCmd()">
+        <i class="ti ti-copy" aria-hidden="true"></i> Copiar comando
+      </button>
+    </div>
+
+    <div class="note" id="note">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i> Los avisos naranjas de "ffmpeg" que aparecen en el CMD son normales, no son errores.
+    </div>
+
+    <div class="steps" id="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Copiá el comando de arriba</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Abrí el <strong>CMD</strong> (buscar "cmd" en el menú inicio)</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Pegá con <strong>clic derecho → Pegar</strong> y presioná Enter</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">El archivo <strong>.md</strong> aparece en la misma carpeta que el original</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileInfo = document.getElementById('fileInfo');
+  const fileName = document.getElementById('fileName');
+  const cmdBox = document.getElementById('cmdBox');
+  const cmdCode = document.getElementById('cmdCode');
+  const steps = document.getElementById('steps');
+  const note = document.getElementById('note');
+
+  function escPath(p) { return p.replace(/\\/g, '\\\\'); }
+  function baseName(p) { return p.replace(/\.[^.]+$/, ''); }
+
+  function processFile(file) {
+    const name = file.name;
+    const nameMd = baseName(name) + '.md';
+    fileName.textContent = name;
+    fileInfo.style.display = 'block';
+
+    const pathPlaceholder = 'C:\\Users\\naico\\...\\' + name;
+    const pathMd = 'C:\\Users\\naico\\...\\' + nameMd;
+
+    const cmd = `python -c "from markitdown import MarkItDown; r=MarkItDown().convert('${escPath(pathPlaceholder)}'); open('${escPath(pathMd)}','w',encoding='utf-8').write(r.text_content)"`;
+
+    cmdCode.textContent = cmd;
+    cmdBox.style.display = 'block';
+    steps.style.display = 'block';
+    note.style.display = 'block';
+
+    cmdCode.innerHTML = `<span style="color:var(--color-text-secondary);font-size:11px;">⚠️ Reemplazá la ruta por la real de tu archivo antes de pegar</span><br><br>` + escapeHtml(cmd);
+  }
+
+  function escapeHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) processFile(e.target.files[0]);
+  });
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('over');
+    if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+  });
+
+  function copyCmd() {
+    const text = cmdCode.innerText.replace(/⚠️.*\n\n/, '');
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.classList.add('copied');
+      btn.innerHTML = '<i class="ti ti-check"></i> Copiado';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<i class="ti ti-copy"></i> Copiar comando';
+      }, 2000);
+    });
+  }
+</script>

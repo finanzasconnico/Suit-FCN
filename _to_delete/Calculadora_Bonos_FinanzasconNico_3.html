@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Bonos — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#081917;--navy-mid:#0E2622;--navy-light:#122B27;--gold:#DBA03C;--gold-dim:#B8862F;--cream:#EAF1EE;--cream-dim:#6C817C;--border:rgba(255,255,255,0.1);--radius:4px;--balanz:#1C8C5F;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;font-size:13px;}
+.topbar{background:var(--navy-mid);border-bottom:1px solid var(--border);padding:12px 26px;display:flex;align-items:center;gap:14px;}
+.topbar-logo{width:32px;height:32px;border-radius:6px;background:var(--balanz);display:flex;align-items:center;justify-content:center;font-family:'Spectral',serif;font-size:16px;color:#fff;font-weight:600;}
+.topbar-title{font-family:'Spectral',serif;font-size:19px;font-weight:300;letter-spacing:.06em;color:var(--cream);}
+.topbar-title span{color:#fff;font-weight:500;}
+.topbar-subtitle{font-size:10px;color:var(--cream-dim);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;}
+.main{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 58px);}
+.left-panel{background:var(--navy-mid);border-right:1px solid var(--border);overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 58px);}
+.left-panel::-webkit-scrollbar{width:3px;}
+.left-panel::-webkit-scrollbar-thumb{background:var(--gold-dim);}
+.right-panel{overflow-y:auto;padding:20px 26px;max-height:calc(100vh - 58px);}
+.right-panel::-webkit-scrollbar{width:3px;}
+.right-panel::-webkit-scrollbar-thumb{background:var(--navy-light);}
+.section-title{font-size:9px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;}
+.upload-card{background:rgba(255,255,255,.04);border:1px dashed var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;transition:all .2s;text-align:center;position:relative;}
+.upload-card:hover{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,.07);}
+.upload-card.loaded{border-style:solid;border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.05);}
+.upload-card input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:1.3rem;margin-bottom:4px;display:block;}
+.upload-name{font-size:11px;font-weight:500;color:#fff;margin-bottom:2px;}
+.upload-hint{font-size:9px;color:var(--cream-dim);}
+.upload-status{font-size:10px;color:var(--green);margin-top:4px;font-weight:500;}
+.field{margin-bottom:8px;}
+.field label{display:block;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:4px;}
+.field input,.field select{width:100%;padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:12px;outline:none;transition:border-color .2s;}
+.field input:focus,.field select:focus{border-color:rgba(255,255,255,0.4);}
+.field select option{background:#0E2622;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ac-wrap{position:relative;}
+.ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#0E2622;border:1px solid rgba(255,255,255,0.2);border-top:none;border-radius:0 0 3px 3px;z-index:300;max-height:220px;overflow-y:auto;display:none;}
+.ac-dropdown.open{display:block;}
+.ac-item{padding:8px 11px;cursor:pointer;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;}
+.ac-item:hover{background:rgba(28,140,95,0.4);}
+.ac-ticker{font-size:11px;font-weight:600;color:#fff;min-width:50px;}
+.ac-name{font-size:10px;color:var(--cream);flex:1;}
+.ac-tir{font-size:10px;color:var(--green);font-weight:600;}
+.btn{padding:8px 16px;border-radius:var(--radius);font-family:'Hanken Grotesk',sans-serif;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .2s;letter-spacing:.03em;display:inline-flex;align-items:center;gap:6px;justify-content:center;}
+.btn-primary{background:var(--balanz);color:#fff;width:100%;}
+.btn-primary:hover{background:#22a870;}
+.btn-outline{background:transparent;color:var(--cream);border:1px solid var(--border);width:100%;}
+.btn-outline:hover{border-color:rgba(255,255,255,0.4);color:#fff;}
+.btn-sm{padding:4px 10px;font-size:10px;width:auto;}
+.toggle-row{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.toggle-btn{flex:1;padding:7px 8px;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--cream-dim);font-family:'Hanken Grotesk',sans-serif;transition:all .15s;text-align:center;}
+.toggle-btn.active{background:var(--balanz);color:#fff;}
+.divider{height:1px;background:var(--border);margin:2px 0;}
+.warn-box{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius);padding:8px 10px;font-size:10px;color:#fbbf24;line-height:1.5;}
+.info-box{background:rgba(219,160,60,0.08);border:1px solid rgba(219,160,60,0.25);border-radius:var(--radius);padding:8px 10px;font-size:10px;color:#e8c789;line-height:1.5;}
+/* RESULT CARDS */
+.result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+@media(max-width:1100px){.result-grid{grid-template-columns:repeat(2,1fr);}}
+.result-card{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);padding:12px 12px;}
+.result-card.hero{background:linear-gradient(135deg,#0E2622,#1C8C5F);border:none;}
+.result-lbl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:4px;}
+.result-card.hero .result-lbl{color:rgba(255,255,255,0.65);}
+.result-val{font-family:'Spectral',serif;font-size:24px;font-weight:600;color:#fff;line-height:1;}
+.result-card.hero .result-val{font-size:28px;}
+.result-sub{font-size:9px;color:var(--cream-dim);margin-top:3px;}
+.section-block{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+.section-block h3{font-family:'Spectral',serif;font-size:15px;font-weight:400;color:#fff;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+table.data-table{width:100%;border-collapse:collapse;font-size:11px;}
+table.data-table thead th{padding:7px 10px;text-align:left;font-size:9px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--cream-dim);border-bottom:1px solid var(--border);white-space:nowrap;}
+table.data-table tbody td{padding:7px 10px;color:var(--cream);border-bottom:1px solid rgba(255,255,255,.04);}
+table.data-table tbody tr:hover{background:rgba(255,255,255,.03);}
+table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
+.amort-input{width:60px;padding:3px 5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:3px;color:#fbbf24;font-family:'Hanken Grotesk',sans-serif;font-size:11px;outline:none;text-align:right;}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:600;}
+.pill-green{background:rgba(34,197,94,0.15);color:#4ade80;}
+.pill-blue{background:rgba(219,160,60,0.15);color:#DBA03C;}
+.empty-state{text-align:center;padding:70px 20px;color:var(--cream-dim);}
+.empty-icon{font-size:3rem;margin-bottom:14px;opacity:.5;}
+.empty-title{font-family:'Spectral',serif;font-size:19px;color:rgba(255,255,255,0.5);margin-bottom:8px;}
+.empty-sub{font-size:12px;line-height:1.7;}
+.tenencia-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.tenencia-row label{font-size:11px;color:var(--cream-dim);white-space:nowrap;}
+.tenencia-row input{width:140px;padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:var(--radius);color:#fff;font-family:'Hanken Grotesk',sans-serif;font-size:13px;outline:none;font-weight:600;}
+.holding-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:1100px){.holding-grid{grid-template-columns:repeat(2,1fr);}}
+.badge-amort{font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(168,85,247,0.15);color:#c084fc;margin-left:6px;}
+.recalc-hint{font-size:9px;color:var(--cream-dim);margin-top:8px;font-style:italic;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">B</div>
+  <div>
+    <div class="topbar-title">finanzasconnico · <span>Calculadora de Bonos</span></div>
+    <div class="topbar-subtitle">Precio ↔ TIR · Cronograma de flujos · Duration &amp; DV01</div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div>
+      <div class="section-title">1 · Base de bonos (ONs y Soberanos)</div>
+      <div class="upload-card" id="card-excel" onclick="document.getElementById('inp-excel').click()">
+        <input type="file" id="inp-excel" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="cargarExcel(this)">
+        <span class="upload-icon" id="icon-excel">📥</span>
+        <div class="upload-name">Monitor de Individuos</div>
+        <div class="upload-hint">.xlsm de Balanz — hojas Corporativos + Soberanos</div>
+        <div class="upload-status" id="status-excel"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">2 · Elegir bono</div>
+      <div class="field ac-wrap">
+        <input type="text" id="buscar-bono" placeholder="Ticker o emisor: YM40O, GD30, VSCXO…" autocomplete="off"
+          oninput="buscarBonoInput(this.value)" onblur="setTimeout(cerrarAC,180)">
+        <div class="ac-dropdown" id="ac-dd"></div>
+      </div>
+      <button class="btn btn-outline btn-sm" style="width:100%;" onclick="cargarManual()">✎ Cargar condiciones manualmente</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-title">3 · Condiciones del bono</div>
+      <div class="field"><label>Ticker</label><input type="text" id="b-ticker" placeholder="Ej: YM40O" style="text-transform:uppercase;" oninput="onCondChange()"></div>
+      <div class="field"><label>Emisor</label><input type="text" id="b-emisor" placeholder="Ej: YPF" oninput="onCondChange()"></div>
+      <div class="field-row">
+        <div class="field"><label>Cupón anual (%)</label><input type="number" step="0.01" id="b-cupon" placeholder="7.50" oninput="onCondChange()"></div>
+        <div class="field"><label>Pagos por año</label>
+          <select id="b-freq" onchange="onCondChange()">
+            <option value="1">1 (Anual)</option>
+            <option value="2" selected>2 (Semestral)</option>
+            <option value="4">4 (Trimestral)</option>
+            <option value="12">12 (Mensual)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Fecha de emisión</label><input type="date" id="b-emision" oninput="onCondChange()"></div>
+        <div class="field"><label>Fecha de vencimiento</label><input type="date" id="b-venc" oninput="onCondChange()"></div>
+      </div>
+      <div class="field">
+        <label>Amortización</label>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="btn-amort-bullet" onclick="setAmortType('bullet')">Bullet</button>
+          <button class="toggle-btn" id="btn-amort-amortizable" onclick="setAmortType('amortizable')">Amortizable</button>
+        </div>
+      </div>
+      <div class="field" id="row-amort-inicio" style="display:none;">
+        <label>Inicio de amortización</label>
+        <input type="date" id="b-amort-inicio" oninput="onCondChange()">
+      </div>
+      <div id="warn-emision" class="warn-box" style="display:none;margin-bottom:8px;">
+        ⚠ La fecha de emisión no viene en el Excel de Balanz — la estimamos en 5 años antes del vencimiento. Ajustala si la sabés: afecta el cronograma de amortización de bonos Amortizables.
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Moneda</label>
+          <select id="b-moneda" onchange="onCondChange()"><option>USD (Cable)</option><option>USD (MEP)</option><option>ARS</option></select>
+        </div>
+        <div class="field"><label>Ley</label><input type="text" id="b-ley" placeholder="NY / ARG" oninput="onCondChange()"></div>
+      </div>
+      <div class="field"><label>Calificación</label><input type="text" id="b-calif" placeholder="AAA" oninput="onCondChange()"></div>
+      <div id="ref-mercado" class="info-box" style="display:none;"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-title">4 · Liquidación</div>
+      <div class="field-row">
+        <div class="field"><label>Fecha de hoy</label><input type="date" id="l-hoy" oninput="onSettlementChange()"></div>
+        <div class="field"><label>Plazo</label>
+          <select id="l-plazo" onchange="onPlazoChange()">
+            <option value="0">T+0</option>
+            <option value="1" selected>T+1</option>
+            <option value="manual">MANUAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Fecha de liquidación</label><input type="date" id="l-fecha" oninput="onSettlementChange()"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-title">5 · Precio / TIR</div>
+      <div class="field">
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="btn-mode-precio" onclick="setInputMode('precio')">Ingreso Precio</button>
+          <button class="toggle-btn" id="btn-mode-tir" onclick="setInputMode('tir')">Ingreso TIR</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field" id="wrap-precio"><label>Precio (c/100 VN)</label><input type="number" step="0.01" id="in-precio" placeholder="98.50" oninput="onPriceTirInput()"></div>
+        <div class="field" id="wrap-tipo-precio"><label>Tipo Precio</label>
+          <select id="b-tipo-precio" onchange="onPriceTirInput()"><option value="dirty" selected>Dirty</option><option value="clean">Clean</option></select>
+        </div>
+      </div>
+      <div class="field" id="wrap-tir" style="display:none;"><label>TIR Requerida (%)</label><input type="number" step="0.01" id="in-tir" placeholder="7.20" oninput="onPriceTirInput()"></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🧮</div>
+      <div class="empty-title">Elegí un bono para empezar</div>
+      <div class="empty-sub">Subí el Monitor de Individuos y buscá un ticker, o cargá las condiciones a mano.<br>Después ingresá el precio o la TIR requerida.</div>
+    </div>
+
+    <div id="results-area" style="display:none">
+      <div class="result-grid" id="result-grid"></div>
+
+      <div class="section-block">
+        <h3>Tenencia</h3>
+        <div class="tenencia-row">
+          <label>Tenencia Nominal:</label>
+          <input type="number" id="in-tenencia" value="100" step="1" oninput="renderAll()">
+        </div>
+        <div class="holding-grid" id="holding-grid"></div>
+      </div>
+
+      <div class="section-block">
+        <h3>CashFlow de la tenencia <span id="amort-badge" class="badge-amort" style="display:none;">cronograma estimado — editable</span></h3>
+        <div id="cashflow-wrap" style="overflow-x:auto;"></div>
+        <div class="recalc-hint" id="cashflow-hint" style="display:none;">Podés editar la amortización (%) de cada cupón futuro. El resto del cronograma se recalcula automáticamente.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+var BOND_DB = {};      // ticker -> {ticker,emisor,cupon_anual,meses_cupon,freq,vencimiento,amortizacion,moneda,ley,calificacion,tir_ref,precio_ref,dur_ref,categoria}
+var currentBond = null;  // the bond currently loaded into the form (normalized)
+var amortOverrides = {}; // dateISO -> pct override (manual edits to the schedule)
+var inputMode = 'precio'; // 'precio' | 'tir'
+var MONTH_ABR = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  var today = new Date();
+  document.getElementById('l-hoy').value = isoDate(today);
+  onPlazoChange();
+  loadDBFromStorage();
+});
+
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseISO(s){ if(!s) return null; var p=s.split('-'); return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); }
+function fmtDateAR(d){ if(!d) return '—'; return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtNum(n,dec){ if(n===null||n===undefined||isNaN(n)) return '—'; dec=dec===undefined?2:dec; return Number(n).toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function daysBetween(d1,d2){ return Math.round((d2-d1)/86400000); }
+
+// ═══════════════════════════════════════════════════════
+// LIQUIDACIÓN
+// ═══════════════════════════════════════════════════════
+function onPlazoChange(){
+  var plazo = document.getElementById('l-plazo').value;
+  var fechaHoy = parseISO(document.getElementById('l-hoy').value) || new Date();
+  var fechaLiqInput = document.getElementById('l-fecha');
+  if(plazo === 'manual'){
+    fechaLiqInput.readOnly = false;
+  } else {
+    fechaLiqInput.readOnly = true;
+    var d = new Date(fechaHoy.getTime());
+    d.setDate(d.getDate() + parseInt(plazo));
+    fechaLiqInput.value = isoDate(d);
+  }
+  renderAll();
+}
+function onSettlementChange(){
+  var plazo = document.getElementById('l-plazo').value;
+  if(plazo !== 'manual') onPlazoChange();
+  else renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// EXCEL LOADER (mismo formato que Armador_Carteras / Scanner_ONs)
+// ═══════════════════════════════════════════════════════
+function cargarExcel(input){
+  var file = input.files[0];
+  if(!file) return;
+  var status = document.getElementById('status-excel');
+  status.style.color = 'rgba(255,200,100,.8)';
+  status.textContent = 'Leyendo Monitor Individuos…';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array', cellFormula:false, cellDates:false, raw:true});
+      var count = 0;
+      count += parseCorporativos(wb);
+      count += parseSoberanos(wb);
+      saveDBToStorage();
+      status.style.color = '#6dc27a';
+      status.textContent = '✓ '+count+' bonos cargados en la base';
+      document.getElementById('icon-excel').textContent = '✅';
+      document.getElementById('card-excel').classList.add('loaded');
+      input.value = '';
+    }catch(err){
+      status.style.color = '#ff6b6b';
+      status.textContent = '✗ Error: '+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function excelDateToISO(v){
+  if(v===null||v===undefined||v==='') return '';
+  if(typeof v==='number'){ var d=new Date(Math.round((v-25569)*86400*1000)); return isoDate(d); }
+  if(typeof v==='string' && v.length>=10) return v.slice(0,10);
+  return '';
+}
+
+function parseCorporativos(wb){
+  var shName = wb.SheetNames.find(function(n){return n==='Corporativos';})
+    || wb.SheetNames.find(function(n){return n.toLowerCase().includes('corporativ');});
+  if(!shName) return 0;
+  var ws = wb.Sheets[shName];
+  var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+  var hdrRow=-1, colOffset=0;
+  for(var i=0;i<Math.min(rows.length,15);i++){
+    if(String(rows[i][0]).trim()==='Ticker'){hdrRow=i;colOffset=0;break;}
+    if(String(rows[i][1]).trim()==='Ticker'){hdrRow=i;colOffset=1;break;}
+  }
+  if(hdrRow<0) return 0;
+  var count=0;
+  for(var r=hdrRow+1;r<rows.length;r++){
+    var row=rows[r], c=colOffset;
+    var ticker=String(row[c+0]||'').trim();
+    var emisor=String(row[c+1]||'').trim();
+    if(!ticker||!emisor||ticker==='Ticker') continue;
+    var tirRaw=parseFloat(row[c+4]);
+    var cuponRaw=parseFloat(row[c+7]);
+    if(isNaN(tirRaw)||tirRaw<=0) continue;
+    var vencDate=excelDateToISO(row[c+3]);
+    var moneda=String(row[c+9]||'').trim();
+    var ley=String(row[c+10]||'').trim();
+    var calif=String(row[c+11]||'').trim();
+    var meses=String(row[c+8]||'').trim();
+    var amort=String(row[c+6]||'').trim();
+    var cupon=isNaN(cuponRaw)?null:Math.round(cuponRaw*10000)/100;
+    var tir=Math.round(tirRaw*10000)/100;
+    BOND_DB[ticker]={
+      ticker:ticker, emisor:emisor, categoria:'ON',
+      cupon_anual:cupon, meses_cupon:meses, vencimiento:vencDate,
+      amortizacion:amort, moneda:moneda, ley:ley, calificacion:calif,
+      tir_ref:tir, precio_ref:null, dur_ref:null
+    };
+    count++;
+  }
+  return count;
+}
+
+function parseSoberanos(wb){
+  var shName = wb.SheetNames.find(function(n){return n==='Soberanos';})
+    || wb.SheetNames.find(function(n){return n.toLowerCase().includes('sobera');});
+  if(!shName) return 0;
+  var rows = XLSX.utils.sheet_to_json(wb.Sheets[shName], {header:1, defval:'', raw:true});
+  var headerRows=[];
+  for(var hi=0;hi<rows.length;hi++){ if(String(rows[hi][1]||'').trim()==='Ticker') headerRows.push(hi); }
+  var count=0;
+  for(var hIdx=0; hIdx<headerRows.length; hIdx++){
+    var dataStart=headerRows[hIdx]+1;
+    var dataEnd=hIdx+1<headerRows.length?headerRows[hIdx+1]:rows.length;
+    for(var sr=dataStart; sr<dataEnd; sr++){
+      var srow=rows[sr];
+      var ticker=String(srow[1]||'').trim().toUpperCase();
+      var emisor=String(srow[2]||'').trim();
+      if(!ticker||!emisor) continue;
+      if(!/^[A-Z0-9]{2,8}$/.test(ticker)) continue;
+      if(ticker.includes('/')) continue;
+      var tirRaw=parseFloat(srow[5]);
+      if(isNaN(tirRaw)||tirRaw<=0) continue;
+      var cuponRaw=parseFloat(srow[8]);
+      BOND_DB[ticker]={
+        ticker:ticker, emisor:emisor, categoria:'Soberano',
+        cupon_anual: isNaN(cuponRaw)?null:Math.round(cuponRaw*10000)/100,
+        meses_cupon: String(srow[9]||'').trim(),
+        vencimiento: excelDateToISO(srow[4]),
+        amortizacion: String(srow[7]||'').trim(),
+        moneda: String(srow[10]||'').trim(),
+        ley: String(srow[11]||'').trim(),
+        calificacion: String(srow[12]||'').trim(),
+        tir_ref: Math.round(tirRaw*10000)/100,
+        precio_ref: parseFloat(srow[3])||null,
+        dur_ref: parseFloat(srow[6])||null
+      };
+      count++;
+    }
+  }
+  return count;
+}
+
+function saveDBToStorage(){
+  try{ localStorage.setItem('fcn-bond-calc-db', JSON.stringify(BOND_DB)); }catch(e){}
+}
+function loadDBFromStorage(){
+  // 1) intenta la base propia de esta calculadora
+  try{
+    var raw = localStorage.getItem('fcn-bond-calc-db');
+    if(raw){ Object.assign(BOND_DB, JSON.parse(raw)); }
+  }catch(e){}
+  // 2) además, aprovecha lo que ya haya cargado en Scanner_ONs / Armador_Carteras en este navegador
+  try{
+    var onDb = localStorage.getItem('fcn-on-db');
+    if(onDb){
+      var parsed = JSON.parse(onDb);
+      Object.keys(parsed).forEach(function(tk){
+        if(BOND_DB[tk]) return;
+        var o = parsed[tk];
+        BOND_DB[tk] = {ticker:tk, emisor:o.emisor, categoria:'ON', cupon_anual:o.cupon_anual,
+          meses_cupon:o.meses_cupon, vencimiento:o.vencimiento, amortizacion:o.amortizacion,
+          moneda:o.moneda, ley:o.ley, calificacion:o.calificacion, tir_ref:o.tir, precio_ref:null, dur_ref:null};
+      });
+    }
+  }catch(e){}
+  try{
+    var sovDb = localStorage.getItem('fcn-sov-db');
+    if(sovDb){
+      var parsedS = JSON.parse(sovDb);
+      Object.keys(parsedS).forEach(function(tk){
+        if(BOND_DB[tk]) return;
+        var o = parsedS[tk];
+        BOND_DB[tk] = {ticker:tk, emisor:o.emisor, categoria:o.categoria||'Soberano', cupon_anual:o.cupon,
+          meses_cupon:o.meses, vencimiento:o.venc, amortizacion:o.amort,
+          moneda:o.moneda, ley:o.ley, calificacion:o.calif, tir_ref:o.tir, precio_ref:o.precio, dur_ref:o.dur};
+      });
+    }
+  }catch(e){}
+  if(Object.keys(BOND_DB).length>0){
+    document.getElementById('status-excel').style.color='#6dc27a';
+    document.getElementById('status-excel').textContent='✓ '+Object.keys(BOND_DB).length+' bonos disponibles (guardados en este navegador)';
+    document.getElementById('icon-excel').textContent='✅';
+    document.getElementById('card-excel').classList.add('loaded');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// BUSCADOR / AUTOCOMPLETE
+// ═══════════════════════════════════════════════════════
+function buscarBonoInput(q){
+  var dd = document.getElementById('ac-dd');
+  if(!q || q.length<1){ dd.classList.remove('open'); return; }
+  var lq = q.toLowerCase();
+  var matches = Object.values(BOND_DB).filter(function(b){
+    return b.ticker.toLowerCase().includes(lq) || (b.emisor||'').toLowerCase().includes(lq);
+  }).slice(0,12);
+  if(!matches.length){ dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.map(function(b){
+    return '<div class="ac-item" onmousedown="seleccionarBono(\''+b.ticker+'\')">'+
+      '<span class="ac-ticker">'+b.ticker+'</span>'+
+      '<span class="ac-name">'+(b.emisor||'')+' · '+(b.cupon_anual!==null&&b.cupon_anual!==undefined?b.cupon_anual+'%':'')+' · '+(b.vencimiento||'')+'</span>'+
+      '<span class="ac-tir">'+(b.tir_ref!==null&&b.tir_ref!==undefined?b.tir_ref.toFixed(2)+'%':'')+'</span>'+
+    '</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+function cerrarAC(){ document.getElementById('ac-dd').classList.remove('open'); }
+
+function seleccionarBono(ticker){
+  var b = BOND_DB[ticker];
+  if(!b) return;
+  document.getElementById('buscar-bono').value = '';
+  cerrarAC();
+  amortOverrides = {};
+
+  document.getElementById('b-ticker').value = b.ticker;
+  document.getElementById('b-emisor').value = b.emisor || '';
+  document.getElementById('b-cupon').value = b.cupon_anual!==null&&b.cupon_anual!==undefined ? b.cupon_anual : '';
+  var meses = parseMesesCupon(b.meses_cupon);
+  var freq = meses.length>0 ? meses.length : 2;
+  document.getElementById('b-freq').value = String(freq);
+  document.getElementById('b-venc').value = b.vencimiento || '';
+
+  // fecha de emisión: no viene en el Excel — estimamos 5 años antes del vencimiento
+  var vencD = parseISO(b.vencimiento);
+  var warnEl = document.getElementById('warn-emision');
+  if(vencD){
+    var est = new Date(vencD.getTime());
+    est.setFullYear(est.getFullYear()-5);
+    document.getElementById('b-emision').value = isoDate(est);
+    warnEl.style.display = 'block';
+  } else {
+    document.getElementById('b-emision').value = '';
+    warnEl.style.display = 'none';
+  }
+
+  var amortText = (b.amortizacion||'').toLowerCase();
+  var isBullet = !amortText.includes('amortiz'); // default a bullet salvo que diga "amortizable"
+  setAmortType(isBullet ? 'bullet' : 'amortizable');
+  document.getElementById('b-amort-inicio').value = document.getElementById('b-emision').value;
+
+  var monedaSel = document.getElementById('b-moneda');
+  var mm = (b.moneda||'').toLowerCase();
+  if(mm.includes('cable')) monedaSel.value='USD (Cable)';
+  else if(mm.includes('mep')) monedaSel.value='USD (MEP)';
+  else if(mm==='usd') monedaSel.value='USD (Cable)';
+  else monedaSel.value='ARS';
+  document.getElementById('b-ley').value = b.ley || '';
+  document.getElementById('b-calif').value = b.calificacion || '';
+
+  var refBox = document.getElementById('ref-mercado');
+  var refParts = [];
+  if(b.tir_ref!==null && b.tir_ref!==undefined) refParts.push('TIR ref. Excel: <strong>'+b.tir_ref.toFixed(2)+'%</strong>');
+  if(b.precio_ref) refParts.push('Precio ref.: <strong>'+b.precio_ref.toFixed(2)+'</strong>');
+  if(b.dur_ref) refParts.push('Duration ref.: <strong>'+b.dur_ref.toFixed(2)+'</strong>');
+  if(refParts.length){ refBox.style.display='block'; refBox.innerHTML='📊 Últimos datos del Monitor — '+refParts.join(' · '); }
+  else { refBox.style.display='none'; }
+
+  onCondChange();
+}
+
+function cargarManual(){
+  amortOverrides = {};
+  ['b-ticker','b-emisor','b-cupon','b-venc','b-amort-inicio'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('b-freq').value='2';
+  document.getElementById('b-ley').value='';
+  document.getElementById('b-calif').value='';
+  document.getElementById('b-moneda').value='USD (Cable)';
+  document.getElementById('warn-emision').style.display='none';
+  document.getElementById('ref-mercado').style.display='none';
+  var today = new Date();
+  document.getElementById('b-emision').value = isoDate(today);
+  setAmortType('bullet');
+  document.getElementById('b-ticker').focus();
+  onCondChange();
+}
+
+function setAmortType(type){
+  document.getElementById('btn-amort-bullet').classList.toggle('active', type==='bullet');
+  document.getElementById('btn-amort-amortizable').classList.toggle('active', type==='amortizable');
+  document.getElementById('row-amort-inicio').style.display = type==='amortizable' ? '' : 'none';
+  currentAmortType = type;
+  onCondChange();
+}
+var currentAmortType = 'bullet';
+
+function setInputMode(mode){
+  inputMode = mode;
+  document.getElementById('btn-mode-precio').classList.toggle('active', mode==='precio');
+  document.getElementById('btn-mode-tir').classList.toggle('active', mode==='tir');
+  document.getElementById('wrap-precio').style.display = mode==='precio' ? '' : 'none';
+  document.getElementById('wrap-tipo-precio').style.display = mode==='precio' ? '' : 'none';
+  document.getElementById('wrap-tir').style.display = mode==='tir' ? '' : 'none';
+  renderAll();
+}
+
+function onCondChange(){ amortOverrides = {}; renderAll(); }
+function onPriceTirInput(){ renderAll(); }
+
+// ═══════════════════════════════════════════════════════
+// MESES CUPÓN
+// ═══════════════════════════════════════════════════════
+function parseMesesCupon(str){
+  if(!str) return [];
+  var res=[];
+  str.toLowerCase().replace(/[^a-záéíóúñ ]/g,' ').split(/\s+/).forEach(function(w){
+    var m = MONTH_ABR[w.slice(0,3)];
+    if(m && res.indexOf(m)<0) res.push(m);
+  });
+  return res.sort(function(a,b){return a-b;});
+}
+
+// ═══════════════════════════════════════════════════════
+// CRONOGRAMA DE CUPONES
+// ═══════════════════════════════════════════════════════
+function addMonthsClamp(date, n){
+  var d = new Date(date.getTime());
+  var day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth()+n);
+  var lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+  return d;
+}
+
+function buildCouponDates(fechaEmision, fechaVenc, freq){
+  var step = 12/freq;
+  var dates = [fechaVenc];
+  var cur = fechaVenc;
+  var guard = 0;
+  while(guard<400){
+    var prev = addMonthsClamp(cur, -step);
+    if(prev <= fechaEmision) break;
+    dates.unshift(prev);
+    cur = prev;
+    guard++;
+  }
+  return dates; // ascendente, todas > fechaEmision, la última = fechaVenc
+}
+
+function buildSchedule(bond, settlement){
+  var freq = bond.freq;
+  var dates = buildCouponDates(bond.fechaEmision, bond.fechaVenc, freq);
+  var n = dates.length;
+  var amortStart = bond.amortStart || bond.fechaEmision;
+  var amortIdx = [];
+  if(bond.amortType==='amortizable'){
+    dates.forEach(function(d,i){ if(d.getTime() >= amortStart.getTime()) amortIdx.push(i); });
+  }
+  // Reparto base (equirepartido, ignora ediciones manuales): se usa tal cual para los
+  // cupones YA pagados (pasado), porque eso ya ocurrió y no depende de lo que el
+  // usuario edite hoy en las filas futuras del cronograma.
+  var baseDefaultPct = amortIdx.length>0 ? 100/amortIdx.length : 0;
+  var pastIdxSet = {}, pastTotal = 0, futureIdx = [];
+  amortIdx.forEach(function(i){
+    if(settlement && dates[i].getTime() <= settlement.getTime()){ pastIdxSet[i]=true; pastTotal += baseDefaultPct; }
+    else { futureIdx.push(i); }
+  });
+  // Para los cupones futuros: si el usuario editó alguno a mano, repartimos el
+  // remanente (100 - ya amortizado en el pasado - lo editado a mano) entre los
+  // cupones futuros NO editados, para que el total siga sumando 100 del VN original.
+  var overriddenFutureTotal = 0, overriddenFutureCount = 0;
+  futureIdx.forEach(function(i){
+    var iso = isoDate(dates[i]);
+    if(amortOverrides.hasOwnProperty(iso)){ overriddenFutureTotal += amortOverrides[iso]; overriddenFutureCount++; }
+  });
+  var remainingFutureCount = futureIdx.length - overriddenFutureCount;
+  var remainingFuturePct = Math.max(0, 100 - pastTotal - overriddenFutureTotal);
+  var futureDefaultPct = remainingFutureCount>0 ? remainingFuturePct/remainingFutureCount : 0;
+
+  var vnResidual = 100;
+  var schedule = [];
+  dates.forEach(function(d,i){
+    var isLast = (i===n-1);
+    var iso = isoDate(d);
+    var pct;
+    if(amortOverrides.hasOwnProperty(iso) && !pastIdxSet[i]){
+      pct = amortOverrides[iso];
+    } else if(bond.amortType==='bullet'){
+      pct = isLast ? 100 : 0;
+    } else if(pastIdxSet[i]){
+      pct = baseDefaultPct;
+    } else if(amortIdx.indexOf(i)>=0){
+      pct = futureDefaultPct;
+    } else {
+      pct = 0;
+    }
+    var vnStart = vnResidual;
+    var cuponMonto = vnStart * (bond.cuponAnual/100) / freq;
+    var amortMonto = pct;
+    vnResidual = Math.max(0, vnResidual - amortMonto);
+    schedule.push({date:d, iso:iso, vnStart:vnStart, vnEnd:vnResidual, cupon:cuponMonto, amortPct:pct, amort:amortMonto, total:cuponMonto+amortMonto});
+  });
+  return schedule; // incluye pasado y futuro
+}
+
+// ═══════════════════════════════════════════════════════
+// MATEMÁTICA FINANCIERA
+// ═══════════════════════════════════════════════════════
+function priceFromYield(futureSchedule, settlement, y){
+  var price = 0;
+  futureSchedule.forEach(function(cf){
+    var t = daysBetween(settlement, cf.date)/365;
+    price += cf.total / Math.pow(1+y, t);
+  });
+  return price;
+}
+
+function yieldFromPrice(futureSchedule, settlement, targetPrice){
+  function f(y){ return priceFromYield(futureSchedule, settlement, y) - targetPrice; }
+  var y = 0.08;
+  var converged = false;
+  for(var i=0;i<60;i++){
+    var fy = f(y);
+    var h = 0.0001;
+    var dfy = (f(y+h)-f(y-h))/(2*h);
+    if(Math.abs(dfy) < 1e-9) break;
+    var yNew = y - fy/dfy;
+    if(!isFinite(yNew) || yNew < -0.95) yNew = (y - 0.95)/2;
+    if(Math.abs(yNew-y) < 1e-7){ y=yNew; converged=true; break; }
+    y = yNew;
+  }
+  if(!converged || !isFinite(y) || Math.abs(f(y))>0.05){
+    var lo=-0.9, hi=8, flo=f(lo), fhi=f(hi);
+    if(flo*fhi<0){
+      for(var j=0;j<200;j++){
+        var mid=(lo+hi)/2, fmid=f(mid);
+        if(Math.abs(fmid)<1e-6){ y=mid; break; }
+        if(flo*fmid<0){ hi=mid; fhi=fmid; } else { lo=mid; flo=fmid; }
+        y=mid;
+      }
+    }
+  }
+  return y;
+}
+
+function computeDurationDV01(futureSchedule, settlement, y, price0){
+  var h = 0.0001;
+  var pUp = priceFromYield(futureSchedule, settlement, y+h);
+  var pDown = priceFromYield(futureSchedule, settlement, y-h);
+  var modDur = price0>0 ? -(pUp-pDown)/(2*h)/price0 : 0;
+  var dv01 = modDur * price0 * 0.0001;
+  return {modDur:modDur, dv01:dv01};
+}
+
+// ═══════════════════════════════════════════════════════
+// LECTURA DEL FORMULARIO / VALIDACIÓN
+// ═══════════════════════════════════════════════════════
+function readBondForm(){
+  var ticker = document.getElementById('b-ticker').value.trim();
+  var cuponAnual = parseFloat(document.getElementById('b-cupon').value);
+  var freq = parseInt(document.getElementById('b-freq').value);
+  var fechaEmision = parseISO(document.getElementById('b-emision').value);
+  var fechaVenc = parseISO(document.getElementById('b-venc').value);
+  var amortStart = document.getElementById('b-amort-inicio').value ? parseISO(document.getElementById('b-amort-inicio').value) : fechaEmision;
+  if(!ticker || isNaN(cuponAnual) || !fechaEmision || !fechaVenc || fechaVenc<=fechaEmision) return null;
+  return {
+    ticker:ticker, cuponAnual:cuponAnual, freq:freq,
+    fechaEmision:fechaEmision, fechaVenc:fechaVenc,
+    amortType:currentAmortType, amortStart:amortStart
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER PRINCIPAL
+// ═══════════════════════════════════════════════════════
+function renderAll(){
+  var bond = readBondForm();
+  var settlement = parseISO(document.getElementById('l-fecha').value);
+  if(!bond || !settlement){
+    document.getElementById('empty-state').style.display='';
+    document.getElementById('results-area').style.display='none';
+    return;
+  }
+  if(settlement >= bond.fechaVenc){
+    document.getElementById('empty-state').style.display='';
+    document.getElementById('empty-state').innerHTML = '<div class="empty-icon">⚠️</div><div class="empty-title">Bono vencido</div><div class="empty-sub">La fecha de liquidación es posterior (o igual) al vencimiento del bono.</div>';
+    document.getElementById('results-area').style.display='none';
+    return;
+  }
+
+  var schedule = buildSchedule(bond, settlement);
+  var future = schedule.filter(function(cf){ return cf.date > settlement; });
+  var past = schedule.filter(function(cf){ return cf.date <= settlement; });
+  if(future.length===0){
+    document.getElementById('empty-state').style.display='';
+    document.getElementById('empty-state').innerHTML = '<div class="empty-icon">⚠️</div><div class="empty-title">Sin flujos futuros</div><div class="empty-sub">Revisá el vencimiento y la fecha de liquidación.</div>';
+    document.getElementById('results-area').style.display='none';
+    return;
+  }
+
+  // valor residual (VN vigente) a la fecha de liquidación = vnEnd del último cupón pasado (o 100 si ninguno pasó)
+  var vnAtSettlement = past.length>0 ? past[past.length-1].vnEnd : 100;
+
+  // intereses corridos: entre el último cupón pasado (o emisión) y el próximo cupón futuro
+  var lastCouponDate = past.length>0 ? past[past.length-1].date : bond.fechaEmision;
+  var nextCouponDate = future[0].date;
+  var periodDays = daysBetween(lastCouponDate, nextCouponDate);
+  var elapsedDays = daysBetween(lastCouponDate, settlement);
+  var couponForPeriod = vnAtSettlement * (bond.cuponAnual/100) / bond.freq;
+  var accrued = periodDays>0 ? couponForPeriod * (elapsedDays/periodDays) : 0;
+
+  var valorResidual = vnAtSettlement;
+  var valorTecnico = valorResidual + accrued;
+
+  // resolver precio / tir según modo de ingreso
+  var dirtyPrice, tirEfectiva, precioClean;
+  if(inputMode === 'tir'){
+    var tirInput = parseFloat(document.getElementById('in-tir').value);
+    if(isNaN(tirInput)){
+      document.getElementById('empty-state').style.display='';
+      document.getElementById('empty-state').innerHTML = '<div class="empty-icon">🧮</div><div class="empty-title">Ingresá una TIR</div><div class="empty-sub">Escribí la TIR requerida (%) en el panel izquierdo.</div>';
+      document.getElementById('results-area').style.display='none';
+      return;
+    }
+    tirEfectiva = tirInput/100;
+    dirtyPrice = priceFromYield(future, settlement, tirEfectiva);
+    precioClean = dirtyPrice - accrued;
+  } else {
+    var precioInput = parseFloat(document.getElementById('in-precio').value);
+    if(isNaN(precioInput)){
+      document.getElementById('empty-state').style.display='';
+      document.getElementById('empty-state').innerHTML = '<div class="empty-icon">🧮</div><div class="empty-title">Ingresá un precio</div><div class="empty-sub">Escribí el precio (c/100 VN) en el panel izquierdo.</div>';
+      document.getElementById('results-area').style.display='none';
+      return;
+    }
+    var tipoPrecio = document.getElementById('b-tipo-precio').value;
+    dirtyPrice = tipoPrecio==='clean' ? precioInput + accrued : precioInput;
+    precioClean = dirtyPrice - accrued;
+    tirEfectiva = yieldFromPrice(future, settlement, dirtyPrice);
+  }
+
+  var durDv01 = computeDurationDV01(future, settlement, tirEfectiva, dirtyPrice);
+  var tirNominal = bond.freq * (Math.pow(1+tirEfectiva, 1/bond.freq) - 1);
+  var paridad = valorTecnico>0 ? (dirtyPrice/valorTecnico)*100 : null;
+  var annualCoupon = vnAtSettlement * (bond.cuponAnual/100);
+  var currentYield = precioClean>0 ? (annualCoupon/precioClean)*100 : null;
+  var termToMaturity = daysBetween(settlement, bond.fechaVenc)/365;
+
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('results-area').style.display='';
+
+  renderResultGrid({
+    tirEfectiva:tirEfectiva, tirNominal:tirNominal, dirtyPrice:dirtyPrice, precioClean:precioClean,
+    valorResidual:valorResidual, accrued:accrued, valorTecnico:valorTecnico, paridad:paridad,
+    modDur:durDv01.modDur, dv01:durDv01.dv01, currentYield:currentYield, termToMaturity:termToMaturity,
+    freq:bond.freq
+  });
+
+  var tenencia = parseFloat(document.getElementById('in-tenencia').value)||0;
+  renderHoldingGrid(future[0], dirtyPrice, valorTecnico, tenencia, vnAtSettlement);
+  renderCashflowTable(future, tenencia, bond.amortType);
+}
+
+function renderResultGrid(r){
+  var cards = [
+    {lbl:'TIR Efectiva', val:fmtNum(r.tirEfectiva*100)+'%', hero:true, sub:'Anual efectiva'},
+    {lbl:'TIR Nominal', val:fmtNum(r.tirNominal*100)+'%', sub:'Compuesta '+r.freq+'x/año'},
+    {lbl:'Precio Dirty', val:fmtNum(r.dirtyPrice), sub:'c/100 VN'},
+    {lbl:'Precio Clean', val:fmtNum(r.precioClean), sub:'c/100 VN'},
+    {lbl:'Valor Residual', val:fmtNum(r.valorResidual), sub:'VN vigente c/100'},
+    {lbl:'Intereses Corridos', val:fmtNum(r.accrued), sub:'c/100 VN'},
+    {lbl:'Valor Técnico', val:fmtNum(r.valorTecnico), sub:'Residual + corridos'},
+    {lbl:'Paridad', val:(r.paridad!==null?fmtNum(r.paridad):'—')+'%', sub:'Dirty / Técnico'},
+    {lbl:'Modified Duration', val:fmtNum(r.modDur), sub:'años'},
+    {lbl:'DV01', val:fmtNum(r.dv01,4), sub:'c/100 VN, 1bp'},
+    {lbl:'Current Yield', val:(r.currentYield!==null?fmtNum(r.currentYield):'—')+'%', sub:'Cupón / Precio Clean'},
+    {lbl:'Term to Maturity', val:fmtNum(r.termToMaturity), sub:'años'}
+  ];
+  document.getElementById('result-grid').innerHTML = cards.map(function(c){
+    return '<div class="result-card'+(c.hero?' hero':'')+'"><div class="result-lbl">'+c.lbl+'</div><div class="result-val">'+c.val+'</div><div class="result-sub">'+c.sub+'</div></div>';
+  }).join('');
+}
+
+function renderHoldingGrid(nextCF, dirtyPrice, valorTecnico, tenencia, vnAtSettlement){
+  var factor = tenencia/100;
+  var renta = nextCF.cupon * factor;
+  var amort = nextCF.amort * factor;
+  var totalProxCupon = renta + amort;
+  var valTecTenencia = valorTecnico * factor;
+  var valMercadoTenencia = dirtyPrice * factor;
+  var cards = [
+    {lbl:'Próx. Cupón — Renta', val:'$'+fmtNum(renta)},
+    {lbl:'Próx. Cupón — Amortización', val:'$'+fmtNum(amort)},
+    {lbl:'Próx. Cupón — Total', val:'$'+fmtNum(totalProxCupon)},
+    {lbl:'Fecha próx. cupón', val:fmtDateAR(nextCF.date)},
+    {lbl:'Valuación Técnica', val:'$'+fmtNum(valTecTenencia)},
+    {lbl:'Valuación de Mercado (Dirty)', val:'$'+fmtNum(valMercadoTenencia)},
+    {lbl:'VN vigente de la tenencia', val:fmtNum(vnAtSettlement*factor)},
+    {lbl:'Tenencia Nominal', val:fmtNum(tenencia,0)}
+  ];
+  document.getElementById('holding-grid').innerHTML = cards.map(function(c){
+    return '<div class="result-card"><div class="result-lbl">'+c.lbl+'</div><div class="result-val" style="font-size:18px;">'+c.val+'</div></div>';
+  }).join('');
+}
+
+function renderCashflowTable(future, tenencia, amortType){
+  var factor = tenencia/100;
+  var isAmortizable = amortType==='amortizable';
+  document.getElementById('amort-badge').style.display = isAmortizable ? '' : 'none';
+  document.getElementById('cashflow-hint').style.display = isAmortizable ? '' : 'none';
+
+  var rows = future.map(function(cf,i){
+    var editCell = isAmortizable
+      ? '<input class="amort-input" type="number" step="0.01" value="'+cf.amortPct.toFixed(2)+'" onchange="editarAmort(\''+cf.iso+'\',this.value)">'
+      : fmtNum(cf.amortPct);
+    return '<tr class="'+(i===0?'next-row':'')+'">'+
+      '<td>'+fmtDateAR(cf.date)+(i===0?' <span class="pill pill-green">próximo</span>':'')+'</td>'+
+      '<td>'+fmtNum(cf.vnStart)+'</td>'+
+      '<td>$'+fmtNum(cf.cupon*factor)+'</td>'+
+      '<td>'+editCell+'</td>'+
+      '<td>$'+fmtNum(cf.amort*factor)+'</td>'+
+      '<td style="font-weight:600;color:#fff;">$'+fmtNum(cf.total*factor)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var totalCupones = future.reduce(function(a,cf){return a+cf.cupon*factor;},0);
+  var totalAmort = future.reduce(function(a,cf){return a+cf.amort*factor;},0);
+
+  document.getElementById('cashflow-wrap').innerHTML =
+    '<table class="data-table"><thead><tr>'+
+    '<th>Fecha Cupón</th><th>VN Inicio Período</th><th>Renta</th><th>Amort. % c/100 VN</th><th>Amortización $</th><th>Total</th>'+
+    '</tr></thead><tbody>'+rows+
+    '<tr style="border-top:2px solid var(--border);"><td style="font-weight:600;color:#fff;">Total</td><td></td>'+
+    '<td style="font-weight:600;color:#4ade80;">$'+fmtNum(totalCupones)+'</td><td></td>'+
+    '<td style="font-weight:600;color:#DBA03C;">$'+fmtNum(totalAmort)+'</td>'+
+    '<td style="font-weight:700;color:#fff;">$'+fmtNum(totalCupones+totalAmort)+'</td></tr>'+
+    '</tbody></table>';
+}
+
+function editarAmort(iso, val){
+  var pct = parseFloat(val);
+  if(isNaN(pct) || pct<0) pct = 0;
+  amortOverrides[iso] = pct;
+  renderAll();
+}
+
+// ── SHARED FILES AUTO-LOAD ──
+(function() {
+  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
+  function openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = () => rej();
+    });
+  }
+  async function getShared(key) {
+    try {
+      const db = await openDB();
+      return new Promise(res => {
+        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    } catch { return null; }
+  }
+  function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  async function loadShared() {
+    const mon = await getShared('monitor');
+    if (mon) cargarExcel(fakeInput(mon));
+  }
+  window.addEventListener('DOMContentLoaded', loadShared);
+  if (typeof BroadcastChannel !== 'undefined') {
+    new BroadcastChannel('fcn_shared').onmessage = async e => {
+      if (!e.data || e.data.type !== 'file_updated') return;
+      const raw = e.data.rawKey || e.data.key;
+      if (raw !== 'monitor') return;
+      await new Promise(r => setTimeout(r, 1500));
+      const entry = await getShared('monitor');
+      if (!entry) return;
+      cargarExcel(fakeInput(entry));
+    };
+  }
+})();
+</script>
+</body>
+</html>

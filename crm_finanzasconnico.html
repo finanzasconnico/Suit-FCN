@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM — Finanzasconnico</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c22;
+    --border: #1f2530;
+    --border2: #2a3240;
+    --accent: #00d4aa;
+    --accent2: #0099ff;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --text: #e8edf5;
+    --text2: #8896a8;
+    --text3: #4a5568;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(12px);
+  }
+  .logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.08em; }
+  .logo span { color: var(--text2); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .db-status { font-family: var(--mono); font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+  .db-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  .db-dot.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .db-dot.err { background: var(--danger); }
+  .btn-config {
+    font-family: var(--mono); font-size: 11px; color: var(--text2);
+    background: var(--surface); border: 1px solid var(--border2);
+    padding: 5px 12px; border-radius: 4px; cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-config:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── SETUP OVERLAY ── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.85);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 32px;
+    width: 480px;
+    max-width: 95vw;
+  }
+  .modal h2 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.6; }
+  .modal label { font-family: var(--mono); font-size: 11px; color: var(--text2); display: block; margin-bottom: 6px; letter-spacing: .06em; }
+  .modal input {
+    width: 100%; background: var(--bg);
+    border: 1px solid var(--border2); border-radius: 6px;
+    padding: 10px 12px; font-family: var(--mono); font-size: 12px;
+    color: var(--text); outline: none; margin-bottom: 16px;
+    transition: border-color .15s;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .btn-primary {
+    width: 100%; background: var(--accent); color: #000;
+    font-family: var(--sans); font-weight: 600; font-size: 13px;
+    border: none; border-radius: 6px; padding: 11px;
+    cursor: pointer; transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: .85; }
+  .modal-note { font-size: 11px; color: var(--text3); margin-top: 12px; text-align: center; line-height: 1.5; }
+  .modal-note a { color: var(--accent2); text-decoration: none; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 320px; }
+  .search-wrap input {
+    width: 100%; background: var(--surface);
+    border: 1px solid var(--border2); border-radius: 6px;
+    padding: 8px 12px 8px 34px; font-size: 13px; color: var(--text);
+    outline: none; transition: border-color .15s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap::before {
+    content: '⌕'; position: absolute; left: 10px; top: 50%;
+    transform: translateY(-50%); color: var(--text3); font-size: 16px;
+    pointer-events: none;
+  }
+  select {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 8px 12px; font-size: 12px;
+    font-family: var(--mono); color: var(--text2); outline: none; cursor: pointer;
+    transition: border-color .15s;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .stats-row { margin-left: auto; display: flex; gap: 16px; }
+  .stat { text-align: right; }
+  .stat-n { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--accent); }
+  .stat-l { font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; }
+
+  /* ── KANBAN ── */
+  .kanban {
+    display: flex; gap: 0;
+    overflow-x: auto; min-height: calc(100vh - 160px);
+    padding: 20px 24px;
+    scroll-snap-type: x mandatory;
+  }
+  .kanban::-webkit-scrollbar { height: 4px; }
+  .kanban::-webkit-scrollbar-track { background: transparent; }
+  .kanban::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .col {
+    min-width: 260px; max-width: 260px;
+    margin-right: 12px;
+    scroll-snap-align: start;
+  }
+  .col-header {
+    padding: 10px 12px;
+    border-radius: 8px 8px 0 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .col-title { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; }
+  .col-count {
+    font-family: var(--mono); font-size: 10px;
+    background: var(--border2); color: var(--text2);
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .col-body {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    min-height: 200px;
+    padding: 8px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+
+  /* etapa colors */
+  .col[data-stage="Frío"] .col-header { border-top: 2px solid #4a5568; }
+  .col[data-stage="Frío"] .col-title { color: #6b7280; }
+  .col[data-stage="Contacto inicial"] .col-header { border-top: 2px solid var(--accent2); }
+  .col[data-stage="Contacto inicial"] .col-title { color: var(--accent2); }
+  .col[data-stage="Calificando"] .col-header { border-top: 2px solid #a855f7; }
+  .col[data-stage="Calificando"] .col-title { color: #a855f7; }
+  .col[data-stage="Reunión coordinada"] .col-header { border-top: 2px solid var(--warn); }
+  .col[data-stage="Reunión coordinada"] .col-title { color: var(--warn); }
+  .col[data-stage="Link enviado"] .col-header { border-top: 2px solid #f97316; }
+  .col[data-stage="Link enviado"] .col-title { color: #f97316; }
+  .col[data-stage="Cuenta pendiente"] .col-header { border-top: 2px solid #ec4899; }
+  .col[data-stage="Cuenta pendiente"] .col-title { color: #ec4899; }
+  .col[data-stage="Transferencia pendiente"] .col-header { border-top: 2px solid var(--accent); }
+  .col[data-stage="Transferencia pendiente"] .col-title { color: var(--accent); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color .15s, transform .1s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--accent2); transform: translateY(-1px); }
+  .card-name { font-size: 12px; font-weight: 500; margin-bottom: 4px; line-height: 1.3; }
+  .card-tel { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-bottom: 6px; }
+  .card-last { font-size: 11px; color: var(--text2); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .badge {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .05em;
+    padding: 2px 6px; border-radius: 3px; text-transform: uppercase;
+  }
+  .badge-ig { background: rgba(0,153,255,.15); color: var(--accent2); border: 1px solid rgba(0,153,255,.3); }
+  .badge-balanz { background: rgba(0,212,170,.12); color: var(--accent); border: 1px solid rgba(0,212,170,.25); }
+  .badge-otro { background: rgba(74,85,104,.2); color: #6b7280; border: 1px solid rgba(74,85,104,.3); }
+  .card-msgs { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+  .card-dir-in::before { content: '↙ '; color: var(--accent2); }
+  .card-dir-out::before { content: '↗ '; color: var(--accent); }
+
+  /* ── DETALLE PANEL ── */
+  .detail-overlay {
+    position: fixed; inset: 0; z-index: 150;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(2px);
+    display: flex; justify-content: flex-end;
+  }
+  .detail-overlay.hidden { display: none; }
+  .detail-panel {
+    width: 460px; max-width: 95vw;
+    background: var(--surface);
+    border-left: 1px solid var(--border2);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: slideIn .2s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+  .detail-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .detail-name { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .detail-tel { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+  .btn-close {
+    background: none; border: none; color: var(--text3); cursor: pointer;
+    font-size: 20px; padding: 0 4px; line-height: 1; transition: color .15s;
+  }
+  .btn-close:hover { color: var(--text); }
+
+  .detail-meta {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .stage-select-wrap { display: flex; align-items: center; gap: 8px; }
+  .stage-select-wrap label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; }
+  .stage-select {
+    font-size: 11px; padding: 5px 8px;
+    background: var(--bg); border-color: var(--border2);
+  }
+
+  .detail-notes {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-notes label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; display: block; margin-bottom: 8px; }
+  .detail-notes textarea {
+    width: 100%; background: var(--bg);
+    border: 1px solid var(--border2); border-radius: 6px;
+    padding: 10px 12px; font-family: var(--sans); font-size: 12px;
+    color: var(--text); outline: none; resize: vertical; min-height: 80px;
+    transition: border-color .15s; line-height: 1.5;
+  }
+  .detail-notes textarea:focus { border-color: var(--accent); }
+  .btn-save-note {
+    margin-top: 8px; background: var(--surface2);
+    border: 1px solid var(--border2); border-radius: 5px;
+    padding: 6px 14px; font-family: var(--mono); font-size: 11px;
+    color: var(--text2); cursor: pointer; transition: all .15s;
+  }
+  .btn-save-note:hover { border-color: var(--accent); color: var(--accent); }
+  .save-feedback { font-family: var(--mono); font-size: 10px; color: var(--success); margin-left: 8px; opacity: 0; transition: opacity .3s; }
+  .save-feedback.show { opacity: 1; }
+
+  .detail-history { flex: 1; overflow-y: auto; padding: 12px 20px; }
+  .detail-history::-webkit-scrollbar { width: 3px; }
+  .detail-history::-webkit-scrollbar-thumb { background: var(--border2); }
+  .history-label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+  .msg { margin-bottom: 8px; display: flex; flex-direction: column; }
+  .msg.out { align-items: flex-end; }
+  .msg.in { align-items: flex-start; }
+  .msg-bubble {
+    max-width: 82%; padding: 8px 12px;
+    border-radius: 10px; font-size: 12px; line-height: 1.5; word-break: break-word;
+  }
+  .msg.out .msg-bubble { background: rgba(0,212,170,.12); border: 1px solid rgba(0,212,170,.2); color: var(--text); border-bottom-right-radius: 3px; }
+  .msg.in .msg-bubble { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-bottom-left-radius: 3px; }
+  .msg-time { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 3px; }
+
+  /* ── BOTÓN AGREGAR LEAD ── */
+  .btn-add {
+    background: var(--accent); color: #000;
+    font-family: var(--sans); font-weight: 600; font-size: 12px;
+    border: none; border-radius: 6px; padding: 8px 16px;
+    cursor: pointer; white-space: nowrap; transition: opacity .15s;
+  }
+  .btn-add:hover { opacity: .85; }
+
+  /* add lead modal */
+  .add-modal { width: 420px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── EMPTY STATE ── */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 12px; }
+  .empty-icon { font-size: 28px; margin-bottom: 8px; opacity: .4; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 300;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 12px 20px;
+    font-size: 13px; color: var(--text);
+    transform: translateY(80px); opacity: 0;
+    transition: all .3s; pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--success); color: var(--success); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  /* scrollbar global */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SETUP OVERLAY -->
+<div class="overlay" id="setupOverlay">
+  <div class="modal">
+    <h2>Configurar base de datos</h2>
+    <p>Ingresá las credenciales de tu proyecto Supabase. Se guardan en tu navegador y nunca se envían a ningún servidor externo.</p>
+    <label>SUPABASE URL</label>
+    <input type="text" id="cfgUrl" placeholder="https://xxxxx.supabase.co" />
+    <label>ANON KEY</label>
+    <input type="text" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5c..." />
+    <button class="btn-primary" onclick="saveConfig()">Conectar y cargar leads</button>
+    <p class="modal-note">
+      Encontrás las credenciales en <a href="https://supabase.com/dashboard" target="_blank">supabase.com/dashboard</a> → tu proyecto → Settings → API.<br>
+      Si no tenés proyecto, creá uno gratis en 2 minutos.
+    </p>
+  </div>
+</div>
+
+<!-- ADD LEAD OVERLAY -->
+<div class="overlay hidden" id="addOverlay">
+  <div class="modal add-modal">
+    <h2>Agregar lead manualmente</h2>
+    <p>Completá los datos del nuevo lead.</p>
+    <div class="form-row">
+      <div>
+        <label>NOMBRE</label>
+        <input type="text" id="addNombre" placeholder="Nombre completo" />
+      </div>
+      <div>
+        <label>TELÉFONO</label>
+        <input type="text" id="addTel" placeholder="+54 9 11 ..." />
+      </div>
+    </div>
+    <label>FUENTE</label>
+    <select id="addFuente" style="width:100%;margin-bottom:16px">
+      <option>Instagram</option><option>Balanz</option><option>Otro</option>
+    </select>
+    <label>ETAPA</label>
+    <select id="addEtapa" style="width:100%;margin-bottom:16px">
+      <option>Frío</option><option>Contacto inicial</option><option>Calificando</option>
+      <option>Reunión coordinada</option><option>Link enviado</option>
+      <option>Cuenta pendiente</option><option>Transferencia pendiente</option>
+    </select>
+    <label>NOTAS</label>
+    <textarea id="addNotas" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:10px;font-family:var(--sans);font-size:12px;color:var(--text);outline:none;min-height:60px;margin-bottom:16px;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px">
+      <button class="btn-primary" style="flex:1" onclick="saveNewLead()">Guardar lead</button>
+      <button class="btn-config" style="flex:0.4" onclick="closeAdd()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL OVERLAY -->
+<div class="detail-overlay hidden" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <div>
+        <div class="detail-name" id="dNombre"></div>
+        <div class="detail-tel" id="dTel"></div>
+      </div>
+      <button class="btn-close" onclick="closeDetailDirect()">×</button>
+    </div>
+    <div class="detail-meta">
+      <div class="stage-select-wrap">
+        <label>ETAPA</label>
+        <select class="stage-select" id="dEtapa" onchange="updateStage()">
+          <option>Frío</option><option>Contacto inicial</option><option>Calificando</option>
+          <option>Reunión coordinada</option><option>Link enviado</option>
+          <option>Cuenta pendiente</option><option>Transferencia pendiente</option>
+        </select>
+      </div>
+      <div id="dBadge"></div>
+      <div class="card-msgs" id="dMsgs" style="margin-left:auto"></div>
+    </div>
+    <div class="detail-notes">
+      <label>NOTAS</label>
+      <textarea id="dNotas" placeholder="Anotá seguimiento, monto interesado, próximos pasos..."></textarea>
+      <div style="display:flex;align-items:center">
+        <button class="btn-save-note" onclick="saveNote()">Guardar nota</button>
+        <span class="save-feedback" id="saveFeedback">✓ guardado</span>
+      </div>
+    </div>
+    <div class="detail-history">
+      <div class="history-label">Historial de conversación</div>
+      <div id="dHistory"></div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">FINANZAS<span>CONNICO</span> · CRM</div>
+  <div class="header-right">
+    <div class="db-status">
+      <div class="db-dot" id="dbDot"></div>
+      <span id="dbLabel">sin conectar</span>
+    </div>
+    <button class="btn-config" onclick="openConfig()">⚙ Supabase</button>
+  </div>
+</header>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="Buscar por nombre o teléfono..." oninput="render()" />
+  </div>
+  <select id="filterFuente" onchange="render()">
+    <option value="">Todas las fuentes</option>
+    <option value="Instagram">Instagram</option>
+    <option value="Balanz">Balanz</option>
+    <option value="Otro">Otro</option>
+  </select>
+  <button class="btn-add" onclick="openAdd()">+ Agregar lead</button>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n" id="statTotal">0</div><div class="stat-l">leads</div></div>
+    <div class="stat"><div class="stat-n" id="statIG">0</div><div class="stat-l">instagram</div></div>
+    <div class="stat"><div class="stat-n" id="statHot">0</div><div class="stat-l">calientes</div></div>
+  </div>
+</div>
+
+<!-- KANBAN -->
+<div class="kanban" id="kanban"></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  CONFIG & SUPABASE
+// ══════════════════════════════════════════════════════
+const STAGES = ['Frío','Contacto inicial','Calificando','Reunión coordinada','Link enviado','Cuenta pendiente','Transferencia pendiente'];
+
+let SUPA_URL = localStorage.getItem('supa_url') || '';
+let SUPA_KEY = localStorage.getItem('supa_key') || '';
+let leads = [];
+let currentId = null;
+
+// ── Supabase helpers ──
+async function supaFetch(path, method='GET', body=null) {
+  if (!SUPA_URL || !SUPA_KEY) return null;
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : ''
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/' + path, opts);
+    if (!r.ok) throw new Error(await r.text());
+    const txt = await r.text();
+    return txt ? JSON.parse(txt) : [];
+  } catch(e) {
+    console.error('Supabase error:', e);
+    return null;
+  }
+}
+
+async function initDB() {
+  // Crear tabla si no existe usando RPC SQL (requiere permisos en Supabase)
+  // En su lugar chequeamos si la tabla existe trayendo 0 rows
+  const test = await supaFetch('leads?limit=1');
+  if (test === null) {
+    setDBStatus(false);
+    toast('No se pudo conectar a Supabase. Verificá las credenciales.', 'error');
+    return false;
+  }
+  setDBStatus(true);
+  return true;
+}
+
+function setDBStatus(ok) {
+  document.getElementById('dbDot').className = 'db-dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('dbLabel').textContent = ok ? 'conectado' : 'error';
+}
+
+// ── Cargar leads ──
+async function loadLeads() {
+  if (!SUPA_URL || !SUPA_KEY) {
+    // Usar datos embebidos
+    leads = INITIAL_LEADS.map((l,i) => ({...l, id: i+1, notas: ''}));
+    render();
+    return;
+  }
+  const ok = await initDB();
+  if (!ok) {
+    leads = INITIAL_LEADS.map((l,i) => ({...l, id: i+1, notas: ''}));
+    render();
+    return;
+  }
+  const rows = await supaFetch('leads?order=id.asc&limit=1000');
+  if (rows && rows.length > 0) {
+    leads = rows;
+  } else {
+    // Primera vez: insertar datos iniciales
+    await insertInitialLeads();
+  }
+  render();
+}
+
+async function insertInitialLeads() {
+  toast('Cargando leads iniciales en la base de datos...', '');
+  const batch = INITIAL_LEADS.map(l => ({
+    nombre: l.nombre,
+    telefono: l.telefono || '',
+    fuente: l.fuente,
+    etapa: l.etapa,
+    total_msgs: l.total_msgs,
+    primer_mensaje: l.primer_mensaje || '',
+    ultimo_mensaje: l.ultimo_mensaje || '',
+    ultimo_dir: l.ultimo_dir || '',
+    termino: l.termino || '',
+    historial: JSON.stringify(l.historial || []),
+    notas: ''
+  }));
+  // Insertar en lotes de 20
+  for (let i = 0; i < batch.length; i += 20) {
+    await supaFetch('leads', 'POST', batch.slice(i, i+20));
+  }
+  const rows = await supaFetch('leads?order=id.asc&limit=1000');
+  leads = rows || INITIAL_LEADS.map((l,i) => ({...l, id: i+1, notas: ''}));
+  toast('✓ ' + leads.length + ' leads cargados en Supabase', 'success');
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER KANBAN
+// ══════════════════════════════════════════════════════
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const f = document.getElementById('filterFuente').value;
+  return leads.filter(l => {
+    const matchQ = !q || l.nombre.toLowerCase().includes(q) || (l.telefono||'').includes(q);
+    const matchF = !f || l.fuente === f;
+    return matchQ && matchF;
+  });
+}
+
+function render() {
+  const filtered = getFiltered();
+  const kanban = document.getElementById('kanban');
+  kanban.innerHTML = '';
+
+  // Stats
+  document.getElementById('statTotal').textContent = filtered.length;
+  document.getElementById('statIG').textContent = filtered.filter(l => l.fuente === 'Instagram').length;
+  document.getElementById('statHot').textContent = filtered.filter(l => ['Cuenta pendiente','Transferencia pendiente'].includes(l.etapa)).length;
+
+  STAGES.forEach(stage => {
+    const stagLeads = filtered.filter(l => l.etapa === stage);
+    const col = document.createElement('div');
+    col.className = 'col';
+    col.dataset.stage = stage;
+
+    col.innerHTML = `
+      <div class="col-header">
+        <span class="col-title">${stage}</span>
+        <span class="col-count">${stagLeads.length}</span>
+      </div>
+      <div class="col-body" id="col-${stage.replace(/\s/g,'_')}">
+        ${stagLeads.length === 0 ? '<div class="empty"><div class="empty-icon">·</div>vacío</div>' : ''}
+      </div>`;
+    kanban.appendChild(col);
+
+    const body = col.querySelector('.col-body');
+    stagLeads.forEach(lead => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.onclick = () => openDetail(lead);
+
+      const badgeCls = lead.fuente === 'Instagram' ? 'badge-ig' : lead.fuente === 'Balanz' ? 'badge-balanz' : 'badge-otro';
+      const dirCls = lead.ultimo_dir === 'enviado' ? 'card-dir-out' : 'card-dir-in';
+      const nombre = cleanNombre(lead.nombre);
+
+      card.innerHTML = `
+        <div class="card-name">${nombre}</div>
+        ${lead.telefono ? `<div class="card-tel">${lead.telefono}</div>` : ''}
+        <div class="card-last ${dirCls}">${escHtml(lead.ultimo_mensaje || '—')}</div>
+        <div class="card-footer">
+          <span class="badge ${badgeCls}">${lead.fuente}</span>
+          <span class="card-msgs">${lead.total_msgs || 0} msgs</span>
+        </div>
+        ${lead.notas ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:10px;color:var(--warn);line-height:1.4">${escHtml(lead.notas.substring(0,80))}${lead.notas.length>80?'…':''}</div>` : ''}`;
+      body.appendChild(card);
+    });
+  });
+}
+
+function cleanNombre(n) {
+  return n.replace(/(potencial|cliente|insta|instagram|posible|Potencial|Cliente|Insta|Instagram|Posible|POTENCIAL|CLIENTE|INSTA|INSTAGRAM)/gi, '').replace(/\s+/g,' ').trim();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════════
+//  DETAIL PANEL
+// ══════════════════════════════════════════════════════
+function openDetail(lead) {
+  currentId = lead.id;
+  document.getElementById('dNombre').textContent = cleanNombre(lead.nombre);
+  document.getElementById('dTel').textContent = lead.telefono || 'Sin teléfono';
+  document.getElementById('dEtapa').value = lead.etapa;
+  document.getElementById('dMsgs').textContent = (lead.total_msgs || 0) + ' mensajes';
+  document.getElementById('dNotas').value = lead.notas || '';
+
+  const badgeCls = lead.fuente === 'Instagram' ? 'badge-ig' : lead.fuente === 'Balanz' ? 'badge-balanz' : 'badge-otro';
+  document.getElementById('dBadge').innerHTML = `<span class="badge ${badgeCls}">${lead.fuente}</span>`;
+
+  // Historial
+  const hist = document.getElementById('dHistory');
+  hist.innerHTML = '';
+  let historial = [];
+  try { historial = typeof lead.historial === 'string' ? JSON.parse(lead.historial) : (lead.historial || []); } catch(e){}
+
+  if (historial.length === 0) {
+    hist.innerHTML = `<div style="font-size:12px;color:var(--text3)">
+      <div style="margin-bottom:8px"><strong style="color:var(--text2)">Primer mensaje:</strong> ${escHtml(lead.primer_mensaje||'—')}</div>
+      <div><strong style="color:var(--text2)">Último mensaje:</strong> ${escHtml(lead.ultimo_mensaje||'—')}</div>
+    </div>`;
+  } else {
+    historial.forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'msg ' + (m.dir === 'enviado' ? 'out' : 'in');
+      div.innerHTML = `<div class="msg-bubble">${escHtml(m.txt)}</div>${m.hora ? `<div class="msg-time">${m.hora}</div>` : ''}`;
+      hist.appendChild(div);
+    });
+    // Scroll al final
+    setTimeout(() => { hist.scrollTop = hist.scrollHeight; }, 50);
+  }
+
+  document.getElementById('detailOverlay').classList.remove('hidden');
+}
+
+function closeDetail(e) {
+  if (e.target === document.getElementById('detailOverlay')) closeDetailDirect();
+}
+function closeDetailDirect() {
+  document.getElementById('detailOverlay').classList.add('hidden');
+  currentId = null;
+}
+
+async function updateStage() {
+  if (!currentId) return;
+  const newStage = document.getElementById('dEtapa').value;
+  const lead = leads.find(l => l.id === currentId);
+  if (!lead) return;
+  lead.etapa = newStage;
+  if (SUPA_URL && SUPA_KEY) {
+    await supaFetch(`leads?id=eq.${currentId}`, 'PATCH', { etapa: newStage });
+  }
+  render();
+  toast('Etapa actualizada', 'success');
+}
+
+async function saveNote() {
+  if (!currentId) return;
+  const nota = document.getElementById('dNotas').value;
+  const lead = leads.find(l => l.id === currentId);
+  if (!lead) return;
+  lead.notas = nota;
+  if (SUPA_URL && SUPA_KEY) {
+    await supaFetch(`leads?id=eq.${currentId}`, 'PATCH', { notas: nota });
+  }
+  const fb = document.getElementById('saveFeedback');
+  fb.classList.add('show');
+  setTimeout(() => fb.classList.remove('show'), 2000);
+  render();
+}
+
+// ══════════════════════════════════════════════════════
+//  ADD LEAD
+// ══════════════════════════════════════════════════════
+function openAdd() { document.getElementById('addOverlay').classList.remove('hidden'); }
+function closeAdd() { document.getElementById('addOverlay').classList.add('hidden'); }
+
+async function saveNewLead() {
+  const nombre = document.getElementById('addNombre').value.trim();
+  if (!nombre) { toast('Ingresá un nombre', 'error'); return; }
+  const newLead = {
+    nombre,
+    telefono: document.getElementById('addTel').value.trim(),
+    fuente: document.getElementById('addFuente').value,
+    etapa: document.getElementById('addEtapa').value,
+    notas: document.getElementById('addNotas').value.trim(),
+    total_msgs: 0,
+    primer_mensaje: '',
+    ultimo_mensaje: '',
+    ultimo_dir: '',
+    termino: 'manual',
+    historial: '[]'
+  };
+  if (SUPA_URL && SUPA_KEY) {
+    const res = await supaFetch('leads', 'POST', newLead);
+    if (res && res[0]) { leads.push(res[0]); }
+    else { newLead.id = Date.now(); leads.push(newLead); }
+  } else {
+    newLead.id = Date.now(); leads.push(newLead);
+  }
+  closeAdd();
+  render();
+  toast('✓ Lead agregado', 'success');
+  // Limpiar
+  ['addNombre','addTel','addNotas'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ══════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════
+function openConfig() {
+  document.getElementById('cfgUrl').value = SUPA_URL;
+  document.getElementById('cfgKey').value = SUPA_KEY;
+  document.getElementById('setupOverlay').classList.remove('hidden');
+}
+
+async function saveConfig() {
+  const url = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfgKey').value.trim();
+  if (!url || !key) { toast('Completá URL y Key', 'error'); return; }
+  SUPA_URL = url; SUPA_KEY = key;
+  localStorage.setItem('supa_url', url);
+  localStorage.setItem('supa_key', key);
+  document.getElementById('setupOverlay').classList.add('hidden');
+  leads = [];
+  await loadLeads();
+}
+
+// ══════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+// ══════════════════════════════════════════════════════
+//  DATOS INICIALES (extraídos del JSON del scraper)
+// ══════════════════════════════════════════════════════
+const INITIAL_LEADS = [{"nombre":"Daniel Ernesto Hoffmeyer Potencial Cliente Insta","telefono":"","fuente":"Instagram","etapa":"Transferencia pendiente","total_msgs":35,"enviados":0,"recibidos":35,"primer_mensaje":"0:37","ultimo_mensaje":"O TAMAR +3,5% aprox un 25","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"PERALTA ROMAN EXEQUIEL","telefono":"","fuente":"Otro","etapa":"Cuenta pendiente","total_msgs":47,"enviados":0,"recibidos":47,"primer_mensaje":"Buen dia Roman! Soy Nicolas Strijland","ultimo_mensaje":"Dale","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Adriana Margarita Paez Instagram","telefono":"","fuente":"Instagram","etapa":"Frío","total_msgs":25,"enviados":0,"recibidos":25,"primer_mensaje":"Creo que esta,  no se no me pidió como por ejemplo abrir una cuenta en balanz ni contraseña","ultimo_mensaje":"Gracias por tu mensaje. El horario de atencion es de lunes a viernes de 10 a 18 hs, respondere tan pronto regrese. \nEl m","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Luis Rodriguez potencial insta","telefono":"","fuente":"Instagram","etapa":"Transferencia pendiente","total_msgs":38,"enviados":0,"recibidos":38,"primer_mensaje":"Hola Nico! \nConsultas: \nTodos los instrumentos son Dolar?\nRendimiento estimado mensual?\nEfecto fiscal \nAlgunos inst lo m","ultimo_mensaje":"4ta categoria x Relaxion de Dependencia \nMonotributo por acti independiente soy Contador","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Santiago Navarro potencial Insta","telefono":"","fuente":"Instagram","etapa":"Link enviado","total_msgs":50,"enviados":0,"recibidos":50,"primer_mensaje":"Depende de cuánto querés invertir y el riesgo que te sentís cómodo asumir — hay opciones más conservadoras y otras con a","ultimo_mensaje":"Buena semana tmb, gracias","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"+54 9 11 2879-6598","telefono":"+54 9 11 2879-6598","fuente":"Otro","etapa":"Link enviado","total_msgs":3,"enviados":0,"recibidos":3,"primer_mensaje":"Hola Gabriel! Gracias por sumarte a Balanz\nSoy Nicolás Strijland, tu asesor financiero. ¡Estoy finalizando la apertura d","ultimo_mensaje":"Sino lo podemos modificar, solo me debes enviar un mail a Nstrijland@balanz.com","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"+54 9 11 5400-2100","telefono":"+54 9 11 5400-2100","fuente":"Otro","etapa":"Link enviado","total_msgs":18,"enviados":0,"recibidos":18,"primer_mensaje":"¡Hola! ¿Cómo podemos ayudarte?","ultimo_mensaje":"Ese fondo el año pasado rindio alrededor de un 7%","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Manu San Martin","telefono":"","fuente":"Otro","etapa":"Link enviado","total_msgs":20,"enviados":0,"recibidos":20,"primer_mensaje":"Manuu! Como estas?","ultimo_mensaje":"Muchas gracias, hablamos la semana que viene buen finde!","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Tato - JUAN CRUZ SANTILLAN BALERO","telefono":"","fuente":"Otro","etapa":"Link enviado","total_msgs":15,"enviados":0,"recibidos":15,"primer_mensaje":"Hola Juan Cruz! Gracias por sumarte a Balanz\nSoy Nicolás Strijland, tu asesor financiero. ¡Estoy finalizando la apertura","ultimo_mensaje":"Muchas graciass","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Timo Masic","telefono":"","fuente":"Otro","etapa":"Frío","total_msgs":1,"enviados":0,"recibidos":1,"primer_mensaje":"file:///C:/Users/nstrijland/...","ultimo_mensaje":"file:///C:/Users/nstrijland/...","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Andres Tattoo potencial insta","telefono":"","fuente":"Instagram","etapa":"Link enviado","total_msgs":17,"enviados":0,"recibidos":17,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Dale quedo atento","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"+54 9 2614 16-3465","telefono":"+54 9 2614 16-3465","fuente":"Otro","etapa":"Link enviado","total_msgs":13,"enviados":0,"recibidos":13,"primer_mensaje":"Hola Facundo! Gracias por sumarte a Balanz\nSoy Nicolás Strijland, tu asesor financiero. ¡Estoy finalizando la apertura d","ultimo_mensaje":"Perfecto, ya lo cargue","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Luis Esteras AAA cliente potencial Balanz","telefono":"","fuente":"Balanz","etapa":"Link enviado","total_msgs":6,"enviados":0,"recibidos":6,"primer_mensaje":"Hola Luis! Soy Nicolas Strijland asesor financiero de Balanz","ultimo_mensaje":"Recibido . Gracias por tu atención","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Ayelen Aurelio","telefono":"","fuente":"Otro","etapa":"Transferencia pendiente","total_msgs":42,"enviados":0,"recibidos":42,"primer_mensaje":"Hola Ayelen! Gracias por sumarte a Balanz\nSoy Nicolás Strijland, tu asesor financiero. ¡Estoy finalizando la apertura de","ultimo_mensaje":"Me lo podes enviar a Nstrijland@balanz.com","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Matias Damian Schuster","telefono":"","fuente":"Otro","etapa":"Frío","total_msgs":16,"enviados":0,"recibidos":16,"primer_mensaje":"Buen dia Matias!","ultimo_mensaje":"Gracias por tu mensaje. El horario de atencion es de lunes a viernes de 10 a 18 hs, respondere tan pronto regrese.","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Horacio Salgado Potencial insta","telefono":"","fuente":"Instagram","etapa":"Frío","total_msgs":20,"enviados":0,"recibidos":20,"primer_mensaje":"Buen dia Horacio! Ya tengo la cartera armada, ahora te la paso para que me digas que te parece y me des el ok","ultimo_mensaje":"Igual vos!  Abrazo","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Camila Kober","telefono":"","fuente":"Otro","etapa":"Frío","total_msgs":40,"enviados":0,"recibidos":40,"primer_mensaje":"Voy","ultimo_mensaje":"Gracias por tu mensaje. El horario de atencion es de lunes a viernes de 10 a 18 hs, respondere tan pronto regrese.","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Luis Pros","telefono":"","fuente":"Otro","etapa":"Link enviado","total_msgs":20,"enviados":0,"recibidos":20,"primer_mensaje":"¡Hola! Quiero más información. Invertir","ultimo_mensaje":"https://www.balanz.com/abrir-cuenta-2.aspx?reference=nstrijland@balanz.com","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Jose Potencial Insta","telefono":"","fuente":"Instagram","etapa":"Link enviado","total_msgs":23,"enviados":0,"recibidos":23,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Me costó. En todo caso después te vuelvo a referir","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Nariel De Marco","telefono":"","fuente":"Otro","etapa":"Link enviado","total_msgs":23,"enviados":0,"recibidos":23,"primer_mensaje":"Buen dia Nariel! Como estas?","ultimo_mensaje":"Un placer!","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"+54 9 11 2768-5567","telefono":"+54 9 11 2768-5567","fuente":"Otro","etapa":"Link enviado","total_msgs":20,"enviados":0,"recibidos":20,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Excelente","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Horacio Obregón","telefono":"","fuente":"Otro","etapa":"Transferencia pendiente","total_msgs":27,"enviados":0,"recibidos":27,"primer_mensaje":"Hola Horacio! Gracias por sumarte a Balanz\nSoy Nicolás Strijland, tu asesor financiero. ¡Estoy finalizando la apertura d","ultimo_mensaje":"Perfecto, si necesitas ayuda con algo estoy a disposicion","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Francisco Ferreyra","telefono":"","fuente":"Otro","etapa":"Frío","total_msgs":14,"enviados":0,"recibidos":14,"primer_mensaje":"Te conviene que sea en la sede que tenes registrado como principal","ultimo_mensaje":"Genial gracias amigo!","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Fernando Enrique Rossi","telefono":"","fuente":"Otro","etapa":"Link enviado","total_msgs":54,"enviados":0,"recibidos":54,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Gracias por tu mensaje. El horario de atencion es de lunes a viernes de 10 a 18 hs, respondere tan pronto regrese.","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Eugenio Morelato - posible cliente Balanz de Insta","telefono":"","fuente":"Instagram","etapa":"Frío","total_msgs":30,"enviados":0,"recibidos":30,"primer_mensaje":"si dale! comentame como lo harias..","ultimo_mensaje":"Perfecto... Gracias!!!","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"Nelson Dening","telefono":"","fuente":"Otro","etapa":"Cuenta pendiente","total_msgs":53,"enviados":0,"recibidos":53,"primer_mensaje":"Ok perfecto, me agendo llamado para mañana 10:30 entonces","ultimo_mensaje":"https://www.facebook.com/share/v/172t7mkjYg/","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"MIRIAN DIDO BOGADO MEDINA x Insta","telefono":"","fuente":"Instagram","etapa":"Link enviado","total_msgs":22,"enviados":0,"recibidos":22,"primer_mensaje":"Buen día Miru! Soy Nicolás, asesor financiero en Balanz.","ultimo_mensaje":"Foto","ultimo_dir":"recibido","termino":"nstrijland"},{"nombre":"+54 9 2644 40-8362","telefono":"+54 9 2644 40-8362","fuente":"Otro","etapa":"Link enviado","total_msgs":18,"enviados":0,"recibidos":18,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"El que te sugiero es el BAHUSDA que invierte en esos mismos bonos","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Ignacio Agustin Amadio","telefono":"","fuente":"Otro","etapa":"Frío","total_msgs":53,"enviados":0,"recibidos":53,"primer_mensaje":"Cuanto querias licitar?","ultimo_mensaje":"Ok perfecto","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Mariana Gluch","telefono":"","fuente":"Otro","etapa":"Cuenta pendiente","total_msgs":23,"enviados":0,"recibidos":23,"primer_mensaje":"Marian si queres arrancar a invertir con USD 2000 te puedo armar algo","ultimo_mensaje":"Buen dia Marian! Asi es, hoy podemos hablar y comenzamos a invertir","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Guillermo Amici","telefono":"","fuente":"Otro","etapa":"Frío","total_msgs":9,"enviados":0,"recibidos":9,"primer_mensaje":"Perfecto, recibido el de Romina","ultimo_mensaje":"5.5%","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Liliana Teresa Icardi","telefono":"","fuente":"Otro","etapa":"Cuenta pendiente","total_msgs":71,"enviados":0,"recibidos":71,"primer_mensaje":"Buen día. Vendí bonos GD38 en dólares . Cuánto demoran en depositarlos?","ultimo_mensaje":"Puede estar un 7% abajo ahora pero si te gusta la empresa y no necesitas el capital ya, sugiero conservarlo","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"+54 9 2216 75-3922","telefono":"+54 9 2216 75-3922","fuente":"Otro","etapa":"Link enviado","total_msgs":16,"enviados":0,"recibidos":16,"primer_mensaje":"Buen día Nicolás, Soy cliente de Balanz","ultimo_mensaje":"Todos mis clientes tienen acceso","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Alejandro Bovino Maciel","telefono":"","fuente":"Otro","etapa":"Contacto inicial","total_msgs":38,"enviados":0,"recibidos":38,"primer_mensaje":"Buen día Nicolás","ultimo_mensaje":"Gracias!","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"+54 9 11 2530-9236","telefono":"+54 9 11 2530-9236","fuente":"Otro","etapa":"Cuenta pendiente","total_msgs":15,"enviados":0,"recibidos":15,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"La tasa aproximada es de 7,5%","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Juan Guinle","telefono":"","fuente":"Otro","etapa":"Reunión coordinada","total_msgs":20,"enviados":0,"recibidos":20,"primer_mensaje":"Buen dia Juan! Como estas?","ultimo_mensaje":"gracias, genial… corrdinamos la semana proxima. y de nuevo gracias por responder en horario re tarde para vos, buen find","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"+54 9 3584 11-5531","telefono":"+54 9 3584 11-5531","fuente":"Otro","etapa":"Link enviado","total_msgs":10,"enviados":0,"recibidos":10,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"https://www.balanz.com/abrir-cuenta-2.aspx?reference=nstrijland@balanz.com","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"+591 64603564","telefono":"+591 64603564","fuente":"Otro","etapa":"Link enviado","total_msgs":25,"enviados":0,"recibidos":25,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Cuando te queda comodo para hacer llamado?","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"Miguel Angel Posible cliente Insta","telefono":"","fuente":"Instagram","etapa":"Cuenta pendiente","total_msgs":8,"enviados":0,"recibidos":8,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Este es el link para abrir la cuenta y despues te llega un mail para descargar la app","ultimo_dir":"recibido","termino":"balanz.com/abrir-cuenta"},{"nombre":"+54 9 3424 66-8357","telefono":"+54 9 3424 66-8357","fuente":"Otro","etapa":"Contacto inicial","total_msgs":3,"enviados":0,"recibidos":3,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 280 433-1062","telefono":"+54 9 280 433-1062","fuente":"Otro","etapa":"Contacto inicial","total_msgs":2,"enviados":0,"recibidos":2,"primer_mensaje":"¡Hola! La idea es simple: que tus dólares parados empiecen a generarte una renta mensual en USD","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"Fer potencial Insta 40k","telefono":"","fuente":"Instagram","etapa":"Reunión coordinada","total_msgs":21,"enviados":0,"recibidos":21,"primer_mensaje":"¡Hola! Quiero más información.para invertir dólares","ultimo_mensaje":"Bueno","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"Alan Gonzalez potencial insta","telefono":"","fuente":"Instagram","etapa":"Reunión coordinada","total_msgs":15,"enviados":0,"recibidos":15,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"No hay problema, avisame cuando estes mas tranqui, son 10 minutos para conocernos","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"Juan Berardi Potencial Insta","telefono":"","fuente":"Instagram","etapa":"Reunión coordinada","total_msgs":10,"enviados":0,"recibidos":10,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Hola Juan! Disculpá la demora. Escuché tu audio, perfecto que ya estés invirtiendo","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 11 5742-2692","telefono":"+54 9 11 5742-2692","fuente":"Otro","etapa":"Contacto inicial","total_msgs":3,"enviados":0,"recibidos":3,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 2364 59-3596","telefono":"+54 9 2364 59-3596","fuente":"Otro","etapa":"Reunión coordinada","total_msgs":14,"enviados":0,"recibidos":14,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Dale quedo atento para mañana","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 2235 34-2132","telefono":"+54 9 2235 34-2132","fuente":"Otro","etapa":"Calificando","total_msgs":6,"enviados":0,"recibidos":6,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Depende de cuánto querés invertir y el riesgo que te sentís cómodo asumir","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"DANIEL A.RODRÍGUEZ Potencial insta","telefono":"","fuente":"Instagram","etapa":"Reunión coordinada","total_msgs":15,"enviados":0,"recibidos":15,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Si me interesa","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 11 6701-6354","telefono":"+54 9 11 6701-6354","fuente":"Otro","etapa":"Calificando","total_msgs":13,"enviados":0,"recibidos":13,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"y bueno podria probar con 200.000 a ver que pasa","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 11 3282-0724","telefono":"+54 9 11 3282-0724","fuente":"Otro","etapa":"Contacto inicial","total_msgs":7,"enviados":0,"recibidos":7,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Bueno","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"walter gabriel Selva Potencial Insta","telefono":"","fuente":"Instagram","etapa":"Contacto inicial","total_msgs":35,"enviados":0,"recibidos":35,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Ok desp veo. Grs","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 3764 69-4227","telefono":"+54 9 3764 69-4227","fuente":"Otro","etapa":"Calificando","total_msgs":6,"enviados":0,"recibidos":6,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Depende de cuánto querés invertir y el riesgo que te sentís cómodo asumir","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 2994 38-7218","telefono":"+54 9 2994 38-7218","fuente":"Otro","etapa":"Contacto inicial","total_msgs":4,"enviados":0,"recibidos":4,"primer_mensaje":"¡Hola! Quiero más información.para invertir..","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 11 3884-0789","telefono":"+54 9 11 3884-0789","fuente":"Otro","etapa":"Contacto inicial","total_msgs":3,"enviados":0,"recibidos":3,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 2234 55-4651","telefono":"+54 9 2234 55-4651","fuente":"Otro","etapa":"Reunión coordinada","total_msgs":17,"enviados":0,"recibidos":17,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Hoy estoy de viaje","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 15 5577-9184","telefono":"+54 9 15 5577-9184","fuente":"Otro","etapa":"Contacto inicial","total_msgs":3,"enviados":0,"recibidos":3,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+54 9 3513 16-2835","telefono":"+54 9 3513 16-2835","fuente":"Otro","etapa":"Contacto inicial","total_msgs":5,"enviados":0,"recibidos":5,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"¿Te interesa saber cuánto podrías estar generando?","ultimo_dir":"recibido","termino":"dolares parados"},{"nombre":"+64 27 580 9015","telefono":"+64 27 580 9015","fuente":"Otro","etapa":"Reunión coordinada","total_msgs":9,"enviados":0,"recibidos":9,"primer_mensaje":"¡Hola! Quiero más información.","ultimo_mensaje":"Podemos ver de coordinar un horario que nos quede comodo a los dos si estas en nueva zelanda","ultimo_dir":"recibido","termino":"dolares parados"}];
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (SUPA_URL && SUPA_KEY) {
+    document.getElementById('setupOverlay').classList.add('hidden');
+    loadLeads();
+  } else {
+    // Sin Supabase: cargar datos locales igual
+    document.getElementById('setupOverlay').classList.remove('hidden');
+    leads = INITIAL_LEADS.map((l,i) => ({...l, id: i+1, notas: ''}));
+    render();
+  }
+});
+</script>
+</body>
+</html>

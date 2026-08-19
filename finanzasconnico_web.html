@@ -1,0 +1,3326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinanzasconNico · Invertí de forma simple e inteligente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ===== CSS VARIABLES ===== */
+  :root {
+    --verde: #1a3d2e;
+    --verde-medio: #2a5c45;
+    --verde-claro: #3d7a5e;
+    --dorado: #c9a227;
+    --dorado-claro: #e8c15a;
+    --blanco: #f8f6f1;
+    --gris-claro: #f0ede6;
+    --gris: #8a8880;
+    --texto: #1a1a18;
+    --whatsapp: #25D366;
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --radio: 12px;
+    --sombra: 0 8px 40px rgba(26,61,46,0.12);
+    --sombra-fuerte: 0 20px 60px rgba(26,61,46,0.2);
+  }
+
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background: var(--blanco);
+    color: var(--texto);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  img { max-width: 100%; display: block; }
+  a { text-decoration: none; color: inherit; }
+  button { cursor: pointer; border: none; font-family: var(--font-body); }
+  section { scroll-margin-top: 72px; }
+
+  /* ===== NAVEGACIÓN ===== */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: rgba(26,61,46,0.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(201,162,39,0.2);
+    height: 72px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5%;
+    transition: all 0.3s ease;
+  }
+  .nav-logo {
+    font-family: var(--font-display);
+    color: var(--blanco);
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+  }
+  .nav-logo span { color: var(--dorado); }
+  .nav-links {
+    display: flex; gap: 2rem; align-items: center;
+    list-style: none;
+  }
+  .nav-links a {
+    color: rgba(248,246,241,0.8);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--dorado); }
+  .nav-cta {
+    background: var(--dorado);
+    color: var(--verde) !important;
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-weight: 600 !important;
+    transition: background 0.2s !important;
+  }
+  .nav-cta:hover { background: var(--dorado-claro) !important; }
+  .nav-hamburger {
+    display: none;
+    flex-direction: column; gap: 5px; cursor: pointer;
+    background: none; border: none; padding: 4px;
+  }
+  .nav-hamburger span {
+    width: 24px; height: 2px;
+    background: var(--blanco); border-radius: 2px;
+    transition: all 0.3s;
+  }
+
+  /* ===== HERO ===== */
+  #hero {
+    min-height: 100vh;
+    background: var(--verde);
+    display: flex; align-items: center;
+    position: relative; overflow: hidden;
+    padding: 120px 5% 80px;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 80% at 80% 50%, rgba(201,162,39,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 20% 80%, rgba(61,122,94,0.3) 0%, transparent 60%);
+  }
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(201,162,39,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(201,162,39,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .hero-inner {
+    max-width: 1200px; margin: 0 auto; width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 4rem; align-items: center;
+    position: relative; z-index: 2;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(201,162,39,0.12);
+    border: 1px solid rgba(201,162,39,0.3);
+    color: var(--dorado-claro);
+    padding: 6px 16px; border-radius: 100px;
+    font-size: 0.78rem; font-weight: 500;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  .hero-badge::before {
+    content: ''; width: 6px; height: 6px;
+    background: var(--dorado); border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .hero-h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    color: var(--blanco);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+  }
+  .hero-h1 em {
+    color: var(--dorado);
+    font-style: italic;
+  }
+  .hero-sub {
+    color: rgba(248,246,241,0.7);
+    font-size: 1.05rem;
+    max-width: 480px;
+    margin-bottom: 2.5rem;
+    line-height: 1.7;
+  }
+  .hero-btns {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+  }
+  .btn-primario {
+    background: var(--dorado);
+    color: var(--verde);
+    font-weight: 700; font-size: 0.95rem;
+    padding: 15px 32px; border-radius: 100px;
+    transition: all 0.25s;
+    box-shadow: 0 4px 20px rgba(201,162,39,0.35);
+  }
+  .btn-primario:hover {
+    background: var(--dorado-claro);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(201,162,39,0.45);
+  }
+  .btn-secundario {
+    background: transparent;
+    color: var(--blanco);
+    font-weight: 500; font-size: 0.95rem;
+    padding: 14px 32px; border-radius: 100px;
+    border: 1.5px solid rgba(248,246,241,0.3);
+    transition: all 0.25s;
+  }
+  .btn-secundario:hover {
+    border-color: rgba(248,246,241,0.7);
+    background: rgba(248,246,241,0.05);
+    transform: translateY(-2px);
+  }
+  .hero-avatar {
+    display: flex; justify-content: center; align-items: center;
+    position: relative;
+  }
+  .hero-avatar-card {
+    background: rgba(248,246,241,0.06);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 24px;
+    padding: 2.5rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-avatar-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--dorado), var(--verde-claro));
+  }
+  .avatar-circle {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--verde-medio), var(--verde-claro));
+    margin: 0 auto 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 3rem; color: var(--dorado);
+    border: 3px solid rgba(201,162,39,0.3);
+    font-weight: 700;
+  }
+  .avatar-nombre {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.4rem;
+    margin-bottom: 0.3rem;
+  }
+  .avatar-cargo {
+    color: var(--dorado); font-size: 0.82rem;
+    font-weight: 500; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+  .hero-trust {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .trust-chip {
+    background: rgba(201,162,39,0.12);
+    border: 1px solid rgba(201,162,39,0.25);
+    color: var(--dorado-claro);
+    padding: 5px 12px; border-radius: 100px;
+    font-size: 0.72rem; font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+
+  /* ===== MÉTRICAS ===== */
+  #metricas {
+    background: var(--dorado);
+    padding: 3rem 5%;
+  }
+  .metricas-inner {
+    max-width: 900px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2rem; text-align: center;
+  }
+  .metrica-num {
+    font-family: var(--font-display);
+    font-size: 2.8rem; color: var(--verde);
+    font-weight: 900; line-height: 1;
+  }
+  .metrica-label {
+    color: rgba(26,61,46,0.7);
+    font-size: 0.85rem; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-top: 0.4rem;
+  }
+
+  /* ===== SECCIONES GENÉRICAS ===== */
+  .section-container {
+    max-width: 1200px; margin: 0 auto;
+    padding: 80px 5%;
+  }
+  .section-tag {
+    font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--dorado);
+    margin-bottom: 0.8rem;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    color: var(--verde);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+  .section-sub {
+    color: var(--gris);
+    font-size: 1rem; max-width: 520px;
+    line-height: 1.7;
+  }
+
+  /* ===== POR QUÉ NICOLÁS ===== */
+  #porque { background: var(--blanco); }
+  .diferenciales-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem; margin-top: 3rem;
+  }
+  .diferencial-card {
+    background: var(--gris-claro);
+    border-radius: var(--radio);
+    padding: 2rem;
+    border: 1px solid rgba(26,61,46,0.08);
+    transition: all 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .diferencial-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--dorado);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.3s;
+  }
+  .diferencial-card:hover::before { transform: scaleX(1); }
+  .diferencial-card:hover {
+    box-shadow: var(--sombra);
+    transform: translateY(-4px);
+  }
+  .diferencial-icon {
+    font-size: 2rem; margin-bottom: 1rem;
+    display: block;
+  }
+  .diferencial-titulo {
+    font-family: var(--font-display);
+    font-size: 1.15rem; color: var(--verde);
+    margin-bottom: 0.5rem;
+  }
+  .diferencial-texto {
+    color: var(--gris); font-size: 0.9rem; line-height: 1.6;
+  }
+
+  /* ===== PERFIL INVERSOR ===== */
+  #perfil { background: var(--verde); }
+  #perfil .section-title { color: var(--blanco); }
+  #perfil .section-sub { color: rgba(248,246,241,0.65); }
+  #perfil .section-tag { color: var(--dorado); }
+  .perfil-box {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 20px;
+    padding: 2.5rem;
+    margin-top: 2.5rem;
+    max-width: 760px;
+  }
+  .quiz-progress {
+    display: flex; gap: 6px; margin-bottom: 2rem;
+  }
+  .quiz-progress-bar {
+    height: 4px; flex: 1; border-radius: 2px;
+    background: rgba(248,246,241,0.15);
+    transition: background 0.4s;
+  }
+  .quiz-progress-bar.activo { background: var(--dorado); }
+  .quiz-pregunta {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.25rem;
+    margin-bottom: 1.5rem; line-height: 1.4;
+  }
+  .quiz-opciones {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .quiz-opcion {
+    background: rgba(248,246,241,0.06);
+    border: 1.5px solid rgba(248,246,241,0.15);
+    color: rgba(248,246,241,0.85);
+    border-radius: 10px; padding: 12px 16px;
+    font-size: 0.9rem; text-align: left;
+    transition: all 0.2s; cursor: pointer;
+  }
+  .quiz-opcion:hover, .quiz-opcion.seleccionada {
+    background: rgba(201,162,39,0.15);
+    border-color: var(--dorado);
+    color: var(--blanco);
+  }
+  .quiz-nav {
+    display: flex; justify-content: space-between;
+    margin-top: 2rem; align-items: center;
+  }
+  .btn-quiz-next {
+    background: var(--dorado); color: var(--verde);
+    font-weight: 700; padding: 12px 28px;
+    border-radius: 100px; font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .btn-quiz-next:hover { background: var(--dorado-claro); }
+  .btn-quiz-prev {
+    background: transparent; color: rgba(248,246,241,0.6);
+    font-size: 0.9rem; padding: 12px 0;
+    transition: color 0.2s;
+  }
+  .btn-quiz-prev:hover { color: var(--blanco); }
+  .quiz-contador { color: rgba(248,246,241,0.5); font-size: 0.82rem; }
+  .resultado-perfil { display: none; }
+  .resultado-perfil.visible { display: block; }
+  .perfil-badge {
+    display: inline-block;
+    background: var(--dorado);
+    color: var(--verde); font-weight: 700;
+    padding: 8px 24px; border-radius: 100px;
+    font-size: 1rem; margin-bottom: 1.5rem;
+  }
+  .perfil-descripcion {
+    color: rgba(248,246,241,0.8);
+    line-height: 1.7; margin-bottom: 2rem;
+  }
+  .cartera-sugerida {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.15);
+    border-radius: 12px; padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .cartera-titulo {
+    color: var(--dorado); font-size: 0.78rem;
+    font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 1rem;
+  }
+  .cartera-item {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 0.8rem;
+  }
+  .cartera-barra-fondo {
+    flex: 1; height: 8px;
+    background: rgba(248,246,241,0.1); border-radius: 4px;
+    overflow: hidden;
+  }
+  .cartera-barra {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--dorado), var(--verde-claro));
+    width: 0; transition: width 1s ease;
+  }
+  .cartera-label {
+    color: rgba(248,246,241,0.8); font-size: 0.85rem;
+    min-width: 120px;
+  }
+  .cartera-pct {
+    color: var(--dorado); font-weight: 700;
+    font-size: 0.9rem; min-width: 40px; text-align: right;
+  }
+  .btn-wa-perfil {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--whatsapp); color: white;
+    font-weight: 700; padding: 15px 32px;
+    border-radius: 100px; font-size: 0.95rem;
+    transition: all 0.25s; width: 100%; justify-content: center;
+  }
+  .btn-wa-perfil:hover {
+    background: #20b85a; transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37,211,102,0.35);
+  }
+
+  /* ===== CALCULADORA NUEVA ===== */
+  #calculadora { background: var(--gris-claro); }
+  .calc-tabs {
+    display: flex; gap: 0.5rem; margin-top: 2rem; margin-bottom: 2rem;
+    background: rgba(26,61,46,0.06); padding: 5px;
+    border-radius: 100px; width: fit-content;
+  }
+  .calc-tab {
+    padding: 10px 24px; border-radius: 100px;
+    font-size: 0.88rem; font-weight: 600;
+    background: transparent; color: var(--gris);
+    transition: all 0.25s; border: none; cursor: pointer;
+  }
+  .calc-tab.activo {
+    background: var(--verde); color: var(--blanco);
+    box-shadow: 0 4px 15px rgba(26,61,46,0.2);
+  }
+  .calc-panel { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .calc-resultados-usd {
+    background: var(--verde); border-radius: 16px;
+    padding: 1.5rem; margin-top: 1.2rem; margin-bottom: 1rem;
+  }
+  .calc-res-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  }
+  .calc-grafico-wrap {
+    background: white; border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--sombra);
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  .calc-grafico-titulo {
+    font-size: 0.82rem; font-weight: 600;
+    color: var(--verde); text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .calc-grafico-leyenda {
+    display: flex; gap: 1.2rem; flex-wrap: wrap;
+  }
+  .leyenda-item { font-size: 0.8rem; font-weight: 500; }
+  .leyenda-item.verde { color: #2a7a50; }
+  .leyenda-item.rojo { color: #c0392b; }
+
+  .calc-ic-intro {
+    background: rgba(26,61,46,0.06);
+    border: 1px solid rgba(26,61,46,0.12);
+    border-left: 4px solid var(--dorado);
+    border-radius: 12px; padding: 1.2rem 1.5rem;
+    margin-bottom: 1.8rem;
+  }
+  .calc-ic-badge {
+    font-weight: 700; color: var(--verde);
+    font-size: 0.92rem; margin-bottom: 0.5rem;
+  }
+  .calc-ic-explicacion {
+    color: var(--gris); font-size: 0.88rem; line-height: 1.7;
+  }
+  .calc-ic-explicacion strong { color: var(--verde); }
+  .calc-ic-multiplicador {
+    margin-top: 1rem; padding: 0.8rem 1rem;
+    background: rgba(201,162,39,0.15);
+    border-radius: 8px;
+    color: var(--dorado-claro); font-size: 0.88rem;
+    text-align: center;
+  }
+  .calc-ic-multiplicador strong { font-size: 1.2rem; }
+  .ic-grande { font-size: 2.4rem !important; color: var(--dorado-claro) !important; }
+
+  /* ===== CALCULADORA (mantener estilos existentes) ===== */
+  .calc-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 3rem; align-items: center; margin-top: 2.5rem;
+  }
+  .calc-input-group {
+    margin-bottom: 1.5rem;
+  }
+  .calc-label {
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--verde); margin-bottom: 0.5rem;
+    display: block; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .calc-input-wrap {
+    display: flex; align-items: center;
+    background: white; border: 2px solid rgba(26,61,46,0.12);
+    border-radius: 10px; overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .calc-input-wrap:focus-within { border-color: var(--verde); }
+  .calc-prefix {
+    background: var(--verde); color: var(--dorado);
+    padding: 14px 16px; font-weight: 700; font-size: 1rem;
+  }
+  .calc-input {
+    border: none; outline: none; flex: 1;
+    padding: 14px 16px; font-family: var(--font-body);
+    font-size: 1.1rem; color: var(--texto);
+    background: white;
+  }
+  .calc-resultados {
+    background: var(--verde); border-radius: 20px;
+    padding: 2rem;
+    box-shadow: var(--sombra-fuerte);
+  }
+  .calc-res-titulo {
+    color: var(--dorado); font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 600; margin-bottom: 1.5rem;
+  }
+  .calc-res-item {
+    padding: 1.2rem 0;
+    border-bottom: 1px solid rgba(248,246,241,0.08);
+  }
+  .calc-res-item:last-of-type { border-bottom: none; }
+  .calc-res-label {
+    color: rgba(248,246,241,0.6); font-size: 0.82rem;
+    margin-bottom: 0.4rem;
+  }
+  .calc-res-valor {
+    font-family: var(--font-display);
+    font-size: 2rem; color: var(--blanco);
+    font-weight: 700; line-height: 1;
+  }
+  .calc-res-valor span { font-size: 1rem; color: var(--dorado); }
+  .calc-nota {
+    color: rgba(248,246,241,0.4); font-size: 0.72rem;
+    margin-top: 1rem; line-height: 1.5;
+  }
+  .btn-calc {
+    width: 100%; background: var(--dorado); color: var(--verde);
+    font-weight: 700; padding: 14px; border-radius: 10px;
+    font-size: 0.9rem; transition: all 0.2s; margin-top: 1rem;
+  }
+  .btn-calc:hover { background: var(--dorado-claro); }
+
+  /* ===== COMO FUNCIONA ===== */
+  #como { background: var(--blanco); }
+  .pasos-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 2rem; margin-top: 3rem; position: relative;
+  }
+  .pasos-grid::before {
+    content: '';
+    position: absolute; top: 40px; left: 16%; right: 16%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--dorado), var(--verde-claro));
+  }
+  .paso-card {
+    text-align: center; position: relative;
+    animation: fadeUp 0.6s ease both;
+  }
+  .paso-num {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: var(--verde); color: var(--dorado);
+    font-family: var(--font-display); font-size: 2rem;
+    font-weight: 900; display: flex; align-items: center;
+    justify-content: center; margin: 0 auto 1.5rem;
+    box-shadow: 0 8px 30px rgba(26,61,46,0.25);
+    position: relative; z-index: 2;
+  }
+  .paso-titulo {
+    font-family: var(--font-display);
+    font-size: 1.1rem; color: var(--verde);
+    margin-bottom: 0.6rem;
+  }
+  .paso-texto { color: var(--gris); font-size: 0.9rem; line-height: 1.6; }
+
+  /* ===== INSTRUMENTOS ===== */
+  #instrumentos { background: var(--verde); }
+  #instrumentos .section-title { color: var(--blanco); }
+  #instrumentos .section-sub { color: rgba(248,246,241,0.6); }
+  .instrumentos-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem; margin-top: 3rem;
+  }
+  .instrumento-card {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: var(--radio);
+    padding: 2rem;
+    transition: all 0.3s;
+  }
+  .instrumento-card:hover {
+    background: rgba(248,246,241,0.08);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  }
+  .instrumento-nombre {
+    font-family: var(--font-display);
+    color: var(--dorado); font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+  }
+  .instrumento-sigla {
+    color: rgba(248,246,241,0.4); font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+  }
+  .instrumento-desc {
+    color: rgba(248,246,241,0.75); font-size: 0.88rem;
+    line-height: 1.6; margin-bottom: 1.2rem;
+  }
+  .instrumento-chips {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .chip {
+    font-size: 0.72rem; padding: 4px 10px;
+    border-radius: 100px; font-weight: 500;
+  }
+  .chip-perfil {
+    background: rgba(201,162,39,0.15);
+    border: 1px solid rgba(201,162,39,0.3);
+    color: var(--dorado-claro);
+  }
+  .chip-moneda {
+    background: rgba(61,122,94,0.3);
+    border: 1px solid rgba(61,122,94,0.5);
+    color: #7ecba8;
+  }
+
+  /* ===== HERRAMIENTAS ===== */
+  #herramientas { background: var(--gris-claro); }
+  .herramientas-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.2rem; margin-top: 2.5rem;
+  }
+  .herramienta-link {
+    display: flex; align-items: center; gap: 1rem;
+    background: white; border-radius: var(--radio);
+    padding: 1.2rem 1.5rem;
+    border: 1px solid rgba(26,61,46,0.08);
+    transition: all 0.3s;
+  }
+  .herramienta-link:hover {
+    box-shadow: var(--sombra);
+    transform: translateY(-3px);
+    border-color: var(--dorado);
+  }
+  .herramienta-icon { font-size: 1.6rem; }
+  .herramienta-info {}
+  .herramienta-nombre {
+    font-weight: 600; color: var(--verde); font-size: 0.9rem;
+  }
+  .herramienta-desc {
+    color: var(--gris); font-size: 0.78rem;
+  }
+  .herramienta-arrow {
+    margin-left: auto; color: var(--dorado); font-size: 1.2rem;
+  }
+
+  /* ===== TICKER CARDS ===== */
+  .tickers-seccion-titulo {
+    font-family: var(--font-display);
+    font-size: 1.15rem; color: var(--verde);
+    margin-top: 2rem; margin-bottom: 1.2rem;
+    font-weight: 700;
+  }
+  .tickers-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.2rem;
+  }
+  .ticker-card {
+    background: white;
+    border: 1px solid rgba(26,61,46,0.1);
+    border-radius: 16px; padding: 1.5rem;
+    transition: all 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .ticker-card::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--verde), var(--dorado));
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.3s;
+  }
+  .ticker-card:hover::before { transform: scaleX(1); }
+  .ticker-card:hover {
+    box-shadow: var(--sombra);
+    transform: translateY(-3px);
+  }
+  .ticker-card-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 0.3rem;
+  }
+  .ticker-card-code {
+    font-family: monospace; font-size: 1.4rem;
+    font-weight: 900; color: var(--verde);
+    letter-spacing: -0.02em;
+  }
+  .ticker-card-nombre {
+    font-weight: 600; color: var(--texto);
+    font-size: 0.88rem; margin-bottom: 0.6rem;
+  }
+  .ticker-card-desc {
+    color: var(--gris); font-size: 0.82rem;
+    line-height: 1.6; margin-bottom: 1.2rem;
+  }
+  .ticker-card-nums {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem; margin-bottom: 0.8rem;
+  }
+  .ticker-card-num-item {
+    background: var(--gris-claro);
+    border-radius: 8px; padding: 6px 8px;
+    text-align: center;
+  }
+  .ticker-card-num-label {
+    display: block; font-size: 0.68rem;
+    color: var(--gris); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+  .ticker-card-num-val {
+    font-weight: 700; font-size: 0.88rem; color: var(--texto);
+  }
+  .ticker-card-num-val.verde { color: #2a7a50; }
+  .ticker-card-num-val.dorado { color: var(--dorado); }
+  .ticker-card-tipo {
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--gris); text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ===== TICKERS (estilos legacy, mantener por compatibilidad) ===== */
+  #tickers { background: var(--blanco); }
+  .tickers-nota {
+    background: rgba(201,162,39,0.08);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 8px; padding: 10px 16px;
+    color: var(--gris); font-size: 0.8rem;
+    margin-bottom: 1.5rem;
+    margin-top: 2rem;
+  }
+  .tickers-tabla {
+    width: 100%; border-collapse: collapse;
+    margin-top: 0;
+  }
+  .tickers-tabla th {
+    text-align: left; padding: 12px 16px;
+    font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--gris);
+    border-bottom: 2px solid rgba(26,61,46,0.08);
+  }
+  .tickers-tabla td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(26,61,46,0.05);
+    font-size: 0.9rem;
+  }
+  .tickers-tabla tr:hover td { background: rgba(26,61,46,0.02); }
+  .ticker-code {
+    font-weight: 700; color: var(--verde);
+    font-family: monospace; font-size: 0.95rem;
+  }
+  .ticker-nombre { color: var(--texto); }
+  .ticker-tipo {
+    background: rgba(26,61,46,0.07);
+    color: var(--verde-medio); padding: 3px 10px;
+    border-radius: 100px; font-size: 0.72rem;
+    font-weight: 600; white-space: nowrap;
+  }
+  .ticker-precio { font-weight: 600; color: var(--texto); }
+  .ticker-target { color: var(--verde-claro); font-weight: 600; }
+  .rec-comprar {
+    background: rgba(61,122,94,0.15); color: #2a7a50;
+    padding: 4px 12px; border-radius: 100px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .rec-mantener {
+    background: rgba(201,162,39,0.15); color: #a07b0a;
+    padding: 4px 12px; border-radius: 100px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .rec-esperar {
+    background: rgba(180,60,40,0.1); color: #a83520;
+    padding: 4px 12px; border-radius: 100px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+
+  /* ===== TESTIMONIOS ===== */
+  #testimonios { background: var(--verde); }
+  #testimonios .section-title { color: var(--blanco); }
+  #testimonios .section-sub { color: rgba(248,246,241,0.6); }
+  .testimonios-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem; margin-top: 3rem;
+  }
+  .testimonio-card {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.15);
+    border-radius: var(--radio); padding: 2rem;
+    position: relative;
+  }
+  .testimonio-estrellas {
+    color: var(--dorado); font-size: 0.9rem;
+    margin-bottom: 1rem; letter-spacing: 2px;
+  }
+  .testimonio-texto {
+    color: rgba(248,246,241,0.8);
+    font-style: italic; line-height: 1.7;
+    font-size: 0.92rem; margin-bottom: 1.5rem;
+  }
+  .testimonio-autor {
+    display: flex; align-items: center; gap: 0.8rem;
+  }
+  .testimonio-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--dorado); color: var(--verde);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem;
+  }
+  .testimonio-nombre { color: var(--blanco); font-weight: 600; font-size: 0.88rem; }
+  .testimonio-perfil { color: var(--dorado); font-size: 0.76rem; }
+
+  /* ===== NEWSLETTER ===== */
+  #newsletter { background: var(--gris-claro); }
+  .newsletter-box {
+    background: var(--verde); border-radius: 24px;
+    padding: 3rem; max-width: 680px; margin: 0 auto;
+    text-align: center;
+  }
+  .newsletter-box .section-tag { text-align: center; }
+  .newsletter-box .section-title { color: var(--blanco); text-align: center; }
+  .newsletter-box p {
+    color: rgba(248,246,241,0.7); margin-bottom: 2rem;
+    font-size: 0.95rem; line-height: 1.7;
+  }
+  .newsletter-form {
+    display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .newsletter-input {
+    padding: 14px 18px; border-radius: 10px;
+    border: 1.5px solid rgba(248,246,241,0.15);
+    background: rgba(248,246,241,0.06);
+    color: var(--blanco); font-family: var(--font-body); font-size: 0.95rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .newsletter-input::placeholder { color: rgba(248,246,241,0.35); }
+  .newsletter-input:focus { border-color: var(--dorado); }
+  .btn-newsletter {
+    background: var(--dorado); color: var(--verde);
+    font-weight: 700; padding: 15px;
+    border-radius: 10px; font-size: 0.95rem;
+    transition: all 0.2s;
+  }
+  .btn-newsletter:hover { background: var(--dorado-claro); }
+
+  /* ===== BALANZ ===== */
+  #balanz { background: var(--blanco); }
+  .balanz-inner {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 4rem; align-items: center;
+  }
+  .balanz-pasos {
+    display: flex; flex-direction: column; gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  .balanz-paso {
+    display: flex; gap: 1.2rem; align-items: flex-start;
+  }
+  .balanz-paso-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--dorado); color: var(--verde);
+    font-weight: 800; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-size: 0.9rem;
+  }
+  .balanz-paso-titulo {
+    font-weight: 600; color: var(--verde); font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+  }
+  .balanz-paso-texto { color: var(--gris); font-size: 0.88rem; }
+  .balanz-visual {
+    background: linear-gradient(135deg, var(--verde), var(--verde-medio));
+    border-radius: 20px; padding: 3rem;
+    text-align: center; color: var(--blanco);
+  }
+  .balanz-logo-text {
+    font-family: var(--font-display);
+    font-size: 2.2rem; color: var(--dorado);
+    margin-bottom: 0.8rem;
+  }
+  .balanz-visual p {
+    color: rgba(248,246,241,0.7); font-size: 0.9rem;
+    margin-bottom: 2rem; line-height: 1.6;
+  }
+  .btn-balanz {
+    display: inline-block;
+    background: var(--dorado); color: var(--verde);
+    font-weight: 700; padding: 14px 32px;
+    border-radius: 100px; font-size: 0.95rem;
+    transition: all 0.25s;
+  }
+  .btn-balanz:hover {
+    background: var(--dorado-claro);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(201,162,39,0.4);
+  }
+
+  /* ===== FAQ ===== */
+  #faq { background: var(--gris-claro); }
+  .faq-lista {
+    max-width: 760px; margin-top: 2.5rem;
+  }
+  .faq-item {
+    border-bottom: 1px solid rgba(26,61,46,0.1);
+    overflow: hidden;
+  }
+  .faq-pregunta {
+    width: 100%; text-align: left;
+    padding: 1.2rem 0;
+    display: flex; justify-content: space-between; align-items: center;
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-body); font-size: 0.95rem;
+    font-weight: 600; color: var(--verde);
+    transition: color 0.2s;
+  }
+  .faq-pregunta:hover { color: var(--verde-claro); }
+  .faq-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--dorado); color: var(--verde);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 1.1rem; font-weight: 700;
+    transition: transform 0.3s;
+  }
+  .faq-item.abierto .faq-icon { transform: rotate(45deg); }
+  .faq-respuesta {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s;
+    color: var(--gris); font-size: 0.9rem; line-height: 1.7;
+  }
+  .faq-item.abierto .faq-respuesta {
+    max-height: 300px;
+    padding-bottom: 1.2rem;
+  }
+
+  /* ===== AGENDA ===== */
+  #agenda { background: var(--verde); }
+  #agenda .section-title { color: var(--blanco); }
+  #agenda .section-sub { color: rgba(248,246,241,0.6); }
+  .agenda-box {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 20px; padding: 2.5rem;
+    margin-top: 2.5rem; max-width: 760px;
+    text-align: center;
+  }
+  .agenda-placeholder {
+    background: rgba(248,246,241,0.03);
+    border: 2px dashed rgba(201,162,39,0.3);
+    border-radius: 12px; padding: 3rem;
+    margin-bottom: 1.5rem;
+    color: rgba(248,246,241,0.4); font-size: 0.9rem;
+  }
+  .btn-agenda {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--dorado); color: var(--verde);
+    font-weight: 700; padding: 15px 36px;
+    border-radius: 100px; font-size: 1rem;
+    transition: all 0.25s;
+  }
+  .btn-agenda:hover {
+    background: var(--dorado-claro);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(201,162,39,0.4);
+  }
+
+  /* ===== INSTAGRAM ===== */
+  #instagram { background: var(--blanco); }
+  .instagram-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1rem; margin-top: 2.5rem;
+  }
+  .ig-placeholder {
+    aspect-ratio: 1;
+    background: var(--gris-claro);
+    border-radius: var(--radio);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gris); font-size: 0.8rem; text-align: center;
+    padding: 1rem;
+    border: 1px dashed rgba(26,61,46,0.15);
+  }
+  .ig-cta {
+    text-align: center; margin-top: 2rem;
+  }
+  .btn-ig {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, #405de6, #5851db, #833ab4, #c13584, #e1306c, #fd1d1d);
+    color: white; font-weight: 700; padding: 14px 32px;
+    border-radius: 100px; font-size: 0.9rem;
+    transition: all 0.25s;
+  }
+  .btn-ig:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(131,58,180,0.4);
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    background: #0f2419; padding: 3rem 5%;
+    border-top: 1px solid rgba(201,162,39,0.15);
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 2fr 1fr 1fr;
+    gap: 3rem;
+  }
+  .footer-logo {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.4rem;
+    margin-bottom: 0.8rem;
+  }
+  .footer-logo span { color: var(--dorado); }
+  .footer-desc {
+    color: rgba(248,246,241,0.45); font-size: 0.85rem;
+    line-height: 1.7; max-width: 300px;
+  }
+  .footer-legal {
+    color: rgba(248,246,241,0.3); font-size: 0.75rem;
+    margin-top: 1.2rem; line-height: 1.6;
+  }
+  .footer-col-title {
+    color: var(--dorado); font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 600; margin-bottom: 1rem;
+  }
+  .footer-links {
+    display: flex; flex-direction: column; gap: 0.6rem;
+    list-style: none;
+  }
+  .footer-links a {
+    color: rgba(248,246,241,0.5); font-size: 0.88rem;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--dorado); }
+  .footer-social {
+    display: flex; gap: 0.8rem; margin-top: 1.5rem;
+    grid-column: 1 / -1;
+    border-top: 1px solid rgba(248,246,241,0.06);
+    padding-top: 1.5rem;
+  }
+  .social-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 100px;
+    font-size: 0.82rem; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .social-btn.ig {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(248,246,241,0.1);
+    color: rgba(248,246,241,0.6);
+  }
+  .social-btn.wa {
+    background: rgba(37,211,102,0.1);
+    border: 1px solid rgba(37,211,102,0.2);
+    color: #25D366;
+  }
+  .social-btn:hover { transform: translateY(-2px); }
+
+  /* ===== WHATSAPP FLOTANTE ===== */
+  .wa-flotante {
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+  }
+  .wa-tooltip {
+    background: var(--verde); color: var(--blanco);
+    padding: 8px 16px; border-radius: 100px;
+    font-size: 0.82rem; white-space: nowrap;
+    box-shadow: var(--sombra);
+    opacity: 0; transform: translateX(10px);
+    transition: all 0.3s;
+  }
+  .wa-flotante:hover .wa-tooltip {
+    opacity: 1; transform: translateX(0);
+  }
+  .wa-btn-float {
+    width: 58px; height: 58px; border-radius: 50%;
+    background: var(--whatsapp); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; box-shadow: 0 8px 30px rgba(37,211,102,0.45);
+    transition: all 0.3s;
+    animation: waFloat 3s ease-in-out infinite;
+  }
+  @keyframes waFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .wa-btn-float:hover {
+    background: #20b85a; transform: scale(1.1) !important;
+    animation: none;
+  }
+
+  /* ===== GUÍA INTERACTIVA ===== */
+  .guia-card-grande {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.25);
+    border-radius: 20px; padding: 3rem 2.5rem;
+    text-align: center;
+  }
+  .guia-titulo-grande {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.8rem;
+    line-height: 1.2; margin-bottom: 1rem;
+  }
+  .guia-subtitulo {
+    color: rgba(248,246,241,0.65); font-size: 1rem;
+    line-height: 1.7; max-width: 480px; margin: 0 auto 2rem;
+  }
+  .guia-screen {
+    animation: fadeIn 0.35s ease;
+  }
+  .guia-progress-wrap {
+    height: 5px; background: rgba(248,246,241,0.1);
+    border-radius: 3px; margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  .guia-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--dorado), var(--verde-claro));
+    border-radius: 3px; transition: width 0.5s ease;
+  }
+  .guia-pregunta-label {
+    color: var(--dorado); font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-weight: 600; margin-bottom: 0.6rem;
+  }
+  .guia-titulo {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.5rem;
+    margin-bottom: 0.6rem; line-height: 1.3;
+  }
+  .guia-desc {
+    color: rgba(248,246,241,0.6); font-size: 0.9rem;
+    margin-bottom: 1.5rem; line-height: 1.6;
+  }
+  .guia-opciones-col {
+    display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .guia-opcion {
+    background: rgba(248,246,241,0.06);
+    border: 1.5px solid rgba(248,246,241,0.15);
+    color: rgba(248,246,241,0.9);
+    border-radius: 12px; padding: 14px 20px;
+    font-family: var(--font-body); font-size: 0.95rem;
+    text-align: left; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .guia-opcion:hover {
+    background: rgba(201,162,39,0.15);
+    border-color: var(--dorado); color: var(--blanco);
+    transform: translateX(4px);
+  }
+  .guia-btns-row {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .guia-btn-si {
+    background: var(--dorado); color: var(--verde);
+    font-weight: 700; padding: 14px 28px;
+    border-radius: 100px; font-size: 0.95rem;
+    border: none; cursor: pointer;
+    transition: all 0.25s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .guia-btn-si:hover { background: var(--dorado-claro); transform: translateY(-2px); }
+  .guia-btn-no {
+    background: transparent;
+    border: 1.5px solid rgba(248,246,241,0.25);
+    color: rgba(248,246,241,0.7);
+    padding: 13px 24px; border-radius: 100px;
+    font-size: 0.9rem; cursor: pointer;
+    transition: all 0.2s; text-decoration: none;
+    display: inline-flex; align-items: center;
+    font-family: var(--font-body);
+  }
+  .guia-btn-no:hover { border-color: rgba(248,246,241,0.6); color: var(--blanco); }
+  .guia-btn-secondary {
+    background: rgba(248,246,241,0.08);
+    border: 1.5px solid rgba(248,246,241,0.2);
+    color: rgba(248,246,241,0.8);
+    padding: 13px 24px; border-radius: 100px;
+    font-size: 0.9rem; cursor: pointer;
+    transition: all 0.2s; font-family: var(--font-body);
+  }
+  .guia-btn-secondary:hover { background: rgba(248,246,241,0.12); }
+  .guia-steps-list {
+    display: flex; flex-direction: column; gap: 1.2rem;
+    margin-top: 1.5rem;
+  }
+  .guia-step-item {
+    display: flex; gap: 1rem; align-items: flex-start;
+    background: rgba(248,246,241,0.04);
+    border: 1px solid rgba(248,246,241,0.08);
+    border-radius: 12px; padding: 1rem 1.2rem;
+    color: var(--blanco);
+  }
+  .guia-step-num {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--dorado); color: var(--verde);
+    font-weight: 800; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-size: 0.85rem;
+  }
+  /* Resultado activos */
+  .guia-resultado-header {
+    text-align: center; margin-bottom: 2rem;
+  }
+  .guia-perfil-badge {
+    display: inline-block; background: var(--dorado);
+    color: var(--verde); font-weight: 700;
+    padding: 8px 24px; border-radius: 100px;
+    font-size: 1rem; margin-bottom: 1rem;
+  }
+  .guia-resultado-titulo {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .guia-resultado-sub {
+    color: rgba(248,246,241,0.65); font-size: 0.9rem;
+  }
+  .guia-activos-grid {
+    display: flex; flex-direction: column; gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .guia-activo-card {
+    background: rgba(248,246,241,0.05);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 14px; padding: 1.2rem 1.5rem;
+    display: flex; justify-content: space-between;
+    align-items: center; gap: 1rem;
+  }
+  .guia-activo-left {}
+  .guia-activo-ticker {
+    font-family: monospace; font-weight: 900;
+    font-size: 1.2rem; color: var(--dorado);
+    margin-bottom: 0.15rem;
+  }
+  .guia-activo-nombre {
+    color: var(--blanco); font-weight: 600;
+    font-size: 0.88rem; margin-bottom: 0.3rem;
+  }
+  .guia-activo-porque {
+    color: rgba(248,246,241,0.55); font-size: 0.8rem;
+    line-height: 1.5; max-width: 380px;
+  }
+  .guia-activo-pct {
+    background: rgba(201,162,39,0.15);
+    border: 1px solid rgba(201,162,39,0.3);
+    color: var(--dorado); font-weight: 700;
+    font-size: 0.9rem; padding: 6px 14px;
+    border-radius: 100px; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  /* Tutorial pasos */
+  .guia-tutorial-titulo {
+    font-family: var(--font-display);
+    color: var(--blanco); font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .guia-tutorial-sub {
+    color: rgba(248,246,241,0.6); font-size: 0.88rem;
+    margin-bottom: 1.5rem;
+  }
+  .guia-tutorial-paso {
+    background: rgba(248,246,241,0.04);
+    border: 1px solid rgba(248,246,241,0.08);
+    border-radius: 12px; padding: 1rem 1.2rem;
+    display: flex; gap: 1rem; align-items: flex-start;
+    margin-bottom: 0.75rem;
+  }
+  .guia-tutorial-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--verde-claro); color: var(--blanco);
+    font-weight: 700; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-size: 0.8rem;
+  }
+  .guia-tutorial-texto {
+    color: rgba(248,246,241,0.85); font-size: 0.88rem;
+    line-height: 1.6;
+  }
+  .guia-tutorial-texto strong { color: var(--blanco); }
+  .guia-tutorial-nota {
+    background: rgba(201,162,39,0.1);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 10px; padding: 10px 14px;
+    color: rgba(248,246,241,0.6); font-size: 0.78rem;
+    margin-top: 1rem; margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+
+  .guia-opcion-exterior {
+    background: rgba(138,180,248,0.08) !important;
+    border-color: rgba(138,180,248,0.35) !important;
+    color: rgba(248,246,241,0.9) !important;
+  }
+  .guia-opcion-exterior:hover {
+    background: rgba(138,180,248,0.18) !important;
+    border-color: #8ab4f8 !important;
+  }
+  .guia-exterior-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(138,180,248,0.12);
+    border: 1px solid rgba(138,180,248,0.3);
+    color: #8ab4f8; padding: 5px 14px;
+    border-radius: 100px; font-size: 0.75rem;
+    font-weight: 600; margin-bottom: 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .guia-resultado-desc {
+    background: rgba(248,246,241,0.04);
+    border-left: 3px solid var(--dorado);
+    border-radius: 0 10px 10px 0;
+    padding: 0.8rem 1.2rem;
+    color: rgba(248,246,241,0.65); font-size: 0.85rem;
+    line-height: 1.6; margin-bottom: 1.5rem;
+  }
+
+  /* ===== SCROLL INDICATOR ===== */
+  .scroll-indicator {
+    position: absolute;
+    bottom: 32px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+    z-index: 10;
+    animation: fadeInScroll 2s ease 1.5s both;
+  }
+  @keyframes fadeInScroll {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  .scroll-indicator-texto {
+    color: rgba(248,246,241,0.5);
+    font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; font-weight: 500;
+  }
+  .scroll-arrow {
+    color: var(--dorado);
+    animation: bounceDown 1.6s ease-in-out infinite;
+    display: flex;
+  }
+  @keyframes bounceDown {
+    0%, 100% { transform: translateY(0); opacity: 0.6; }
+    50%       { transform: translateY(8px); opacity: 1; }
+  }
+  @media (max-width: 900px) {
+    .scroll-indicator { bottom: 20px; }
+  }
+
+  /* ===== ANIMACIONES ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up {
+    opacity: 0; transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 900px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .hero-avatar { display: none; }
+    .calc-grid { grid-template-columns: 1fr; }
+    .pasos-grid { grid-template-columns: 1fr; gap: 2rem; }
+    .pasos-grid::before { display: none; }
+    .balanz-inner { grid-template-columns: 1fr; }
+    .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+    .nav-links { display: none; }
+    .nav-hamburger { display: flex; }
+    .nav-links.open {
+      display: flex; flex-direction: column;
+      position: fixed; top: 72px; left: 0; right: 0;
+      background: var(--verde);
+      padding: 1.5rem 5%; gap: 1.2rem;
+      border-bottom: 1px solid rgba(201,162,39,0.2);
+    }
+    .quiz-opciones { grid-template-columns: 1fr; }
+    .metricas-inner { grid-template-columns: 1fr; }
+    .instagram-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== NAVEGACIÓN ===== -->
+<nav id="navbar">
+  <a href="#hero" class="nav-logo">Finanzas<span>connico</span></a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#porque">Por qué Nico</a></li>
+    <li><a href="#perfil">Mi perfil</a></li>
+    <li><a href="#calculadora">Calculadora</a></li>
+    <li><a href="#instrumentos">Instrumentos</a></li>
+    <li><a href="#guia">Guía de inversión</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#agenda" class="nav-cta">Agendá una llamada</a></li>
+  </ul>
+  <button class="nav-hamburger" id="hamburger" aria-label="Menú">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-inner">
+    <div class="hero-texto">
+      <div class="hero-badge">Regulado por CNV · Operando bajo Balanz</div>
+      <h1 class="hero-h1">Invertí de forma <em>simple, ordenada e inteligente</em></h1>
+      <p class="hero-sub">Sin costo para vos. Sin tecnicismos. Con una estrategia personalizada según tu perfil y objetivos.</p>
+      <div class="hero-btns">
+        <a href="#perfil" class="btn-primario">Quiero invertir</a>
+        <a href="#agenda" class="btn-secundario">Agendá una llamada</a>
+      </div>
+    </div>
+    <div class="hero-avatar">
+      <div class="hero-avatar-card">
+        <div class="avatar-circle">N</div>
+        <div class="avatar-nombre">Nicolás Strijland</div>
+        <div class="avatar-cargo">Asesor financiero · Balanz</div>
+        <div class="hero-trust">
+          <span class="trust-chip">📊 Asesor independiente</span>
+          <span class="trust-chip">🏦 Regulado CNV</span>
+          <span class="trust-chip">🇦🇷 +500 clientes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- SCROLL INDICATOR -->
+  <div class="scroll-indicator">
+    <span class="scroll-indicator-texto">Deslizá para ver más</span>
+    <div class="scroll-arrow">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+</section>
+<div id="metricas">
+  <div class="metricas-inner">
+    <div class="fade-up">
+      <div class="metrica-num" data-target="500" data-suffix="+">0+</div>
+      <div class="metrica-label">Clientes asesorados</div>
+    </div>
+    <div class="fade-up">
+      <div class="metrica-num" data-target="5" data-suffix="+">0+</div>
+      <div class="metrica-label">Años de experiencia</div>
+    </div>
+    <div class="fade-up">
+      <div class="metrica-num" data-target="8" data-suffix="% USD">0%</div>
+      <div class="metrica-label">Rendimiento promedio estimado</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== POR QUÉ NICOLÁS ===== -->
+<section id="porque">
+  <div class="section-container">
+    <div class="section-tag fade-up">Por qué elegirme</div>
+    <h2 class="section-title fade-up">Invertir bien no debería ser complicado</h2>
+    <p class="section-sub fade-up">Acompañé a cientos de argentinos a poner su dinero a trabajar en dólares de forma clara y sin misterios.</p>
+    <div class="diferenciales-grid">
+      <div class="diferencial-card fade-up">
+        <span class="diferencial-icon">💬</span>
+        <div class="diferencial-titulo">Explico simple</div>
+        <p class="diferencial-texto">Nada de jerga financiera. Te explico cada instrumento en términos que puedas entender y aplicar.</p>
+      </div>
+      <div class="diferencial-card fade-up">
+        <span class="diferencial-icon">💰</span>
+        <div class="diferencial-titulo">Sin costo para vos</div>
+        <p class="diferencial-texto">Mi comisión la paga el mercado. Vos no pagás nada por el asesoramiento. El precio siempre lo transparento.</p>
+      </div>
+      <div class="diferencial-card fade-up">
+        <span class="diferencial-icon">🤝</span>
+        <div class="diferencial-titulo">Te acompaño paso a paso</div>
+        <p class="diferencial-texto">Desde la apertura de tu cuenta hasta la primera operación. No te dejo solo en ningún momento del proceso.</p>
+      </div>
+      <div class="diferencial-card fade-up">
+        <span class="diferencial-icon">🎯</span>
+        <div class="diferencial-titulo">Estrategia personalizada</div>
+        <p class="diferencial-texto">No existe una cartera para todos. Analizamos tu situación, tus objetivos y armamos algo que tenga sentido para vos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PERFIL INVERSOR ===== -->
+<section id="perfil">
+  <div class="section-container">
+    <div class="section-tag fade-up">Perfil de inversor</div>
+    <h2 class="section-title fade-up">¿Cuál es tu perfil?</h2>
+    <p class="section-sub fade-up">Respondé 6 preguntas y te mostramos qué tipo de cartera se adapta mejor a vos.</p>
+    <div class="perfil-box fade-up">
+      <!-- QUIZ -->
+      <div id="quizContainer">
+        <div class="quiz-progress" id="quizProgress"></div>
+        <div id="quizPregunta" class="quiz-pregunta"></div>
+        <div id="quizOpciones" class="quiz-opciones"></div>
+        <div class="quiz-nav">
+          <button class="btn-quiz-prev" id="btnPrev" onclick="quizPrev()">← Anterior</button>
+          <span class="quiz-contador" id="quizContador"></span>
+          <button class="btn-quiz-next" id="btnNext" onclick="quizNext()">Siguiente →</button>
+        </div>
+      </div>
+      <!-- RESULTADO -->
+      <div id="quizResultado" class="resultado-perfil">
+        <div id="perfilBadge" class="perfil-badge"></div>
+        <p id="perfilDescripcion" class="perfil-descripcion"></p>
+        <div class="cartera-sugerida">
+          <div class="cartera-titulo">Cartera sugerida de ejemplo</div>
+          <div id="carteraItems"></div>
+        </div>
+        <a id="btnWaPerfil" href="#" class="btn-wa-perfil" target="_blank">
+          💬 Quiero que Nicolás me arme mi cartera
+        </a>
+        <p style="text-align:center; margin-top:1rem; color:rgba(248,246,241,0.4); font-size:0.75rem;">La cartera sugerida es orientativa. Nicolás la ajustará a tu situación real.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CALCULADORA ===== -->
+<section id="calculadora">
+  <div class="section-container">
+    <div class="section-tag fade-up">Calculadora</div>
+    <h2 class="section-title fade-up">¿Cuánto podés ganar?</h2>
+    <p class="section-sub fade-up">Ingresá tu capital y mirá la diferencia entre dejarlo parado o ponerlo a trabajar.</p>
+
+    <!-- TABS -->
+    <div class="calc-tabs fade-up">
+      <button class="calc-tab activo" onclick="switchCalc('usd', event)">💵 Renta en USD</button>
+      <button class="calc-tab" onclick="switchCalc('ars', event)">🇦🇷 Renta en Pesos</button>
+      <button class="calc-tab" onclick="switchCalc('ic', event)">📈 Interés Compuesto</button>
+    </div>
+
+    <!-- PANEL USD -->
+    <div id="calcUSD" class="calc-panel">
+      <div class="calc-grid">
+        <div class="fade-up">
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcMontoUSD">Capital disponible</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">USD</span>
+              <input type="number" id="calcMontoUSD" class="calc-input" placeholder="100.000" value="100000" min="100" oninput="calcularUSD()">
+            </div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcTasaUSD">Rendimiento anual estimado</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">%</span>
+              <input type="number" id="calcTasaUSD" class="calc-input" value="8" min="1" max="30" oninput="calcularUSD()">
+            </div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcAniosUSD">Horizonte temporal</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">años</span>
+              <input type="number" id="calcAniosUSD" class="calc-input" value="5" min="1" max="30" oninput="calcularUSD()">
+            </div>
+          </div>
+          <div class="calc-resultados-usd" id="resBoxUSD">
+            <div class="calc-res-titulo">Tu renta estimada en USD</div>
+            <div class="calc-res-row">
+              <div class="calc-res-item">
+                <div class="calc-res-label">Renta mensual</div>
+                <div class="calc-res-valor" id="resUSDMensual"><span>USD</span> 667</div>
+              </div>
+              <div class="calc-res-item">
+                <div class="calc-res-label">Renta anual</div>
+                <div class="calc-res-valor" id="resUSDAnual"><span>USD</span> 8.000</div>
+              </div>
+            </div>
+            <div class="calc-res-item" style="border-top:1px solid rgba(248,246,241,0.08); padding-top:1rem; margin-top:0.5rem;">
+              <div class="calc-res-label">Capital final proyectado</div>
+              <div class="calc-res-valor" id="resUSDFinal"><span>USD</span> 146.933</div>
+            </div>
+            <p class="calc-nota">⚠️ Rendimientos estimados. Pueden variar según condiciones de mercado. No constituyen garantía.</p>
+          </div>
+          <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Usé%20la%20calculadora%20en%20USD%20y%20quiero%20armar%20mi%20cartera." target="_blank" class="btn-calc" id="btnCalcUSD">
+            💬 Quiero armar esta cartera
+          </a>
+        </div>
+        <!-- GRÁFICO USD -->
+        <div class="calc-grafico-wrap fade-up">
+          <div class="calc-grafico-titulo">Invertido vs. sin invertir (inflación USD ~3% anual)</div>
+          <canvas id="graficoUSD" height="280"></canvas>
+          <div class="calc-grafico-leyenda">
+            <span class="leyenda-item verde">● Capital invertido (8% anual)</span>
+            <span class="leyenda-item rojo">● Sin invertir (–3% inflación USD)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL ARS -->
+    <div id="calcARS" class="calc-panel" style="display:none;">
+      <div class="calc-grid">
+        <div class="fade-up">
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcMontoARS">Capital disponible</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">ARS</span>
+              <input type="number" id="calcMontoARS" class="calc-input" placeholder="100.000.000" value="100000000" min="1000" oninput="calcularARS()">
+            </div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcTasaARS">Rendimiento anual estimado</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">%</span>
+              <input type="number" id="calcTasaARS" class="calc-input" value="25" min="1" max="200" oninput="calcularARS()">
+            </div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcAniosARS">Horizonte temporal</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">años</span>
+              <input type="number" id="calcAniosARS" class="calc-input" value="3" min="1" max="15" oninput="calcularARS()">
+            </div>
+          </div>
+          <div class="calc-resultados-usd" id="resBoxARS">
+            <div class="calc-res-titulo">Tu renta estimada en Pesos</div>
+            <div class="calc-res-row">
+              <div class="calc-res-item">
+                <div class="calc-res-label">Renta mensual</div>
+                <div class="calc-res-valor" id="resARSMensual"><span>ARS</span> 2.083.333</div>
+              </div>
+              <div class="calc-res-item">
+                <div class="calc-res-label">Renta anual</div>
+                <div class="calc-res-valor" id="resARSAnual"><span>ARS</span> 25.000.000</div>
+              </div>
+            </div>
+            <div class="calc-res-item" style="border-top:1px solid rgba(248,246,241,0.08); padding-top:1rem; margin-top:0.5rem;">
+              <div class="calc-res-label">Capital final proyectado</div>
+              <div class="calc-res-valor" id="resARSFinal"><span>ARS</span> 195.312.500</div>
+            </div>
+            <p class="calc-nota">⚠️ Inflación ARS referencial ~32% anual. Rendimientos estimados. No constituyen garantía.</p>
+          </div>
+          <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Usé%20la%20calculadora%20en%20pesos%20y%20quiero%20armar%20mi%20cartera." target="_blank" class="btn-calc" id="btnCalcARS">
+            💬 Quiero armar esta cartera
+          </a>
+        </div>
+        <!-- GRÁFICO ARS -->
+        <div class="calc-grafico-wrap fade-up">
+          <div class="calc-grafico-titulo">Invertido vs. sin invertir (inflación ARS ~32% anual)</div>
+          <canvas id="graficoARS" height="280"></canvas>
+          <div class="calc-grafico-leyenda">
+            <span class="leyenda-item verde">● Capital invertido (25% anual)</span>
+            <span class="leyenda-item rojo">● Sin invertir (–32% poder adquisitivo)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL INTERÉS COMPUESTO -->
+    <div id="calcIC" class="calc-panel" style="display:none;">
+      <div class="calc-ic-intro fade-up">
+        <div class="calc-ic-badge">🧠 ¿Qué es el interés compuesto?</div>
+        <p class="calc-ic-explicacion">Es el "<strong>octavo maravilla del mundo</strong>" según Einstein. Cada año, ganás intereses no solo sobre tu capital inicial, sino también sobre los intereses acumulados. El dinero trabaja para vos <em>exponencialmente</em>.</p>
+      </div>
+      <div class="calc-grid">
+        <div class="fade-up">
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcICMonto">Capital inicial</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">USD</span>
+              <input type="number" id="calcICMonto" class="calc-input" value="100000" min="100" oninput="calcularIC()">
+            </div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcICAporte">Aporte mensual adicional</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">USD</span>
+              <input type="number" id="calcICAporte" class="calc-input" value="0" min="0" oninput="calcularIC()">
+            </div>
+            <div style="font-size:0.75rem; color:var(--gris); margin-top:4px;">Opcional. Cuánto sumás por mes al capital.</div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcICTasa">Rendimiento anual</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">%</span>
+              <input type="number" id="calcICTasa" class="calc-input" value="8" min="1" max="50" oninput="calcularIC()">
+            </div>
+          </div>
+          <div class="calc-input-group">
+            <label class="calc-label" for="calcICAnios">Años de inversión</label>
+            <div class="calc-input-wrap">
+              <span class="calc-prefix">años</span>
+              <input type="number" id="calcICAnios" class="calc-input" value="10" min="1" max="40" oninput="calcularIC()">
+            </div>
+          </div>
+
+          <!-- Resultados IC -->
+          <div class="calc-resultados-usd" id="resBoxIC">
+            <div class="calc-res-titulo">Poder del interés compuesto</div>
+            <div class="calc-res-item">
+              <div class="calc-res-label">Capital inicial invertido</div>
+              <div class="calc-res-valor" id="resICInicial"><span>USD</span> 100.000</div>
+            </div>
+            <div class="calc-res-item" style="border-top:1px solid rgba(248,246,241,0.08); padding-top:1rem; margin-top:0.5rem;">
+              <div class="calc-res-label">Capital final con interés compuesto</div>
+              <div class="calc-res-valor ic-grande" id="resICFinal"><span>USD</span> —</div>
+            </div>
+            <div class="calc-res-item" style="border-top:1px solid rgba(248,246,241,0.08); padding-top:1rem; margin-top:0.5rem;">
+              <div class="calc-res-label">Ganancia total generada</div>
+              <div class="calc-res-valor" id="resICGanancia" style="color:var(--dorado-claro)"><span>USD</span> —</div>
+            </div>
+            <div class="calc-ic-multiplicador" id="resICMulti">Tu dinero se multiplica <strong>—x</strong></div>
+            <p class="calc-nota">⚠️ Proyección teórica con tasa constante. Los rendimientos reales pueden variar.</p>
+          </div>
+          <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Calculé%20el%20interés%20compuesto%20en%20tu%20web%20y%20quiero%20empezar%20a%20invertir." target="_blank" class="btn-calc" id="btnCalcIC">
+            💬 Quiero empezar a invertir
+          </a>
+        </div>
+
+        <!-- GRÁFICO IC -->
+        <div class="calc-grafico-wrap fade-up">
+          <div class="calc-grafico-titulo">Crecimiento del capital con interés compuesto</div>
+          <canvas id="graficoIC" height="280"></canvas>
+          <div class="calc-grafico-leyenda">
+            <span class="leyenda-item verde">● Capital con interés compuesto</span>
+            <span class="leyenda-item" style="color:#8ab4f8;">● Capital aportado (sin rendimiento)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== CÓMO FUNCIONA ===== -->
+<section id="como">
+  <div class="section-container">
+    <div class="section-tag fade-up">El proceso</div>
+    <h2 class="section-title fade-up">Empezar es más fácil de lo que creés</h2>
+    <p class="section-sub fade-up">Tres pasos simples para tener tu primer inversión en dólares.</p>
+    <div class="pasos-grid">
+      <div class="paso-card fade-up">
+        <div class="paso-num">1</div>
+        <div class="paso-titulo">Me contactás</div>
+        <p class="paso-texto">Me escribís por WhatsApp o agendás una llamada. Sin compromiso. Contame tu situación y tus objetivos.</p>
+      </div>
+      <div class="paso-card fade-up">
+        <div class="paso-num">2</div>
+        <div class="paso-titulo">Analizamos tu perfil</div>
+        <p class="paso-texto">Evaluamos juntos tu horizonte, tolerancia al riesgo y capital. Abrís tu cuenta en Balanz si aún no tenés.</p>
+      </div>
+      <div class="paso-card fade-up">
+        <div class="paso-num">3</div>
+        <div class="paso-titulo">Armamos tu cartera y operamos</div>
+        <p class="paso-texto">Ejecutamos las operaciones. Te explicamos cada movimiento. Y seguimos en contacto para ajustar lo que haga falta.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INSTRUMENTOS ===== -->
+<section id="instrumentos">
+  <div class="section-container">
+    <div class="section-tag fade-up">¿Con qué trabajamos?</div>
+    <h2 class="section-title fade-up">Instrumentos que usamos</h2>
+    <p class="section-sub fade-up">Cada activo cumple un rol en tu cartera. Te explicamos cuál es cuál.</p>
+    <div class="instrumentos-grid">
+      <div class="instrumento-card fade-up">
+        <div class="instrumento-nombre">Obligaciones Negociables</div>
+        <div class="instrumento-sigla">ONs</div>
+        <p class="instrumento-desc">Bonos corporativos de empresas argentinas líderes. Pagan renta en USD de forma periódica y tienen fecha de vencimiento conocida.</p>
+        <div class="instrumento-chips">
+          <span class="chip chip-perfil">Conservador / Moderado</span>
+          <span class="chip chip-moneda">USD</span>
+        </div>
+      </div>
+      <div class="instrumento-card fade-up">
+        <div class="instrumento-nombre">Bonos Soberanos</div>
+        <div class="instrumento-sigla">Soberanos</div>
+        <p class="instrumento-desc">Títulos de deuda del Estado argentino. Mayor rendimiento potencial con algo más de riesgo. Aptos para quien busca mayor retorno.</p>
+        <div class="instrumento-chips">
+          <span class="chip chip-perfil">Moderado / Dinámico</span>
+          <span class="chip chip-moneda">USD</span>
+        </div>
+      </div>
+      <div class="instrumento-card fade-up">
+        <div class="instrumento-nombre">Fondos Comunes de Inversión</div>
+        <div class="instrumento-sigla">FCI</div>
+        <p class="instrumento-desc">Carteras diversificadas administradas por profesionales. Podés invertir en pesos o dólares con liquidez inmediata o en plazos cortos.</p>
+        <div class="instrumento-chips">
+          <span class="chip chip-perfil">Todos los perfiles</span>
+          <span class="chip chip-moneda">ARS / USD</span>
+        </div>
+      </div>
+      <div class="instrumento-card fade-up">
+        <div class="instrumento-nombre">CEDEARs</div>
+        <div class="instrumento-sigla">SPY · VEA · EWZ</div>
+        <p class="instrumento-desc">Acciones de empresas globales que cotizán en Argentina. Comprás en pesos y tu inversión sigue el dólar. Exposición a mercados internacionales.</p>
+        <div class="instrumento-chips">
+          <span class="chip chip-perfil">Moderado / Dinámico</span>
+          <span class="chip chip-moneda">ARS (dolarizado)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HERRAMIENTAS ===== -->
+<section id="herramientas">
+  <div class="section-container">
+    <div class="section-tag fade-up">Recursos útiles</div>
+    <h2 class="section-title fade-up">Herramientas que uso todos los días</h2>
+    <p class="section-sub fade-up">Links directos a los sitios que más necesitás para seguir tus inversiones.</p>
+    <div class="herramientas-grid">
+      <a href="https://www.acuantoesta.com.ar/lecaps" target="_blank" class="herramienta-link fade-up">
+        <div class="herramienta-icon">💵</div>
+        <div class="herramienta-info">
+          <div class="herramienta-nombre">A cuánto está</div>
+          <div class="herramienta-desc">Tasa fija en pesos (LECAPs)</div>
+        </div>
+        <div class="herramienta-arrow">→</div>
+      </a>
+      <a href="https://finviz.com/map" target="_blank" class="herramienta-link fade-up">
+        <div class="herramienta-icon">🗺️</div>
+        <div class="herramienta-info">
+          <div class="herramienta-nombre">Finviz Map</div>
+          <div class="herramienta-desc">Mapa del mercado global</div>
+        </div>
+        <div class="herramienta-arrow">→</div>
+      </a>
+      <a href="https://bonistas.com/" target="_blank" class="herramienta-link fade-up">
+        <div class="herramienta-icon">📊</div>
+        <div class="herramienta-info">
+          <div class="herramienta-nombre">Bonistas</div>
+          <div class="herramienta-desc">Análisis de bonos argentinos</div>
+        </div>
+        <div class="herramienta-arrow">→</div>
+      </a>
+      <a href="https://www.balanz.com/abrir-cuenta-2.aspx?reference=nstrijland@balanz.com" target="_blank" class="herramienta-link fade-up">
+        <div class="herramienta-icon">🏦</div>
+        <div class="herramienta-info">
+          <div class="herramienta-nombre">Balanz</div>
+          <div class="herramienta-desc">Abrí tu cuenta de inversión</div>
+        </div>
+        <div class="herramienta-arrow">→</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TICKERS ===== -->
+<section id="tickers">
+  <div class="section-container">
+    <div class="section-tag fade-up">Activos más conocidos</div>
+    <h2 class="section-title fade-up">Tickers más conocidos</h2>
+    <p class="section-sub fade-up">Los activos que más trabajo y recomiendo según perfil. Precios y upside son referenciales y se actualizan periódicamente.</p>
+    <div class="tickers-nota fade-up">
+      ⚠️ Precios referenciales. No constituyen asesoramiento formal. Consultame para una recomendación personalizada.
+    </div>
+
+    <!-- CUADRITOS CEDEARS -->
+    <div class="tickers-seccion-titulo fade-up">📊 CEDEARs destacados</div>
+    <div class="tickers-cards-grid fade-up">
+
+      <div class="ticker-card">
+        <div class="ticker-card-header">
+          <span class="ticker-card-code">SPY</span>
+          <span class="rec-mantener">Mantener</span>
+        </div>
+        <div class="ticker-card-nombre">S&P 500 ETF</div>
+        <p class="ticker-card-desc">El ETF más famoso del mundo. Replica las 500 empresas más grandes de EE.UU. — Apple, Microsoft, Amazon, Tesla. Comprás en pesos y tu inversión sigue al dólar.</p>
+        <div class="ticker-card-nums">
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Precio ref.</span>
+            <span class="ticker-card-num-val">$52.000</span>
+          </div>
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Target</span>
+            <span class="ticker-card-num-val verde">$58.000</span>
+          </div>
+          <div class="ticker-card-num-item upside">
+            <span class="ticker-card-num-label">Upside</span>
+            <span class="ticker-card-num-val dorado">+11.5%</span>
+          </div>
+        </div>
+        <div class="ticker-card-tipo">CEDEAR · Dolarizado</div>
+      </div>
+
+      <div class="ticker-card">
+        <div class="ticker-card-header">
+          <span class="ticker-card-code">VEA</span>
+          <span class="rec-comprar">Comprar</span>
+        </div>
+        <div class="ticker-card-nombre">Europa, Asia y Pacífico ETF</div>
+        <p class="ticker-card-desc">ETF que replica los mercados desarrollados fuera de EE.UU. — Europa, Japón, Australia. Diversificación global en un solo instrumento. Dolarizado.</p>
+        <div class="ticker-card-nums">
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Precio ref.</span>
+            <span class="ticker-card-num-val">$27.500</span>
+          </div>
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Target</span>
+            <span class="ticker-card-num-val verde">$31.000</span>
+          </div>
+          <div class="ticker-card-num-item upside">
+            <span class="ticker-card-num-label">Upside</span>
+            <span class="ticker-card-num-val dorado">+12.7%</span>
+          </div>
+        </div>
+        <div class="ticker-card-tipo">CEDEAR · Dolarizado</div>
+      </div>
+
+      <div class="ticker-card">
+        <div class="ticker-card-header">
+          <span class="ticker-card-code">EWZ</span>
+          <span class="rec-esperar">Esperar</span>
+        </div>
+        <div class="ticker-card-nombre">Brasil ETF</div>
+        <p class="ticker-card-desc">ETF que replica el mercado accionario brasileño. Alta correlación con Argentina y con los commodities. Mayor volatilidad, mayor potencial de rebote.</p>
+        <div class="ticker-card-nums">
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Precio ref.</span>
+            <span class="ticker-card-num-val">$18.200</span>
+          </div>
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Target</span>
+            <span class="ticker-card-num-val verde">$19.000</span>
+          </div>
+          <div class="ticker-card-num-item upside">
+            <span class="ticker-card-num-label">Upside</span>
+            <span class="ticker-card-num-val dorado">+4.4%</span>
+          </div>
+        </div>
+        <div class="ticker-card-tipo">CEDEAR · Dolarizado</div>
+      </div>
+
+    </div>
+
+    <!-- CUADRITOS ONs -->
+    <div class="tickers-seccion-titulo fade-up" style="margin-top:3rem;">🏢 Top ONs por TIR actual</div>
+    <div class="tickers-cards-grid fade-up">
+
+      <div class="ticker-card">
+        <div class="ticker-card-header">
+          <span class="ticker-card-code">YMCXO</span>
+          <span class="rec-comprar">Comprar</span>
+        </div>
+        <div class="ticker-card-nombre">YPF ON 2029</div>
+        <p class="ticker-card-desc">Obligación negociable de YPF con vencimiento 2029. Paga cupones en dólares de forma semestral. Una de las ONs más operadas del mercado local.</p>
+        <div class="ticker-card-nums">
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Precio ref.</span>
+            <span class="ticker-card-num-val">$97,50</span>
+          </div>
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Target</span>
+            <span class="ticker-card-num-val verde">$103</span>
+          </div>
+          <div class="ticker-card-num-item upside">
+            <span class="ticker-card-num-label">TIR est.</span>
+            <span class="ticker-card-num-val dorado">~8.5%</span>
+          </div>
+        </div>
+        <div class="ticker-card-tipo">ON Corporativa · USD</div>
+      </div>
+
+      <div class="ticker-card">
+        <div class="ticker-card-header">
+          <span class="ticker-card-code">GD30</span>
+          <span class="rec-comprar">Comprar</span>
+        </div>
+        <div class="ticker-card-nombre">Global 2030 (Soberano)</div>
+        <p class="ticker-card-desc">Bono soberano argentino con vencimiento 2030. Mayor rendimiento que las ONs corporativas, con el riesgo soberano argentino. Ideal para perfil moderado/dinámico.</p>
+        <div class="ticker-card-nums">
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Precio ref.</span>
+            <span class="ticker-card-num-val">$61,20</span>
+          </div>
+          <div class="ticker-card-num-item">
+            <span class="ticker-card-num-label">Target</span>
+            <span class="ticker-card-num-val verde">$70</span>
+          </div>
+          <div class="ticker-card-num-item upside">
+            <span class="ticker-card-num-label">Upside</span>
+            <span class="ticker-card-num-val dorado">+14.4%</span>
+          </div>
+        </div>
+        <div class="ticker-card-tipo">Bono Soberano · USD</div>
+      </div>
+
+    </div>
+
+    <p style="text-align:center; margin-top:2rem; color:var(--gris); font-size:0.82rem;" class="fade-up">
+      Los precios y upside se actualizan periódicamente. Para ver los activos con mayor rendimiento esperado del mes, <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Quiero%20saber%20cuáles%20son%20los%20activos%20con%20mejor%20rendimiento%20este%20mes." target="_blank" style="color:var(--verde-claro); font-weight:600;">consultame directamente</a>.
+    </p>
+  </div>
+</section>
+
+<!-- ===== TESTIMONIOS ===== -->
+<section id="testimonios">
+  <div class="section-container">
+    <div class="section-tag fade-up">Lo que dicen mis clientes</div>
+    <h2 class="section-title fade-up">Resultados reales, personas reales</h2>
+    <p class="section-sub fade-up">Casos de clientes que empezaron desde cero y hoy tienen una cartera en dólares trabajando para ellos.</p>
+    <div class="testimonios-grid">
+      <div class="testimonio-card fade-up">
+        <div class="testimonio-estrellas">★★★★★</div>
+        <p class="testimonio-texto">"Nunca había invertido en mi vida. Nico me explicó todo desde cero, me ayudó a abrir la cuenta y hoy tengo una cartera que me genera renta en dólares todos los meses."</p>
+        <div class="testimonio-autor">
+          <div class="testimonio-avatar">ML</div>
+          <div>
+            <div class="testimonio-nombre">María L.</div>
+            <div class="testimonio-perfil">Perfil conservador · Inversión inicial: USD 50.000</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonio-card fade-up">
+        <div class="testimonio-estrellas">★★★★★</div>
+        <p class="testimonio-texto">"Lo que más valoro es la claridad. Siempre sé dónde está mi plata y por qué. Nada de sorpresas. La transparencia de Nico es su mayor diferencial."</p>
+        <div class="testimonio-autor">
+          <div class="testimonio-avatar">RG</div>
+          <div>
+            <div class="testimonio-nombre">Roberto G.</div>
+            <div class="testimonio-perfil">Perfil moderado · Inversión inicial: USD 70.000</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonio-card fade-up">
+        <div class="testimonio-estrellas">★★★★★</div>
+        <p class="testimonio-texto">"Tenía los dólares debajo del colchón hace 3 años. Hoy tengo una cartera diversificada que rinde bien y sigue el mercado. No lo puedo creer que esperé tanto para empezar."</p>
+        <div class="testimonio-autor">
+          <div class="testimonio-avatar">SP</div>
+          <div>
+            <div class="testimonio-nombre">Sofía P.</div>
+            <div class="testimonio-perfil">Perfil dinámico · Inversión inicial: USD 200.000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== NEWSLETTER ===== -->
+<section id="newsletter">
+  <div class="section-container">
+    <div class="newsletter-box fade-up">
+      <div class="section-tag">Newsletter semanal</div>
+      <h2 class="section-title" style="font-size: 2rem; margin-bottom: 1rem;">Los mejores activos de la semana, en tu mail</h2>
+      <p>Cada semana comparto los activos que más me gustan en pesos, USD, CEDEARs, FCI y ONs. Sin spam. Solo lo que vale la pena.</p>
+      <p style="color: rgba(248,246,241,0.5); font-size:0.82rem; margin-top:-1rem; margin-bottom:1.5rem;">📌 Próximamente — dejame tu WhatsApp y te aviso cuando esté listo.</p>
+      <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Quiero%20anotarme%20al%20newsletter%20semanal%20de%20activos." target="_blank" style="display:inline-flex; align-items:center; gap:10px; background: var(--whatsapp); color:white; font-weight:700; padding:15px 32px; border-radius:100px; font-size:0.95rem; transition:all 0.25s;">
+        💬 Avisame cuando esté disponible
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BALANZ ===== -->
+<section id="balanz">
+  <div class="section-container">
+    <div class="section-tag fade-up">Apertura de cuenta</div>
+    <h2 class="section-title fade-up">Abrí tu cuenta en Balanz</h2>
+    <p class="section-sub fade-up">Para poder invertir necesitás una cuenta en Balanz. Es gratis, online y en 24 horas.</p>
+    <div class="balanz-inner">
+      <div class="fade-up">
+        <div class="balanz-pasos">
+          <div class="balanz-paso">
+            <div class="balanz-paso-num">1</div>
+            <div>
+              <div class="balanz-paso-titulo">Entrás al link de Nico</div>
+              <p class="balanz-paso-texto">Hacés click en el botón de abajo y accedés al formulario de apertura de cuenta con mi link de referido.</p>
+            </div>
+          </div>
+          <div class="balanz-paso">
+            <div class="balanz-paso-num">2</div>
+            <div>
+              <div class="balanz-paso-titulo">Completás tus datos</div>
+              <p class="balanz-paso-texto">DNI, foto y algunos datos personales. Todo online, en menos de 10 minutos. Balanz hace el resto.</p>
+            </div>
+          </div>
+          <div class="balanz-paso">
+            <div class="balanz-paso-num">3</div>
+            <div>
+              <div class="balanz-paso-titulo">Fondear y operar</div>
+              <p class="balanz-paso-texto">Una vez aprobada la cuenta, transferís los fondos y me avisás. Arrancamos juntos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="balanz-visual fade-up">
+        <div class="balanz-logo-text">Balanz</div>
+        <p>Broker regulado por la CNV. Más de 20 años en el mercado. La plataforma donde operamos juntos.</p>
+        <a href="https://www.balanz.com/abrir-cuenta-2.aspx?reference=nstrijland@balanz.com" target="_blank" class="btn-balanz">🏦 Abrí tu cuenta gratis</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== GUÍA INTERACTIVA ===== -->
+<section id="guia" style="background: var(--verde);">
+  <div class="section-container">
+    <div class="section-tag fade-up" style="color:var(--dorado);">Guía interactiva</div>
+    <h2 class="section-title fade-up" style="color:var(--blanco);">¿Querés aprender a invertir por tu cuenta?</h2>
+    <p class="section-sub fade-up" style="color:rgba(248,246,241,0.65);">Seguí el camino paso a paso y al final te decimos exactamente qué activos comprar según tu perfil y capital.</p>
+
+    <div id="guiaBox" class="fade-up" style="max-width:720px; margin-top:2.5rem;">
+
+      <!-- PANTALLA 0: Intro -->
+      <div class="guia-screen" id="gs0">
+        <div class="guia-card-grande">
+          <div style="font-size:3.5rem; margin-bottom:1rem;">🚀</div>
+          <h3 class="guia-titulo-grande">Es hora de hacer que tu plata trabaje para vos</h3>
+          <p class="guia-subtitulo">En 3 preguntas simples te decimos qué invertir, cuánto y cómo hacerlo. Completamente gratis.</p>
+          <div class="guia-btns-row">
+            <button class="guia-btn-si" onclick="guiaGo(1)">🎯 Quiero empezar</button>
+            <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Prefiero%20que%20me%20guíes%20vos." target="_blank" class="guia-btn-no">Prefiero que me guíe Nico</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANTALLA 1: ¿Ya tenés cuenta? -->
+      <div class="guia-screen" id="gs1" style="display:none;">
+        <div class="guia-progress-wrap"><div class="guia-progress-bar" style="width:20%"></div></div>
+        <div class="guia-pregunta-label">Paso 1 de 5</div>
+        <h3 class="guia-titulo">¿Ya tenés cuenta en Balanz?</h3>
+        <p class="guia-desc">Para operar necesitás una cuenta. Si no tenés, te ayudamos a abrirla en 5 minutos.</p>
+        <div class="guia-opciones-col">
+          <button class="guia-opcion" onclick="guiaSet('cuenta','si'); guiaGo(1.7)">✅ Sí, ya tengo cuenta en Balanz</button>
+          <button class="guia-opcion" onclick="guiaSet('cuenta','no'); guiaGo(1.5)">❌ No tengo cuenta todavía</button>
+        </div>
+      </div>
+
+      <!-- PANTALLA 1.5: Abrir cuenta -->
+      <div class="guia-screen" id="gs1-5" style="display:none;">
+        <div class="guia-progress-wrap"><div class="guia-progress-bar" style="width:15%"></div></div>
+        <div class="guia-pregunta-label">Paso previo</div>
+        <h3 class="guia-titulo">Primero abrí tu cuenta — es gratis y online</h3>
+        <div class="guia-steps-list">
+          <div class="guia-step-item"><span class="guia-step-num">1</span><div><strong>Entrá al link de Nico</strong><br><span style="color:rgba(248,246,241,0.6);font-size:0.85rem;">Hacé click en el botón de abajo y completá el formulario de apertura.</span></div></div>
+          <div class="guia-step-item"><span class="guia-step-num">2</span><div><strong>Creá usuario, código de operación y vinculá tu banco</strong><br><span style="color:rgba(248,246,241,0.6);font-size:0.85rem;">Todo desde la plataforma web o la app de Balanz.</span></div></div>
+          <div class="guia-step-item"><span class="guia-step-num">3</span><div><strong>Transferí fondos y volvé acá</strong><br><span style="color:rgba(248,246,241,0.6);font-size:0.85rem;">Una vez acreditado el dinero, ¡estás listo para operar!</span></div></div>
+        </div>
+        <div class="guia-btns-row" style="margin-top:1.5rem;">
+          <a href="https://www.balanz.com/abrir-cuenta-2.aspx?reference=nstrijland@balanz.com" target="_blank" class="guia-btn-si">🏦 Abrir cuenta en Balanz</a>
+          <button class="guia-btn-secondary" onclick="guiaGo(1.7)">Ya la abrí, seguir →</button>
+        </div>
+      </div>
+
+      <!-- PANTALLA 1.7: ¿Pesos o USD? -->
+      <div class="guia-screen" id="gs1-7" style="display:none;">
+        <div class="guia-progress-wrap"><div class="guia-progress-bar" style="width:35%"></div></div>
+        <div class="guia-pregunta-label">Paso 2 de 5</div>
+        <h3 class="guia-titulo">¿En qué moneda querés invertir?</h3>
+        <p class="guia-desc">Esto define completamente los instrumentos disponibles para tu cartera.</p>
+        <div class="guia-opciones-col">
+          <button class="guia-opcion" onclick="guiaSet('moneda','pesos'); guiaGo(2)">🇦🇷 <strong>Pesos argentinos</strong> — Quiero invertir mi capital en ARS</button>
+          <button class="guia-opcion" onclick="guiaSet('moneda','usd'); guiaGo(2)">💵 <strong>Dólares</strong> — Tengo dólares o quiero dolarizarme</button>
+          <button class="guia-opcion guia-opcion-exterior" onclick="guiaSet('moneda','exterior'); guiaSet('perfil','exterior'); guiaGo(2)">🌍 <strong>Inversión internacional</strong> — Quiero exposición a mercados globales sin riesgo argentino</button>
+        </div>
+      </div>
+
+      <!-- PANTALLA 2: ¿Cuánto tenés? -->
+      <div class="guia-screen" id="gs2" style="display:none;">
+        <div class="guia-progress-wrap"><div class="guia-progress-bar" style="width:55%"></div></div>
+        <div class="guia-pregunta-label">Paso 3 de 5</div>
+        <h3 class="guia-titulo" id="gs2titulo">¿Con cuánto capital querés empezar?</h3>
+        <p class="guia-desc" id="gs2desc">Esto define qué instrumentos y nivel de diversificación tienen sentido para vos.</p>
+        <div class="guia-opciones-col" id="gs2opciones"></div>
+      </div>
+
+      <!-- PANTALLA 3: ¿Qué perfil? (solo para USD) -->
+      <div class="guia-screen" id="gs3" style="display:none;">
+        <div class="guia-progress-wrap"><div class="guia-progress-bar" style="width:75%"></div></div>
+        <div class="guia-pregunta-label">Paso 4 de 5</div>
+        <h3 class="guia-titulo">¿Cuál es tu estrategia de inversión?</h3>
+        <p class="guia-desc">Elegí la que mejor describe tu objetivo y tu relación con el riesgo.</p>
+        <div class="guia-opciones-col">
+          <button class="guia-opcion" onclick="guiaSet('perfil','conservador'); guiaGo(4)">🛡️ <strong>Conservador</strong> — Quiero cuidar mi capital con renta estable y predecible</button>
+          <button class="guia-opcion" onclick="guiaSet('perfil','moderado'); guiaGo(4)">⚖️ <strong>Moderado</strong> — Acepto algo de volatilidad a cambio de mayor crecimiento</button>
+          <button class="guia-opcion" onclick="guiaSet('perfil','dinamico'); guiaGo(4)">🚀 <strong>Dinámico</strong> — Busco máximo rendimiento y tolero fluctuaciones del mercado</button>
+        </div>
+      </div>
+
+      <!-- PANTALLA 4: Resultado + activos + tutoriales automáticos -->
+      <div class="guia-screen" id="gs4" style="display:none;">
+        <div class="guia-progress-wrap"><div class="guia-progress-bar" style="width:100%"></div></div>
+        <div id="guiaResultado"></div>
+      </div>
+
+      <!-- PANTALLA 5: Tutorial detallado (si elige aprender solo) -->
+      <div class="guia-screen" id="gs5" style="display:none;">
+        <div id="guiaTutorial"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section id="faq">
+  <div class="section-container">
+    <div class="section-tag fade-up">Preguntas frecuentes</div>
+    <h2 class="section-title fade-up">Todo lo que querés saber</h2>
+    <div class="faq-lista fade-up">
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Cuánto dinero necesito para empezar?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">No hay un mínimo formal para empezar. Dicho eso, trabajo principalmente con carteras desde USD 50.000, donde la diversificación y las estrategias de renta en dólares tienen mayor impacto real. Si tenés menos, también podemos conversar y ver qué tiene sentido para tu situación.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Cuánto puedo ganar? ¿Qué rendimiento obtengo?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Depende del instrumento y el perfil. Las carteras conservadoras con ONs rinden entre 6% y 9% anual en USD. Los perfiles más dinámicos pueden apuntar a más. Los rendimientos pasados no garantizan resultados futuros, pero trabajo con activos sólidos y transparentes.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Es seguro? ¿Puedo perder mi plata?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Todo instrumento financiero tiene algún grado de riesgo. Los FCI y ONs de empresas sólidas son de bajo riesgo. Por eso analizamos tu perfil: armamos una cartera acorde a lo que podés y querés asumir. Nunca te recomendaría algo con lo que no te sentirías cómodo.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Cuándo puedo retirar mi dinero?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Depende del instrumento. Los FCI de money market son de liquidez inmediata. Las ONs y bonos se pueden vender en el mercado secundario en cualquier momento, aunque el precio puede variar. Siempre te informo la liquidez de cada activo antes de operar.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Qué es Balanz y por qué operamos ahí?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Balanz es uno de los brokers más importantes de Argentina, regulado por la CNV. Es la plataforma donde podés comprar y vender todos los activos que usamos. Tu dinero está en tu cuenta, a tu nombre. Yo te asesoro, pero la cuenta es tuya.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Cuánto cobra Nicolás por el asesoramiento?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Mi compensación la paga Balanz (las comisiones del mercado son aproximadamente 0,5% por operación). Es el modelo estándar de la mayoría de las ALyCs. Siempre lo vas a saber antes de operar.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Tengo que saber de finanzas para empezar?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Para nada. La mayoría de mis clientes llegaron sin conocimiento previo. Me encargo de explicarte todo desde cero, paso a paso. Mi trabajo es que entiendas qué hacemos y por qué, no que tengas que estudiar una carrera.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-pregunta" onclick="toggleFaq(this)">
+          ¿Cómo empiezo?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-respuesta">Muy simple: me escribís por WhatsApp o agendás una llamada de 20 minutos. Conversamos sobre tu situación, tus objetivos y tu capital disponible. Si tiene sentido trabajar juntos, arrancamos con la apertura de la cuenta en Balanz y la primera operación.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== AGENDA ===== -->
+<section id="agenda">
+  <div class="section-container" style="text-align:center;">
+    <div class="section-tag fade-up">Agendá una llamada</div>
+    <h2 class="section-title fade-up">Una charla de 20 minutos puede cambiar cómo ponés a trabajar tu dinero</h2>
+    <p class="section-sub fade-up" style="margin: 0 auto 2.5rem;">Sin compromiso. Contame tu situación y vemos juntos si tiene sentido trabajar juntos.</p>
+    <div class="agenda-box fade-up">
+      <!-- Calendly inline widget -->
+      <div class="calendly-inline-widget" data-url="https://calendly.com/nstrijlandbalanz/30min" style="min-width:280px;height:650px;border-radius:12px;overflow:hidden;"></div>
+      <script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" async></script>
+      <!-- Si preferís botón directo de WhatsApp en vez de Calendly, usá el de abajo -->
+      <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Quiero%20agendar%20una%20llamada%20para%20hablar%20sobre%20mis%20inversiones." target="_blank" class="btn-agenda" style="margin-top:1.5rem;">
+        💬 O escribime por WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INSTAGRAM ===== -->
+<section id="instagram">
+  <div class="section-container">
+    <div class="section-tag fade-up">Seguime en Instagram</div>
+    <h2 class="section-title fade-up">Contenido financiero simple, todos los días</h2>
+    <p class="section-sub fade-up">Estrategias, análisis de activos y educación financiera en @finanzasconnico</p>
+    <div class="instagram-grid fade-up">
+      <!-- Reel 1 -->
+      <div style="border-radius:12px; overflow:hidden; background:#000;">
+        <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/DMyICjDhA9v/" data-instgrm-version="14" style="background:#fff;border:0;border-radius:12px;margin:0;max-width:100%;width:100%;"></blockquote>
+      </div>
+      <!-- Reel 2 -->
+      <div style="border-radius:12px; overflow:hidden; background:#000;">
+        <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/DNOqfP2imUO/" data-instgrm-version="14" style="background:#fff;border:0;border-radius:12px;margin:0;max-width:100%;width:100%;"></blockquote>
+      </div>
+      <!-- Reel 3 -->
+      <div style="border-radius:12px; overflow:hidden; background:#000;">
+        <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/reel/DQnK7EgDL8N/" data-instgrm-version="14" style="background:#fff;border:0;border-radius:12px;margin:0;max-width:100%;width:100%;"></blockquote>
+      </div>
+    </div>
+    <script async src="//www.instagram.com/embed.js"></script>
+    <div class="ig-cta fade-up">
+      <a href="https://www.instagram.com/finanzasconnico_/#" target="_blank" class="btn-ig">
+        📷 Ver @finanzasconnico
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COMUNIDAD WHATSAPP ===== -->
+<section id="comunidad" style="background: var(--verde); padding: 0;">
+  <div class="section-container" style="padding-top: 60px; padding-bottom: 60px;">
+    <div style="background: rgba(37,211,102,0.08); border: 1px solid rgba(37,211,102,0.25); border-radius: 20px; padding: 2.5rem; max-width: 760px; margin: 0 auto; text-align: center;" class="fade-up">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">💬</div>
+      <div class="section-tag" style="color: #25D366;">Comunidad exclusiva</div>
+      <h2 class="section-title" style="color: var(--blanco); margin-bottom: 1rem;">Sumate a mi comunidad de WhatsApp</h2>
+      <p style="color: rgba(248,246,241,0.7); font-size: 0.95rem; line-height: 1.7; max-width: 520px; margin: 0 auto 2rem;">Publico novedades, oportunidades financieras y análisis de activos antes que en cualquier otro lado. Sin spam. Solo lo que vale la pena.</p>
+      <a href="https://chat.whatsapp.com/D9VsYfjb75rElATtrA62XA" target="_blank" style="display:inline-flex; align-items:center; gap:12px; background: #25D366; color: white; font-weight: 700; padding: 16px 36px; border-radius: 100px; font-size: 1rem; transition: all 0.25s; box-shadow: 0 8px 30px rgba(37,211,102,0.35);" onmouseover="this.style.background='#20b85a'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='#25D366'; this.style.transform='translateY(0)'">
+        📲 Unirme a la comunidad
+      </a>
+      <p style="color: rgba(248,246,241,0.35); font-size: 0.75rem; margin-top: 1rem;">Comunidad de WhatsApp · Solo lectura de novedades</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-logo">Finanzas<span>connico</span></div>
+      <p class="footer-desc">Asesoramiento financiero independiente para argentinos que quieren invertir de forma inteligente, simple y en dólares.</p>
+      <p class="footer-legal">El contenido de esta web es educativo y no constituye asesoramiento financiero formal. Nicolás Strijland opera como agente de Balanz, regulado por la Comisión Nacional de Valores (CNV).</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Secciones</div>
+      <ul class="footer-links">
+        <li><a href="#porque">Por qué Nico</a></li>
+        <li><a href="#perfil">Mi perfil inversor</a></li>
+        <li><a href="#calculadora">Calculadora</a></li>
+        <li><a href="#instrumentos">Instrumentos</a></li>
+        <li><a href="#tickers">Tickers</a></li>
+        <li><a href="#faq">Preguntas frecuentes</a></li>
+        <li><a href="#agenda">Agendá una llamada</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Contacto</div>
+      <ul class="footer-links">
+        <li><a href="https://www.instagram.com/finanzasconnico_/#" target="_blank">📷 Instagram</a></li>
+        <li><a href="https://wa.me/5491123284509" target="_blank">💬 WhatsApp</a></li>
+        <li><a href="https://chat.whatsapp.com/D9VsYfjb75rElATtrA62XA" target="_blank">👥 Comunidad WA</a></li>
+      </ul>
+    </div>
+    <div class="footer-social">
+      <a href="https://www.instagram.com/finanzasconnico_/#" target="_blank" class="social-btn ig">📷 @finanzasconnico</a>
+      <a href="https://wa.me/5491123284509" target="_blank" class="social-btn wa">💬 WhatsApp directo</a>
+      <a href="https://chat.whatsapp.com/D9VsYfjb75rElATtrA62XA" target="_blank" class="social-btn wa" style="background:rgba(37,211,102,0.15); border-color:rgba(37,211,102,0.3);">👥 Comunidad</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ===== WHATSAPP FLOTANTE ===== -->
+<div class="wa-flotante">
+  <div class="wa-tooltip">¿Hablamos? Respondemos en minutos 😊</div>
+  <a href="https://wa.me/5491123284509?text=Hola%20Nico!%20Vi%20tu%20web%20y%20me%20gustaría%20saber%20más%20sobre%20cómo%20invertir." target="_blank" class="wa-btn-float" aria-label="WhatsApp">
+    💬
+  </a>
+</div>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+// ===== NAVEGACIÓN MOBILE =====
+const hamburger = document.getElementById('hamburger');
+const navLinks = document.getElementById('navLinks');
+hamburger.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+});
+document.querySelectorAll('.nav-links a').forEach(a => {
+  a.addEventListener('click', () => navLinks.classList.remove('open'));
+});
+
+// ===== SCROLL ANIMATIONS =====
+const fadeEls = document.querySelectorAll('.fade-up');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+fadeEls.forEach(el => observer.observe(el));
+
+// ===== MÉTRICAS ANIMADAS =====
+function animateCounter(el, target, suffix) {
+  let current = 0;
+  const step = Math.ceil(target / 60);
+  const timer = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = current + suffix;
+    if (current >= target) clearInterval(timer);
+  }, 30);
+}
+const metricObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.querySelectorAll('.metrica-num').forEach(el => {
+        animateCounter(el, parseInt(el.dataset.target), el.dataset.suffix);
+      });
+      metricObserver.disconnect();
+    }
+  });
+}, { threshold: 0.5 });
+const metricSection = document.getElementById('metricas');
+if (metricSection) metricObserver.observe(metricSection);
+
+// ===== QUIZ DE PERFIL =====
+const preguntas = [
+  {
+    texto: "¿Cuál es tu principal objetivo de inversión?",
+    opciones: ["Preservar mi capital", "Generar renta periódica en USD", "Hacer crecer mi capital a largo plazo", "Especular y aprovechar oportunidades"]
+  },
+  {
+    texto: "¿Cuánto tiempo podés dejar tu dinero invertido sin necesitarlo?",
+    opciones: ["Menos de 6 meses", "Entre 6 meses y 1 año", "Entre 1 y 3 años", "Más de 3 años"]
+  },
+  {
+    texto: "¿Cómo reaccionarías si tu inversión baja un 15% en un mes?",
+    opciones: ["Vendería todo inmediatamente", "Me preocuparía mucho", "Lo aceptaría si es temporal", "Lo vería como una oportunidad de comprar más"]
+  },
+  {
+    texto: "¿Cuánto capital tenés disponible para invertir?",
+    opciones: ["Hasta USD 20.000", "Entre USD 20.000 y USD 50.000", "Entre USD 50.000 y USD 200.000", "Más de USD 200.000"]
+  },
+  {
+    texto: "¿Tenés experiencia previa invirtiendo?",
+    opciones: ["Nunca invertí", "Solo plazo fijo o ahorro", "Tengo algo de experiencia", "Invierto hace varios años"]
+  },
+  {
+    texto: "¿En qué moneda preferís invertir?",
+    opciones: ["Solo pesos", "Prefiero dólares", "Me da igual con tal que rinda", "Una mezcla de ambas"]
+  }
+];
+
+let quizActual = 0;
+let respuestas = [];
+let seleccionActual = null;
+
+const perfiles = {
+  conservador: {
+    nombre: "🛡️ Conservador",
+    descripcion: "Priorizás la seguridad de tu capital sobre el rendimiento. Una cartera ideal para vos combina instrumentos de bajo riesgo con renta en dólares predecible.",
+    cartera: [
+      { nombre: "ONs corporativas", pct: 50 },
+      { nombre: "FCI en USD", pct: 30 },
+      { nombre: "Bonos soberanos cortos", pct: 20 }
+    ]
+  },
+  moderado: {
+    nombre: "⚖️ Moderado",
+    descripcion: "Buscás un equilibrio entre seguridad y rendimiento. Tu cartera puede incluir instrumentos de renta fija y algo de exposición a acciones globales.",
+    cartera: [
+      { nombre: "ONs corporativas", pct: 35 },
+      { nombre: "Bonos soberanos", pct: 25 },
+      { nombre: "CEDEARs (SPY/VEA)", pct: 25 },
+      { nombre: "FCI en USD", pct: 15 }
+    ]
+  },
+  dinamico: {
+    nombre: "🚀 Dinámico",
+    descripcion: "Tolerás más volatilidad a cambio de mayor potencial de retorno. Tu cartera puede tener mayor exposición a renta variable y activos de mayor riesgo/retorno.",
+    cartera: [
+      { nombre: "CEDEARs (SPY/VEA/EWZ)", pct: 45 },
+      { nombre: "Bonos soberanos", pct: 30 },
+      { nombre: "ONs alto rendimiento", pct: 15 },
+      { nombre: "FCI", pct: 10 }
+    ]
+  }
+};
+
+function initQuiz() {
+  renderPregunta();
+}
+
+function renderPregunta() {
+  const p = preguntas[quizActual];
+  document.getElementById('quizPregunta').textContent = p.texto;
+  const opc = document.getElementById('quizOpciones');
+  opc.innerHTML = '';
+  p.opciones.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opcion' + (seleccionActual === i ? ' seleccionada' : '');
+    btn.textContent = o;
+    btn.onclick = () => seleccionarOpcion(i);
+    opc.appendChild(btn);
+  });
+  // Progress
+  const prog = document.getElementById('quizProgress');
+  prog.innerHTML = '';
+  preguntas.forEach((_, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'quiz-progress-bar' + (i <= quizActual ? ' activo' : '');
+    prog.appendChild(bar);
+  });
+  document.getElementById('quizContador').textContent = `${quizActual + 1} de ${preguntas.length}`;
+  document.getElementById('btnPrev').style.visibility = quizActual === 0 ? 'hidden' : 'visible';
+  const btnNext = document.getElementById('btnNext');
+  btnNext.textContent = quizActual === preguntas.length - 1 ? 'Ver mi perfil →' : 'Siguiente →';
+}
+
+function seleccionarOpcion(i) {
+  seleccionActual = i;
+  document.querySelectorAll('.quiz-opcion').forEach((btn, idx) => {
+    btn.classList.toggle('seleccionada', idx === i);
+  });
+}
+
+function quizNext() {
+  if (seleccionActual === null) {
+    alert('Por favor, seleccioná una opción para continuar.');
+    return;
+  }
+  respuestas[quizActual] = seleccionActual;
+  if (quizActual < preguntas.length - 1) {
+    quizActual++;
+    seleccionActual = respuestas[quizActual] !== undefined ? respuestas[quizActual] : null;
+    renderPregunta();
+  } else {
+    mostrarResultado();
+  }
+}
+
+function quizPrev() {
+  if (quizActual > 0) {
+    respuestas[quizActual] = seleccionActual;
+    quizActual--;
+    seleccionActual = respuestas[quizActual] !== undefined ? respuestas[quizActual] : null;
+    renderPregunta();
+  }
+}
+
+function mostrarResultado() {
+  // Cálculo simple de perfil
+  const score = respuestas.reduce((acc, r) => acc + r, 0);
+  const max = (preguntas.length - 1) * 3;
+  const pct = score / max;
+  let perfil;
+  if (pct < 0.35) perfil = perfiles.conservador;
+  else if (pct < 0.65) perfil = perfiles.moderado;
+  else perfil = perfiles.dinamico;
+
+  document.getElementById('quizContainer').style.display = 'none';
+  const res = document.getElementById('quizResultado');
+  res.classList.add('visible');
+  document.getElementById('perfilBadge').textContent = perfil.nombre;
+  document.getElementById('perfilDescripcion').textContent = perfil.descripcion;
+
+  const cartItems = document.getElementById('carteraItems');
+  cartItems.innerHTML = '';
+  perfil.cartera.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'cartera-item';
+    div.innerHTML = `
+      <span class="cartera-label">${item.nombre}</span>
+      <div class="cartera-barra-fondo"><div class="cartera-barra" data-width="${item.pct}"></div></div>
+      <span class="cartera-pct">${item.pct}%</span>
+    `;
+    cartItems.appendChild(div);
+  });
+
+  // Animar barras
+  setTimeout(() => {
+    document.querySelectorAll('.cartera-barra').forEach(b => {
+      b.style.width = b.dataset.width + '%';
+    });
+  }, 200);
+
+  // Armar mensaje WA con datos completos del perfil
+  const objetivo   = preguntas[0].opciones[respuestas[0]] || '—';
+  const horizonte  = preguntas[1].opciones[respuestas[1]] || '—';
+  const riesgo     = preguntas[2].opciones[respuestas[2]] || '—';
+  const monto      = preguntas[3].opciones[respuestas[3]] || '—';
+  const experiencia= preguntas[4].opciones[respuestas[4]] || '—';
+  const moneda     = preguntas[5].opciones[respuestas[5]] || '—';
+
+  const msgPerfil = encodeURIComponent(
+`Hola Nico! Completé el cuestionario de tu web y este es mi perfil:
+
+🧠 Perfil: ${perfil.nombre}
+💰 Capital disponible: ${monto}
+🎯 Objetivo: ${objetivo}
+⏳ Horizonte: ${horizonte}
+📉 Tolerancia al riesgo: ${riesgo}
+📊 Experiencia previa: ${experiencia}
+💵 Moneda preferida: ${moneda}
+
+Me gustaría que me ayudes a armar mi cartera personalizada.`
+  );
+  document.getElementById('btnWaPerfil').href = `https://wa.me/5491123284509?text=${msgPerfil}`;
+}
+
+initQuiz();
+
+// ===== CALCULADORA CON GRÁFICOS =====
+// Cargar Chart.js dinámicamente
+const chartScript = document.createElement('script');
+chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+chartScript.onload = () => { calcularUSD(); };
+document.head.appendChild(chartScript);
+
+let chartUSD = null;
+let chartARS = null;
+
+function switchCalc(tipo, e) {
+  document.querySelectorAll('.calc-tab').forEach(t => t.classList.remove('activo'));
+  if (e && e.currentTarget) e.currentTarget.classList.add('activo');
+  document.getElementById('calcUSD').style.display = tipo === 'usd' ? 'block' : 'none';
+  document.getElementById('calcARS').style.display = tipo === 'ars' ? 'block' : 'none';
+  document.getElementById('calcIC').style.display  = tipo === 'ic'  ? 'block' : 'none';
+  if (tipo === 'usd') calcularUSD();
+  else if (tipo === 'ars') calcularARS();
+  else calcularIC();
+}
+
+function fmtUSD(n) {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
+}
+
+function calcularUSD() {
+  const monto = parseFloat(document.getElementById('calcMontoUSD').value) || 0;
+  const tasa = parseFloat(document.getElementById('calcTasaUSD').value) / 100 || 0.08;
+  const anios = parseInt(document.getElementById('calcAniosUSD').value) || 5;
+
+  if (monto <= 0 || !window.Chart) return;
+
+  const mensual = (monto * tasa) / 12;
+  const anual = monto * tasa;
+  const final = monto * Math.pow(1 + tasa, anios);
+
+  document.getElementById('resUSDMensual').innerHTML = `<span>USD</span> ${fmtUSD(mensual)}`;
+  document.getElementById('resUSDAnual').innerHTML = `<span>USD</span> ${fmtUSD(anual)}`;
+  document.getElementById('resUSDFinal').innerHTML = `<span>USD</span> ${fmtUSD(final)}`;
+  document.getElementById('resBoxUSD').style.display = 'block';
+  document.getElementById('btnCalcUSD').style.display = 'flex';
+
+  // Datos del gráfico
+  const labels = [];
+  const dataInvertido = [];
+  const dataSinInvertir = [];
+  for (let y = 0; y <= anios; y++) {
+    labels.push('Año ' + y);
+    dataInvertido.push(Math.round(monto * Math.pow(1 + tasa, y)));
+    dataSinInvertir.push(Math.round(monto * Math.pow(1 - 0.03, y))); // inflación USD 3%
+  }
+
+  const ctx = document.getElementById('graficoUSD').getContext('2d');
+  if (chartUSD) chartUSD.destroy();
+  chartUSD = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Capital invertido',
+          data: dataInvertido,
+          borderColor: '#2a7a50',
+          backgroundColor: 'rgba(42,122,80,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#2a7a50',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Sin invertir',
+          data: dataSinInvertir,
+          borderColor: '#c0392b',
+          backgroundColor: 'rgba(192,57,43,0.06)',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 3,
+          pointBackgroundColor: '#c0392b',
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' USD ' + fmtUSD(ctx.parsed.y)
+          }
+        }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: v => 'USD ' + fmtUSD(v),
+            font: { size: 11 }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: {
+          ticks: { font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function calcularARS() {
+  const monto = parseFloat(document.getElementById('calcMontoARS').value) || 0;
+  const tasa = parseFloat(document.getElementById('calcTasaARS').value) / 100 || 0.25;
+  const anios = parseInt(document.getElementById('calcAniosARS').value) || 3;
+
+  if (monto <= 0 || !window.Chart) return;
+
+  const mensual = (monto * tasa) / 12;
+  const anual = monto * tasa;
+  const final = monto * Math.pow(1 + tasa, anios);
+
+  document.getElementById('resARSMensual').innerHTML = `<span>ARS</span> ${fmtUSD(mensual)}`;
+  document.getElementById('resARSAnual').innerHTML = `<span>ARS</span> ${fmtUSD(anual)}`;
+  document.getElementById('resARSFinal').innerHTML = `<span>ARS</span> ${fmtUSD(final)}`;
+  document.getElementById('resBoxARS').style.display = 'block';
+  document.getElementById('btnCalcARS').style.display = 'flex';
+
+  const labels = [];
+  const dataInvertido = [];
+  const dataSinInvertir = [];
+  const inflARS = 0.32;
+  for (let y = 0; y <= anios; y++) {
+    labels.push('Año ' + y);
+    dataInvertido.push(Math.round(monto * Math.pow(1 + tasa, y)));
+    dataSinInvertir.push(Math.round(monto * Math.pow(1 - inflARS, y)));
+  }
+
+  const ctx = document.getElementById('graficoARS').getContext('2d');
+  if (chartARS) chartARS.destroy();
+  chartARS = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Capital invertido',
+          data: dataInvertido,
+          borderColor: '#2a7a50',
+          backgroundColor: 'rgba(42,122,80,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#2a7a50',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Sin invertir (inflación)',
+          data: dataSinInvertir,
+          borderColor: '#c0392b',
+          backgroundColor: 'rgba(192,57,43,0.06)',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 3,
+          pointBackgroundColor: '#c0392b',
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ARS ' + fmtUSD(ctx.parsed.y)
+          }
+        }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: v => 'ARS ' + fmtUSD(v),
+            font: { size: 11 }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: {
+          ticks: { font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+let chartIC = null;
+
+function calcularIC() {
+  const capital  = parseFloat(document.getElementById('calcICMonto').value)  || 0;
+  const aporte   = parseFloat(document.getElementById('calcICAporte').value)  || 0;
+  const tasa     = parseFloat(document.getElementById('calcICTasa').value)    / 100 || 0.08;
+  const anios    = parseInt(document.getElementById('calcICAnios').value)     || 10;
+
+  if (capital <= 0 || !window.Chart) return;
+
+  const tasaMensual = tasa / 12;
+  const meses = anios * 12;
+
+  // Calcular mes a mes para el gráfico anual
+  const labelsIC = [];
+  const dataConIC = [];
+  const dataSinIC = [];
+
+  let acumulado = capital;
+  for (let y = 0; y <= anios; y++) {
+    labelsIC.push('Año ' + y);
+    // Capital con interés compuesto + aportes mensuales
+    const mesesTranscurridos = y * 12;
+    const valorIC = capital * Math.pow(1 + tasa, y) +
+      aporte * ((Math.pow(1 + tasaMensual, mesesTranscurridos) - 1) / tasaMensual) * (aporte > 0 ? 1 : 0);
+    dataConIC.push(Math.round(valorIC));
+    // Capital aportado sin rendimiento
+    dataSinIC.push(Math.round(capital + aporte * mesesTranscurridos));
+  }
+
+  const finalIC   = dataConIC[anios];
+  const aportado  = dataSinIC[anios];
+  const ganancia  = finalIC - aportado;
+  const multi     = (finalIC / capital).toFixed(1);
+
+  document.getElementById('resICInicial').innerHTML = `<span>USD</span> ${fmtUSD(capital)}`;
+  document.getElementById('resICFinal').innerHTML   = `<span>USD</span> ${fmtUSD(finalIC)}`;
+  document.getElementById('resICGanancia').innerHTML= `<span>USD</span> +${fmtUSD(ganancia)}`;
+  document.getElementById('resICMulti').innerHTML   = `Tu dinero se multiplica <strong>${multi}x</strong>`;
+  document.getElementById('resBoxIC').style.display = 'block';
+  document.getElementById('btnCalcIC').style.display = 'flex';
+
+  const ctx = document.getElementById('graficoIC').getContext('2d');
+  if (chartIC) chartIC.destroy();
+  chartIC = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labelsIC,
+      datasets: [
+        {
+          label: 'Con interés compuesto',
+          data: dataConIC,
+          borderColor: '#2a7a50',
+          backgroundColor: 'rgba(42,122,80,0.1)',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: '#2a7a50',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Capital aportado',
+          data: dataSinIC,
+          borderColor: '#8ab4f8',
+          backgroundColor: 'rgba(138,180,248,0.06)',
+          borderWidth: 2,
+          borderDash: [5, 4],
+          pointRadius: 3,
+          pointBackgroundColor: '#8ab4f8',
+          fill: true,
+          tension: 0.1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => ' USD ' + fmtUSD(ctx.parsed.y) }
+        }
+      },
+      scales: {
+        y: {
+          ticks: { callback: v => 'USD ' + fmtUSD(v), font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: {
+          ticks: { font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// ===== FAQ =====
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const isOpen = item.classList.contains('abierto');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('abierto'));
+  if (!isOpen) item.classList.add('abierto');
+}
+
+// ===== GUÍA INTERACTIVA =====
+const guiaState = {};
+function guiaSet(key, val) { guiaState[key] = val; }
+
+const guiaCarteras = {
+  pesos: {
+    cualquier: {
+      titulo: 'Tu cartera ideal en pesos',
+      perfil_desc: 'Las mejores opciones para hacer rendir tus pesos por encima de la inflación, con distintos niveles de liquidez y riesgo.',
+      activos: [
+        { ticker: 'BCMMA', nombre: 'Balanz Money Market FCI (T+0)', pct: '40%', porque: 'Liquidez inmediata. Rinde todos los días, más que el plazo fijo. Rescate al instante.' },
+        { ticker: 'BCAHA', nombre: 'Balanz Ahorro FCI (T+1)', pct: '30%', porque: 'FCI conservador calificado AA+. Liquidez 24hs con rendimiento superior al money market.' },
+        { ticker: 'LECAPs', nombre: 'Letras del Tesoro (LECAPs)', pct: '20%', porque: 'Tasa fija en pesos garantizada por el Estado. Consultá acuantoesta.com.ar/lecaps para ver la TIR actual.' },
+        { ticker: 'Cauciones', nombre: 'Cauciones colocadoras (pesos)', pct: '10%', porque: 'Préstamo garantizado de 1-7 días. Tasa atractiva, riesgo prácticamente nulo.' }
+      ],
+      tipo: 'fci',
+      nota: '📌 Para pesos, el foco está en liquidez y protección. LECAPs y cauciones maximizan la tasa a corto plazo.'
+    }
+  },
+  usd: {
+    conservador: {
+      bajo: {
+        titulo: 'Tu cartera conservadora en USD',
+        perfil_desc: 'Con menos de USD 10.000, empezás con instrumentos de muy bajo riesgo y dolarización real.',
+        activos: [
+          { ticker: 'ESTRA1', nombre: 'Balanz Estrategia 1 FCI (USD)', pct: '50%', porque: 'Fondo conservador en dólares. Capital dolarizado con riesgo casi nulo. Liquidez inmediata.' },
+          { ticker: 'BCAHA', nombre: 'Balanz Ahorro FCI (pesos, liquidez)', pct: '30%', porque: 'Porción en pesos para gastos operativos. Calificado AA+, rescate T+1.' },
+          { ticker: 'Cauciones USD', nombre: 'Cauciones colocadoras (USD)', pct: '20%', porque: 'Tasa en dólares de 24-72hs. Riesgo prácticamente nulo, retorno superior a caja de ahorro.' }
+        ],
+        tipo: 'bonos',
+        nota: '📌 Cauciones en horario bursátil (lunes a viernes, 11:30-16:45hs).'
+      },
+      alto: {
+        titulo: 'Tu cartera conservadora en USD',
+        perfil_desc: 'Con más de USD 10.000 armás una cartera de renta corporativa con cupones en dólares de forma periódica y predecible.',
+        activos: [
+          { ticker: 'YMCXO', nombre: 'YPF ON 2029 (Obligación Negociable)', pct: '35%', porque: 'YPF exporta en USD, lo que da certeza al flujo de cupones. TIR ~8-9% anual en dólares.' },
+          { ticker: 'MRCAO', nombre: 'MercadoLibre ON 2028', pct: '25%', porque: 'Empresa tecnológica líder. ON de bajo riesgo con cupón semestral en USD.' },
+          { ticker: 'TLCMO', nombre: 'Telecom ON 2026', pct: '20%', porque: 'Vencimiento cercano, empresa regulada con flujo de caja predecible.' },
+          { ticker: 'ESTRA1', nombre: 'FCI USD (liquidez)', pct: '20%', porque: 'Reserva líquida para oportunidades. Capital disponible de corto plazo.' }
+        ],
+        tipo: 'bonos',
+        nota: '📌 Con 4-5 ONs de vencimientos escalonados, podés recibir renta casi todos los meses.'
+      }
+    },
+    moderado: {
+      bajo: {
+        titulo: 'Tu cartera moderada en USD',
+        perfil_desc: 'Mix de ETFs globales y fondos conservadores para equilibrar estabilidad con crecimiento dolarizado.',
+        activos: [
+          { ticker: 'SPY', nombre: 'SPY CEDEAR — S&P 500', pct: '40%', porque: 'Las 500 empresas más grandes de EE.UU. Comprás en pesos, rendís en dólares.' },
+          { ticker: 'BCMMA', nombre: 'Balanz Money Market FCI', pct: '35%', porque: 'Base líquida. Rinde todos los días sin riesgo de mercado.' },
+          { ticker: 'VEA', nombre: 'VEA CEDEAR — Europa/Asia/Pacífico', pct: '25%', porque: 'Diversificación geográfica real fuera de EE.UU. con valuaciones atractivas.' }
+        ],
+        tipo: 'cedears',
+        nota: '📌 Los CEDEARs se compran en pesos pero su valor sigue al dólar. La forma más simple de dolarizarse.'
+      },
+      alto: {
+        titulo: 'Tu cartera moderada en USD',
+        perfil_desc: 'El portafolio más equilibrado: renta predecible con ONs y crecimiento de largo plazo con ETFs.',
+        activos: [
+          { ticker: 'SPY', nombre: 'SPY CEDEAR — S&P 500', pct: '30%', porque: 'Motor de crecimiento. +10% anual histórico en USD. El índice de referencia global.' },
+          { ticker: 'YMCXO', nombre: 'YPF ON 2029 (renta fija USD)', pct: '30%', porque: 'Ancla de renta predecible. Cupones en dólares que compensan la volatilidad.' },
+          { ticker: 'VEA', nombre: 'VEA CEDEAR — Europa/Asia', pct: '20%', porque: 'Europa y Asia en ciclos distintos a EE.UU. Reducís la concentración geográfica.' },
+          { ticker: 'GD30', nombre: 'Global 2030 — Bono Soberano AR', pct: '20%', porque: 'TIR >10% en USD. Argentina en normalización ofrece retornos únicos.' }
+        ],
+        tipo: 'cedears',
+        nota: '📌 Esta cartera recibe renta de las ONs y captura crecimiento global con los CEDEARs.'
+      }
+    },
+    dinamico: {
+      bajo: {
+        titulo: 'Tu cartera dinámica en USD',
+        perfil_desc: 'Máximo potencial de crecimiento para quien acepta volatilidad a cambio de retornos superiores.',
+        activos: [
+          { ticker: 'QQQ', nombre: 'QQQ CEDEAR — Nasdaq 100', pct: '45%', porque: 'Apple, Nvidia, Microsoft, Meta. Las 100 empresas más innovadoras del mundo.' },
+          { ticker: 'SPY', nombre: 'SPY CEDEAR — S&P 500', pct: '35%', porque: 'Diversificación que amortigua la volatilidad del QQQ sin resignar crecimiento.' },
+          { ticker: 'EWZ', nombre: 'EWZ CEDEAR — Brasil ETF', pct: '20%', porque: 'Mercado emergente de alto beta. Cuando los commodities suben, Brasil lidera.' }
+        ],
+        tipo: 'cedears',
+        nota: '📌 Horizonte mínimo recomendado: 2-3 años. La volatilidad de corto plazo es el costo del crecimiento de largo.'
+      },
+      alto: {
+        titulo: 'Tu cartera dinámica en USD',
+        perfil_desc: 'Portafolio de alta convicción: acciones argentinas, ETFs globales y bonos de alto rendimiento.',
+        activos: [
+          { ticker: 'QQQ', nombre: 'QQQ CEDEAR — Nasdaq 100', pct: '30%', porque: 'IA, semiconductores, cloud. El sector que define el próximo ciclo económico global.' },
+          { ticker: 'GD30', nombre: 'Bonos Soberanos AR (GD30/AL30)', pct: '25%', porque: 'TIR >10% en USD. Argentina en normalización: upside histórico en bonos.' },
+          { ticker: 'GGAL', nombre: 'GGAL CEDEAR — Grupo Galicia', pct: '25%', porque: 'Banco argentino líder. El sector financiero lidera los rebotes en normalización macro.' },
+          { ticker: 'SPY', nombre: 'SPY CEDEAR — S&P 500', pct: '20%', porque: 'Estabilizador global. Amortigua la volatilidad de las posiciones argentinas.' }
+        ],
+        tipo: 'acciones',
+        nota: '📌 Esta cartera tiene exposición al ciclo argentino. Mayor riesgo, mayor potencial de retorno.'
+      }
+    }
+  },
+  exterior: {
+    conservador: {
+      titulo: 'Tu cartera global: preservación + renta internacional',
+      perfil_desc: 'Exposición 100% a mercados internacionales. Foco en preservar capital y recibir renta en USD. Sin riesgo argentino.',
+      activos: [
+        { ticker: 'Balanz Income', nombre: 'Balanz Income Fund (BCV)', pct: '40%', porque: 'Fondo de renta fija internacional. Cupones en USD con exposición a bonos globales de alta calidad.' },
+        { ticker: 'Balanz Short', nombre: 'Balanz Short Duration (BCV)', pct: '35%', porque: 'Máxima seguridad con bonos de vencimiento cercano. El fondo más conservador del universo BCV.' },
+        { ticker: 'SPY', nombre: 'SPY CEDEAR — S&P 500', pct: '25%', porque: 'Exposición accionaria mínima para capturar crecimiento sin asumir riesgo de renta fija emergente.' }
+      ],
+      tipo: 'cedears',
+      nota: '📌 Los fondos BCV (Balanz Capital Vehicles) operan desde el exterior. Consultá con Nico para el mínimo de inversión y el proceso de suscripción.'
+    },
+    moderado: {
+      titulo: 'Tu cartera global: crecimiento internacional equilibrado',
+      perfil_desc: 'Portafolio diversificado en mercados globales. Sin exposición a activos argentinos.',
+      activos: [
+        { ticker: 'Balanz Balanced', nombre: 'Balanz Balanced Fund (BCV)', pct: '30%', porque: 'Fondo mixto internacional (renta fija + variable). Diversificación global gestionada por especialistas.' },
+        { ticker: 'SPY', nombre: 'SPY CEDEAR — S&P 500', pct: '30%', porque: 'El índice más representativo del mercado global. Apple, Microsoft, Amazon, Nvidia.' },
+        { ticker: 'Balanz LATAM', nombre: 'Balanz LATAM Fund (BCV)', pct: '20%', porque: 'Latinoamérica sin concentración en Argentina. Brasil, México, Chile como motores del retorno.' },
+        { ticker: 'VEA', nombre: 'VEA CEDEAR — Europa/Asia', pct: '20%', porque: 'Europa y Asia desarrollada. Valuaciones históricamente bajas con potencial de revalorización.' }
+      ],
+      tipo: 'cedears',
+      nota: '📌 Fondos BCV disponibles para clientes Balanz con acceso a inversiones en el exterior. Consultá con Nico.'
+    },
+    dinamico: {
+      titulo: 'Tu cartera global: máximo crecimiento internacional',
+      perfil_desc: 'Exposición agresiva a los mercados de mayor crecimiento: tecnología, criptoactivos y acciones globales.',
+      activos: [
+        { ticker: 'Balanz Global Equity', nombre: 'Balanz Global Equity (BCV)', pct: '35%', porque: 'Fondo de acciones globales gestionado activamente. Exposición a empresas con mayor potencial mundial.' },
+        { ticker: 'QQQ', nombre: 'QQQ CEDEAR — Nasdaq 100', pct: '30%', porque: 'Las 100 empresas tecnológicas más innovadoras. IA, semiconductores, cloud.' },
+        { ticker: 'Balanz Crypto', nombre: 'Balanz Crypto Fund (BCV)', pct: '20%', porque: 'Exposición regulada a criptoactivos. Para quienes quieren el potencial cripto con estructura de fondo.' },
+        { ticker: 'EWZ', nombre: 'EWZ CEDEAR — Brasil ETF', pct: '15%', porque: 'Diversificación emergente latinoamericana. Alto beta con potencial de retornos superiores.' }
+      ],
+      tipo: 'cedears',
+      nota: '📌 El Balanz Crypto Fund tiene mayor volatilidad. Recomendado solo con horizonte mínimo de 2 años y comprensión del riesgo cripto.'
+    }
+  }
+};
+
+const guiaTutoriales = {
+  fci: {
+    nombre: 'FCI (Fondos Comunes de Inversión)',
+    pasos: [
+      { n:1, texto: 'Ingresá a <strong>www.balanz.com</strong> con tu usuario y contraseña.' },
+      { n:2, texto: 'En el menú izquierdo, seleccioná <strong>Mercado</strong>.' },
+      { n:3, texto: 'En el menú superior, hacé click en <strong>Fondos</strong>.' },
+      { n:4, texto: 'Buscá el fondo por nombre (ej: BCMMA para Money Market). Usá la lupa.' },
+      { n:5, texto: 'Presioná el botón <strong>Suscribir</strong> al lado del fondo elegido.' },
+      { n:6, texto: 'En "Cuenta de origen" seleccioná <strong>Cuenta Comitente Balanz</strong>.' },
+      { n:7, texto: 'Ingresá el monto o tildá <strong>"Todo mi disponible"</strong>. Presioná Continuar.' },
+      { n:8, texto: 'Tildá la declaración del reglamento e ingresá tu <strong>código de operación de 4 dígitos</strong>.' },
+      { n:9, texto: '✅ ¡Listo! Tu suscripción quedó confirmada. El fondo rinde desde ese momento.' }
+    ],
+    nota: '⏱ BCMMA rescata T+0 (inmediato). BCAHA rescata T+1 (24hs hábiles).'
+  },
+  bonos: {
+    nombre: 'ONs Corporativas y Bonos',
+    pasos: [
+      { n:1, texto: 'Ingresá a <strong>www.balanz.com</strong> con tu usuario y contraseña.' },
+      { n:2, texto: 'Seleccioná <strong>Mercado</strong> en el menú de la izquierda.' },
+      { n:3, texto: 'En el menú superior elegí <strong>Corporativos</strong> para ONs, o <strong>Bonos</strong> para soberanos.' },
+      { n:4, texto: 'Buscá el ticker (ej: YMCXO para YPF ON 2029) con la lupa.' },
+      { n:5, texto: 'Presioná el botón <strong>Comprar</strong> al lado del activo.' },
+      { n:6, texto: 'Elegí la moneda: <strong>Pesos</strong> o <strong>Dólares</strong>.' },
+      { n:7, texto: 'Ingresá el monto en pesos o la cantidad de nominales.' },
+      { n:8, texto: 'Ingresá tu <strong>código de operación de 4 dígitos</strong> y confirmá.' },
+      { n:9, texto: '✅ ¡Listo! Tu bono aparecerá en cartera. Empezarás a cobrar cupones en las fechas indicadas.' }
+    ],
+    nota: '📅 Las ONs pagan cupones cada 3 o 6 meses. El calendario de pagos aparece en la ficha del instrumento en Balanz.'
+  },
+  cedears: {
+    nombre: 'CEDEARs (ETFs y acciones globales)',
+    pasos: [
+      { n:1, texto: 'Ingresá a <strong>www.balanz.com</strong> con tu usuario y contraseña.' },
+      { n:2, texto: 'Seleccioná <strong>Mercado</strong> en el menú de la izquierda.' },
+      { n:3, texto: 'En el menú superior hacé click en <strong>Cedears</strong>.' },
+      { n:4, texto: 'Buscá el ticker (ej: SPY, QQQ, VEA, EWZ) con la lupa.' },
+      { n:5, texto: 'Presioná el botón <strong>Comprar</strong> al lado del CEDEAR elegido.' },
+      { n:6, texto: 'Elegí la moneda: <strong>Pesos</strong> (más liquidez), Dólares o USD Cable.' },
+      { n:7, texto: 'Ingresá el monto que querés invertir.' },
+      { n:8, texto: 'Ingresá tu <strong>código de operación de 4 dígitos</strong> y confirmá.' },
+      { n:9, texto: '✅ ¡Listo! Tu CEDEAR aparecerá en cartera y seguirá el precio en Nueva York.' }
+    ],
+    nota: '🌎 CEDEARs en pesos, valor dolarizado (CCL). Horario de operación: lunes a viernes, 10hs a 17hs.'
+  },
+  acciones: {
+    nombre: 'Acciones argentinas (Merval)',
+    pasos: [
+      { n:1, texto: 'Ingresá a <strong>www.balanz.com</strong> con tu usuario y contraseña.' },
+      { n:2, texto: 'Seleccioná <strong>Mercado</strong> en el menú de la izquierda.' },
+      { n:3, texto: 'En el menú superior hacé click en <strong>Acciones</strong>.' },
+      { n:4, texto: 'Buscá por ticker (ej: GGAL, YPFD) o recorrés el listado S&P Merval.' },
+      { n:5, texto: 'Presioná el botón <strong>Comprar</strong> al lado de la acción elegida.' },
+      { n:6, texto: 'Ingresá el monto en pesos o cantidad de acciones.' },
+      { n:7, texto: 'Activá <strong>Opciones avanzadas</strong> si querés poner un precio límite.' },
+      { n:8, texto: 'Ingresá tu <strong>código de operación de 4 dígitos</strong> y confirmá.' },
+      { n:9, texto: '✅ ¡Listo! Las acciones liquidan en T+2 (48hs hábiles).' }
+    ],
+    nota: '📊 Acciones argentinas: horizonte mínimo recomendado 1-2 años.'
+  },
+  conformidad: {
+    nombre: 'Confirmar órdenes de Nico desde la app',
+    pasos: [
+      { n:1, texto: 'Cuando Nico cargue una orden, recibirás una <strong>notificación push</strong>. Activá las notificaciones de la app Balanz.' },
+      { n:2, texto: 'Abrí la <strong>app de Balanz</strong> en tu celular.' },
+      { n:3, texto: 'En la pantalla de inicio, seleccioná <strong>Conformidad de órdenes</strong>.' },
+      { n:4, texto: 'Verás el listado de operaciones pendientes. Presioná <strong>Conformidad</strong> en la que querés validar.' },
+      { n:5, texto: 'También podés tocar <strong>"Conformidad a todas"</strong> para aprobar todo de una vez.' },
+      { n:6, texto: 'Ingresá tu <strong>código de operación de 4 dígitos</strong> y confirmá.' },
+      { n:7, texto: '✅ ¡Listo! Tus órdenes quedan confirmadas y ejecutadas en el mercado.' }
+    ],
+    nota: '🔔 Importante: tené siempre las notificaciones de Balanz activadas para recibir el aviso cuando Nico carga una orden.'
+  }
+};
+
+function guiaRenderGs2() {
+  const moneda = guiaState.moneda;
+  const titulo = document.getElementById('gs2titulo');
+  const desc = document.getElementById('gs2desc');
+  const opc = document.getElementById('gs2opciones');
+
+  if (moneda === 'pesos') {
+    titulo.textContent = '¿Cuánto tenés disponible en pesos?';
+    desc.textContent = 'Todos los instrumentos están disponibles desde cualquier monto.';
+    opc.innerHTML = `
+      <button class="guia-opcion" onclick="guiaSet('monto','cualquier'); guiaGo(4)">🇦🇷 Menos de $5.000.000 ARS</button>
+      <button class="guia-opcion" onclick="guiaSet('monto','cualquier'); guiaGo(4)">🇦🇷🇦🇷 Entre $5M y $50M ARS</button>
+      <button class="guia-opcion" onclick="guiaSet('monto','cualquier'); guiaGo(4)">🇦🇷🇦🇷🇦🇷 Más de $50.000.000 ARS</button>`;
+  } else if (moneda === 'exterior') {
+    titulo.textContent = '¿Qué perfil de riesgo tenés para inversión global?';
+    desc.textContent = 'Los fondos BCV tienen distintas estrategias según tu objetivo.';
+    opc.innerHTML = `
+      <button class="guia-opcion" onclick="guiaSet('perfil_ext','conservador'); guiaGo(4)">🛡️ <strong>Conservador</strong> — Preservar capital + renta en USD (Balanz Income + Short Duration)</button>
+      <button class="guia-opcion" onclick="guiaSet('perfil_ext','moderado'); guiaGo(4)">⚖️ <strong>Moderado</strong> — Crecimiento equilibrado global (Balanz Balanced + LATAM)</button>
+      <button class="guia-opcion" onclick="guiaSet('perfil_ext','dinamico'); guiaGo(4)">🚀 <strong>Dinámico</strong> — Máximo crecimiento (Global Equity + Crypto + QQQ)</button>`;
+  } else {
+    titulo.textContent = '¿Con cuánto capital en USD querés empezar?';
+    desc.textContent = 'El monto define qué instrumentos y nivel de diversificación tienen sentido.';
+    opc.innerHTML = `
+      <button class="guia-opcion" onclick="guiaSet('monto','bajo'); guiaGo(3)">💵 Menos de USD 10.000</button>
+      <button class="guia-opcion" onclick="guiaSet('monto','alto'); guiaGo(3)">💵💵 Entre USD 10.000 y USD 100.000</button>
+      <button class="guia-opcion" onclick="guiaSet('monto','alto'); guiaGo(3)">💵💵💵 Más de USD 100.000</button>`;
+  }
+}
+
+function getCarteraData() {
+  const moneda = guiaState.moneda;
+  const monto = guiaState.monto || 'bajo';
+  const perfil = guiaState.perfil;
+  const perfilExt = guiaState.perfil_ext;
+
+  if (moneda === 'pesos') return guiaCarteras.pesos.cualquier;
+
+  if (moneda === 'exterior') {
+    const p = perfilExt || 'moderado';
+    return guiaCarteras.exterior[p] || guiaCarteras.exterior.moderado;
+  }
+
+  const p = perfil || 'moderado';
+  if (!guiaCarteras.usd[p]) return guiaCarteras.usd.moderado.bajo;
+  const byMonto = guiaCarteras.usd[p];
+  return byMonto[monto] || byMonto.bajo || byMonto.alto;
+}
+
+function guiaGo(step) {
+  document.querySelectorAll('.guia-screen').forEach(s => s.style.display = 'none');
+  let id;
+  if (step === 1.5) id = 'gs1-5';
+  else if (step === 1.7) id = 'gs1-7';
+  else id = 'gs' + step;
+  const el = document.getElementById(id);
+  if (el) {
+    el.style.display = 'block';
+    document.getElementById('guia').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  if (step === 2) guiaRenderGs2();
+  if (step === 4) renderGuiaResultado();
+  if (step === 5) renderGuiaTutorial();
+}
+
+function renderGuiaResultado() {
+  const data = getCarteraData();
+  if (!data) return;
+  const moneda = guiaState.moneda;
+  const perfil = guiaState.perfil;
+  const perfilExt = guiaState.perfil_ext;
+  const esExterior = moneda === 'exterior';
+
+  const perfilLabels = { conservador:'🛡️ Conservador', moderado:'⚖️ Moderado', dinamico:'🚀 Dinámico' };
+  const badgeHTML = esExterior
+    ? `<div class="guia-exterior-badge">🌍 Cartera 100% Internacional · Fondos BCV</div>`
+    : moneda === 'pesos'
+    ? `<div class="guia-perfil-badge">🇦🇷 Cartera en Pesos</div>`
+    : `<div class="guia-perfil-badge">${perfilLabels[perfil] || '⚖️ Moderado'}</div>`;
+
+  const activosHTML = data.activos.map(a => `
+    <div class="guia-activo-card">
+      <div class="guia-activo-left">
+        <div class="guia-activo-ticker">${a.ticker}</div>
+        <div class="guia-activo-nombre">${a.nombre}</div>
+        <div class="guia-activo-porque">✅ ${a.porque}</div>
+      </div>
+      <div class="guia-activo-pct">${a.pct}</div>
+    </div>`).join('');
+
+  const tickers = data.activos.map(a => a.ticker).join(', ');
+  const msgWA = encodeURIComponent(`Hola Nico! Usé la guía de tu web.\n\n💰 Moneda: ${moneda || 'USD'}\n📊 Activos sugeridos: ${tickers}\n\nQuiero que me ayudes a armar esta cartera.`);
+
+  document.getElementById('guiaResultado').innerHTML = `
+    <div class="guia-resultado-header">
+      ${badgeHTML}
+      <h3 class="guia-resultado-titulo">${data.titulo}</h3>
+    </div>
+    <div class="guia-resultado-desc">${data.perfil_desc}</div>
+    <div class="guia-activos-grid">${activosHTML}</div>
+    ${data.nota ? `<div class="guia-tutorial-nota">${data.nota}</div>` : ''}
+    <div style="background:rgba(201,162,39,0.08); border:1px solid rgba(201,162,39,0.2); border-radius:16px; padding:1.8rem; margin-bottom:1.5rem; text-align:center;">
+      <p style="color:var(--blanco); font-family:var(--font-display); font-size:1.15rem; margin-bottom:0.5rem;">¿Querés ejecutar esta cartera vos mismo?</p>
+      <p style="color:rgba(248,246,241,0.6); font-size:0.85rem; margin-bottom:1.5rem;">Si elegís hacerlo solo, te mostramos los pasos exactos para comprar cada activo en Balanz.</p>
+      <div class="guia-btns-row">
+        <button class="guia-btn-si" onclick="guiaGo(5)">📖 Sí, quiero aprender a hacerlo solo</button>
+        <a href="https://wa.me/5491123284509?text=${msgWA}" target="_blank" class="guia-btn-no">💬 No, prefiero que Nico arme mi cartera</a>
+      </div>
+    </div>
+    <p style="text-align:center; color:rgba(248,246,241,0.3); font-size:0.72rem; line-height:1.6;">⚠️ Cartera orientativa. Nicolás la ajusta a la situación real de cada cliente.</p>
+  `;
+}
+
+function renderGuiaTutorial() {
+  const data = getCarteraData();
+  if (!data) return;
+  const tutorial = guiaTutoriales[data.tipo] || guiaTutoriales.cedears;
+  const tickers = data.activos.map(a => a.ticker).join(', ');
+  const msgWA = encodeURIComponent(`Hola Nico! Seguí la guía y quiero armar mi cartera con ${tickers}. ¿Podés ayudarme?`);
+
+  const pasosHTML = tutorial.pasos.map(p =>
+    `<div class="guia-tutorial-paso"><div class="guia-tutorial-num">${p.n}</div><div class="guia-tutorial-texto">${p.texto}</div></div>`
+  ).join('');
+
+  const conformidadHTML = `
+    <div style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid rgba(248,246,241,0.08);">
+      <h4 style="color:var(--dorado); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:1rem;">💡 Alternativa: dejá que Nico cargue las órdenes</h4>
+      <p style="color:rgba(248,246,241,0.6); font-size:0.85rem; margin-bottom:1rem; line-height:1.6;">Si preferís que Nico ejecute las operaciones, solo necesitás confirmar desde la app:</p>
+      ${guiaTutoriales.conformidad.pasos.map(p =>
+        `<div class="guia-tutorial-paso"><div class="guia-tutorial-num">${p.n}</div><div class="guia-tutorial-texto">${p.texto}</div></div>`
+      ).join('')}
+      <div class="guia-tutorial-nota">${guiaTutoriales.conformidad.nota}</div>
+    </div>`;
+
+  document.getElementById('guiaTutorial').innerHTML = `
+    <h3 class="guia-tutorial-titulo">Cómo comprar: ${tutorial.nombre}</h3>
+    <p class="guia-tutorial-sub">Seguí estos pasos exactos en tu cuenta de Balanz para ejecutar las compras de tu cartera.</p>
+    ${pasosHTML}
+    <div class="guia-tutorial-nota">${tutorial.nota}</div>
+    ${conformidadHTML}
+    <div style="text-align:center; margin-top:2rem;">
+      <p style="color:rgba(248,246,241,0.6); font-size:0.88rem; margin-bottom:1.2rem;">¿Quedaste con dudas o preferís que lo hagamos juntos?</p>
+      <div class="guia-btns-row">
+        <a href="https://wa.me/5491123284509?text=${msgWA}" target="_blank" class="guia-btn-si">💬 Escribirle a Nico</a>
+        <a href="#agenda" class="guia-btn-no">📅 Agendar llamada</a>
+      </div>
+    </div>
+  `;
+}
+
+const guiaObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.getElementById('gs0').style.display = 'block';
+      guiaObserver.disconnect();
+    }
+  });
+}, { threshold: 0.2 });
+const guiaSection = document.getElementById('guia');
+if (guiaSection) guiaObserver.observe(guiaSection);
+
+-e 
+</script>
+</body>
+</html>

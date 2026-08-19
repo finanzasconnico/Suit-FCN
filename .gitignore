@@ -1,22 +1,31 @@
 # Archivos personales / datos sensibles
 *.xlsx
 *.xls
+*.xlsm
 *.pdf
 *.docx
-*.txt
 *.csv
+*.txt
+*.jpg
+*.jpeg
+*.jfif
+*.png
 
 # Backups y versiones viejas
 *viejo*
 *_old*
 *_backup*
 
-# Carpetas personales
+# Carpetas personales / con datos de clientes
 BeaNico/
 bot/
 Skills/
 Tutoriales/
 Documentos clave Balanz/
+Bot precio objetivo/
+Reportes cltes tickers bonos acc y cedears/
+inactivas/
+intrade/
 
 # Otros
 ResumenDeCuenta_test.txt
