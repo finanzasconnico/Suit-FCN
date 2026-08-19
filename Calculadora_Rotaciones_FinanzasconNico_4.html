@@ -9,7 +9,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 :root{--navy:#081917;--navy-mid:#0E2622;--navy-light:#122B27;--cream:#EAF1EE;--cream-dim:#6C817C;--border:rgba(255,255,255,0.1);--radius:6px;--balanz:#1C8C5F;
---series-mantener:#1C8C5F;--series-rotar:#d95926;--good:#0ca30c;--critical:#d03b3b;--yellow:#c98500;}
+--series-mantener:#3B82C4;--series-rotar:#D9A03C;--good:#0ca30c;--critical:#d03b3b;--yellow:#c98500;}
+/* Nota de diseño: mantener/rotar usan azul y ámbar — colores de "identidad" neutros,
+   ninguno de los dos es intrínsecamente "malo". El verde (--good) se reserva EXCLUSIVAMENTE
+   para marcar cuál de los dos conviene en cada caso (badges "✓ mejor", anillos, checks) —
+   nunca como color fijo de una de las dos patas, para no sesgar visualmente hacia "mantener"
+   solo porque antes tenía el verde. Ver av-tir-card / av-bar-fill / chart dots.*/
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;font-size:13px;}
 .topbar{background:var(--navy-mid);border-bottom:1px solid var(--border);padding:14px 26px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;}
@@ -120,7 +125,7 @@ details.cond-details summary:hover{color:#fff;}
 
 .av-tir-row{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-bottom:22px;}
 .av-tir-card{text-align:center;padding:16px 10px;border-radius:var(--radius);background:rgba(255,255,255,.03);border:1px solid var(--border);}
-.av-tir-card.winner{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1.5px currentColor;}
+.av-tir-card.winner{background:rgba(12,163,12,.07);box-shadow:inset 0 0 0 1.5px var(--good);}
 .av-tir-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--cream-dim);margin-bottom:6px;}
 .av-tir-value{font-family:'Spectral',serif;font-size:36px;font-weight:600;line-height:1;}
 .av-tir-ticker{font-size:11px;color:var(--cream-dim);margin-top:6px;}
@@ -135,6 +140,7 @@ details.cond-details summary:hover{color:#fff;}
 .av-bar-fill{position:absolute;top:0;bottom:0;left:0;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:10.5px;font-weight:600;color:#fff;white-space:nowrap;min-width:2px;}
 .av-bar-fill.venta{background:var(--series-mantener);}
 .av-bar-fill.compra{background:var(--series-rotar);}
+.av-bar-fill.better{box-shadow:inset 0 0 0 2px var(--good);}
 
 .av-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:22px;}
 .av-stat-cell{background:var(--navy-mid);padding:10px 13px;}
@@ -174,6 +180,7 @@ details.cond-details summary:hover{color:#fff;}
 .chart-legend{display:flex;gap:18px;margin-bottom:8px;font-size:11.5px;}
 .chart-legend .lg-item{display:flex;align-items:center;gap:6px;}
 .chart-legend .lg-swatch{width:14px;height:3px;border-radius:2px;}
+.chart-legend .lg-swatch-ring{width:11px;height:11px;border-radius:50%;border:2px solid var(--good);flex-shrink:0;}
 .chart-wrap{position:relative;}
 .chart-tooltip{position:absolute;pointer-events:none;background:#0E2622;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:7px 10px;font-size:11px;color:var(--cream);white-space:nowrap;display:none;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.4);}
 .chart-tooltip .tt-row{display:flex;justify-content:space-between;gap:14px;}
@@ -1150,7 +1157,8 @@ function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax){
 
   document.getElementById('chart-legend').innerHTML =
     '<div class="lg-item"><span class="lg-swatch" style="background:var(--series-mantener);"></span>Mantener '+venta.ticker+'</div>'+
-    '<div class="lg-item"><span class="lg-swatch" style="background:var(--series-rotar);"></span>Rotar a '+compra.ticker+' <span style="color:var(--cream-dim);">(incl. ajuste de cash día 1)</span></div>';
+    '<div class="lg-item"><span class="lg-swatch" style="background:var(--series-rotar);"></span>Rotar a '+compra.ticker+' <span style="color:var(--cream-dim);">(incl. ajuste de cash día 1)</span></div>'+
+    '<div class="lg-item"><span class="lg-swatch-ring"></span>Lo que conviene a tu horizonte</div>';
 
   document.getElementById('chart-capital-note').innerHTML = chartViewMode==='total'
     ? 'Capital invertido hoy: <b style="color:var(--series-mantener);">'+fmtUSD(costV)+'</b> (mantener '+venta.ticker+') · <b style="color:var(--series-rotar);">'+fmtUSD(costC)+'</b> (rotar a '+compra.ticker+') — las curvas de abajo ya suman este capital, no son solo intereses.'
@@ -1214,8 +1222,15 @@ function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax){
 
   // valores en el horizonte elegido para los dos puntos + labels directos
   var vAtH = points.reduce(function(best,p){ return Math.abs(p.t-horizonElegido)<Math.abs(best.t-horizonElegido)?p:best; }, points[0]);
-  var dotV = '<circle cx="'+hx.toFixed(1)+'" cy="'+yPix(vAtH.v+offV).toFixed(1)+'" r="4" fill="var(--series-mantener)"/>';
-  var dotC = '<circle cx="'+hx.toFixed(1)+'" cy="'+yPix(vAtH.c+difCash+offC).toFixed(1)+'" r="4" fill="var(--series-rotar)"/>';
+  var valV = vAtH.v+offV, valC = vAtH.c+difCash+offC;
+  // El punto que conviene a tu horizonte se marca con un anillo verde — el
+  // verde acá SIEMPRE significa "esto es lo que más te conviene hoy", nunca
+  // identifica a una de las dos patas de forma fija (esa es la de línea
+  // azul/ámbar, que es identidad, no veredicto).
+  var winnerY = valC > valV ? yPix(valC) : (valV > valC ? yPix(valV) : null);
+  var winnerRing = winnerY!=null ? '<circle cx="'+hx.toFixed(1)+'" cy="'+winnerY.toFixed(1)+'" r="8" fill="none" stroke="var(--good)" stroke-width="2"/>' : '';
+  var dotV = '<circle cx="'+hx.toFixed(1)+'" cy="'+yPix(valV).toFixed(1)+'" r="4" fill="var(--series-mantener)"/>';
+  var dotC = '<circle cx="'+hx.toFixed(1)+'" cy="'+yPix(valC).toFixed(1)+'" r="4" fill="var(--series-rotar)"/>';
 
   // labels directos al final de cada línea
   var lastP = points[points.length-1];
@@ -1226,7 +1241,7 @@ function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax){
     gridLines + zeroLine + ticksX +
     '<path d="'+pathV+'" fill="none" stroke="var(--series-mantener)" stroke-width="2.2"/>'+
     '<path d="'+pathC+'" fill="none" stroke="var(--series-rotar)" stroke-width="2.2"/>'+
-    marker + dotV + dotC + lblV + lblC +
+    marker + winnerRing + dotV + dotC + lblV + lblC +
     '<rect id="chart-hover-rect" x="'+padL+'" y="'+padT+'" width="'+innerW+'" height="'+innerH+'" fill="transparent" style="cursor:crosshair;"/>'+
   '</svg>'+
   '<div class="chart-tooltip" id="chart-tooltip"></div>';
@@ -1323,19 +1338,24 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
 
   var tirV = venta.tir, tirC = compra.tir;
   var winnerTir = tirC > tirV ? 'compra' : (tirV > tirC ? 'venta' : null);
+  // El verde queda reservado para "esto es lo que conviene" — nunca es el color
+  // fijo de una de las dos patas. El que gana se pinta verde con su check;
+  // el que no gana se queda en su color de identidad (azul o ámbar).
+  var colorV = winnerTir==='venta' ? 'var(--good)' : 'var(--series-mantener)';
+  var colorC = winnerTir==='compra' ? 'var(--good)' : 'var(--series-rotar)';
 
   var tirRow =
     '<div class="av-tir-row">'+
-      '<div class="av-tir-card'+(winnerTir==='venta'?' winner':'')+'" style="color:var(--series-mantener);">'+
-        '<div class="av-tir-label">Mantener</div>'+
-        '<div class="av-tir-value">'+fmtNum(tirV)+'%</div>'+
+      '<div class="av-tir-card'+(winnerTir==='venta'?' winner':'')+'">'+
+        '<div class="av-tir-label" style="color:var(--series-mantener);">Mantener</div>'+
+        '<div class="av-tir-value" style="color:'+colorV+';">'+fmtNum(tirV)+'%</div>'+
         '<div class="av-tir-ticker">'+venta.ticker+' · '+(venta.emisor||'—')+'</div>'+
         (winnerTir==='venta' ? '<div class="av-tir-badge">✓ mejor TIR</div>' : '')+
       '</div>'+
       '<div class="av-vs">vs.</div>'+
-      '<div class="av-tir-card'+(winnerTir==='compra'?' winner':'')+'" style="color:var(--series-rotar);">'+
-        '<div class="av-tir-label">Rotar</div>'+
-        '<div class="av-tir-value">'+fmtNum(tirC)+'%</div>'+
+      '<div class="av-tir-card'+(winnerTir==='compra'?' winner':'')+'">'+
+        '<div class="av-tir-label" style="color:var(--series-rotar);">Rotar</div>'+
+        '<div class="av-tir-value" style="color:'+colorC+';">'+fmtNum(tirC)+'%</div>'+
         '<div class="av-tir-ticker">'+compra.ticker+' · '+(compra.emisor||'—')+'</div>'+
         (winnerTir==='compra' ? '<div class="av-tir-badge">✓ mejor TIR</div>' : '')+
       '</div>'+
@@ -1349,8 +1369,8 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
     var cBetter = higherIsBetter!=null && vVal!=null && cVal!=null && (higherIsBetter ? cVal>vVal : cVal<vVal);
     return '<div class="av-bar-row">'+
       '<div class="av-bar-label">'+label+'</div>'+
-      '<div class="av-bar-track"><div class="av-bar-fill venta" style="width:'+pctV.toFixed(0)+'%;">'+fmt(vVal)+(vBetter?' ✓':'')+'</div></div>'+
-      '<div class="av-bar-track"><div class="av-bar-fill compra" style="width:'+pctC.toFixed(0)+'%;">'+fmt(cVal)+(cBetter?' ✓':'')+'</div></div>'+
+      '<div class="av-bar-track"><div class="av-bar-fill venta'+(vBetter?' better':'')+'" style="width:'+pctV.toFixed(0)+'%;">'+fmt(vVal)+(vBetter?' ✓':'')+'</div></div>'+
+      '<div class="av-bar-track"><div class="av-bar-fill compra'+(cBetter?' better':'')+'" style="width:'+pctC.toFixed(0)+'%;">'+fmt(cVal)+(cBetter?' ✓':'')+'</div></div>'+
     '</div>';
   }
   var barsHTML =

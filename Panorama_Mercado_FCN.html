@@ -7,6 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
 <style>
 :root {
   --petroleo-700: #0F3A34;
@@ -76,6 +78,12 @@ input[type=range]{accent-color:var(--ambar);width:100%;}
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px 8px;position:relative;}
 .chart-card h3{font-family:var(--font-display);font-weight:400;font-size:15px;margin-bottom:2px;}
 .chart-card .sub{font-size:11px;color:var(--muted);margin-bottom:10px;}
+.chart-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;}
+.zoom-controls{display:flex;gap:6px;flex-shrink:0;}
+.zoom-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;transition:background .15s;white-space:nowrap;}
+.zoom-btn:hover{background:var(--border);}
+.zoom-hint{font-size:10px;color:var(--muted);margin:-4px 0 10px;}
+.zoom-hint kbd{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:0 4px;font-family:var(--font-mono);}
 #chartWrap{position:relative;height:520px;}
 
 .empty-state{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:14px;padding:40px;}
@@ -215,8 +223,18 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
       </div>
 
       <div class="chart-card">
-        <h3>TIR vs. Duration</h3>
-        <div class="sub">Cada punto es un instrumento. La línea punteada es la curva de mercado estimada (mediana móvil por duration). Clic en un punto para ver el detalle y quién lo tiene.</div>
+        <div class="chart-card-head">
+          <div>
+            <h3>TIR vs. Duration</h3>
+            <div class="sub">Cada punto es un instrumento. La línea punteada es la curva de mercado estimada (mediana móvil por duration). Clic en un punto para ver el detalle y quién lo tiene.</div>
+          </div>
+          <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomChart(1.3)" title="Acercar">➕</button>
+            <button class="zoom-btn" onclick="zoomChart(1/1.3)" title="Alejar">➖</button>
+            <button class="zoom-btn" onclick="resetZoomChart()" title="Volver a ver todo">⤢ Reset</button>
+          </div>
+        </div>
+        <div class="zoom-hint">🖱 Girá la rueda del mouse (o pellizcá en el celu) para hacer zoom sobre cualquier punto · mantené <kbd>Ctrl</kbd> y arrastrá para mover el gráfico · doble clic para volver a ver todo</div>
         <div id="chartWrap"><canvas id="chart"></canvas></div>
       </div>
     </div>
@@ -665,6 +683,19 @@ function renderChart(puntos, curve){
               ].filter(Boolean);
             }
           }
+        },
+        zoom: {
+          pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+          zoom: {
+            wheel: { enabled: true, speed: 0.09 },
+            pinch: { enabled: true },
+            drag: { enabled: false },
+            mode: 'xy',
+          },
+          limits: {
+            x: { min: 'original', max: 'original' },
+            y: { min: 'original', max: 'original' }
+          }
         }
       },
       scales: {
@@ -681,7 +712,12 @@ function renderChart(puntos, curve){
       }
     }
   });
+
+  document.getElementById('chart').ondblclick = () => resetZoomChart();
 }
+
+function zoomChart(factor){ if (chart && chart.zoom) chart.zoom(factor); }
+function resetZoomChart(){ if (chart && chart.resetZoom) chart.resetZoom(); }
 
 // ══════════════════════════════════════════════════════════════
 //  MODAL
