@@ -389,8 +389,21 @@ function showTimestamp(ts) {
 // ══════════════════════════════════════════
 //  LOAD & RENDER
 // ══════════════════════════════════════════
+// Si este navegador nunca subió el archivo (p.ej. otra compu / otro asesor),
+// cae a la copia publicada en la carpeta data/ del sitio (ver FCN_Suite.html).
+async function fetchStaticFallback(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const buf = await r.arrayBuffer();
+    const lastMod = r.headers.get('Last-Modified');
+    return { data: buf, name: url.split('/').pop(), ts: lastMod ? new Date(lastMod).getTime() : Date.now() };
+  } catch { return null; }
+}
+
 async function loadAndRender() {
-  const entry = await getSharedFile('precios_objetivo');
+  let entry = await getSharedFile('precios_objetivo');
+  if (!entry || !entry.data) entry = await fetchStaticFallback('data/precios_objetivo.xlsx');
   if (!entry || !entry.data) {
     document.getElementById('empty-state').style.display  = 'flex';
     document.getElementById('table-wrap').style.display   = 'none';

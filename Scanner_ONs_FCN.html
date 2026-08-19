@@ -2072,8 +2072,19 @@ function actualizarFiltrosDur() {
     } catch { return null; }
   }
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
+  // cae a la copia publicada en la carpeta data/ del sitio.
+  async function fetchStaticFallback(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const buf = await r.arrayBuffer();
+      return { data: buf, name: url.split('/').pop() };
+    } catch { return null; }
+  }
   async function loadShared() {
-    const [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
+    let [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
+    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
     if (ten || mon) _pendienteAutoAnalizar = true;
     if (ten) cargarTenencia(fakeInput(ten));
     if (stk) cargarStock(fakeInput(stk));

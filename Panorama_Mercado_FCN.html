@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panorama de Mercado — FinanzasconNico</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --petroleo-700: #0F3A34;
+  --petroleo-900: #07211D;
+  --jade:         #1C8C5F;
+  --ambar:        #DBA03C;
+  --crema:        #F7F3EA;
+  --success:      #1C8C5F;
+  --warning:      #D9892B;
+  --danger:       #C0453B;
+  --info:         #2E7D8C;
+  --ink:          #102E2A;
+  --ink-soft:     #3C5752;
+  --ink-muted:    #6C817C;
+  --line:         #E5DDCE;
+  --font-display: 'Spectral', Georgia, serif;
+  --font-sans:    'Hanken Grotesk', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+  --bg:      #081917;
+  --surface: #0E2622;
+  --surface2:#122E29;
+  --text:    #EAF1EE;
+  --muted:   #8AA39D;
+  --border:  #1E3A34;
+  --radius:  6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.topbar-brand{display:flex;align-items:center;gap:11px;}
+.topbar-logo{width:32px;height:32px;border-radius:6px;border:1px solid var(--ambar);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:15px;color:var(--ambar);font-weight:600;}
+.topbar-title{font-family:var(--font-display);font-size:19px;font-weight:300;letter-spacing:.06em;color:var(--text);}
+.topbar-title span{color:var(--text);font-weight:500;}
+.topbar-subtitle{font-size:11px;color:var(--muted);margin-top:2px;}
+.upload-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:11px;color:var(--muted);cursor:pointer;}
+.upload-pill:hover{border-color:var(--ambar);color:var(--ambar);}
+.upload-pill input{display:none;}
+
+.main{display:flex;gap:0;min-height:calc(100vh - 62px);}
+.left-panel{width:260px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:18px 16px;overflow-y:auto;}
+.content{flex:1;padding:20px 26px;overflow-x:hidden;}
+
+.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:16px 0 8px;font-weight:600;}
+.section-title:first-child{margin-top:0;}
+.field{margin-bottom:10px;}
+.field-label{font-size:10.5px;color:var(--muted);margin-bottom:4px;}
+.field input,.field select{width:100%;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:var(--font-sans);outline:none;}
+.field input:focus,.field select:focus{border-color:var(--ambar);}
+.chk-row{display:flex;align-items:center;gap:7px;font-size:11.5px;cursor:pointer;color:var(--text);padding:3px 0;}
+.chk-row input{accent-color:var(--jade);width:13px;height:13px;}
+.range-row{display:flex;gap:6px;}
+.range-row input{width:100%;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.legend-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:10.5px;color:var(--muted);line-height:1.9;}
+.legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;position:relative;top:1px;}
+.threshold-val{color:var(--ambar);font-family:var(--font-mono);}
+input[type=range]{accent-color:var(--ambar);width:100%;}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.kpi-label{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;}
+.kpi-val{font-family:var(--font-mono);font-size:19px;color:var(--text);font-weight:500;}
+.kpi-val.jade{color:var(--jade);}
+.kpi-val.ambar{color:var(--ambar);}
+
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px 8px;position:relative;}
+.chart-card h3{font-family:var(--font-display);font-weight:400;font-size:15px;margin-bottom:2px;}
+.chart-card .sub{font-size:11px;color:var(--muted);margin-bottom:10px;}
+#chartWrap{position:relative;height:520px;}
+
+.empty-state{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:14px;padding:40px;}
+.empty-state .ico{font-size:44px;opacity:.5;}
+.empty-state h2{font-family:var(--font-display);font-weight:400;font-size:20px;}
+.empty-state p{font-size:12.5px;color:var(--muted);max-width:420px;line-height:1.6;}
+.btn{padding:9px 16px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--font-sans);}
+.btn:hover{border-color:var(--ambar);}
+.btn-primary{background:var(--ambar);color:var(--bg);border-color:var(--ambar);font-weight:600;}
+.btn-primary:hover{opacity:.9;}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--ambar);color:var(--text);padding:10px 18px;border-radius:6px;font-size:12px;z-index:999;opacity:0;pointer-events:none;transition:opacity .25s;}
+.toast.show{opacity:1;}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);max-width:720px;width:100%;max-height:86vh;overflow-y:auto;padding:0;}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:sticky;top:0;background:var(--surface);}
+.modal-head h2{font-family:var(--font-mono);font-size:19px;color:var(--ambar);}
+.modal-head .emisor{font-size:12px;color:var(--muted);margin-top:3px;}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;}
+.modal-close:hover{color:var(--text);}
+.modal-badges{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.badge{font-size:9.5px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.modal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin:0;}
+.modal-stat{background:var(--surface);padding:12px 16px;}
+.modal-stat .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.modal-stat .v{font-family:var(--font-mono);font-size:15px;color:var(--text);}
+.modal-body{padding:16px 22px 22px;}
+.holders-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;justify-content:space-between;}
+table.holders{width:100%;border-collapse:collapse;font-size:12px;}
+table.holders th{text-align:left;font-size:9.5px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--border);}
+table.holders td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);}
+table.holders tr:hover td{background:rgba(255,255,255,.03);}
+.no-holders{background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;color:var(--muted);font-size:12px;}
+.copy-btn{font-size:10.5px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;}
+.copy-btn:hover{color:var(--ambar);border-color:var(--ambar);}
+.modal-cta{padding:14px 22px 0;}
+.btn-rotar{display:block;text-align:center;padding:11px 16px;border-radius:5px;background:var(--jade);color:#fff;font-weight:600;font-size:12.5px;text-decoration:none;transition:opacity .15s;}
+.btn-rotar:hover{opacity:.88;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">FN</div>
+    <div>
+      <div class="topbar-title">finanzasconnico · <span>Panorama de Mercado</span></div>
+      <div class="topbar-subtitle">TIR vs. Duration de todo el universo de bonos/ONs · curva de referencia y clic para ver tenedores</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <label class="upload-pill">📈 Monitor <input type="file" id="inp-monitor" accept=".xlsx,.xls,.xlsm,.csv" onchange="cargarMonitor(this)"></label>
+    <label class="upload-pill">📊 Tenencia <input type="file" id="inp-tenencia" accept=".xlsx,.xls,.csv" onchange="cargarTenencia(this)"></label>
+  </div>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="section-title">Filtros</div>
+
+    <div class="field">
+      <div class="field-label">Ticker</div>
+      <input type="text" id="f-ticker" placeholder="Buscar ticker..." oninput="render()">
+    </div>
+
+    <div class="field">
+      <div class="field-label">Calificación</div>
+      <select id="f-calif" onchange="render()"><option value="">— Todas —</option></select>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Asesor (si hay Tenencia)</div>
+      <select id="f-asesor" onchange="render()"><option value="">— Todos —</option></select>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Duration (años)</div>
+      <div class="range-row">
+        <input type="number" id="f-dur-min" placeholder="Min" step="0.5" oninput="render()">
+        <input type="number" id="f-dur-max" placeholder="Max" step="0.5" oninput="render()">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Tipo</div>
+      <label class="chk-row"><input type="checkbox" id="chk-corp" checked onchange="render()"> Corporativos (ONs)</label>
+      <label class="chk-row"><input type="checkbox" id="chk-sob" checked onchange="render()"> Soberanos</label>
+      <label class="chk-row"><input type="checkbox" id="chk-prov" checked onchange="render()"> Provinciales</label>
+      <label class="chk-row"><input type="checkbox" id="chk-bop" checked onchange="render()"> Bopreales</label>
+    </div>
+
+    <div class="field">
+      <div class="field-label">En cartera</div>
+      <select id="f-cartera" onchange="render()">
+        <option value="todos">Todos</option>
+        <option value="si">Solo en cartera</option>
+        <option value="no">Solo sin clientes</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">Curva de referencia</div>
+    <div class="field">
+      <div class="field-label">Umbral oportunidad/caro: <span class="threshold-val" id="umbral-lbl">50 bps</span></div>
+      <input type="range" id="f-umbral" min="10" max="200" step="10" value="50" oninput="onUmbralChange()">
+    </div>
+    <div class="legend-box">
+      <div><span class="legend-dot" style="background:var(--jade)"></span>Rinde por encima de la curva — oportunidad relativa</div>
+      <div><span class="legend-dot" style="background:var(--muted)"></span>En línea con la curva</div>
+      <div><span class="legend-dot" style="background:var(--danger)"></span>Rinde por debajo — relativamente caro</div>
+      <div style="margin-top:6px;">⬤ con borde blanco = tenés clientes posicionados</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="empty-state" class="empty-state" style="display:flex;">
+      <div class="ico">🗺️</div>
+      <h2>Cargá el Monitor de Individuos</h2>
+      <p>Subilo con el botón "📈 Monitor" arriba a la derecha, o subilo una vez en el FCN Suite y esta pantalla lo va a tomar solo. Sumá también "Tenencia por Ticker" para ver qué activos ya tienen tus clientes y quién tiene cada uno.</p>
+    </div>
+
+    <div id="dash" style="display:none;">
+      <div class="kpi-strip">
+        <div class="kpi-card"><div class="kpi-label">Instrumentos mostrados</div><div class="kpi-val" id="kpi-total">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">En cartera de clientes</div><div class="kpi-val jade" id="kpi-cartera">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Oportunidades (sobre curva)</div><div class="kpi-val jade" id="kpi-oport">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">TIR promedio</div><div class="kpi-val" id="kpi-tir">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Duration promedio</div><div class="kpi-val" id="kpi-dur">—</div></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>TIR vs. Duration</h3>
+        <div class="sub">Cada punto es un instrumento. La línea punteada es la curva de mercado estimada (mediana móvil por duration). Clic en un punto para ver el detalle y quién lo tiene.</div>
+        <div id="chartWrap"><canvas id="chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h2 id="m-ticker">—</h2>
+        <div class="emisor" id="m-emisor">—</div>
+        <div class="modal-badges" id="m-badges"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-stats">
+      <div class="modal-stat"><div class="l">TIR</div><div class="v" id="m-tir">—</div></div>
+      <div class="modal-stat"><div class="l">Duration</div><div class="v" id="m-dur">—</div></div>
+      <div class="modal-stat"><div class="l">vs. curva</div><div class="v" id="m-diff">—</div></div>
+      <div class="modal-stat"><div class="l">Cupón</div><div class="v" id="m-cupon">—</div></div>
+      <div class="modal-stat"><div class="l">Vencimiento</div><div class="v" id="m-vto">—</div></div>
+      <div class="modal-stat"><div class="l">Lámina mín.</div><div class="v" id="m-lamina">—</div></div>
+    </div>
+    <div class="modal-cta">
+      <a class="btn-rotar" id="m-rotar-link" href="#" target="_blank" rel="noopener">📈 Armar rotación hacia este bono en la Calculadora →</a>
+    </div>
+    <div class="modal-body">
+      <div class="holders-title">
+        <span>Clientes posicionados</span>
+        <button class="copy-btn" onclick="copyTicker()">📋 Copiar ticker</button>
+      </div>
+      <div id="m-holders"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════════════════════════
+let dataMonitor = {};   // ticker -> {tipo,tir,cupon,vencimiento,calificacion,emisor,tirCable,dolar,instrumento,duration,laminaMin}
+let dataTenencia = [];  // filas crudas de Tenencia por Ticker
+let holdersByTicker = {}; // ticker -> [{cliente,asesor,tenencia,nominales,precioCompra,diasTenencia}]
+let chart = null;
+let umbral = 50; // bps
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function excelSerialToDate(serial){
+  if(!serial||isNaN(serial)) return '';
+  const d=new Date(Math.round((serial-25569)*86400*1000));
+  return d.toISOString().slice(0,10);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CARGA — MONITOR DE INDIVIDUOS (misma lógica que Scanner de ONs)
+// ══════════════════════════════════════════════════════════════
+function cargarMonitor(input) {
+  const file = input.files ? input.files[0] : null;
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellFormula:false, cellDates:false, raw:true});
+      const names = wb.SheetNames;
+      dataMonitor = {}; let corpCnt=0, sovCnt=0;
+
+      let cName = names.find(s=>s==='Corporativos') || names.find(s=>s.toLowerCase().includes('corporativ')) || null;
+      if(!cName){for(const s of names){const r=XLSX.utils.sheet_to_json(wb.Sheets[s],{defval:null,header:1});if(r.slice(0,15).some(row=>row.some(v=>v==='Ticker'))){cName=s;break;}}}
+      if(!cName) throw new Error('No encontré la hoja Corporativos.');
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[cName], {defval:null, header:1, raw:true});
+      let hIdx=-1, tIdx=-1;
+      for(let i=0;i<Math.min(raw.length,15);i++){for(let j=0;j<raw[i].length;j++){if(raw[i][j]==='Ticker'){hIdx=i;tIdx=j;break;}}if(hIdx>=0)break;}
+      if(hIdx<0) throw new Error('No encontré la columna "Ticker".');
+      const iT=tIdx, iE=tIdx+1, iVto=tIdx+3, iTIR=tIdx+4, iCup=tIdx+7, iDol=tIdx+9, iCal=tIdx+11, iTIRC=tIdx+16;
+      const colMap = {};
+      raw[hIdx].forEach((v,j)=>{ if(v){const k=String(v).trim().toLowerCase(); if(colMap[k]===undefined) colMap[k]=j;} });
+      const findCol=(...names)=>{for(const n of names){const k=n.toLowerCase();if(colMap[k]!==undefined)return colMap[k];}return -1;};
+      const iDur = findCol('Duration','Dur.','Dur','Duration (años)','Duración','Duracion');
+      const iLamMin = findCol('Lámina min.','Lamina min.','Lámina mín.','Lamina mín.','Lam. min.','Lámina Min','Lamina Min');
+      const parseNum = v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;};
+      const calcDurFromVto = vtoRaw=>{
+        if(!vtoRaw) return null;
+        let ms;
+        if(typeof vtoRaw==='number') ms=Math.round((vtoRaw-25569)*86400*1000);
+        else {const d=new Date(String(vtoRaw));if(isNaN(d)) return null;ms=d.getTime();}
+        const yrs=(ms-Date.now())/(365.25*86400*1000);
+        return yrs>0?Math.round(yrs*100)/100:null;
+      };
+      for(let i=hIdx+1;i<raw.length;i++){
+        const row=raw[i]; const tk=String(row[iT]||'').trim();
+        if(!tk||!/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
+        const vtoRaw=row[iVto];
+        const vencimiento=typeof vtoRaw==='number'?excelSerialToDate(vtoRaw):(String(vtoRaw||'').trim());
+        const durFromExcel=parseNum(iDur>=0?row[iDur]:null);
+        const duration=durFromExcel!==null&&durFromExcel>0?durFromExcel:calcDurFromVto(vtoRaw);
+        dataMonitor[tk]={tipo:'corporativo',tir:parseFloat(row[iTIR])||null,cupon:parseFloat(row[iCup])||null,
+          vencimiento,calificacion:String(row[iCal]||'').trim(),
+          emisor:String(row[iE]||'').trim(),tirCable:parseFloat(row[iTIRC])||null,
+          dolar:String(row[iDol]||'').trim(),instrumento:String(row[iE]||'').trim(),
+          duration, laminaMin: parseNum(iLamMin>=0?row[iLamMin]:null)};
+        corpCnt++;
+      }
+
+      let sName = names.find(s=>s==='Soberanos') || names.find(s=>['soberano','sovereign','bonos usd'].some(k=>s.toLowerCase().includes(k))) || null;
+      if(!sName){
+        for(const sn of names){
+          if(sn===cName) continue;
+          const flat=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''}).slice(0,40).flat().map(v=>String(v||'').trim().toUpperCase());
+          if(['GD30','AL30','GD35','GD29','AL29','GD41','AE38','GD46'].some(t=>flat.includes(t))){sName=sn;break;}
+        }
+      }
+      if(sName){
+        const sovRaw=XLSX.utils.sheet_to_json(wb.Sheets[sName],{defval:'',header:1,raw:true});
+        let currentCat='soberano';
+        for(let ri=0;ri<sovRaw.length;ri++){
+          const row=sovRaw[ri];
+          const r0=String(row[0]||'').trim().toUpperCase();
+          const r1=String(row[1]||'').trim().toUpperCase();
+          if(r0==='SOBERANOS'||r1==='SOBERANOS') currentCat='soberano';
+          else if(r0==='PROVINCIALES'||r1==='PROVINCIALES') currentCat='provincial';
+          else if(r0==='BOPREALES'||r1==='BOPREALES') currentCat='bopreal';
+          else if(r0.includes('DOLLAR')||r1.includes('DOLLAR')) currentCat='dollarlinked';
+          if(r0!=='TICKER') continue;
+          for(let di=ri+1;di<sovRaw.length;di++){
+            const dr=sovRaw[di];
+            const tk=String(dr[0]||'').trim().toUpperCase();
+            const em=String(dr[1]||'').trim();
+            if(tk==='TICKER') break;
+            if(!tk||!em||em.length>70) continue;
+            if(!/^[A-Z]{1,4}[0-9]{1,4}[A-Z]?$|^[A-Z]{2,6}[0-9]{2}[A-Z]?$/.test(tk)) continue;
+            const tirRaw=parseFloat(dr[4]);
+            if(isNaN(tirRaw)) continue;
+            const tir=Math.abs(tirRaw)>1?tirRaw/100:tirRaw;
+            if(tir>1.5||tir<-0.5) continue;
+            if(dataMonitor[tk]) continue;
+            const cupRaw=parseFloat(dr[7]);
+            const cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
+            const vRaw=dr[3];
+            const vencimiento=vRaw?(typeof vRaw==='number'?excelSerialToDate(vRaw):String(vRaw).trim()):'';
+            const sovDur=calcDurFromVto(vRaw);
+            dataMonitor[tk]={tipo:currentCat,tir,cupon:cup,vencimiento,
+              calificacion:String(dr[11]||'').trim(),emisor:em,
+              tirCable:null,dolar:String(dr[9]||'').trim(),instrumento:em,
+              duration:sovDur,laminaMin:null};
+            sovCnt++;
+          }
+        }
+      }
+      const total=corpCnt+sovCnt;
+      if(total===0) throw new Error('No se encontraron tickers válidos en el Monitor.');
+      showToast(`✓ Monitor cargado: ${corpCnt} ONs + ${sovCnt} Soberanos/Sub-sober.`);
+      poblarFiltros();
+      render();
+    } catch(err){
+      showToast('❌ Error leyendo Monitor: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CARGA — TENENCIA POR TICKER (solo local, nunca se publica)
+// ══════════════════════════════════════════════════════════════
+function cargarTenencia(input) {
+  const file = input.files ? input.files[0] : null;
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      let sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
+      const raw=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
+      dataTenencia = raw;
+      construirHolders();
+      poblarFiltros();
+      showToast(`✓ Tenencia cargada: ${raw.length} filas`);
+      render();
+    } catch(err){
+      showToast('❌ Error leyendo Tenencia: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function construirHolders(){
+  holdersByTicker = {};
+  dataTenencia.forEach(row=>{
+    const ticker = String(row['Ticker']||'').trim();
+    if(!ticker || !dataMonitor[ticker]) return;
+    if(!holdersByTicker[ticker]) holdersByTicker[ticker] = [];
+    holdersByTicker[ticker].push({
+      cliente: row['Cuenta']||row['Comitente']||'—',
+      asesor: row['Asesor']||'',
+      tenencia: parseFloat(row['Tenencia'])||0,
+      nominales: parseFloat(row['Nominales'])||0,
+      precioCompra: parseFloat(row['Prec prom de compra'])||0,
+      diasTenencia: parseInt(row['Días de tenencia'])||0,
+    });
+  });
+}
+
+function poblarFiltros(){
+  const calSel = document.getElementById('f-calif');
+  const calActual = calSel.value;
+  const califs = [...new Set(Object.values(dataMonitor).map(m=>m.calificacion).filter(Boolean))].sort();
+  calSel.innerHTML = '<option value="">— Todas —</option>' + califs.map(c=>`<option value="${c}">${c}</option>`).join('');
+  calSel.value = calActual;
+
+  const asesorSel = document.getElementById('f-asesor');
+  const asesorActual = asesorSel.value;
+  const asesores = [...new Set(dataTenencia.map(r=>r['Asesor']).filter(Boolean))].sort();
+  asesorSel.innerHTML = '<option value="">— Todos —</option>' + asesores.map(a=>`<option value="${a}">${a}</option>`).join('');
+  asesorSel.value = asesorActual;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CURVA DE REFERENCIA (mediana móvil por duration)
+// ══════════════════════════════════════════════════════════════
+function computeCurve(puntos){
+  const sorted = puntos.filter(p=>p.duration!=null && p.tir!=null).slice().sort((a,b)=>a.duration-b.duration);
+  if (sorted.length < 5) return { bins: [], get: ()=>null };
+  const minDur = sorted[0].duration, maxDur = sorted[sorted.length-1].duration;
+  const step = 0.5, halfWin = 1.25;
+  const bins = [];
+  for (let d = Math.floor(minDur*2)/2; d <= maxDur+0.001; d += step) {
+    const inWin = sorted.filter(p=>Math.abs(p.duration-d)<=halfWin);
+    if (inWin.length >= 3) {
+      const tirs = inWin.map(p=>p.tir).sort((a,b)=>a-b);
+      const median = tirs[Math.floor(tirs.length/2)];
+      bins.push({d: Math.round(d*100)/100, tir: median});
+    }
+  }
+  if (bins.length < 2) return { bins: [], get: ()=>null };
+  function get(d){
+    if (d<=bins[0].d) return bins[0].tir;
+    if (d>=bins[bins.length-1].d) return bins[bins.length-1].tir;
+    for (let i=0;i<bins.length-1;i++){
+      if (d>=bins[i].d && d<=bins[i+1].d){
+        const t=(d-bins[i].d)/(bins[i+1].d-bins[i].d);
+        return bins[i].tir + t*(bins[i+1].tir-bins[i].tir);
+      }
+    }
+    return null;
+  }
+  return { bins, get };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FILTROS + RENDER
+// ══════════════════════════════════════════════════════════════
+function onUmbralChange(){
+  umbral = parseInt(document.getElementById('f-umbral').value);
+  document.getElementById('umbral-lbl').textContent = umbral + ' bps';
+  render();
+}
+
+function puntosBase(){
+  return Object.entries(dataMonitor)
+    .filter(([tk,m]) => m.duration!=null && m.tir!=null)
+    .map(([tk,m]) => ({
+      ticker: tk, ...m,
+      holders: holdersByTicker[tk] || [],
+    }));
+}
+
+function render(){
+  if (Object.keys(dataMonitor).length === 0) {
+    document.getElementById('empty-state').style.display = 'flex';
+    document.getElementById('dash').style.display = 'none';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+
+  const fTicker = document.getElementById('f-ticker').value.trim().toLowerCase();
+  const fCalif = document.getElementById('f-calif').value;
+  const fAsesor = document.getElementById('f-asesor').value;
+  const durMin = parseFloat(document.getElementById('f-dur-min').value);
+  const durMax = parseFloat(document.getElementById('f-dur-max').value);
+  const chkCorp = document.getElementById('chk-corp').checked;
+  const chkSob = document.getElementById('chk-sob').checked;
+  const chkProv = document.getElementById('chk-prov').checked;
+  const chkBop = document.getElementById('chk-bop').checked;
+  const fCartera = document.getElementById('f-cartera').value;
+  const tipoMap = {corporativo:chkCorp, soberano:chkSob, provincial:chkProv, bopreal:chkBop, dollarlinked:chkSob};
+
+  let puntos = puntosBase().filter(p=>{
+    if (fTicker && !p.ticker.toLowerCase().includes(fTicker)) return false;
+    if (fCalif && p.calificacion !== fCalif) return false;
+    if (!isNaN(durMin) && p.duration < durMin) return false;
+    if (!isNaN(durMax) && p.duration > durMax) return false;
+    if (!(tipoMap[p.tipo] ?? true)) return false;
+    let holders = p.holders;
+    if (fAsesor) holders = holders.filter(h=>h.asesor === fAsesor);
+    const enCartera = holders.length > 0;
+    if (fCartera === 'si' && !enCartera) return false;
+    if (fCartera === 'no' && enCartera) return false;
+    return true;
+  });
+
+  const curve = computeCurve(puntos);
+  const th = umbral/10000;
+
+  puntos.forEach(p=>{
+    const curveTir = curve.get(p.duration);
+    p.curveTir = curveTir;
+    p.diff = curveTir!=null ? (p.tir - curveTir) : null;
+    p.clase = p.diff==null ? 'neutral' : (p.diff > th ? 'oport' : (p.diff < -th ? 'caro' : 'neutral'));
+    const holdersEff = fAsesor ? p.holders.filter(h=>h.asesor===fAsesor) : p.holders;
+    p.enCartera = holdersEff.length > 0;
+  });
+
+  renderKPIs(puntos);
+  renderChart(puntos, curve);
+}
+
+function renderKPIs(puntos){
+  document.getElementById('kpi-total').textContent = puntos.length;
+  document.getElementById('kpi-cartera').textContent = puntos.filter(p=>p.enCartera).length;
+  document.getElementById('kpi-oport').textContent = puntos.filter(p=>p.clase==='oport').length;
+  const tirs = puntos.map(p=>p.tir).filter(v=>v!=null);
+  document.getElementById('kpi-tir').textContent = tirs.length ? (tirs.reduce((a,b)=>a+b,0)/tirs.length*100).toFixed(2)+'%' : '—';
+  const durs = puntos.map(p=>p.duration).filter(v=>v!=null);
+  document.getElementById('kpi-dur').textContent = durs.length ? (durs.reduce((a,b)=>a+b,0)/durs.length).toFixed(2)+' a' : '—';
+}
+
+const COLOR = { oport: '#1C8C5F', neutral: '#8AA39D', caro: '#C0453B' };
+
+let _puntosActuales = [];
+
+function renderChart(puntos, curve){
+  _puntosActuales = puntos;
+  window._puntosActuales = puntos; // expuesto para debugging
+  const ctx = document.getElementById('chart').getContext('2d');
+
+  const scatterData = puntos.map(p=>({x:p.duration, y:p.tir*100}));
+  const bg = puntos.map(p=>COLOR[p.clase]);
+  const borderColor = puntos.map(p=>p.enCartera ? '#ffffff' : COLOR[p.clase]);
+  const borderWidth = puntos.map(p=>p.enCartera ? 2 : 0);
+  const radius = puntos.map(p=>p.enCartera ? 6 : 4);
+
+  const curveData = curve.bins.map(b=>({x:b.d, y:b.tir*100}));
+
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Instrumentos',
+          data: scatterData,
+          backgroundColor: bg,
+          borderColor: borderColor,
+          borderWidth: borderWidth,
+          pointRadius: radius,
+          pointHoverRadius: radius.map(r=>r+2),
+        },
+        {
+          type: 'line',
+          label: 'Curva de referencia',
+          data: curveData,
+          borderColor: 'rgba(219,160,60,.65)',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.25,
+          order: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      onClick: (evt, els) => {
+        if (!els.length) return;
+        const el = els.find(e=>e.datasetIndex===0);
+        if (!el) return;
+        openModal(_puntosActuales[el.index]);
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const it = items[0];
+              if (it.datasetIndex !== 0) return 'Curva';
+              return _puntosActuales[it.dataIndex].ticker;
+            },
+            label: (item) => {
+              if (item.datasetIndex !== 0) return `Curva: ${item.parsed.y.toFixed(2)}%`;
+              const p = _puntosActuales[item.dataIndex];
+              const diffTxt = p.diff!=null ? (p.diff*100>=0?'+':'') + (p.diff*100).toFixed(2)+'% vs curva' : '';
+              return [
+                `${p.emisor}`,
+                `TIR: ${(p.tir*100).toFixed(2)}%  ·  Duration: ${p.duration.toFixed(2)}a`,
+                diffTxt,
+                p.enCartera ? `👤 ${p.holders.length} cliente(s) posicionado(s)` : '— sin clientes'
+              ].filter(Boolean);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display:true, text:'Duration (años)', color:'#8AA39D', font:{size:11} },
+          ticks: { color:'#8AA39D', font:{size:10} },
+          grid: { color:'rgba(255,255,255,.05)' }
+        },
+        y: {
+          title: { display:true, text:'TIR (%)', color:'#8AA39D', font:{size:11} },
+          ticks: { color:'#8AA39D', font:{size:10} },
+          grid: { color:'rgba(255,255,255,.05)' }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════════════════════════
+let _tickerActual = null;
+
+function openModal(p){
+  _tickerActual = p.ticker;
+  document.getElementById('m-ticker').textContent = p.ticker;
+  document.getElementById('m-emisor').textContent = p.emisor || '—';
+  document.getElementById('m-rotar-link').href = 'Calculadora_Rotaciones_FinanzasconNico_4.html?compra=' + encodeURIComponent(p.ticker);
+  document.getElementById('m-badges').innerHTML = `
+    <span class="badge">${p.tipo}</span>
+    ${p.calificacion ? `<span class="badge">${p.calificacion}</span>` : ''}
+    ${p.dolar ? `<span class="badge">${p.dolar}</span>` : ''}
+  `;
+  document.getElementById('m-tir').textContent = (p.tir*100).toFixed(2)+'%';
+  document.getElementById('m-dur').textContent = p.duration.toFixed(2)+' años';
+  const diffTxt = p.diff!=null ? ((p.diff*100>=0?'+':'')+(p.diff*100).toFixed(2)+'%') : '—';
+  const diffEl = document.getElementById('m-diff');
+  diffEl.textContent = diffTxt;
+  diffEl.style.color = p.clase==='oport' ? 'var(--jade)' : (p.clase==='caro' ? 'var(--danger)' : 'var(--text)');
+  document.getElementById('m-cupon').textContent = p.cupon!=null ? (p.cupon*100).toFixed(2)+'%' : '—';
+  document.getElementById('m-vto').textContent = p.vencimiento || '—';
+  document.getElementById('m-lamina').textContent = p.laminaMin!=null ? p.laminaMin.toLocaleString('es-AR') : '—';
+
+  const holdersDiv = document.getElementById('m-holders');
+  if (!p.holders || p.holders.length===0){
+    holdersDiv.innerHTML = `<div class="no-holders">Ningún cliente tuyo lo tiene actualmente en cartera.</div>`;
+  } else {
+    const rows = p.holders.slice().sort((a,b)=>b.tenencia-a.tenencia).map(h=>`
+      <tr>
+        <td>${h.cliente}</td>
+        <td>${h.asesor||'—'}</td>
+        <td>US$ ${h.tenencia.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
+        <td>${h.nominales.toLocaleString('es-AR')}</td>
+        <td>${h.precioCompra ? h.precioCompra.toFixed(2) : '—'}</td>
+        <td>${h.diasTenencia}</td>
+      </tr>`).join('');
+    const total = p.holders.reduce((a,h)=>a+h.tenencia,0);
+    holdersDiv.innerHTML = `
+      <table class="holders">
+        <thead><tr><th>Cliente</th><th>Asesor</th><th>Tenencia</th><th>Nominales</th><th>PPC</th><th>Días</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);">Total en cartera: <strong style="color:var(--text)">US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</strong> entre ${p.holders.length} cliente(s)</div>
+    `;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function copyTicker(){
+  if (!_tickerActual) return;
+  navigator.clipboard.writeText(_tickerActual).then(()=>showToast(`✓ "${_tickerActual}" copiado`));
+}
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+// ══════════════════════════════════════════════════════════════
+//  SHARED FILES AUTO-LOAD — Monitor (con fallback publicado) + Tenencia (solo local, nunca se publica)
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
+  function openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = () => rej();
+    });
+  }
+  async function getShared(key) {
+    try {
+      const db = await openDB();
+      return new Promise(res => {
+        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    } catch { return null; }
+  }
+  function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  async function fetchStaticFallback(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const buf = await r.arrayBuffer();
+      return { data: buf, name: url.split('/').pop() };
+    } catch { return null; }
+  }
+  async function loadShared() {
+    const ten = await getShared('tenencia');
+    if (ten) cargarTenencia(fakeInput(ten));
+    let mon = await getShared('monitor');
+    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
+    if (mon) cargarMonitor(fakeInput(mon));
+  }
+  window.addEventListener('DOMContentLoaded', loadShared);
+  if (typeof BroadcastChannel !== 'undefined') {
+    new BroadcastChannel('fcn_shared').onmessage = async e => {
+      if (!e.data || e.data.type !== 'file_updated') return;
+      await new Promise(r => setTimeout(r, 1500));
+      const entry = await getShared(e.data.key);
+      if (!entry) return;
+      const raw = e.data.rawKey || e.data.key;
+      if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
+      if (raw === 'monitor')  cargarMonitor(fakeInput(entry));
+    };
+  }
+})();
+</script>
+</body>
+</html>
