@@ -63,6 +63,7 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-hei
 .legend-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:10.5px;color:var(--muted);line-height:1.9;}
 .legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;position:relative;top:1px;}
 .threshold-val{color:var(--ambar);font-family:var(--font-mono);}
+.extremo-hint{font-size:10px;color:var(--muted);line-height:1.5;margin-top:5px;padding-left:20px;}
 input[type=range]{accent-color:var(--ambar);width:100%;}
 
 .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
@@ -178,6 +179,11 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
       </select>
     </div>
 
+    <div class="field" id="field-extremos" style="display:none;">
+      <label class="chk-row"><input type="checkbox" id="chk-extremos" onchange="render()"> Mostrar TIRs extremas (<span id="extremos-count">0</span> ocultas)</label>
+      <div class="extremo-hint">TIR &gt; <span id="extremo-threshold-lbl">60</span>% suele ser un bono en default (la fórmula da un número gigante que no significa nada) — se ocultan del gráfico por defecto para no romper la escala. Activá esto para volver a verlas.</div>
+    </div>
+
     <div class="divider"></div>
     <div class="section-title">Curva de referencia</div>
     <div class="field">
@@ -259,6 +265,14 @@ let dataTenencia = [];  // filas crudas de Tenencia por Ticker
 let holdersByTicker = {}; // ticker -> [{cliente,asesor,tenencia,nominales,precioCompra,diasTenencia}]
 let chart = null;
 let umbral = 50; // bps
+
+// Bonos en default (o con datos rotos) dan una TIR "matemáticamente correcta"
+// pero sin sentido económico (cientos o miles de %) porque la fórmula asume
+// que se van a cobrar cupones que en realidad no se van a pagar. Un solo
+// instrumento así estira el eje Y del gráfico y deja el resto ilegible —
+// por eso se ocultan por defecto (con opción de volver a mostrarlos).
+const TIR_EXTREMO = 0.60; // 60% anual en USD — ya por encima de esto es prácticamente siempre default/dato roto
+document.addEventListener('DOMContentLoaded', ()=>{ const el=document.getElementById('extremo-threshold-lbl'); if(el) el.textContent = Math.round(TIR_EXTREMO*100); });
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -481,6 +495,7 @@ function puntosBase(){
     .map(([tk,m]) => ({
       ticker: tk, ...m,
       holders: holdersByTicker[tk] || [],
+      esExtremo: m.tir > TIR_EXTREMO || m.tir < -0.5,
     }));
 }
 
@@ -505,7 +520,7 @@ function render(){
   const fCartera = document.getElementById('f-cartera').value;
   const tipoMap = {corporativo:chkCorp, soberano:chkSob, provincial:chkProv, bopreal:chkBop, dollarlinked:chkSob};
 
-  let puntos = puntosBase().filter(p=>{
+  let puntosPre = puntosBase().filter(p=>{
     if (fTicker && !p.ticker.toLowerCase().includes(fTicker)) return false;
     if (fCalif && p.calificacion !== fCalif) return false;
     if (!isNaN(durMin) && p.duration < durMin) return false;
@@ -518,6 +533,15 @@ function render(){
     if (fCartera === 'no' && enCartera) return false;
     return true;
   });
+
+  const extremos = puntosPre.filter(p=>p.esExtremo);
+  const fieldExtremos = document.getElementById('field-extremos');
+  const chkExtremos = document.getElementById('chk-extremos');
+  fieldExtremos.style.display = extremos.length ? 'block' : 'none';
+  document.getElementById('extremos-count').textContent = extremos.length;
+  if (!extremos.length) chkExtremos.checked = false;
+
+  let puntos = chkExtremos.checked ? puntosPre : puntosPre.filter(p=>!p.esExtremo);
 
   const curve = computeCurve(puntos);
   const th = umbral/10000;
@@ -554,16 +578,28 @@ function renderChart(puntos, curve){
   window._puntosActuales = puntos; // expuesto para debugging
   const ctx = document.getElementById('chart').getContext('2d');
 
-  const scatterData = puntos.map(p=>({x:p.duration, y:p.tir*100}));
-  const bg = puntos.map(p=>COLOR[p.clase]);
-  const borderColor = puntos.map(p=>p.enCartera ? '#ffffff' : COLOR[p.clase]);
+  // Si se activó "mostrar extremas", igual no dejamos que estiren el eje: se
+  // clampean visualmente al techo "sano" (definido por los puntos normales)
+  // y se marcan con forma/color distinto — el tooltip sigue mostrando la TIR real.
+  const normales = puntos.filter(p=>!p.esExtremo);
+  const tirsNormales = normales.map(p=>p.tir*100);
+  const yCap = tirsNormales.length ? Math.max(...tirsNormales)*1.2 : null;
+
+  const scatterData = puntos.map(p=>{
+    const yReal = p.tir*100;
+    const clip = p.esExtremo && yCap!=null && yReal > yCap;
+    return {x:p.duration, y: clip ? yCap : yReal};
+  });
+  const bg = puntos.map(p=>p.esExtremo ? '#DBA03C' : COLOR[p.clase]);
+  const borderColor = puntos.map(p=>p.enCartera ? '#ffffff' : (p.esExtremo ? '#DBA03C' : COLOR[p.clase]));
   const borderWidth = puntos.map(p=>p.enCartera ? 2 : 0);
-  const radius = puntos.map(p=>p.enCartera ? 6 : 4);
+  const radius = puntos.map(p=>p.enCartera ? 6 : (p.esExtremo ? 6 : 4));
+  const pointStyle = puntos.map(p=>p.esExtremo ? 'triangle' : 'circle');
 
   const curveData = curve.bins.map(b=>({x:b.d, y:b.tir*100}));
 
   if (chart) chart.destroy();
-  chart = new Chart(ctx, {
+  chart = window._chart = new Chart(ctx, {
     type: 'scatter',
     data: {
       datasets: [
@@ -575,6 +611,7 @@ function renderChart(puntos, curve){
           borderWidth: borderWidth,
           pointRadius: radius,
           pointHoverRadius: radius.map(r=>r+2),
+          pointStyle: pointStyle,
         },
         {
           type: 'line',
@@ -612,6 +649,14 @@ function renderChart(puntos, curve){
               if (item.datasetIndex !== 0) return `Curva: ${item.parsed.y.toFixed(2)}%`;
               const p = _puntosActuales[item.dataIndex];
               const diffTxt = p.diff!=null ? (p.diff*100>=0?'+':'') + (p.diff*100).toFixed(2)+'% vs curva' : '';
+              if (p.esExtremo) {
+                return [
+                  `${p.emisor}`,
+                  `⚠ TIR: ${(p.tir*100).toFixed(0)}% — extrema, probable default (fuera de escala)`,
+                  `Duration: ${p.duration.toFixed(2)}a`,
+                  p.enCartera ? `👤 ${p.holders.length} cliente(s) posicionado(s)` : '— sin clientes'
+                ].filter(Boolean);
+              }
               return [
                 `${p.emisor}`,
                 `TIR: ${(p.tir*100).toFixed(2)}%  ·  Duration: ${p.duration.toFixed(2)}a`,
@@ -652,10 +697,12 @@ function openModal(p){
     <span class="badge">${p.tipo}</span>
     ${p.calificacion ? `<span class="badge">${p.calificacion}</span>` : ''}
     ${p.dolar ? `<span class="badge">${p.dolar}</span>` : ''}
+    ${p.esExtremo ? `<span class="badge" style="color:var(--danger);border-color:var(--danger);">⚠ TIR extrema — posible default</span>` : ''}
   `;
-  document.getElementById('m-tir').textContent = (p.tir*100).toFixed(2)+'%';
+  document.getElementById('m-tir').textContent = (p.tir*100).toFixed(p.esExtremo?0:2)+'%';
+  document.getElementById('m-tir').style.color = p.esExtremo ? 'var(--danger)' : '';
   document.getElementById('m-dur').textContent = p.duration.toFixed(2)+' años';
-  const diffTxt = p.diff!=null ? ((p.diff*100>=0?'+':'')+(p.diff*100).toFixed(2)+'%') : '—';
+  const diffTxt = (p.esExtremo || p.diff==null) ? '—' : ((p.diff*100>=0?'+':'')+(p.diff*100).toFixed(2)+'%');
   const diffEl = document.getElementById('m-diff');
   diffEl.textContent = diffTxt;
   diffEl.style.color = p.clase==='oport' ? 'var(--jade)' : (p.clase==='caro' ? 'var(--danger)' : 'var(--text)');
