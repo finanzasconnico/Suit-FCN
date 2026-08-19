@@ -72,6 +72,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .tool-tab .icon{font-size:14px;flex-shrink:0;}
 .file-dot{width:6px;height:6px;border-radius:50%;background:var(--jade);flex-shrink:0;}
 .file-dot.warn{background:var(--ambar);}
+
+/* ── NAV DE DOS NIVELES: categorías arriba, herramientas abajo ── */
+.cat-tab{font-weight:500;}
+.subcategory-bar{flex-shrink:0;height:0;overflow:hidden;background:var(--surface2);border-bottom:1px solid transparent;display:flex;align-items:center;gap:2px;padding:0 20px;transition:height .16s ease,border-color .16s ease;}
+.subcategory-bar.show{height:38px;border-bottom-color:var(--border);}
+.sub-tab{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:11.5px;white-space:nowrap;transition:all .15s;}
+.sub-tab:hover{background:var(--surface);color:var(--text);}
+.sub-tab.active{background:rgba(28,140,95,.15);color:var(--jade);}
+.sub-tab.files-tab.active{background:rgba(219,160,60,.12);color:var(--ambar);}
+.sub-tab .icon{font-size:12px;}
 .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto;}
 .user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;}
 .user-avatar{width:20px;height:20px;border-radius:50%;background:var(--jade-d);border:1px solid var(--jade);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:9px;color:var(--ambar);font-weight:600;}
@@ -256,6 +266,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       </div>
     </div>
   </div>
+
+  <div class="subcategory-bar" id="subcategory-bar"></div>
 
   <div class="content-area" id="content-area">
 
@@ -593,15 +605,75 @@ function showApp() {
   setupTopbarScroll();
 }
 
+// ══════════════════════════════════════════════════════════════
+//  NAV DE DOS NIVELES — categorías (por tipo de instrumento) arriba,
+//  herramientas de esa categoría en una segunda barra. "Archivos" vive
+//  dentro de Utilidades en vez de ser una pestaña suelta.
+// ══════════════════════════════════════════════════════════════
+const CATEGORIES = [
+  { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama','monindiv'] },
+  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador'] },
+  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['armador','monitor'] },
+  { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo'] },
+  { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
+];
+function categoryOf(toolId) {
+  if (toolId === 'files') return 'utilidades';
+  const cat = CATEGORIES.find(c => c.toolIds.includes(toolId));
+  return cat ? cat.id : null;
+}
+
 function buildNav() {
   const tools     = getUserTools();
   const container = document.getElementById('topbar-tools');
   container.innerHTML = '';
 
-  addTab(container, 'home',  '🏠', 'Inicio',   () => showHome(),  true);
-  addTab(container, 'files', '🗂', 'Archivos',  () => showFiles(), false, true);
-  tools.forEach(tool => addTab(container, tool.id, tool.icon, tool.name, () => openTool(tool.id)));
+  addTab(container, 'home', '🏠', 'Inicio', () => showHome(), true);
+  CATEGORIES.forEach(cat => {
+    const hasAny = cat.toolIds.some(id => id === 'files' || tools.find(t => t.id === id));
+    if (!hasAny) return;
+    const btn = document.createElement('button');
+    btn.className = 'tool-tab cat-tab';
+    btn.id = 'cat-' + cat.id;
+    btn.innerHTML = `<span class="icon">${cat.icon}</span> ${cat.name}`;
+    btn.onclick = () => openCategory(cat.id);
+    container.appendChild(btn);
+  });
   updateTopbarScrollHint();
+}
+
+function openCategory(catId) {
+  const cat = CATEGORIES.find(c => c.id === catId);
+  if (!cat) return;
+  const tools = getUserTools();
+  const firstId = cat.toolIds.find(id => id === 'files' || tools.find(t => t.id === id));
+  if (!firstId) return;
+  if (firstId === 'files') showFiles(); else openTool(firstId);
+}
+
+function renderSubcategoryBar(catId) {
+  const bar = document.getElementById('subcategory-bar');
+  if (!bar) return;
+  const cat = catId ? CATEGORIES.find(c => c.id === catId) : null;
+  if (!cat) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
+  const tools = getUserTools();
+  bar.innerHTML = '';
+  cat.toolIds.forEach(id => {
+    if (id === 'files') { addSubTab(bar, 'files', '🗂', 'Archivos', () => showFiles(), true); return; }
+    const tool = tools.find(t => t.id === id);
+    if (!tool) return;
+    addSubTab(bar, tool.id, tool.icon, tool.name, () => openTool(tool.id), false);
+  });
+  bar.classList.add('show');
+}
+
+function addSubTab(container, id, icon, label, onclick, isFiles) {
+  const btn = document.createElement('button');
+  btn.className = 'sub-tab' + (isFiles ? ' files-tab' : '');
+  btn.id = 'subtab-' + id;
+  btn.innerHTML = `<span class="icon">${icon}</span> ${label}`;
+  btn.onclick = onclick;
+  container.appendChild(btn);
 }
 
 // En pantallas chicas la barra de herramientas no entra completa — esto agrega
@@ -1202,9 +1274,20 @@ function openTool(toolId) {
 }
 
 function setActiveTab(toolId) {
-  document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
-  const btn = document.getElementById('tab-' + toolId);
-  if (btn) btn.classList.add('active');
+  document.querySelectorAll('#topbar-tools .tool-tab').forEach(t => t.classList.remove('active'));
+  if (toolId === 'home') {
+    const btn = document.getElementById('tab-home');
+    if (btn) btn.classList.add('active');
+    renderSubcategoryBar(null);
+    return;
+  }
+  const catId = categoryOf(toolId);
+  if (!catId) return;
+  const catBtn = document.getElementById('cat-' + catId);
+  if (catBtn) catBtn.classList.add('active');
+  renderSubcategoryBar(catId);
+  const subBtn = document.getElementById('subtab-' + toolId);
+  if (subBtn) subBtn.classList.add('active');
 }
 
 // ── TOAST ──
