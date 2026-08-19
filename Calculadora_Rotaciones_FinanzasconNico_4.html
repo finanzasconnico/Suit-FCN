@@ -1615,7 +1615,51 @@ document.addEventListener('DOMContentLoaded', autoSeleccionarDesdeURL);
 // REPORTE PDF — informe descargable para mostrarle al cliente,
 // con los mismos números y el mismo gráfico que ve el asesor en pantalla.
 // ═══════════════════════════════════════════════════════
-function descargarReportePDF(){
+// html2canvas (usado por html2pdf) no soporta bien SVGs inline con colores por
+// var(--xxx) en atributos stroke/fill — los deja transparentes o negros según
+// el elemento. Por eso, para el PDF, el gráfico se pre-convierte a una imagen
+// PNG (rasterizada por el propio navegador, con los colores ya resueltos a
+// hex) en vez de clonar el <svg> vivo. Esto es lo que causaba el "todo negro"
+// arriba del gráfico en el reporte descargado.
+async function svgToDataUrlPng(svgEl, w, h, scale){
+  scale = scale || 2;
+  var cs = getComputedStyle(document.documentElement);
+  var varMap = {
+    '--series-mantener': cs.getPropertyValue('--series-mantener').trim() || '#3B82C4',
+    '--series-rotar':    cs.getPropertyValue('--series-rotar').trim() || '#D9A03C',
+    '--good':            cs.getPropertyValue('--good').trim() || '#0ca30c',
+  };
+  var clone = svgEl.cloneNode(true);
+  clone.removeAttribute('style');
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
+  var hoverRect = clone.querySelector('#chart-hover-rect');
+  if (hoverRect) hoverRect.remove();
+  var svgStr = new XMLSerializer().serializeToString(clone);
+  svgStr = svgStr.replace(/var\((--[\w-]+)\)/g, function(m, name){ return varMap[name] || '#EAF1EE'; });
+
+  var svgBlob = new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'});
+  var url = URL.createObjectURL(svgBlob);
+  try {
+    var img = await new Promise(function(res, rej){
+      var im = new Image();
+      im.onload = function(){ res(im); };
+      im.onerror = rej;
+      im.src = url;
+    });
+    var canvas = document.createElement('canvas');
+    canvas.width = w*scale; canvas.height = h*scale;
+    var ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function descargarReportePDF(){
   if(!lastCtx || typeof html2pdf === 'undefined') return;
   var btn = document.getElementById('btn-pdf-reporte');
   var venta = lastCtx.venta, compra = lastCtx.compra;
@@ -1661,7 +1705,26 @@ function descargarReportePDF(){
   var capitalNoteClone = document.getElementById('chart-capital-note').cloneNode(true);
   capitalNoteClone.style.margin = '-2px 0 12px';
   chartSection.appendChild(capitalNoteClone);
-  chartSection.appendChild(document.getElementById('chart-wrap').cloneNode(true));
+  var chartWrapClone = document.createElement('div');
+  chartWrapClone.className = 'chart-wrap';
+  var chartSvgEl = document.getElementById('chart-svg');
+  if (chartSvgEl) {
+    try {
+      var chartPngUrl = await svgToDataUrlPng(chartSvgEl, 900, 280, 2);
+      var chartImg = document.createElement('img');
+      chartImg.width = 900; chartImg.height = 280; // reserva el alto correcto desde ya, para que scrollHeight no se mida antes de que la imagen decodifique
+      chartImg.src = chartPngUrl;
+      chartImg.style.cssText = 'width:100%;height:auto;display:block;';
+      chartWrapClone.appendChild(chartImg);
+      try { await chartImg.decode(); } catch(e) {}
+    } catch(e) {
+      console.warn('[Reporte PDF] no se pudo convertir el gráfico a imagen, se usa el SVG original', e);
+      chartWrapClone.appendChild(document.getElementById('chart-wrap').cloneNode(true));
+    }
+  } else {
+    chartWrapClone.appendChild(document.getElementById('chart-wrap').cloneNode(true));
+  }
+  chartSection.appendChild(chartWrapClone);
   root.appendChild(chartSection);
 
   var tablaSection = document.createElement('div');
@@ -1687,6 +1750,14 @@ function descargarReportePDF(){
   document.body.appendChild(root);
   if(btn){ btn.disabled = true; btn.textContent = 'Generando PDF…'; }
 
+  // html2canvas calcula qué capturar en base al scroll actual de la página —
+  // si el asesor scrolleó la calculadora antes de descargar el reporte (lo
+  // normal, ya que el formulario es largo), sin este reset capturaba un
+  // recorte desplazado: una franja negra/vacía arriba y contenido de otra
+  // parte de la pantalla filtrándose. Por eso se vuelve a (0,0) antes de capturar.
+  var scrollYPrevio = window.scrollY || window.pageYOffset || 0;
+  window.scrollTo(0, 0);
+
   var w = root.scrollWidth, h = root.scrollHeight;
   var navyColor = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#081917';
   var nombreArchivo = 'Rotacion_'+venta.ticker+'_a_'+compra.ticker+(cliente?'_'+cliente.replace(/\s+/g,''):'')+'.pdf';
@@ -1695,14 +1766,16 @@ function descargarReportePDF(){
     margin: 0,
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
-    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
+    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true, scrollX:0, scrollY:0, windowWidth:document.documentElement.scrollWidth, windowHeight:document.documentElement.scrollHeight },
     jsPDF: { unit:'px', format:[w, h], orientation:'portrait' },
     pagebreak: { mode:['avoid-all'] }
   }).from(root).save().then(function(){
+    window.scrollTo(0, scrollYPrevio);
     document.body.removeChild(root);
     if(btn){ btn.disabled = false; btn.textContent = '📄 Descargar reporte PDF'; }
   }).catch(function(err){
     console.error('[Reporte PDF] error', err);
+    window.scrollTo(0, scrollYPrevio);
     if(root.parentNode) document.body.removeChild(root);
     if(btn){ btn.disabled = false; btn.textContent = '📄 Descargar reporte PDF'; }
     alert('No se pudo generar el PDF. Probá de nuevo — si sigue fallando, avisale a Nico.');
