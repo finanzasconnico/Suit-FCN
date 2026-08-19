@@ -34,3 +34,9 @@ En desarrollo/
 .git/
 .netlify/
 node_modules/
+
+# Excepción: estos 2 archivos NO tienen datos de clientes — son los que
+# Monitor de Individuos y Precios Objetivo autocargan como fallback público.
+# Sin esta excepción, ninguno de los dos se publica nunca (bug encontrado 19/08).
+!data/monitor.xlsx
+!data/precios_objetivo.xlsx
