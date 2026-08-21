@@ -247,6 +247,19 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .tk-badge{display:inline-block;padding:2px 7px;border-radius:10px;background:rgba(219,160,60,.15);color:var(--ambar);font-size:10px;font-family:var(--font-mono);}
 .btn-rotar-mini{background:rgba(219,160,60,.12);border:1px solid rgba(219,160,60,.35);color:var(--ambar);border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer;line-height:1;}
 .btn-rotar-mini:hover{background:rgba(219,160,60,.22);}
+/* ── ALTERNATIVAS PARA ROTAR (dentro del modal de holders) ── */
+.rot-alt-wrap{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.rot-alt-title{font-family:var(--font-display);font-size:12.5px;color:var(--text);margin-bottom:8px;}
+.rot-filtros{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px;}
+.rot-filtro-item{display:flex;flex-direction:column;gap:2px;}
+.rot-filtro-item label{font-size:9px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em;}
+.rot-filtro-item input{width:64px;padding:3px 6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-family:var(--font-mono);}
+.rot-alt-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px;}
+.rot-alt-table th{text-align:left;padding:5px 6px;color:var(--ink-muted);font-size:9px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--border);}
+.rot-alt-table td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.04);}
+.rot-alt-row{cursor:pointer;}
+.rot-alt-row:hover{background:rgba(255,255,255,.03);}
+.rot-alt-empty{font-size:11px;color:var(--ink-muted);padding:10px 0;}
 .cc-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:520;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .cc-modal-overlay.open{display:flex;}
 .cc-modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:100%;max-width:640px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
@@ -584,7 +597,22 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       </div>
       <button class="cc-close" onclick="cerrarHoldersON()">✕</button>
     </div>
-    <div class="cc-body" id="to-body"></div>
+    <div class="cc-body" id="to-body">
+      <div id="to-clientes"></div>
+      <div class="rot-alt-wrap">
+        <div class="rot-alt-title">🔎 Alternativas para rotar — mejor TIR, riesgo y plazo similares</div>
+        <details>
+          <summary style="cursor:pointer;font-size:10px;color:var(--ink-muted);margin-bottom:6px;">⚙️ Filtros (clic para ajustar)</summary>
+          <div class="rot-filtros">
+            <div class="rot-filtro-item"><label>TIR mín. %</label><input type="number" step="0.5" id="rf-tirmin" value="0" onchange="actualizarFiltroRotacion()"></div>
+            <div class="rot-filtro-item"><label>TIR máx. %</label><input type="number" step="0.5" id="rf-tirmax" value="20" onchange="actualizarFiltroRotacion()"></div>
+            <div class="rot-filtro-item"><label>Duration ± años</label><input type="number" step="0.5" id="rf-durtol" value="1.5" onchange="actualizarFiltroRotacion()"></div>
+            <div class="rot-filtro-item"><label>Calif. ± notches</label><input type="number" step="1" min="0" id="rf-calnotch" value="1" onchange="actualizarFiltroRotacion()"></div>
+          </div>
+        </details>
+        <div id="to-alternativas"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1213,11 +1241,14 @@ function filaONAgrupada(g) {
 
 // Modal: qué clientes tienen esta ON, con acceso directo a WPP/Mail y a
 // rotarla en la Calculadora de Rotaciones para el cliente que se elija.
+let tickerModalActual = null;
+
 function abrirHoldersON(ticker) {
   if (!ticker) return;
+  tickerModalActual = ticker;
   const items = datosFiltrados.filter(d => d.ticker === ticker);
   document.getElementById('to-nombre').textContent = ticker + (items[0] ? ' · ' + items[0].instrumento : '');
-  const body = document.getElementById('to-body');
+  const body = document.getElementById('to-clientes');
   if (!items.length) {
     document.getElementById('to-sub').textContent = '';
     body.innerHTML = `<div class="empty-state" style="padding:20px 0;"><div class="empty-title">Sin clientes</div></div>`;
@@ -1237,7 +1268,95 @@ function abrirHoldersON(ticker) {
       + `<tbody>${rows}</tbody></table>`
       + `<div class="cc-total">Tenencia total: <b>$${formatNum(tenTotal)}</b></div>`;
   }
+  renderAlternativasRotacion(ticker);
   document.getElementById('to-overlay').classList.add('open');
+}
+
+// =================== ALTERNATIVAS PARA ROTAR ===================
+// Escala de calificación local (agencias arg./Moody's Local) — se busca el
+// token más largo que aparece en el texto de la calificación para no
+// confundir "A" con "AA" o "AA+".
+const ESCALA_CALIF = ['AAA','AA+','AA','AA-','A+','A','A-','BBB+','BBB','BBB-','BB+','BB','BB-','B+','B','B-','CCC+','CCC','CCC-','CC','C','D'];
+function calificacionRank(calif) {
+  if (!calif) return null;
+  const up = String(calif).toUpperCase();
+  let mejor = -1, mejorLen = 0;
+  ESCALA_CALIF.forEach((tok, idx) => {
+    if (up.includes(tok) && tok.length > mejorLen) { mejor = idx; mejorLen = tok.length; }
+  });
+  return mejor >= 0 ? mejor : null;
+}
+
+function leerFiltrosRotacion() {
+  const num = (id, def) => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
+  return {
+    tirMin: num('rf-tirmin', 0) / 100,
+    tirMax: num('rf-tirmax', 20) / 100,
+    durTol: num('rf-durtol', 1.5),
+    calNotches: num('rf-calnotch', 1)
+  };
+}
+
+// Busca en TODO el universo del Monitor (no solo lo que ya tienen los
+// clientes) ONs con mejor TIR, calificación de riesgo similar (± notches)
+// y duration similar (± años) a la ON actual — para sugerir una rotación.
+function buscarComparables(ticker, filtros) {
+  const base = dataMonitor[ticker];
+  if (!base) return [];
+  const baseRank = calificacionRank(base.calificacion);
+  const candidatos = [];
+  Object.keys(dataMonitor).forEach(tk => {
+    if (tk === ticker) return;
+    const c = dataMonitor[tk];
+    if (c.tir === null || c.tir === undefined) return;
+    if (c.tir < filtros.tirMin || c.tir > filtros.tirMax) return; // descarta outliers fuera de la curva
+    if (base.tir !== null && base.tir !== undefined && c.tir <= base.tir) return; // solo sugerir algo que rinda más
+    if (filtros.durTol !== null && base.duration != null && c.duration != null) {
+      if (Math.abs(c.duration - base.duration) > filtros.durTol) return;
+    }
+    if (filtros.calNotches !== null && baseRank !== null) {
+      const cRank = calificacionRank(c.calificacion);
+      if (cRank === null || Math.abs(cRank - baseRank) > filtros.calNotches) return;
+    }
+    candidatos.push(Object.assign({ ticker: tk }, c));
+  });
+  candidatos.sort((a,b) => b.tir - a.tir);
+  return candidatos.slice(0, 8);
+}
+
+function renderAlternativasRotacion(ticker) {
+  const cont = document.getElementById('to-alternativas');
+  if (!cont) return;
+  const base = dataMonitor[ticker];
+  if (!base) { cont.innerHTML = `<div class="rot-alt-empty">No tengo datos de este ticker en el Monitor para buscar alternativas.</div>`; return; }
+  const filtros = leerFiltrosRotacion();
+  const candidatos = buscarComparables(ticker, filtros);
+  if (!candidatos.length) {
+    cont.innerHTML = `<div class="rot-alt-empty">No encontré alternativas con estos filtros — probá ampliar el rango de TIR, duration o calificación.</div>`;
+    return;
+  }
+  const rows = candidatos.map(c => `
+    <tr class="rot-alt-row" onclick="irARotarAlternativa('${ticker.replace(/'/g,"\\'")}','${c.ticker.replace(/'/g,"\\'")}')" title="Ver rotación ${ticker} → ${c.ticker}">
+      <td class="td-ticker">${c.ticker}</td>
+      <td title="${c.instrumento||c.emisor||''}">${c.instrumento||c.emisor||'—'}</td>
+      <td>${(c.tir*100).toFixed(2)}%</td>
+      <td>${c.duration!=null?c.duration.toFixed(1)+'y':'—'}</td>
+      <td>${califBadge(c.calificacion)}</td>
+      <td>${formatVto(c.vencimiento)}</td>
+    </tr>`).join('');
+  cont.innerHTML = `<table class="rot-alt-table"><thead><tr><th>Ticker</th><th>Emisor</th><th>TIR</th><th>Duration</th><th>Calif.</th><th>Vto.</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function actualizarFiltroRotacion() {
+  if (tickerModalActual) renderAlternativasRotacion(tickerModalActual);
+}
+
+// Abre la Calculadora de Rotaciones con el bono actual como "vender" y la
+// alternativa sugerida como "comprar" (sin cliente preseleccionado — se
+// elige ahí mismo si hace falta).
+function irARotarAlternativa(actual, candidato) {
+  const url = 'Calculadora_Rotaciones_FinanzasconNico_4.html?vender=' + encodeURIComponent(actual) + '&compra=' + encodeURIComponent(candidato);
+  window.open(url, '_blank');
 }
 function cerrarHoldersON() { document.getElementById('to-overlay').classList.remove('open'); }
 
@@ -1732,8 +1851,20 @@ function actualizarFiltrosDur() {
     } catch { return null; }
   }
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
+  // cae a la copia publicada en la carpeta data/ del sitio (Tenencia y Stock
+  // quedan afuera a propósito: tienen datos de clientes).
+  async function fetchStaticFallback(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const buf = await r.arrayBuffer();
+      return { data: buf, name: url.split('/').pop() };
+    } catch { return null; }
+  }
   async function loadShared() {
-    const [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
+    let [ten, stk, mon] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared(uk('monitor'))]);
+    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
     if (ten || mon) _pendienteAutoAnalizar = true;
     if (ten) cargarTenencia(fakeInput(ten));
     if (stk) cargarStock(fakeInput(stk));
@@ -1744,9 +1875,10 @@ function actualizarFiltrosDur() {
     new BroadcastChannel('fcn_shared').onmessage = async e => {
       if (!e.data || e.data.type !== 'file_updated') return;
       await new Promise(r => setTimeout(r, 1500));
-      const entry = await getShared(e.data.key);
-      if (!entry) return;
       const raw = e.data.rawKey || e.data.key;
+      let entry = await getShared(e.data.key);
+      if (!entry && raw === 'monitor') entry = await fetchStaticFallback('data/monitor.xlsx');
+      if (!entry) return;
       _pendienteAutoAnalizar = true;
       if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
       if (raw === 'stock')    cargarStock(fakeInput(entry));

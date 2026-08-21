@@ -412,6 +412,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
             <option value="rent-desc">Mayor rentabilidad</option>
             <option value="rent-asc">Menor rentabilidad</option>
             <option value="ten-desc">Mayor tenencia</option>
+            <option value="ten-asc">Menor tenencia</option>
             <option value="dias-desc">Más días</option>
             <option value="ticker-asc">Ticker A→Z</option>
           </select>
@@ -424,7 +425,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
           <div style="overflow-x:auto"><table>
             <thead><tr>
               <th>Ticker</th><th>Activo</th><th>Cliente</th><th>Prec. compra</th>
-              <th>Precio actual</th><th>Rentabilidad</th><th>Tenencia USD</th>
+              <th>Precio actual</th><th>Rentabilidad</th><th onclick="toggleOrdenTenencia()" style="cursor:pointer;" title="Ordenar por tenencia">Tenencia USD ⇅</th>
               <th>G/P est.</th><th>Días</th><th class="col-senal">Señal</th><th>WPP</th><th>Mail</th>
             </tr></thead>
             <tbody id="tbody-tabla"></tbody>
@@ -971,12 +972,20 @@ function renderTablaActiva(){
   if(tabActiva==='t-clientes') renderClientes();
 }
 
+function toggleOrdenTenencia(){
+  const sel=document.getElementById('t-orden');
+  if(!sel) return;
+  sel.value = sel.value==='ten-desc' ? 'ten-asc' : 'ten-desc';
+  renderTabla();
+}
+
 function renderTabla(){
   let rows=filtrarPosiciones();
   const orden=document.getElementById('t-orden')?.value||'rent-desc';
   if(orden==='rent-desc') rows.sort((a,b)=>(getRentEfectiva(b)??-9999)-(getRentEfectiva(a)??-9999));
   if(orden==='rent-asc')  rows.sort((a,b)=>(getRentEfectiva(a)??9999)-(getRentEfectiva(b)??9999));
   if(orden==='ten-desc')  rows.sort((a,b)=>b.tenencia-a.tenencia);
+  if(orden==='ten-asc')   rows.sort((a,b)=>a.tenencia-b.tenencia);
   if(orden==='dias-desc') rows.sort((a,b)=>b.dias-a.dias);
   if(orden==='ticker-asc') rows.sort((a,b)=>a.ticker.localeCompare(b.ticker));
   document.getElementById('count-tabla').textContent=`${rows.length} posiciones`;
