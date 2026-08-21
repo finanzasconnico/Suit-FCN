@@ -671,13 +671,19 @@ function downloadForPublish(key, arrayBuffer) {
 const DB_NAME  = 'fcn_shared_v1';
 const DB_STORE = 'files';
 
+// Se reusa la misma conexión durante toda la sesión en vez de abrir una nueva
+// en cada get/save/delete — abrir IndexedDB tiene overhead y esto se llama
+// muy seguido (dashboard, estado de archivos, cliente activo, etc.).
+let _dbPromise = null;
 function openSharedDB() {
-  return new Promise((res, rej) => {
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((res, rej) => {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
     req.onsuccess  = e => res(e.target.result);
-    req.onerror    = () => rej(new Error('IndexedDB no disponible'));
+    req.onerror    = () => { _dbPromise = null; rej(new Error('IndexedDB no disponible')); };
   });
+  return _dbPromise;
 }
 
 async function saveSharedFile(key, arrayBuffer, fileName) {
@@ -697,9 +703,9 @@ async function getSharedFile(key) {
       const tx  = db.transaction(DB_STORE, 'readonly');
       const req = tx.objectStore(DB_STORE).get(key);
       req.onsuccess = () => res(req.result || null);
-      req.onerror   = () => res(null);
+      req.onerror   = () => { console.warn('[fcn_shared] error leyendo', key, req.error); res(null); };
     });
-  } catch { return null; }
+  } catch (e) { console.warn('[fcn_shared] no se pudo abrir IndexedDB para leer', key, e); return null; }
 }
 
 async function deleteSharedFile(key) {
@@ -732,9 +738,9 @@ async function getActiveClientStorage() {
       const tx  = db.transaction(DB_STORE, 'readonly');
       const req = tx.objectStore(DB_STORE).get('activeClient');
       req.onsuccess = () => res(req.result ? req.result.cliente : null);
-      req.onerror   = () => res(null);
+      req.onerror   = () => { console.warn('[fcn_shared] error leyendo activeClient', req.error); res(null); };
     });
-  } catch { return null; }
+  } catch (e) { console.warn('[fcn_shared] no se pudo abrir IndexedDB para leer activeClient', e); return null; }
 }
 async function clearActiveClientStorage() {
   const db = await openSharedDB();
@@ -954,11 +960,15 @@ function grupoDeTipo(tipo) {
 // La exportación de Balanz suele traer una fila de "Total" al final de la cartera
 // (a veces con Ticker vacío, a veces con la palabra "Total" en Comitente/Cuenta).
 // Si no la filtramos, ese renglón se suma como si fuera una posición más y duplica
-// el AUM. Acá la detectamos con dos chequeos redundantes por seguridad.
+// el AUM. Primero se busca el texto "Total" explícito (señal fuerte); si no aparece,
+// "sin Ticker" se usa como respaldo — pero eso también puede ser una posición real que
+// Balanz no exportó con Ticker (Fideicomiso, Opciones, etc.), así que motivo:'sin_ticker'
+// se devuelve aparte para poder avisar en consola si esa fila tenía plata (ver parseTenencia).
 function esFilaTotal(r, ticker) {
-  if (!ticker) return true; // sin ticker → no es una posición real, probablemente el total
   const campos = [r['Comitente'], r['Cuenta'], r['cuenta'], r['idcuenta']];
-  return campos.some(v => /^\s*total\b/i.test(String(v || '')));
+  if (campos.some(v => /^\s*total\b/i.test(String(v || '')))) return { es: true, motivo: 'texto_total' };
+  if (!ticker) return { es: true, motivo: 'sin_ticker' };
+  return { es: false };
 }
 
 function parseTenencia(entry) {
@@ -980,9 +990,15 @@ function parseTenencia(entry) {
     const porClienteMoneda = {}; // cliente -> {ARS: val, USD: val} — solo filas de Efectivo
     const comitentePorCliente = {}; // cliente (Cuenta) -> comitente, para cruzar con Stock de cuentas
     let filasOmitidas = 0;
+    let filasSinTickerConValor = 0;
     rows.forEach(r => {
       const ticker = String(r['Ticker'] || '').trim();
-      if (esFilaTotal(r, ticker)) { filasOmitidas++; return; }
+      const chkTotal = esFilaTotal(r, ticker);
+      if (chkTotal.es) {
+        filasOmitidas++;
+        if (chkTotal.motivo === 'sin_ticker' && (parseFloat(r['Tenencia']) || 0) !== 0) filasSinTickerConValor++;
+        return;
+      }
       const val = parseFloat(r['Tenencia']) || 0;
       const nominales = parseFloat(r['Nominales']) || 0;
       const tipo = String(r['Tipo'] || 'Otro').trim() || 'Otro';
@@ -1020,6 +1036,7 @@ function parseTenencia(entry) {
       }
     });
     if (filasOmitidas) console.log(`[Dashboard] ${filasOmitidas} fila(s) omitida(s) por parecer totales/resumen, no posiciones.`);
+    if (filasSinTickerConValor) console.warn(`[Dashboard] ${filasSinTickerConValor} fila(s) sin Ticker pero con Tenencia distinta de cero fueron omitidas del AUM — revisar si son posiciones reales (ej. Fideicomiso/Opciones) que Balanz no exportó con Ticker.`);
     return { aum, clientes: clientes.size, asesores: asesores.size, posiciones: rows.length - filasOmitidas, porTipo, porGrupo, porMoneda, porCliente, porTicker, holdersByTicker, carteraPorCliente, porClienteMoneda, comitentePorCliente };
   } catch (e) { console.warn('[Dashboard] error leyendo tenencia', e); return null; }
 }
@@ -1031,13 +1048,14 @@ function parsePreciosObjetivo(entry) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
     const items = [];
+    let filasOmitidas = 0;
     rows.forEach(r => {
       const tkRaw = String(r['Ticker_original'] || r['Ticker_usado'] || '').trim();
       if (!tkRaw || tkRaw === '-') return;
       const ticker = tkRaw.split(',')[0].trim().toUpperCase();
       const precio = parseFloat(r['Precio_actual']) || null;
       const target = parseFloat(r['Precio_objetivo_promedio']) || null;
-      if (!precio || !target) return;
+      if (!precio || !target) { filasOmitidas++; return; }
       items.push({
         ticker,
         empresa: String(r['Empresa'] || '').trim(),
@@ -1047,7 +1065,10 @@ function parsePreciosObjetivo(entry) {
         pct: (target / precio - 1) * 100
       });
     });
-    return { total: rows.length, items };
+    // Si hay filas pero ninguna sobrevivió el filtro de precio/target, probablemente cambiaron
+    // los nombres de columna del Excel — se loguea para no confundirlo con "no se subió nada".
+    if (filasOmitidas) console.warn(`[Dashboard] ${filasOmitidas} fila(s) de precios objetivo omitida(s) por falta de Precio_actual o Precio_objetivo_promedio${!items.length && rows.length ? ' — ¿cambiaron los nombres de columna del Excel?' : ''}.`);
+    return { total: rows.length, items, filasOmitidas };
   } catch (e) { console.warn('[Dashboard] error leyendo precios objetivo', e); return null; }
 }
 
@@ -1221,9 +1242,19 @@ function renderDashTopTickers(tenencia) {
     </div>`).join('');
 }
 
+// precios.total>0 pero items vacío = el archivo se subió y se pudo leer, pero ninguna fila pasó
+// el parseo (típicamente porque cambiaron los nombres de columna) — se lo distingue de "no subiste
+// nada" para no confundir al asesor (ver parsePreciosObjetivo).
+function preciosParseWarningHtml(precios) {
+  if (!precios || !precios.total || precios.items.length) return null;
+  return `<div class="dash-empty">⚠ El archivo de Precios Objetivo tiene ${precios.total} fila(s) pero no se pudo leer ninguna — revisá que las columnas "Precio_actual" y "Precio_objetivo_promedio" no hayan cambiado de nombre.</div>`;
+}
+
 function renderDashOportunidades(precios) {
   const el = document.getElementById('dash-oportunidades');
   if (!el) return;
+  const warn = preciosParseWarningHtml(precios);
+  if (warn) { el.innerHTML = warn; return; }
   if (!precios || !precios.items.length) {
     el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí el archivo de <a onclick="showFiles()">Precios Objetivo</a> para ver acá los tickers con mayor upside/downside vs. el consenso de analistas.</div>`;
     return;
@@ -1244,6 +1275,8 @@ function renderDashOportunidades(precios) {
 function renderDashVentaSugerida(tenencia, precios) {
   const el = document.getElementById('dash-venta-sugerida');
   if (!el) return;
+  const warn = preciosParseWarningHtml(precios);
+  if (warn) { el.innerHTML = warn; return; }
   if (!precios || !precios.items.length || !tenencia || !tenencia.porTicker || !Object.keys(tenencia.porTicker).length) {
     el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> y <a onclick="showFiles()">Precios Objetivo</a> para ver acá qué activos de tus clientes conviene vender.</div>`;
     return;
@@ -1304,6 +1337,14 @@ function parseMonitorTIR(entry) {
       return yrs > 0 ? Math.round(yrs * 100) / 100 : null;
     };
     const parseNum = v => { if (v === null || v === undefined || v === '') return null; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+    // Busca una columna por nombre de header (variantes conocidas) y si no la encuentra
+    // cae al offset fijo actual como respaldo — así si Balanz reordena/inserta una columna,
+    // esto se autocorrige en vez de leer en silencio el valor de otra columna.
+    const buildColFinder = headerRow => {
+      const colMap = {};
+      headerRow.forEach((v, j) => { if (v) { const k = String(v).trim().toLowerCase(); if (colMap[k] === undefined) colMap[k] = j; } });
+      return (fallback, ...names) => { for (const n of names) { const k = n.toLowerCase(); if (colMap[k] !== undefined) return colMap[k]; } return fallback; };
+    };
 
     // ── CORPORATIVOS ──
     let cName = names.find(s => s === 'Corporativos') || names.find(s => s.toLowerCase().includes('corporativ')) || null;
@@ -1313,11 +1354,14 @@ function parseMonitorTIR(entry) {
       let hIdx = -1, tIdx = -1;
       for (let i = 0; i < Math.min(raw.length, 15); i++) { for (let j = 0; j < raw[i].length; j++) { if (raw[i][j] === 'Ticker') { hIdx = i; tIdx = j; break; } } if (hIdx >= 0) break; }
       if (hIdx >= 0) {
-        const iT = tIdx, iE = tIdx + 1, iVto = tIdx + 3, iTIR = tIdx + 4, iCup = tIdx + 7, iCal = tIdx + 11;
-        const colMap = {};
-        raw[hIdx].forEach((v, j) => { if (v) { const k = String(v).trim().toLowerCase(); if (colMap[k] === undefined) colMap[k] = j; } });
-        const findCol = (...ns) => { for (const n of ns) { const k = n.toLowerCase(); if (colMap[k] !== undefined) return colMap[k]; } return -1; };
-        const iDur = findCol('Duration', 'Dur.', 'Dur', 'Duration (años)', 'Duración', 'Duracion');
+        const iT = tIdx;
+        const findCol = buildColFinder(raw[hIdx]);
+        const iE   = findCol(tIdx + 1,  'Emisor', 'Empresa');
+        const iVto = findCol(tIdx + 3,  'Vencimiento', 'Vto', 'Vto.');
+        const iTIR = findCol(tIdx + 4,  'TIR', 'TIR%', 'TIR %');
+        const iCup = findCol(tIdx + 7,  'Cupón', 'Cupon', 'Cupón %', 'Cupon %');
+        const iCal = findCol(tIdx + 11, 'Calificación', 'Calificacion', 'Rating');
+        const iDur = findCol(-1, 'Duration', 'Dur.', 'Dur', 'Duration (años)', 'Duración', 'Duracion');
         for (let i = hIdx + 1; i < raw.length; i++) {
           const row = raw[i]; const tk = String(row[iT] || '').trim();
           if (!tk || !/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
@@ -1352,23 +1396,32 @@ function parseMonitorTIR(entry) {
         else if (r0 === 'BOPREALES' || r1 === 'BOPREALES') currentCat = 'bopreal';
         else if (r0.includes('DOLLAR') || r1.includes('DOLLAR')) currentCat = 'dollarlinked';
         if (r0 !== 'TICKER') continue;
+        // La fila de header de este bloque (misma "row") suele traer los nombres de columna
+        // igual que en Corporativos — los buscamos por nombre y si no aparecen, mantenemos
+        // el offset fijo de siempre (1/3/4/7/11) como respaldo.
+        const findColSov = buildColFinder(row);
+        const jE   = findColSov(1,  'Emisor', 'Empresa');
+        const jVto = findColSov(3,  'Vencimiento', 'Vto', 'Vto.');
+        const jTIR = findColSov(4,  'TIR', 'TIR%', 'TIR %');
+        const jCup = findColSov(7,  'Cupón', 'Cupon', 'Cupón %', 'Cupon %');
+        const jCal = findColSov(11, 'Calificación', 'Calificacion', 'Rating');
         for (let di = ri + 1; di < sovRaw.length; di++) {
           const dr = sovRaw[di];
           const tk = String(dr[0] || '').trim().toUpperCase();
-          const em = String(dr[1] || '').trim();
+          const em = String(dr[jE] || '').trim();
           if (tk === 'TICKER') break;
           if (!tk || !em || em.length > 70) continue;
           if (!/^[A-Z]{1,4}[0-9]{1,4}[A-Z]?$|^[A-Z]{2,6}[0-9]{2}[A-Z]?$/.test(tk)) continue;
-          const tirRaw = parseFloat(dr[4]);
+          const tirRaw = parseFloat(dr[jTIR]);
           if (isNaN(tirRaw)) continue;
           const tir = Math.abs(tirRaw) > 1 ? tirRaw / 100 : tirRaw;
           if (tir > 1.5 || tir < -0.5) continue;
           if (dataMonitor[tk]) continue;
-          const cupRaw = parseFloat(dr[7]);
+          const cupRaw = parseFloat(dr[jCup]);
           const cup = isNaN(cupRaw) ? null : (Math.abs(cupRaw) > 1 ? cupRaw / 100 : cupRaw);
-          const vRaw = dr[3];
+          const vRaw = dr[jVto];
           const vencimiento = vRaw ? (typeof vRaw === 'number' ? excelSerialToDate(vRaw) : String(vRaw).trim()) : '';
-          dataMonitor[tk] = { tipo: currentCat, tir, cupon: cup, vencimiento, calificacion: String(dr[11] || '').trim(), emisor: em, instrumento: em, duration: calcDurFromVto(vRaw) };
+          dataMonitor[tk] = { tipo: currentCat, tir, cupon: cup, vencimiento, calificacion: String(dr[jCal] || '').trim(), emisor: em, instrumento: em, duration: calcDurFromVto(vRaw) };
           sovCnt++;
         }
       }
@@ -1573,7 +1626,7 @@ async function hasStaticFallback(key) {
   try {
     const r = await fetch('data/' + fixedName, { method: 'HEAD', cache: 'no-store' });
     staticFallbackCache[key] = !!r.ok;
-  } catch { staticFallbackCache[key] = false; }
+  } catch (e) { console.warn('[Dashboard] no se pudo verificar fallback estático para', key, e); staticFallbackCache[key] = false; }
   return staticFallbackCache[key];
 }
 
@@ -1704,17 +1757,22 @@ function maybeShowStaleReminder(list) {
   showToast(`🔔 ${names} ${pending.length > 1 ? 'están desactualizados' : 'está desactualizado'} — capaz conviene actualizarlo`, 6500);
 }
 
-async function buildDashboard() {
-  const [tenenciaEntry, preciosEntry, monitorEntry, stockEntry] = await Promise.all([
-    getSharedFile(userKey('tenencia')),
-    getSharedFile(userKey('precios_objetivo')),
-    getSharedFile(userKey('monitor')),
-    getSharedFile(userKey('stock'))
-  ]);
-  const tenencia = parseTenencia(tenenciaEntry);
-  const precios  = parsePreciosObjetivo(preciosEntry);
-  const monitor  = parseMonitorTIR(monitorEntry);
-  const stock    = parseStockFCN(stockEntry);
+// Cache en memoria de los 4 archivos ya parseados. buildDashboard() (llamado una sola vez
+// al abrir la Suite) los parsea todos; después de subir/borrar/pegar UN archivo se llama
+// refreshDashboardForKey(key), que solo reparsea ese — Tenencia y Monitor pueden tener miles
+// de filas y el XLSX.read+sheet_to_json no es gratis, no tiene sentido repetirlo por un
+// archivo chico (ej. Stock) que no tiene nada que ver.
+const dashData = { tenencia: null, precios: null, monitor: null, stock: null };
+const DASH_KEY_TO_FIELD = { tenencia: 'tenencia', precios_objetivo: 'precios', monitor: 'monitor', stock: 'stock' };
+const DASH_PARSERS = { tenencia: parseTenencia, precios_objetivo: parsePreciosObjetivo, monitor: parseMonitorTIR, stock: parseStockFCN };
+
+async function loadDashKey(key) {
+  const entry = await getSharedFile(userKey(key));
+  dashData[DASH_KEY_TO_FIELD[key]] = DASH_PARSERS[key](entry);
+}
+
+function renderDashboardAll() {
+  const { tenencia, precios, monitor, stock } = dashData;
   currentTenencia = tenencia;
   currentStockMap = stock;
   renderDashStats(tenencia, precios);
@@ -1726,11 +1784,28 @@ async function buildDashboard() {
   renderDashVentaSugerida(tenencia, precios);
   renderDashRFOportunidades(monitor);
   renderDashRFRotar(monitor, tenencia);
+}
+
+async function refreshFilesStatusBits() {
   const filesList = await getFilesStatusList();
   await renderDashFilesStatus(filesList);
   updateFilesStatusPill(filesList);
   renderOnboardBanner(filesList);
   if (isFirstDashboardLoad) { isFirstDashboardLoad = false; maybeShowStaleReminder(filesList); }
+}
+
+async function buildDashboard() {
+  await Promise.all(Object.keys(DASH_KEY_TO_FIELD).map(loadDashKey));
+  renderDashboardAll();
+  await refreshFilesStatusBits();
+}
+
+// Se llama tras subir/borrar/pegar UN archivo compartido — reparsea solo ese, reusa el
+// resto ya cacheado en dashData y vuelve a renderizar (el render en sí es barato).
+async function refreshDashboardForKey(key) {
+  if (DASH_KEY_TO_FIELD[key]) await loadDashKey(key);
+  renderDashboardAll();
+  await refreshFilesStatusBits();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1878,22 +1953,20 @@ async function publicarManual(key) {
   downloadForPublish(key, entry.data);
 }
 
+// Lee los 4 archivos en paralelo (antes era secuencial con un await por archivo, y encima
+// updateFilesTabDot() volvía a leer los mismos 4 archivos por su cuenta en cada iteración —
+// hasta 16 idas a IndexedDB para pintar 4 tarjetas). Ahora se lee una sola vez y se reusa.
 async function refreshFilesStatus() {
-  for (const sf of SHARED_FILES) {
-    const entry = await getSharedFile(userKey(sf.key));
-    const card  = document.getElementById('fcard-' + sf.key);
-    if (card) card.innerHTML = buildFileCard(sf, entry);
-    // Update dot in topbar
-    updateFilesTabDot();
-  }
+  const entries = await Promise.all(SHARED_FILES.map(sf => getSharedFile(userKey(sf.key))));
+  SHARED_FILES.forEach((sf, i) => {
+    const card = document.getElementById('fcard-' + sf.key);
+    if (card) card.innerHTML = buildFileCard(sf, entries[i]);
+  });
+  updateFilesTabDot(entries);
 }
 
-async function updateFilesTabDot() {
-  let anyMissing = false;
-  for (const sf of SHARED_FILES) {
-    const e = await getSharedFile(userKey(sf.key));
-    if (!e) { anyMissing = true; break; }
-  }
+function updateFilesTabDot(entries) {
+  const anyMissing = entries.some(e => !e);
   const tab = document.getElementById('tab-files');
   if (!tab) return;
   const existing = tab.querySelector('.file-dot');
@@ -1912,7 +1985,7 @@ function onFileSelected(key, input) {
       await saveSharedFile(userKey(key), e.target.result, file.name);
       await refreshFilesStatus();
       notifyTools(key);
-      buildDashboard();
+      refreshDashboardForKey(key);
       if (key === 'tenencia') refreshClienteList();
       const publishHint = STATIC_PUBLISH_KEYS[key]
         ? ` — si sos vos quien lo publica para todos, tocá "📤 Publicar para todos" abajo`
@@ -1928,7 +2001,7 @@ function onFileSelected(key, input) {
 async function onDeleteFile(key) {
   await deleteSharedFile(userKey(key));
   await refreshFilesStatus();
-  buildDashboard();
+  refreshDashboardForKey(key);
   if (key === 'tenencia') refreshClienteList();
   showToast('Archivo eliminado.');
 }
@@ -1959,7 +2032,7 @@ async function pasteFromClipboard(key) {
     await saveSharedFile(userKey(key), buffer, fileName);
     await refreshFilesStatus();
     notifyTools(key);
-    buildDashboard();
+    refreshDashboardForKey(key);
     if (key === 'tenencia') refreshClienteList();
     const publishHint = STATIC_PUBLISH_KEYS[key] ? ` — si sos vos quien lo publica para todos, tocá "📤 Publicar para todos"` : '';
     showToast(`✓ ${lines.length - 1} filas pegadas desde Excel para "${key}"${publishHint}`);
