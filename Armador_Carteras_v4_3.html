@@ -674,46 +674,60 @@ function loadMonitorFull(input){
       var newBC=[],newBS=[],newBL=[];
 
       // ── CORPORATIVOS ──
+      // El Ticker puede estar en la columna A (offset 0) o B (offset 1) según
+      // la versión del export de Balanz — buscamos en ambas para no perder
+      // toda la hoja si el layout cambió (mismo criterio que Scanner ONs).
+      function buscarHeaderTicker(sheetName){
+        var tr=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:true});
+        for(var i=0;i<Math.min(tr.length,20);i++){
+          var row=tr[i]||[];
+          if(String(row[0]||'').trim()==='Ticker') return {hdrRow:i,colOffset:0,rows:tr};
+          if(String(row[1]||'').trim()==='Ticker') return {hdrRow:i,colOffset:1,rows:tr};
+        }
+        return null;
+      }
       var cName=findSheetCI(names,['Corporativos','Corporativo','Corp','ONs']);
-      if(!cName){
-        // scan for sheet with ticker header col[0]='Ticker'
+      var cInfo=cName?buscarHeaderTicker(cName):null;
+      if(!cInfo){
+        // scan todas las hojas por una con header Ticker + TIR cerca
         for(var sn of names){
-          var tr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
-          if(tr.slice(0,20).some(function(r){return String(r[0]||'').trim()==='Ticker'&&String(r[4]||'').trim()==='TIR';})){cName=sn;break;}
+          var info=buscarHeaderTicker(sn);
+          if(info){
+            var hdrRowArr=info.rows[info.hdrRow]||[];
+            var c0=info.colOffset;
+            if(String(hdrRowArr[c0+4]||'').trim()==='TIR'){ cName=sn; cInfo=info; break; }
+          }
         }
       }
-      if(cName){
-        var rows=XLSX.utils.sheet_to_json(wb.Sheets[cName],{header:1,defval:'',raw:true});
-        for(var ri=0;ri<rows.length;ri++){
-          if(String(rows[ri][0]||'').trim()!=='Ticker')continue;
-          for(var di=ri+1;di<rows.length;di++){
-            var dr=rows[di];
-            var tk=String(dr[0]||'').trim();
-            var em=String(dr[1]||'').trim();
-            if(!tk||!em||tk==='Ticker'||tk==='Bonos'||tk==='Actualizado'||tk==='NaN')continue;
-            if(!/^[A-Z0-9]{3,10}O$/.test(tk)&&!/^[A-Z0-9]{3,8}$/.test(tk))continue;
-            if(em.length>60||em==='NaN')continue;
-            var tir=parseFloat(dr[4]);
-            if(isNaN(tir))continue;
-            if(newON[tk])continue;
-            var cup=parseFloat(dr[7]);
-            newON[tk]={
-              ticker:tk,emisor:em,
-              vencimiento:excelSerial(dr[3]),
-              tir:tir, // stored as decimal 0.07 = 7%
-              cupon:isNaN(cup)?null:cup, // also decimal
-              meses_cupon:String(dr[8]||'').trim(),
-              moneda:String(dr[9]||'').trim(),
-              ley:String(dr[10]||'').trim(),
-              calificacion:String(dr[11]||'').trim(),
-              lamina:parseFloat(dr[12])||null
-            };
-            corpCnt++;
-            var v7=newON[tk].vencimiento?newON[tk].vencimiento.slice(0,7):'';
-            var cupPct=newON[tk].cupon?Math.round(newON[tk].cupon*10000)/100:null;
-            var nm=em+(cupPct&&v7?' '+cupPct+'% '+v7:'')+' ('+tk+')';
-            newBC.push({t:tk,n:nm,c:'Renta Fija | Corporativos (ONs)',m:'USD'});
-          }
+      if(cInfo){
+        var rows=cInfo.rows, c=cInfo.colOffset;
+        for(var di=cInfo.hdrRow+1;di<rows.length;di++){
+          var dr=rows[di];
+          var tk=String(dr[c+0]||'').trim();
+          var em=String(dr[c+1]||'').trim();
+          if(!tk||!em||tk==='Ticker'||tk==='Bonos'||tk==='Actualizado'||tk==='NaN')continue;
+          if(!/^[A-Z0-9]{3,10}O$/.test(tk)&&!/^[A-Z0-9]{3,8}$/.test(tk))continue;
+          if(em.length>60||em==='NaN')continue;
+          var tir=parseFloat(dr[c+4]);
+          if(isNaN(tir))continue;
+          if(newON[tk])continue;
+          var cup=parseFloat(dr[c+7]);
+          newON[tk]={
+            ticker:tk,emisor:em,
+            vencimiento:excelSerial(dr[c+3]),
+            tir:tir, // stored as decimal 0.07 = 7%
+            cupon:isNaN(cup)?null:cup, // also decimal
+            meses_cupon:String(dr[c+8]||'').trim(),
+            moneda:String(dr[c+9]||'').trim(),
+            ley:String(dr[c+10]||'').trim(),
+            calificacion:String(dr[c+11]||'').trim(),
+            lamina:parseFloat(dr[c+12])||null
+          };
+          corpCnt++;
+          var v7=newON[tk].vencimiento?newON[tk].vencimiento.slice(0,7):'';
+          var cupPct=newON[tk].cupon?Math.round(newON[tk].cupon*10000)/100:null;
+          var nm=em+(cupPct&&v7?' '+cupPct+'% '+v7:'')+' ('+tk+')';
+          newBC.push({t:tk,n:nm,c:'Renta Fija | Corporativos (ONs)',m:'USD'});
         }
         monStat('corp',corpCnt,corpCnt>0?'ok':'warn');
       }

@@ -1865,7 +1865,17 @@ function buildFileCard(sf, entry) {
       <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.5;">💡 En Excel: clic en celda A1 → <strong style="color:var(--ambar)">Ctrl+E</strong> para seleccionar todos los datos → Ctrl+C → clic acá</div>
       ${entry ? `<button class="btn-del" onclick="onDeleteFile('${sf.key}')">🗑 Eliminar</button>` : ''}
       ${entry ? `<button class="btn-notify" onclick="notifyTools('${sf.key}')">⚡ Enviar a herramientas</button>` : ''}
+      ${entry && STATIC_PUBLISH_KEYS[sf.key] ? `<button class="btn-notify" onclick="publicarManual('${sf.key}')" title="Descarga una copia lista para poner en data/ y publicar para todos">📤 Publicar para todos</button>` : ''}
     </div>`;
+}
+
+// Solo quien mantiene el archivo publicado (Nico) debe tocar esto — por eso
+// NO se dispara solo al subir, para no descargarle un archivo de "publicar"
+// a cada compañero que suba/pegue el mismo archivo en su propia compu.
+async function publicarManual(key) {
+  const entry = await getSharedFile(userKey(key));
+  if (!entry || !entry.data) { showToast('❌ No encontré el archivo guardado para "' + key + '".'); return; }
+  downloadForPublish(key, entry.data);
 }
 
 async function refreshFilesStatus() {
@@ -1905,10 +1915,9 @@ function onFileSelected(key, input) {
       buildDashboard();
       if (key === 'tenencia') refreshClienteList();
       const publishHint = STATIC_PUBLISH_KEYS[key]
-        ? ` — se descargó "${STATIC_PUBLISH_KEYS[key]}": moveelo a la carpeta data/ (reemplazando el que hay) y corré sync-y-publicar.bat para que lo vean todos`
+        ? ` — si sos vos quien lo publica para todos, tocá "📤 Publicar para todos" abajo`
         : '';
       showToast(`✓ "${file.name}" guardado y enviado a las herramientas${publishHint}`);
-      if (STATIC_PUBLISH_KEYS[key]) downloadForPublish(key, e.target.result);
     } catch(err) {
       showToast('❌ Error guardando el archivo: ' + err.message);
     }
@@ -1952,8 +1961,8 @@ async function pasteFromClipboard(key) {
     notifyTools(key);
     buildDashboard();
     if (key === 'tenencia') refreshClienteList();
-    showToast(`✓ ${lines.length - 1} filas pegadas desde Excel para "${key}"`);
-    downloadForPublish(key, buffer);
+    const publishHint = STATIC_PUBLISH_KEYS[key] ? ` — si sos vos quien lo publica para todos, tocá "📤 Publicar para todos"` : '';
+    showToast(`✓ ${lines.length - 1} filas pegadas desde Excel para "${key}"${publishHint}`);
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       showToast('❌ Permiso denegado. El navegador bloqueó el acceso al portapapeles — hacé clic en "Permitir" si aparece el aviso.');
