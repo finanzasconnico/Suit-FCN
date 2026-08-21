@@ -1714,6 +1714,19 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!entry) return;
     loadMonitorFull({ files: [new File([entry.data], entry.name)] });
   }
+  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
+  // cae a la copia publicada en la carpeta data/ del sitio.
+  function fetchStaticFallback(url) {
+    return fetch(url).then(function(r){ return r.ok ? r.arrayBuffer() : null; })
+      .then(function(buf){ return buf ? {data:buf, name:url.split('/').pop()} : null; })
+      .catch(function(){ return null; });
+  }
+  function loadMonitor() {
+    getShared(uk('monitor')).then(function(entry){
+      if (entry) { loadFromEntry(entry); return; }
+      fetchStaticFallback('data/monitor.xlsx').then(loadFromEntry);
+    });
+  }
   // ── Cliente activo (seleccionado desde el panel de la Suite) ──
   function applyActiveClient(rec) {
     if (!rec || !rec.cliente) return;
@@ -1726,7 +1739,7 @@ document.addEventListener('DOMContentLoaded',function(){
     setTimeout(function(){ badge.style.borderColor = ''; }, 1400);
   }
   window.addEventListener('DOMContentLoaded', function() {
-    getShared(uk('monitor')).then(loadFromEntry);
+    loadMonitor();
     getShared('activeClient').then(applyActiveClient);
   });
   if (typeof BroadcastChannel !== 'undefined') {
@@ -1739,9 +1752,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if (e.data.type !== 'file_updated') return;
       var raw = e.data.rawKey || e.data.key;
       if (raw !== 'monitor') return;
-      setTimeout(function() {
-        getShared(e.data.key).then(loadFromEntry);
-      }, 1500);
+      setTimeout(loadMonitor, 1500);
     };
   }
 })();

@@ -165,7 +165,7 @@ details.cond-details summary:hover{color:#fff;}
 .preset-chip:hover{border-color:rgba(255,255,255,0.35);color:#fff;}
 .preset-chip.active{background:var(--balanz);color:#fff;border-color:var(--balanz);}
 
-.verdict-banner{border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;display:flex;align-items:center;gap:16px;}
+.verdict-banner{border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .verdict-banner.rotar{background:rgba(12,163,12,0.12);border:1px solid rgba(12,163,12,0.35);}
 .verdict-banner.mantener{background:rgba(28,140,95,0.12);border:1px solid rgba(28,140,95,0.35);}
 .verdict-banner.neutral{background:rgba(255,255,255,0.05);border:1px solid var(--border);}
@@ -173,6 +173,32 @@ details.cond-details summary:hover{color:#fff;}
 .verdict-text .verdict-head{font-family:'Spectral',serif;font-size:22px;font-weight:600;color:#fff;margin-bottom:4px;}
 .verdict-text .verdict-sub{font-size:12.5px;color:var(--cream);line-height:1.6;}
 .verdict-text .verdict-sub b{color:#fff;}
+.verdict-wpp-wrap{margin-left:auto;flex-shrink:0;align-self:center;}
+.verdict-wpp-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:20px;background:#25D366;color:#08381f;border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;font-size:11.5px;font-weight:600;white-space:nowrap;transition:filter .15s;}
+.verdict-wpp-btn:hover{filter:brightness(1.08);}
+.verdict-wpp-btn svg{width:15px;height:15px;fill:#08381f;flex-shrink:0;}
+.verdict-wpp-btn.sin-stock{background:rgba(255,255,255,.08);color:var(--cream-dim);border:1px solid var(--border);}
+.verdict-wpp-btn.sin-stock svg{fill:var(--cream-dim);}
+
+.wpp-rot-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:20px;}
+.wpp-rot-overlay.open{display:flex;}
+.wpp-rot-modal{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:460px;max-height:86vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.wpp-rot-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.wpp-rot-title{font-family:'Spectral',serif;font-size:16px;color:#fff;}
+.wpp-rot-sub{font-size:10.5px;color:var(--cream-dim);margin-top:3px;}
+.wpp-rot-close{background:transparent;border:none;color:var(--cream-dim);font-size:18px;cursor:pointer;line-height:1;padding:4px;}
+.wpp-rot-close:hover{color:#fff;}
+.wpp-rot-body{padding:16px 20px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+.wpp-rot-textarea{width:100%;min-height:220px;padding:11px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:12px;line-height:1.6;resize:vertical;outline:none;}
+.wpp-rot-textarea:focus{border-color:var(--balanz);}
+.wpp-rot-tel-row{font-size:10.5px;display:flex;align-items:center;gap:8px;color:var(--cream-dim);}
+.wpp-rot-tel-ok{color:#25D366;font-weight:600;}
+.wpp-rot-actions{display:flex;justify-content:flex-end;gap:8px;}
+.wpp-rot-btn-cancel{padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:11px;cursor:pointer;}
+.wpp-rot-btn-cancel:hover{border-color:rgba(255,255,255,.3);}
+.wpp-rot-btn-send{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#25D366;color:#08381f;border:none;border-radius:var(--radius);font-family:'Hanken Grotesk',sans-serif;font-size:11px;font-weight:600;cursor:pointer;}
+.wpp-rot-btn-send:hover{filter:brightness(1.08);}
+.wpp-rot-btn-send svg{width:13px;height:13px;fill:#08381f;}
 
 .samemoney-box{background:rgba(255,255,255,.03);border-left:3px solid var(--series-rotar);border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;font-size:12px;line-height:1.65;color:var(--cream);margin-bottom:18px;}
 .samemoney-box b{color:#fff;}
@@ -1117,7 +1143,82 @@ function renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy){
   var cashNote = Math.abs(difCash) >= 1
     ? (difCash>0 ? ' Además, hoy la rotación libera '+fmtUSD(difCash)+' de cash.' : ' Además, hoy la rotación requiere poner '+fmtUSD(Math.abs(difCash))+' extra de cash.')
     : '';
-  wrap.innerHTML = '<div class="verdict-banner '+cls+'"><div class="verdict-icon">'+icon+'</div><div class="verdict-text"><div class="verdict-head">'+head+'</div><div class="verdict-sub">'+sub+cashNote+'</div></div></div>';
+
+  var wppBtnHtml = '';
+  if(cls==='rotar' && clienteActivoNombre){
+    var tel = telParaCliente(clienteActivoNombre);
+    var svgWpp = '<svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>';
+    if(tel){
+      wppBtnHtml = '<div class="verdict-wpp-wrap"><button class="verdict-wpp-btn" onclick="abrirWppRotacion()">'+svgWpp+'Enviarle a '+clienteActivoNombre.split(' ')[0]+'</button></div>';
+    } else {
+      wppBtnHtml = '<div class="verdict-wpp-wrap"><button class="verdict-wpp-btn sin-stock" onclick="alertaSinStock()">'+svgWpp+'Enviar por WhatsApp</button></div>';
+    }
+  }
+
+  wrap.innerHTML = '<div class="verdict-banner '+cls+'"><div class="verdict-icon">'+icon+'</div><div class="verdict-text"><div class="verdict-head">'+head+'</div><div class="verdict-sub">'+sub+cashNote+'</div></div>'+wppBtnHtml+'</div>';
+
+  // Contexto para armar el mensaje de WhatsApp si se abre el modal
+  wppRotCtx = (cls==='rotar' && clienteActivoNombre) ? {
+    cliente: clienteActivoNombre, tel: telParaCliente(clienteActivoNombre),
+    venta: venta, compra: compra, absVentaja: absVentaja, pctVentaja: pctVentaja,
+    horizonAnios: currentHorizonAnios, horizDate: horizDate, difCash: difCash
+  } : null;
+}
+
+function alertaSinStock(){
+  alert('Para poder enviar la rotación directo por WhatsApp, primero subí el "Stock de cuentas" en el FCN Suite (pestaña Archivos) — de ahí sale el teléfono del cliente.');
+}
+
+function construirMensajeRotacion(ctx){
+  var nombrePila = (ctx.cliente||'').split(' ')[0];
+  var lineas = [];
+  lineas.push('Hola '+nombrePila+'! 👋');
+  lineas.push('');
+  lineas.push('Te comparto una recomendación para tu cartera:');
+  lineas.push('');
+  lineas.push('🔄 *Rotar de '+ctx.venta.ticker+' a '+ctx.compra.ticker+'*');
+  lineas.push('');
+  lineas.push('• TIR actual ('+ctx.venta.ticker+'): '+fmtNum(ctx.venta.tir)+'%');
+  lineas.push('• TIR nueva ('+ctx.compra.ticker+'): '+fmtNum(ctx.compra.tir)+'%');
+  lineas.push('• A '+fmtNum(ctx.horizonAnios,2)+' años ('+fmtDateAR(ctx.horizDate)+'), rotar te deja *'+fmtUSD(ctx.absVentaja)+' más*'+(ctx.pctVentaja!=null?' ('+fmtNum(Math.abs(ctx.pctVentaja))+'% más)':'')+' que quedarte como estás.');
+  if(Math.abs(ctx.difCash) >= 1){
+    lineas.push(ctx.difCash>0
+      ? '• Además, hoy la rotación libera '+fmtUSD(ctx.difCash)+' de cash.'
+      : '• Además, la rotación requiere poner '+fmtUSD(Math.abs(ctx.difCash))+' extra de cash hoy.');
+  }
+  lineas.push('');
+  lineas.push('Cualquier duda, quedo a disposición 🙌');
+  lineas.push('Nico');
+  return lineas.join('\n');
+}
+
+function abrirWppRotacion(){
+  if(!wppRotCtx) return;
+  document.getElementById('wpp-rot-sub').textContent = wppRotCtx.cliente+' · '+wppRotCtx.venta.ticker+' → '+wppRotCtx.compra.ticker;
+  document.getElementById('wpp-rot-texto').value = construirMensajeRotacion(wppRotCtx);
+  var telEl = document.getElementById('wpp-rot-tel');
+  var sendBtn = document.getElementById('wpp-rot-send-btn');
+  if(wppRotCtx.tel){
+    telEl.innerHTML = '<span class="wpp-rot-tel-ok">'+wppRotCtx.tel+'</span>';
+    sendBtn.disabled = false;
+  } else {
+    telEl.textContent = 'Sin teléfono — cargá el Stock de cuentas';
+    sendBtn.disabled = true;
+  }
+  document.getElementById('wpp-rot-overlay').classList.add('open');
+}
+function cerrarWppRotacion(){ document.getElementById('wpp-rot-overlay').classList.remove('open'); }
+function enviarWppRotacion(){
+  if(!wppRotCtx || !wppRotCtx.tel) return;
+  var texto = document.getElementById('wpp-rot-texto').value.trim();
+  if(!texto){ alert('Escribí un mensaje primero.'); return; }
+  var tel = wppRotCtx.tel.replace(/\D/g,'');
+  var native = 'whatsapp://send?phone='+tel+'&text='+encodeURIComponent(texto);
+  var web = 'https://wa.me/'+tel+'?text='+encodeURIComponent(texto);
+  var a = document.createElement('a'); a.href = native; a.target = '_blank';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ window.open(web, '_blank'); }, 1500);
+  cerrarWppRotacion();
 }
 
 function renderSameMoney(venta, compra, points, difCash, atH, horizonElegido, hoy, tMax){
@@ -1455,6 +1556,9 @@ var TENENCIA_POR_CLIENTE = {}; // { cliente: [{ticker, nominales, tenencia}] } �
 var CLIENTE_LIST = [];
 var clienteActivoNombre = null;
 var TIPO_RENTA_FIJA = {corporativos:true, bonos:true, letras:true};
+var COMITENTE_POR_CLIENTE = {}; // { cliente (Cuenta) : comitente } — para cruzar con Stock de cuentas
+var stockMap = {}; // comitente -> { tel, nombre, denominacion, mail }
+var wppRotCtx = null;
 
 function esFilaTotalRot(r, ticker){
   if(!ticker) return true;
@@ -1469,6 +1573,7 @@ function parseTenenciaParaClientes(entry){
     var sn = wb.SheetNames.find(function(s){ return s.toLowerCase().indexOf('export')>=0; }) || wb.SheetNames[0];
     var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
     var porCliente = {};
+    var comitentePorCliente = {};
     rows.forEach(function(r){
       var ticker = String(r['Ticker']||'').trim();
       if(esFilaTotalRot(r, ticker)) return;
@@ -1484,14 +1589,45 @@ function parseTenenciaParaClientes(entry){
       if(!porCliente[cliente][ticker]) porCliente[cliente][ticker] = {ticker:ticker, nominales:0, tenencia:0};
       porCliente[cliente][ticker].nominales += nominales;
       porCliente[cliente][ticker].tenencia += tenenciaUSD;
+      if(comitente && !comitentePorCliente[cliente]) comitentePorCliente[cliente] = comitente;
     });
     var resultado = {};
     Object.keys(porCliente).forEach(function(cli){
       resultado[cli] = Object.values(porCliente[cli]).sort(function(a,b){ return b.tenencia-a.tenencia; });
     });
     TENENCIA_POR_CLIENTE = resultado;
+    COMITENTE_POR_CLIENTE = comitentePorCliente;
     CLIENTE_LIST = Object.keys(resultado).sort(function(a,b){ return a.localeCompare(b,'es'); });
   } catch(e){ console.warn('[Rotaciones] error leyendo tenencia', e); }
+}
+
+function parseStock(entry){
+  if(!entry || !entry.data) return;
+  try{
+    var wb = XLSX.read(entry.data, {type:'array'});
+    var sn = wb.SheetNames.find(function(s){ return s.toLowerCase().indexOf('export')>=0; }) || wb.SheetNames[0];
+    var raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
+    var mapa = {};
+    raw.forEach(function(row){
+      var comitente = String(row['Comitente']||'').trim();
+      if(!comitente) return;
+      var denominacion = String(row['Denominación']||row['Denominacion']||'').trim();
+      var nombre = String(row['Nombre']||'').trim();
+      var tel = String(row['Teléfono']||row['Telefono']||'').replace(/\s/g,'');
+      if(tel && tel.charAt(0)!=='+') tel = '+'+tel;
+      var mail = String(row['Mails']||row['Mail']||row['Email']||'').trim();
+      mapa[comitente] = {tel: tel||null, nombre:nombre, denominacion:denominacion, mail: mail||null};
+    });
+    stockMap = mapa;
+  } catch(e){ console.warn('[Rotaciones] error leyendo stock', e); }
+}
+
+function telParaCliente(nombreCliente){
+  if(!nombreCliente) return null;
+  var comitente = COMITENTE_POR_CLIENTE[nombreCliente];
+  if(!comitente) return null;
+  var entry = stockMap[comitente];
+  return entry ? entry.tel : null;
 }
 
 function buscarClienteInput(q){
@@ -1524,11 +1660,13 @@ function seleccionarClienteActivo(nombre){
   renderClienteTickerChips();
   var rc = document.getElementById('reporte-cliente-input');
   if(rc) rc.value = nombre;
+  if(lastCtx) renderAll();
 }
 function limpiarClienteActivo(){
   clienteActivoNombre = null;
   document.getElementById('cliente-activo-label').style.display = 'none';
   document.getElementById('cliente-ticker-chips').innerHTML = '';
+  if(lastCtx) renderAll();
 }
 function renderClienteTickerChips(){
   var wrap = document.getElementById('cliente-ticker-chips');
@@ -1594,18 +1732,28 @@ function mostrarToastPanorama(msg){
 function autoSeleccionarDesdeURL(){
   var params = new URLSearchParams(location.search);
   var ticker = (params.get('compra') || '').trim().toUpperCase();
-  if (!ticker) return;
-  var intentos = 0, maxIntentos = 14; // ~7s a 500ms — da tiempo a que cargue el Monitor compartido
+  var vender = (params.get('vender') || '').trim().toUpperCase();
+  var clienteParam = (params.get('cliente') || '').trim();
+  if (!ticker && !vender && !clienteParam) return;
+  var intentos = 0, maxIntentos = 14; // ~7s a 500ms — da tiempo a que cargue el Monitor/Tenencia compartidos
   var poll = setInterval(function(){
     intentos++;
-    var listo = (typeof BOND_DB !== 'undefined' && BOND_DB[ticker]) || (typeof FLUJO_DB !== 'undefined' && FLUJO_DB[ticker]);
-    if (listo) {
+    var bondListo   = !ticker || (typeof BOND_DB !== 'undefined' && BOND_DB[ticker]) || (typeof FLUJO_DB !== 'undefined' && FLUJO_DB[ticker]);
+    var venderListo = !vender || (typeof BOND_DB !== 'undefined' && BOND_DB[vender]) || (typeof FLUJO_DB !== 'undefined' && FLUJO_DB[vender]);
+    var clienteListo = !clienteParam || (typeof TENENCIA_POR_CLIENTE !== 'undefined' && Object.keys(TENENCIA_POR_CLIENTE || {}).length > 0);
+    if (bondListo && venderListo && clienteListo) {
       clearInterval(poll);
-      seleccionarBono('compra', ticker);
-      mostrarToastPanorama('✓ "' + ticker + '" precargado como bono a comprar (desde Panorama de Mercado)');
+      if (clienteParam) seleccionarClienteActivo(clienteParam);
+      if (vender) seleccionarBono('venta', vender);
+      if (ticker) seleccionarBono('compra', ticker);
+      var partes = [];
+      if (clienteParam) partes.push('cliente ' + clienteParam);
+      if (vender) partes.push('vender ' + vender);
+      if (ticker) partes.push('comprar ' + ticker);
+      mostrarToastPanorama('✓ Precargado: ' + partes.join(' · '));
     } else if (intentos >= maxIntentos) {
       clearInterval(poll);
-      mostrarToastPanorama('⚠ No encontré "' + ticker + '" en el Monitor cargado acá — subilo en el Suite o cargalo a mano en "Cargar a mano".');
+      mostrarToastPanorama('⚠ No pude precargar todo — revisá que el Monitor y la Tenencia estén cargados acá.');
     }
   }, 500);
 }
@@ -1824,6 +1972,8 @@ async function descargarReportePDF(){
     await loadMonitorShared();
     const ten = await getShared('tenencia');
     if (ten) parseTenenciaParaClientes(ten);
+    const stk = await getShared('stock');
+    if (stk) parseStock(stk);
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
@@ -1837,10 +1987,41 @@ async function descargarReportePDF(){
         await new Promise(r => setTimeout(r, 1500));
         const entry = await getShared('tenencia');
         if (entry) parseTenenciaParaClientes(entry);
+      } else if (raw === 'stock') {
+        await new Promise(r => setTimeout(r, 1500));
+        const entry = await getShared('stock');
+        if (entry) parseStock(entry);
       }
     };
   }
 })();
 </script>
+
+<!-- ── MODAL ENVIAR ROTACIÓN POR WHATSAPP ── -->
+<div class="wpp-rot-overlay" id="wpp-rot-overlay" onclick="if(event.target===this) cerrarWppRotacion()">
+  <div class="wpp-rot-modal">
+    <div class="wpp-rot-head">
+      <div>
+        <div class="wpp-rot-title">📲 Enviar rotación por WhatsApp</div>
+        <div class="wpp-rot-sub" id="wpp-rot-sub">—</div>
+      </div>
+      <button class="wpp-rot-close" onclick="cerrarWppRotacion()">✕</button>
+    </div>
+    <div class="wpp-rot-body">
+      <textarea class="wpp-rot-textarea" id="wpp-rot-texto"></textarea>
+      <div class="wpp-rot-tel-row">
+        <span>Teléfono:</span>
+        <span id="wpp-rot-tel">—</span>
+      </div>
+      <div class="wpp-rot-actions">
+        <button class="wpp-rot-btn-cancel" onclick="cerrarWppRotacion()">Cancelar</button>
+        <button class="wpp-rot-btn-send" id="wpp-rot-send-btn" onclick="enviarWppRotacion()">
+          <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+          Abrir WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>

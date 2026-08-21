@@ -513,6 +513,19 @@ function seleccionarBono(ticker){
   if(b.tir_ref!==null && b.tir_ref!==undefined) refParts.push('TIR ref. Excel: <strong>'+b.tir_ref.toFixed(2)+'%</strong>');
   if(b.precio_ref) refParts.push('Precio ref.: <strong>'+b.precio_ref.toFixed(2)+'</strong>');
   if(b.dur_ref) refParts.push('Duration ref.: <strong>'+b.dur_ref.toFixed(2)+'</strong>');
+
+  // Precargar Precio (o TIR si no hay precio) con el último dato del Monitor,
+  // para no tener que tipearlo a mano cada vez que se elige un ticker.
+  if(b.precio_ref){
+    setInputMode('precio');
+    document.getElementById('in-precio').value = b.precio_ref.toFixed(2);
+    if(refParts.length) refParts.push('<em>(precio precargado abajo — se puede ajustar)</em>');
+  } else if(b.tir_ref!==null && b.tir_ref!==undefined){
+    setInputMode('tir');
+    document.getElementById('in-tir').value = b.tir_ref.toFixed(2);
+    if(refParts.length) refParts.push('<em>(TIR precargada abajo — se puede ajustar)</em>');
+  }
+
   if(refParts.length){ refBox.style.display='block'; refBox.innerHTML='📊 Últimos datos del Monitor — '+refParts.join(' · '); }
   else { refBox.style.display='none'; }
 
@@ -917,8 +930,19 @@ function editarAmort(iso, val){
     } catch { return null; }
   }
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
+  // cae a la copia publicada en la carpeta data/ del sitio.
+  async function fetchStaticFallback(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const buf = await r.arrayBuffer();
+      return { data: buf, name: url.split('/').pop() };
+    } catch { return null; }
+  }
   async function loadShared() {
-    const mon = await getShared('monitor');
+    let mon = await getShared('monitor');
+    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
     if (mon) cargarExcel(fakeInput(mon));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
@@ -928,7 +952,8 @@ function editarAmort(iso, val){
       const raw = e.data.rawKey || e.data.key;
       if (raw !== 'monitor') return;
       await new Promise(r => setTimeout(r, 1500));
-      const entry = await getShared('monitor');
+      let entry = await getShared('monitor');
+      if (!entry) entry = await fetchStaticFallback('data/monitor.xlsx');
       if (!entry) return;
       cargarExcel(fakeInput(entry));
     };

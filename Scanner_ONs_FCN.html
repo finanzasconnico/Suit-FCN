@@ -238,6 +238,29 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 /* ── SORT RESUMEN ── */
 .sort-resumen-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .sort-resumen-bar select{padding:5px 9px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:11px;outline:none;}
+/* ── CARTERA COMPLETA CLIENTE ── */
+.cc-nombre-click{cursor:pointer;}
+.cc-nombre-click:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
+/* ── TODAS LAS ONs (agrupado por ticker) ── */
+.tk-click{cursor:pointer;}
+.tk-click:hover{background:rgba(255,255,255,.03);}
+.tk-badge{display:inline-block;padding:2px 7px;border-radius:10px;background:rgba(219,160,60,.15);color:var(--ambar);font-size:10px;font-family:var(--font-mono);}
+.btn-rotar-mini{background:rgba(219,160,60,.12);border:1px solid rgba(219,160,60,.35);color:var(--ambar);border-radius:4px;padding:3px 7px;font-size:11px;cursor:pointer;line-height:1;}
+.btn-rotar-mini:hover{background:rgba(219,160,60,.22);}
+.cc-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:520;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.cc-modal-overlay.open{display:flex;}
+.cc-modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:100%;max-width:640px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.cc-head{padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.cc-title{font-family:var(--font-display);font-size:16px;color:var(--text);}
+.cc-sub{font-family:var(--font-mono);font-size:10px;color:var(--ink-muted);margin-top:3px;}
+.cc-close{background:transparent;border:none;color:var(--ink-muted);font-size:18px;cursor:pointer;line-height:1;padding:4px;}
+.cc-close:hover{color:var(--text);}
+.cc-body{padding:14px 22px 20px;overflow-y:auto;}
+.cc-table{width:100%;border-collapse:collapse;font-size:11px;}
+.cc-table th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-muted);padding:0 8px 8px 0;font-weight:500;}
+.cc-table td{padding:7px 8px 7px 0;border-top:1px solid var(--border);color:var(--text);font-family:var(--font-mono);}
+.cc-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--ink-muted);text-align:right;}
+.cc-total b{color:var(--jade);}
 </style>
 </head>
 <body>
@@ -438,21 +461,19 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
             <h3>Todas las ONs corporativas</h3>
             <span id="count-todas" style="font-size:11px;color:var(--ink-muted)"></span>
           </div>
+          <div style="font-size:10px;color:var(--ink-muted);margin:-4px 0 8px;">Una fila por ON — hacé clic para ver qué clientes la tienen y rotarla</div>
           <div style="overflow-x:auto;">
             <table><thead><tr>
               <th onclick="sortTable('todas','ticker')">Ticker</th>
               <th onclick="sortTable('todas','instrumento')">ON</th>
-              <th onclick="sortTable('todas','cliente')">Cliente</th>
-              <th onclick="sortTable('todas','asesor')">Asesor</th>
               <th onclick="sortTable('todas','tir')">TIR</th>
               <th onclick="sortTable('todas','cupon')">Cupón</th>
               <th onclick="sortTable('todas','duration')">Duration</th>
               <th onclick="sortTable('todas','vencimiento')">Vto.</th>
               <th onclick="sortTable('todas','laminaMin')">Lám. mín.</th>
               <th onclick="sortTable('todas','tenencia')">Tenencia USD</th>
-              <th onclick="sortTable('todas','nominales')">Nominales</th>
               <th onclick="sortTable('todas','calificacion')">Calif.</th>
-              <th>WPP</th><th>Mail</th>
+              <th onclick="sortTable('todas','clientes')">Clientes</th>
             </tr></thead>
             <tbody id="tbody-todas"></tbody></table>
           </div>
@@ -537,6 +558,33 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
         Abrir WhatsApp
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ── MODAL CARTERA COMPLETA CLIENTE ── -->
+<div class="cc-modal-overlay" id="cc-overlay" onclick="if(event.target===this) cerrarCarteraCliente()">
+  <div class="cc-modal">
+    <div class="cc-head">
+      <div>
+        <div class="cc-title" id="cc-nombre">—</div>
+        <div class="cc-sub" id="cc-sub"></div>
+      </div>
+      <button class="cc-close" onclick="cerrarCarteraCliente()">✕</button>
+    </div>
+    <div class="cc-body" id="cc-body"></div>
+  </div>
+</div>
+
+<div class="cc-modal-overlay" id="to-overlay" onclick="if(event.target===this) cerrarHoldersON()">
+  <div class="cc-modal">
+    <div class="cc-head">
+      <div>
+        <div class="cc-title" id="to-nombre">—</div>
+        <div class="cc-sub" id="to-sub"></div>
+      </div>
+      <button class="cc-close" onclick="cerrarHoldersON()">✕</button>
+    </div>
+    <div class="cc-body" id="to-body"></div>
   </div>
 </div>
 
@@ -1111,10 +1159,93 @@ function renderTablaBajas() {
   tbody.innerHTML=bajas.map(d=>filaON(d,true)).join('');
 }
 
+// Agrupa datosFiltrados por ticker: una entrada por ON, con la lista de
+// clientes que la tienen (para el modal de "Todas") en vez de repetir la
+// fila por cada cliente.
+function construirGruposTodas() {
+  const grupos = {};
+  datosFiltrados.forEach(d => {
+    if (!grupos[d.ticker]) {
+      grupos[d.ticker] = {
+        ticker: d.ticker, instrumento: d.instrumento, tipo: d.tipo,
+        tir: d.tir, cupon: d.cupon, duration: d.duration, vencimiento: d.vencimiento,
+        laminaMin: d.laminaMin, calificacion: d.calificacion,
+        tenencia: 0, clientes: []
+      };
+    }
+    const g = grupos[d.ticker];
+    g.tenencia += d.tenencia;
+    g.clientes.push(d.cliente);
+    if (d.tir !== null) g.tir = d.tir; // por si la TIR fue editada puntualmente
+  });
+  return Object.values(grupos).map(g => Object.assign(g, { numClientes: g.clientes.length }));
+}
+
 function renderTablaTodasONs() {
-  const sorted=[...datosFiltrados].sort((a,b)=>(a.tir||0)-(b.tir||0));
-  document.getElementById('count-todas').textContent=`${sorted.length} posiciones`;
-  document.getElementById('tbody-todas').innerHTML=sorted.map(d=>filaON(d,false,true)).join('');
+  const filas = construirGruposTodas().sort((a,b)=>(a.tir||0)-(b.tir||0));
+  document.getElementById('count-todas').textContent=`${filas.length} ONs · ${datosFiltrados.length} posiciones`;
+  document.getElementById('tbody-todas').innerHTML=filas.map(filaONAgrupada).join('');
+}
+
+function filaONAgrupada(g) {
+  const tirPct=g.tir!==null?(g.tir*100).toFixed(2):'—';
+  const tirClass=g.tir===null?'':g.tir<umbralTIR/100?'low':g.tir<umbralTIRAlta/100?'mid':'high';
+  const cuponPct=g.cupon!==null?(g.cupon*100).toFixed(2)+'%':'—';
+  const barPct=g.tir!==null?Math.min(100,g.tir/0.12*100):0;
+  const barColor=g.tir===null?'#3C5752':g.tir<umbralTIR/100?'#C0453B':g.tir<umbralTIRAlta/100?'#D9892B':'#1C8C5F';
+  const tirCell=`<div class="tir-bar-wrap"><span class="td-tir ${tirClass}">${tirPct!=='—'?tirPct+'%':'—'}</span><div class="tir-bar-bg"><div class="tir-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></div>`;
+  const durCell=g.duration!==null?`<span style="font-family:var(--font-mono)">${g.duration.toFixed(1)}y</span>`:'—';
+  const lamCell=g.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(g.laminaMin)}</span>`:'—';
+  const tkEsc=g.ticker.replace(/'/g,"\\'");
+  return `<tr class="tk-click" onclick="abrirHoldersON('${tkEsc}')" title="Ver qué clientes lo tienen">
+    <td class="td-ticker">${g.ticker} ${tipoBadge(g.tipo)}</td>
+    <td class="td-instrumento" title="${g.instrumento}">${g.instrumento}</td>
+    <td>${tirCell}</td>
+    <td style="font-family:var(--font-mono)">${cuponPct}</td>
+    <td>${durCell}</td>
+    <td style="font-family:var(--font-mono)">${formatVto(g.vencimiento)}</td>
+    <td>${lamCell}</td>
+    <td class="td-tenencia" style="font-family:var(--font-mono)">$${formatNum(g.tenencia)}</td>
+    <td>${califBadge(g.calificacion)}</td>
+    <td><span class="tk-badge">👤 ${g.numClientes}</span></td>
+  </tr>`;
+}
+
+// Modal: qué clientes tienen esta ON, con acceso directo a WPP/Mail y a
+// rotarla en la Calculadora de Rotaciones para el cliente que se elija.
+function abrirHoldersON(ticker) {
+  if (!ticker) return;
+  const items = datosFiltrados.filter(d => d.ticker === ticker);
+  document.getElementById('to-nombre').textContent = ticker + (items[0] ? ' · ' + items[0].instrumento : '');
+  const body = document.getElementById('to-body');
+  if (!items.length) {
+    document.getElementById('to-sub').textContent = '';
+    body.innerHTML = `<div class="empty-state" style="padding:20px 0;"><div class="empty-title">Sin clientes</div></div>`;
+  } else {
+    const tenTotal = items.reduce((a,i)=>a+i.tenencia,0);
+    document.getElementById('to-sub').textContent = `${items.length} cliente(s) · Tenencia total $${formatNum(tenTotal)}`;
+    const rows = items.slice().sort((a,b)=>b.tenencia-a.tenencia).map(d => `
+      <tr>
+        <td class="cc-nombre-click" onclick="cerrarHoldersON();abrirCarteraCliente('${d.cliente.replace(/'/g,"\\'")}')" title="Ver cartera completa">${d.cliente}</td>
+        <td>$${formatNum(d.tenencia)}</td>
+        <td>${d.nominales ? d.nominales.toLocaleString('es-AR') : '—'}</td>
+        <td>${d.tir!==null?(d.tir*100).toFixed(2)+'%':'—'}</td>
+        <td>${d.diasTenencia}</td>
+        <td style="display:flex;gap:4px;align-items:center;">${wppBoton(d)}${mailBoton(d)}<button class="btn-rotar-mini" onclick="irARotar('${d.cliente.replace(/'/g,"\\'")}','${ticker.replace(/'/g,"\\'")}')" title="Rotar este ON para ${d.cliente.replace(/"/g,'&quot;')}">🔄 Rotar</button></td>
+      </tr>`).join('');
+    body.innerHTML = `<table class="cc-table"><thead><tr><th>Cliente</th><th>Tenencia USD</th><th>Nominales</th><th>TIR</th><th>Días ten.</th><th></th></tr></thead>`
+      + `<tbody>${rows}</tbody></table>`
+      + `<div class="cc-total">Tenencia total: <b>$${formatNum(tenTotal)}</b></div>`;
+  }
+  document.getElementById('to-overlay').classList.add('open');
+}
+function cerrarHoldersON() { document.getElementById('to-overlay').classList.remove('open'); }
+
+// Redirige a la Calculadora de Rotaciones con el cliente y el bono a
+// vender ya precargados (ver autoSeleccionarDesdeURL en ese archivo).
+function irARotar(cliente, ticker) {
+  const url = 'Calculadora_Rotaciones_FinanzasconNico_4.html?cliente=' + encodeURIComponent(cliente) + '&vender=' + encodeURIComponent(ticker);
+  window.open(url, '_blank');
 }
 
 // MEJORA 1: Tab Top ONs
@@ -1163,7 +1294,7 @@ function renderResumenClientes() {
     return `<div class="table-wrap" style="margin-bottom:14px;${alertStyle}">
       <div class="table-header-row">
         <div>
-          <h3 style="font-size:13px;">${c.cliente} ${urgente?'<span class="badge-urgente">🔴 Urgente</span>':''}</h3>
+          <h3 class="cc-nombre-click" style="font-size:13px;" onclick="abrirCarteraCliente('${c.cliente.replace(/'/g,"\\'")}')" title="Ver cartera completa del cliente">${c.cliente} ${urgente?'<span class="badge-urgente">🔴 Urgente</span>':''}</h3>
           <div style="font-size:10px;color:var(--ink-muted);font-family:var(--font-sans)">${c.asesor} · ${c.items.length} ONs · TIR prom: <span style="font-family:var(--font-mono)">${tirProm}%</span>${mailCliente?` · <span style="color:var(--info)">${mailCliente}</span>`:''}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -1180,6 +1311,38 @@ function renderResumenClientes() {
     </div>`;
   }).join('');
 }
+
+// =================== CARTERA COMPLETA CLIENTE (independiente del filtro de ticker) ===================
+
+function abrirCarteraCliente(cn) {
+  if (!cn) return;
+  const items = datosFusionados.filter(d => d.cliente === cn);
+  document.getElementById('cc-nombre').textContent = cn;
+  const body = document.getElementById('cc-body');
+  if (!items.length) {
+    document.getElementById('cc-sub').textContent = '';
+    body.innerHTML = `<div class="empty-state" style="padding:20px 0;"><div class="empty-title">Sin posiciones</div></div>`;
+  } else {
+    const asesor = items[0].asesor || '';
+    const tenTotal = items.reduce((a, i) => a + i.tenencia, 0);
+    document.getElementById('cc-sub').textContent = `${asesor} · ${items.length} posición(es) · Tenencia total $${formatNum(tenTotal)}`;
+    const rows = items.slice().sort((a, b) => b.tenencia - a.tenencia).map(d => `
+      <tr>
+        <td>${d.ticker}</td>
+        <td style="font-family:var(--font-sans);">${d.instrumento || '—'}</td>
+        <td>${d.tir !== null ? (d.tir * 100).toFixed(2) + '%' : '—'}</td>
+        <td>${formatVto(d.vencimiento)}</td>
+        <td>$${formatNum(d.tenencia)}</td>
+        <td>${d.nominales ? d.nominales.toLocaleString('es-AR') : '—'}</td>
+        <td>${d.calificacion || '—'}</td>
+      </tr>`).join('');
+    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>ON</th><th>TIR</th><th>Vto.</th><th>Tenencia USD</th><th>Nominales</th><th>Calif.</th></tr></thead>`
+      + `<tbody>${rows}</tbody></table>`
+      + `<div class="cc-total">Tenencia total: <b>$${formatNum(tenTotal)}</b></div>`;
+  }
+  document.getElementById('cc-overlay').classList.add('open');
+}
+function cerrarCarteraCliente() { document.getElementById('cc-overlay').classList.remove('open'); }
 
 function esUrgente(cn) {
   const hoy=Date.now(), D90=90*86400*1000;
@@ -1403,7 +1566,7 @@ function logMsg(msg,type) {
 function sortTable(tabla,col) {
   if(sortState.tabla===tabla&&sortState.col===col) sortState.dir=sortState.dir==='asc'?'desc':'asc';
   else sortState={tabla,col,dir:'asc'};
-  const keyMap={tir:'tir',ticker:'ticker',cliente:'cliente',instrumento:'instrumento',tenencia:'tenencia',calificacion:'calificacion',asesor:'asesor',dias:'diasTenencia',cupon:'cupon',vencimiento:'vencimiento',duration:'duration',laminaMin:'laminaMin',nominales:'nominales'};
+  const keyMap={tir:'tir',ticker:'ticker',cliente:'cliente',instrumento:'instrumento',tenencia:'tenencia',calificacion:'calificacion',asesor:'asesor',dias:'diasTenencia',cupon:'cupon',vencimiento:'vencimiento',duration:'duration',laminaMin:'laminaMin',nominales:'nominales',clientes:'numClientes'};
   const key=keyMap[col]||col;
   const dir=sortState.dir==='asc'?1:-1;
   if(tabla==='bajas'){
@@ -1411,9 +1574,10 @@ function sortTable(tabla,col) {
     rows.sort((a,b)=>dir*(a[key]>b[key]?1:a[key]<b[key]?-1:0));
     document.getElementById('tbody-bajas').innerHTML=rows.map(d=>filaON(d,true)).join('');
   } else if(tabla==='todas'){
-    const rows=[...datosFiltrados];
+    const rows=construirGruposTodas();
     rows.sort((a,b)=>dir*((a[key]||0)>(b[key]||0)?1:(a[key]||0)<(b[key]||0)?-1:0));
-    document.getElementById('tbody-todas').innerHTML=rows.map(d=>filaON(d,false,true)).join('');
+    document.getElementById('count-todas').textContent=`${rows.length} ONs · ${datosFiltrados.length} posiciones`;
+    document.getElementById('tbody-todas').innerHTML=rows.map(filaONAgrupada).join('');
   } else if(tabla==='top'){
     const rows=datosFiltrados.filter(d=>d.tir!==null&&d.tir>umbralTIRAlta/100);
     rows.sort((a,b)=>dir*((a[key]||0)>(b[key]||0)?1:(a[key]||0)<(b[key]||0)?-1:0));
