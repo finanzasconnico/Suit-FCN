@@ -202,6 +202,17 @@ table.hm-table td { padding:7px 9px; border-bottom:1px solid rgba(255,255,255,.0
 <input type="file" id="fileInputHidden" accept=".xlsx,.xls,.xlsm" style="display:none">
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // ============================================================
 // REFERENCIA ESTÁTICA (extraída una vez del Monitor Individuos)
 // ticker base -> {emisor, calif, sector, ley, tipo}
@@ -786,6 +797,7 @@ function renderTab() {
         <span class="drop-icon">📂</span>
         <div class="drop-title">Subí el Monitor Individuos para ver esta pestaña</div>
         <div class="drop-hint">.xlsm / .xlsx${cfg.hybrid ? ' — o conectá el proxy arriba: vas a ver las ONs que sí cotizan en MAE sin necesidad de Excel' : ' — solo hace falta para ONs y Equity'}</div>
+        <div class="drop-hint">¿Ya lo subiste en <a href="FCN_Suite.html" onclick="event.stopPropagation();fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;">FCN Suite → Archivos</a>? Se carga solo — si no aparece, revisalo ahí.</div>
       </div>`;
     updateFootNote(0);
     return;

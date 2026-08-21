@@ -1131,14 +1131,34 @@ function renderDashComposicion(tenencia) {
     el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí el archivo de <a onclick="showFiles()">Tenencia por Ticker</a> para ver acá cómo se reparte tu libro entre Renta Fija, Renta Variable, Liquidez y Fondos.</div>`;
     return;
   }
-  const entries = Object.entries(tenencia.porGrupo).sort((a,b) => b[1]-a[1]);
-  const max = entries.length ? entries[0][1] : 1;
-  el.innerHTML = entries.map(([lbl,val]) => `
-    <div class="dbar-row">
-      <div class="dbar-lbl">${escHtml(lbl)}</div>
-      <div class="dbar-track"><div class="dbar-fill" style="width:${Math.round(val/max*100)}%;background:${GRUPO_COLOR[lbl]||'#6C817C'}"></div></div>
-      <div class="dbar-val">USD ${fmtK(val)}</div>
+  const entries = Object.entries(tenencia.porGrupo).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) {
+    el.innerHTML = `<div class="dash-empty">Sin posiciones con valor positivo para graficar.</div>`;
+    return;
+  }
+  const total = entries.reduce((a, [, v]) => a + v, 0);
+  // Donut con <circle> apiladas vía stroke-dasharray/dashoffset — no hace falta librería de
+  // gráficos para esto. rotate(-90) arranca el primer segmento arriba (12hs) en vez de a la derecha.
+  const R = 40, CX = 50, CY = 50, STROKE = 18, C = 2 * Math.PI * R;
+  let offset = 0;
+  const segments = entries.map(([lbl, val]) => {
+    const frac = val / total;
+    const dash = frac * C;
+    const svg = `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${GRUPO_COLOR[lbl] || '#6C817C'}" stroke-width="${STROKE}" stroke-dasharray="${dash.toFixed(2)} ${(C - dash).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})"><title>${escHtml(lbl)}: USD ${fmtK(val)} (${(frac * 100).toFixed(0)}%)</title></circle>`;
+    offset += dash;
+    return svg;
+  }).join('');
+  const legend = entries.map(([lbl, val]) => `
+    <div class="dbar-row" style="margin-bottom:8px;">
+      <span style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:${GRUPO_COLOR[lbl] || '#6C817C'}"></span>
+      <div class="dbar-lbl" style="width:auto;flex:1;">${escHtml(lbl)}</div>
+      <div class="dbar-val">USD ${fmtK(val)} · ${(val / total * 100).toFixed(0)}%</div>
     </div>`).join('');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:18px;">
+      <svg viewBox="0 0 100 100" style="width:120px;height:120px;flex-shrink:0;">${segments}</svg>
+      <div style="flex:1;min-width:0;">${legend}</div>
+    </div>`;
 }
 
 function renderDashLiquidez(tenencia) {

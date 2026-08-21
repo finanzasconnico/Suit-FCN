@@ -145,8 +145,8 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <div class="empty-icon">🎯</div>
     <div class="empty-title">Sin datos de precios objetivo</div>
     <div class="empty-sub">
-      Subí el archivo <code>precios_objetivo.xlsx</code> desde la pestaña
-      <strong>Archivos</strong> de FCN Suite.<br><br>
+      Subí el archivo <code>precios_objetivo.xlsx</code> desde
+      <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;"><strong>FCN Suite → Archivos</strong></a>.<br><br>
       Generalo con <code>precios_objetivo.py</code> una vez por mes.
     </div>
   </div>
@@ -186,6 +186,17 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 </div>
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // ══════════════════════════════════════════
 //  INDEXED DB — copiado exacto del Suite
 // ══════════════════════════════════════════

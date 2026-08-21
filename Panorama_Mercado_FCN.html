@@ -210,7 +210,7 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
     <div id="empty-state" class="empty-state" style="display:flex;">
       <div class="ico">🗺️</div>
       <h2>Cargá el Monitor de Individuos</h2>
-      <p>Subilo con el botón "📈 Monitor" arriba a la derecha, o subilo una vez en el FCN Suite y esta pantalla lo va a tomar solo. Sumá también "Tenencia por Ticker" para ver qué activos ya tienen tus clientes y quién tiene cada uno.</p>
+      <p>Subilo con el botón "📈 Monitor" arriba a la derecha, o subilo una vez en <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;">FCN Suite → Archivos</a> y esta pantalla lo va a tomar solo. Sumá también "Tenencia por Ticker" para ver qué activos ya tienen tus clientes y quién tiene cada uno.</p>
     </div>
 
     <div id="dash" style="display:none;">
@@ -275,6 +275,17 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
 <div class="toast" id="toast"></div>
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // ══════════════════════════════════════════════════════════════
 //  ESTADO
 // ══════════════════════════════════════════════════════════════

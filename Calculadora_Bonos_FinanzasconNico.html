@@ -210,7 +210,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">🧮</div>
       <div class="empty-title">Elegí un bono para empezar</div>
-      <div class="empty-sub">Subí el Monitor de Individuos y buscá un ticker, o cargá las condiciones a mano.<br>Después ingresá el precio o la TIR requerida.</div>
+      <div class="empty-sub">Subí el Monitor de Individuos en <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;">FCN Suite → Archivos</a> y buscá un ticker, o cargá las condiciones a mano.<br>Después ingresá el precio o la TIR requerida.</div>
     </div>
 
     <div id="results-area" style="display:none">
@@ -235,6 +235,17 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
 </div>
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════

@@ -319,7 +319,7 @@ body::before {
   </div>
   <div class="no-shared-notice hidden" id="noSharedNotice">
     <span>ℹ</span>
-    <span>No hay Stock de cuentas cargado en el Suite. Podés subir el archivo acá abajo o pegarlo manualmente.</span>
+    <span>No hay Stock de cuentas cargado en el Suite. Subilo en <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;">FCN Suite → Archivos</a>, o subí el archivo acá abajo o pegalo manualmente.</span>
   </div>
 
   <!-- Reglas -->
@@ -435,6 +435,17 @@ body::before {
 </div>
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // ── IndexedDB (Suite) ─────────────────────────────────────────
 const DB_NAME  = 'fcn_shared_v1';
 const DB_STORE = 'files';

@@ -395,7 +395,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
     <div class="empty" id="empty-state">
       <div class="empty-icon">◈</div>
       <div class="empty-title">Rotador de Renta Variable</div>
-      <div class="empty-sub">Subí la Tenencia por Ticker y el Stock de cuentas. El sistema aplicará las reglas de los mejores traders para generar señales con botón directo de WhatsApp por cliente.</div>
+      <div class="empty-sub">Subí la Tenencia por Ticker y el Stock de cuentas en <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:var(--jade,#1C8C5F);text-decoration:underline;">FCN Suite → Archivos</a>. El sistema aplicará las reglas de los mejores traders para generar señales con botón directo de WhatsApp por cliente.</div>
     </div>
     <div id="results" style="display:none">
       <div class="stats-row" id="stats-row"></div>
@@ -408,7 +408,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
       <div class="tab-pane active" id="t-tabla">
         <div class="filters-bar">
           <span class="filter-label">Ordenar:</span>
-          <select class="ctrl-input" id="t-orden" onchange="renderTabla()" style="font-size:10px;padding:4px 8px;">
+          <select class="ctrl-input" id="t-orden" onchange="ordenColManual=null;renderTabla()" style="font-size:10px;padding:4px 8px;">
             <option value="rent-desc">Mayor rentabilidad</option>
             <option value="rent-asc">Menor rentabilidad</option>
             <option value="ten-desc">Mayor tenencia</option>
@@ -424,9 +424,17 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
           </div>
           <div style="overflow-x:auto"><table>
             <thead><tr>
-              <th>Ticker</th><th>Activo</th><th>Cliente</th><th>Prec. compra</th>
-              <th>Precio actual</th><th>Rentabilidad</th><th onclick="toggleOrdenTenencia()" style="cursor:pointer;" title="Ordenar por tenencia">Tenencia USD ⇅</th>
-              <th>G/P est.</th><th>Días</th><th class="col-senal">Señal</th><th>WPP</th><th>Mail</th>
+              <th onclick="ordenarColTabla('ticker')" style="cursor:pointer;" title="Ordenar por ticker">Ticker ⇅</th>
+              <th onclick="ordenarColTabla('activo')" style="cursor:pointer;" title="Ordenar por activo">Activo ⇅</th>
+              <th onclick="ordenarColTabla('cliente')" style="cursor:pointer;" title="Ordenar por cliente">Cliente ⇅</th>
+              <th onclick="ordenarColTabla('ppc')" style="cursor:pointer;" title="Ordenar por precio de compra">Prec. compra ⇅</th>
+              <th onclick="ordenarColTabla('precio')" style="cursor:pointer;" title="Ordenar por precio actual">Precio actual ⇅</th>
+              <th onclick="ordenarColTabla('rent')" style="cursor:pointer;" title="Ordenar por rentabilidad">Rentabilidad ⇅</th>
+              <th onclick="ordenarColTabla('tenencia')" style="cursor:pointer;" title="Ordenar por tenencia">Tenencia USD ⇅</th>
+              <th onclick="ordenarColTabla('gan')" style="cursor:pointer;" title="Ordenar por G/P estimada">G/P est. ⇅</th>
+              <th onclick="ordenarColTabla('dias')" style="cursor:pointer;" title="Ordenar por días en cartera">Días ⇅</th>
+              <th class="col-senal" onclick="ordenarColTabla('senal')" style="cursor:pointer;" title="Ordenar por señal">Señal ⇅</th>
+              <th>WPP</th><th>Mail</th>
             </tr></thead>
             <tbody id="tbody-tabla"></tbody>
           </table></div>
@@ -454,6 +462,17 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 </div>
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // ── STATE ──
 let dataBruta   = [];
 let posiciones  = [];
@@ -972,22 +991,54 @@ function renderTablaActiva(){
   if(tabActiva==='t-clientes') renderClientes();
 }
 
-function toggleOrdenTenencia(){
-  const sel=document.getElementById('t-orden');
-  if(!sel) return;
-  sel.value = sel.value==='ten-desc' ? 'ten-asc' : 'ten-desc';
+// Orden por clic en el título de columna — antes solo existía para Tenencia
+// (toggleOrdenTenencia). ordenColManual, si está seteado, tiene prioridad sobre el
+// <select id="t-orden">; cambiar el select vuelve a delegarle el control (ver su onchange).
+let ordenColManual = null; // {col, dir:'asc'|'desc'} | null
+// Mismo orden de prioridad que renderSenales() usa para agrupar — se duplica acá a propósito
+// (evita acoplar esta tabla a la función de otra pestaña) para poder ordenar Señal por
+// severidad en vez de alfabéticamente.
+const SENAL_ORDEN_TABLA = ['VENDER','STOP','ACUMULAR','MANTENER','ESPERAR'];
+const ORDEN_COL_GETTERS_TABLA = {
+  ticker:   p => p.ticker || '',
+  activo:   p => p.instrumento || '',
+  cliente:  p => p.cliente || '',
+  ppc:      p => p.ppc || 0,
+  precio:   p => getPrecioActual(p) || 0,
+  rent:     p => getRentEfectiva(p),
+  tenencia: p => p.tenencia || 0,
+  gan:      p => getGananciaEfectiva(p),
+  dias:     p => p.dias || 0,
+  senal:    p => { const i = SENAL_ORDEN_TABLA.indexOf(aplicarReglas(p).senal); return i === -1 ? SENAL_ORDEN_TABLA.length : i; },
+};
+function ordenarColTabla(col){
+  if (ordenColManual && ordenColManual.col === col) ordenColManual.dir = ordenColManual.dir === 'desc' ? 'asc' : 'desc';
+  else ordenColManual = { col, dir: 'desc' };
   renderTabla();
 }
 
 function renderTabla(){
   let rows=filtrarPosiciones();
-  const orden=document.getElementById('t-orden')?.value||'rent-desc';
-  if(orden==='rent-desc') rows.sort((a,b)=>(getRentEfectiva(b)??-9999)-(getRentEfectiva(a)??-9999));
-  if(orden==='rent-asc')  rows.sort((a,b)=>(getRentEfectiva(a)??9999)-(getRentEfectiva(b)??9999));
-  if(orden==='ten-desc')  rows.sort((a,b)=>b.tenencia-a.tenencia);
-  if(orden==='ten-asc')   rows.sort((a,b)=>a.tenencia-b.tenencia);
-  if(orden==='dias-desc') rows.sort((a,b)=>b.dias-a.dias);
-  if(orden==='ticker-asc') rows.sort((a,b)=>a.ticker.localeCompare(b.ticker));
+  if (ordenColManual) {
+    const getter = ORDEN_COL_GETTERS_TABLA[ordenColManual.col];
+    const dir = ordenColManual.dir === 'asc' ? 1 : -1;
+    const fallbackNum = dir === -1 ? -9999 : 9999; // los null (ej. rentabilidad sin precio) siempre al final
+    rows.sort((a,b) => {
+      const va = getter(a), vb = getter(b);
+      if (typeof va === 'string' || typeof vb === 'string') return dir * String(va).localeCompare(String(vb));
+      const na = (va===null||va===undefined) ? fallbackNum : va;
+      const nb = (vb===null||vb===undefined) ? fallbackNum : vb;
+      return dir * (na - nb);
+    });
+  } else {
+    const orden=document.getElementById('t-orden')?.value||'rent-desc';
+    if(orden==='rent-desc') rows.sort((a,b)=>(getRentEfectiva(b)??-9999)-(getRentEfectiva(a)??-9999));
+    if(orden==='rent-asc')  rows.sort((a,b)=>(getRentEfectiva(a)??9999)-(getRentEfectiva(b)??9999));
+    if(orden==='ten-desc')  rows.sort((a,b)=>b.tenencia-a.tenencia);
+    if(orden==='ten-asc')   rows.sort((a,b)=>a.tenencia-b.tenencia);
+    if(orden==='dias-desc') rows.sort((a,b)=>b.dias-a.dias);
+    if(orden==='ticker-asc') rows.sort((a,b)=>a.ticker.localeCompare(b.ticker));
+  }
   document.getElementById('count-tabla').textContent=`${rows.length} posiciones`;
   const tbody=document.getElementById('tbody-tabla');
   if(!rows.length){tbody.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:28px;color:var(--ink-muted);">Sin posiciones</td></tr>`;return;}

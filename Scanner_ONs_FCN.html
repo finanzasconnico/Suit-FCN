@@ -238,6 +238,11 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 /* ── SORT RESUMEN ── */
 .sort-resumen-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .sort-resumen-bar select{padding:5px 9px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:11px;outline:none;}
+/* El <select> cerrado ya hereda bien el fondo/color de arriba, pero el popup con las
+   opciones (al abrirlo) no hereda "background" del select en varios navegadores y
+   caía al blanco nativo del SO — con el texto claro de --text encima quedaba casi
+   invisible. Mismo fix que .field select option ya usa para los otros selects. */
+.sort-resumen-bar select option{background:var(--surface);color:var(--text);}
 /* ── CARTERA COMPLETA CLIENTE ── */
 .cc-nombre-click{cursor:pointer;}
 .cc-nombre-click:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
@@ -422,7 +427,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">📊</div>
       <div class="empty-title">Cargá los archivos para comenzar</div>
-      <div class="empty-sub">1. Descargá "Tenencia por Ticker" desde Balanz<br>2. Subí el Monitor de Individuos (.xlsm directo)<br>3. Hacé click en Analizar</div>
+      <div class="empty-sub">1. Descargá "Tenencia por Ticker" desde Balanz<br>2. Subí el Monitor de Individuos (.xlsm directo)<br>3. Hacé click en Analizar<br><br>¿Ya los subiste en <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;">FCN Suite → Archivos</a>? Se cargan solos acá — si no aparecen, revisalos ahí.</div>
     </div>
 
     <div id="results-area" style="display:none">
@@ -617,6 +622,17 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 </div>
 
 <script>
+// Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
+// iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
+// abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
+function fcnIrArchivos(e) {
+  if (e) e.preventDefault();
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.showFiles === 'function') { window.parent.showFiles(); return; }
+  } catch (err) {}
+  (window.top || window).location.href = 'FCN_Suite.html';
+}
+
 // =================== STATE ===================
 let dataTenencia = [];
 let dataMonitor = {};
