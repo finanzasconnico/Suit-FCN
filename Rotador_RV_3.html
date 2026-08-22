@@ -201,6 +201,9 @@ body.modo-avanzado .col-senal{display:table-cell;}
 .wpp-send-btn{padding:10px 18px;background:var(--whatsapp);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:7px;font-weight:500;}
 .wpp-send-btn:hover{background:#1aad52;}
 .wpp-send-btn:disabled{opacity:.3;cursor:not-allowed;}
+/* Input de una línea con el mismo look que .wpp-textarea (asunto de mail) */
+.wpp-input{width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:12px;outline:none;}
+.wpp-input:focus{border-color:var(--ambar);}
 
 /* ── PRECIOS TAB ── */
 .px-table{width:100%;border-collapse:collapse;font-size:11px;}
@@ -260,6 +263,61 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
         Abrir WhatsApp
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ── MAIL MODAL (resumen individual, pestaña "Por cliente") ── -->
+<div class="wpp-modal-overlay" id="mail-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarMailModal()">
+  <div class="wpp-modal">
+    <div class="wpp-modal-header">
+      <div>
+        <div class="wpp-modal-title">✉ Mandar resumen por mail</div>
+        <div class="wpp-modal-sub" id="mail-modal-sub">—</div>
+      </div>
+      <button class="wpp-modal-close" onclick="cerrarMailModal()">✕</button>
+    </div>
+    <input class="wpp-input" id="mail-asunto" placeholder="Asunto">
+    <textarea class="wpp-textarea" id="mail-texto" placeholder="Cuerpo del mail..."></textarea>
+    <div class="wpp-tel-row">
+      <span class="wpp-tel-lbl">Para:</span>
+      <span id="mail-to-display">—</span>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn-sm" onclick="cerrarMailModal()">Cancelar</button>
+      <button class="btn-sm" onclick="copiarMail(this)">📋 Copiar</button>
+      <button class="wpp-send-btn" id="mail-send-btn" style="background:#2E7D8C;" onclick="abrirMailCliente()">✉ Abrir en mail</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIL MASIVO (borradores por cliente, según filtros activos de "Todas las posiciones") ── -->
+<div class="wpp-modal-overlay" id="mail-masivo-overlay" style="display:none" onclick="if(event.target===this)cerrarMailMasivo()">
+  <div class="wpp-modal" style="max-width:720px;max-height:85vh;overflow-y:auto;">
+    <div class="wpp-modal-header">
+      <div>
+        <div class="wpp-modal-title">✉ Borradores masivos</div>
+        <div class="wpp-modal-sub" id="mail-masivo-sub">—</div>
+      </div>
+      <button class="wpp-modal-close" onclick="cerrarMailMasivo()">✕</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn-sm" onclick="descargarMailMasivoTxt()">⬇ Descargar todo como .txt</button>
+    </div>
+    <div id="mail-masivo-cards" style="display:flex;flex-direction:column;gap:14px;"></div>
+  </div>
+</div>
+
+<!-- ── HOLDERS POR TICKER (desde la pestaña "Precios & Targets") ── -->
+<div class="wpp-modal-overlay" id="holders-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarHoldersTicker()">
+  <div class="wpp-modal" style="max-width:440px;">
+    <div class="wpp-modal-header">
+      <div>
+        <div class="wpp-modal-title" id="holders-modal-title">—</div>
+        <div class="wpp-modal-sub" id="holders-modal-sub"></div>
+      </div>
+      <button class="wpp-modal-close" onclick="cerrarHoldersTicker()">✕</button>
+    </div>
+    <div id="holders-modal-body" style="max-height:320px;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -330,6 +388,11 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
         <div style="display:flex;gap:6px;">
           <input class="ctrl-input" type="number" id="f-dias-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
           <input class="ctrl-input" type="number" id="f-dias-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
+        </div>
+        <div class="ctrl-label" style="margin-top:6px;">Tenencia USD</div>
+        <div style="display:flex;gap:6px;">
+          <input class="ctrl-input" type="number" id="f-ten-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
+          <input class="ctrl-input" type="number" id="f-ten-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
         </div>
         <div style="font-size:9px;color:var(--ink-muted);margin-top:4px;line-height:1.5;">💡 Ej: rentabilidad mín 15% + días máx 7 = compró hace poco y ya ganó bastante — posible oportunidad de venta.</div>
         <div class="ctrl-label" style="margin-top:8px;">Buscar ticker / cliente</div>
@@ -403,7 +466,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
         <button class="tab active" onclick="switchTab('t-tabla')">Todas las posiciones</button>
         <button class="tab" onclick="switchTab('t-senales')">Señales activas</button>
         <button class="tab" onclick="switchTab('t-clientes')">Por cliente</button>
-        <button class="tab" id="tab-precios-btn" onclick="switchTab('t-precios')" style="opacity:.4;cursor:not-allowed;" disabled>Precios &amp; Targets</button>
+        <button class="tab" id="tab-precios-btn" onclick="switchTab('t-precios')">Precios &amp; Targets</button>
       </div>
       <div class="tab-pane active" id="t-tabla">
         <div class="filters-bar">
@@ -416,6 +479,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
             <option value="dias-desc">Más días</option>
             <option value="ticker-asc">Ticker A→Z</option>
           </select>
+          <button class="btn-sm" onclick="abrirMailMasivo()" title="Genera un borrador de mail por cliente, agrupando las posiciones que matchean los filtros del panel izquierdo" style="margin-left:auto;">✉ Generar borradores (filtro actual)</button>
         </div>
         <div class="tbl-wrap">
           <div class="tbl-head-row">
@@ -453,7 +517,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
           <div id="import-badge" style="display:none;font-family:var(--font-mono);font-size:9px;"></div>
         </div>
         <div class="tbl-wrap"><table class="px-table">
-          <thead><tr><th>Ticker</th><th>Precio actual (USD)</th><th>Target analistas (USD)</th><th>Upside estimado</th><th>Fuente</th><th></th></tr></thead>
+          <thead><tr><th>Ticker</th><th>Precio actual (USD)</th><th>Target analistas (USD)</th><th>Upside estimado</th><th>Fuente</th><th>Clientes</th><th></th></tr></thead>
           <tbody id="tbody-precios"></tbody>
         </table></div>
       </div>
@@ -839,12 +903,45 @@ function actualizarPreciosLive(){
 }
 
 // ── WHATSAPP ──
+// Textos revisados 2026-08-21: se sacó la cita tipo "📌 autor dice: '...'" (sonaba a research
+// report impersonal) y se bajó el uso de emojis, sobre todo en caída/stop. La nota de la regla
+// (ctx.nota) queda como razón directa del asesor, no como cita de un tercero. Igual son solo el
+// default del textarea — se editan a mano antes de enviar (ver usarTemplate()/#wpp-texto).
 const TEMPLATES = {
-  ganancia: (ctx) => `¡Hola ${ctx.nombre||ctx.cliente}! 🎉\n\nQuería contarte una buena noticia: tu posición en *${ctx.ticker}* subió más de *${ctx.rent?.toFixed(1)||''}%* desde que la compramos.\n\n📌 *${ctx.autor}* dice: "${ctx.nota}"\n\nSi querés conversarlo o tomar alguna decisión, estoy disponible. ¡Saludos! 👋`,
-  caida:    (ctx) => `Hola ${ctx.nombre||ctx.cliente}, te escribo para informarte sobre tu posición en *${ctx.ticker}*.\n\nEl activo cayó *${Math.abs(ctx.rent||0).toFixed(1)}%* desde tu precio de compra.\n\n📌 *${ctx.autor}* sugiere: "${ctx.nota}"\n\nEs importante que hablemos para revisar la situación. ¿Cuándo tenés unos minutos? 📞`,
-  acumular: (ctx) => `Hola ${ctx.nombre||ctx.cliente}! 📈\n\nTu posición en *${ctx.ticker}* está en zona de momentum con +*${ctx.rent?.toFixed(1)||''}%*.\n\n📌 Según la regla de *${ctx.autor}*: "${ctx.nota}"\n\nEsta podría ser una buena oportunidad para agregar. Hablamos cuando puedas. 🚀`,
-  mantener: (ctx) => `Hola ${ctx.nombre||ctx.cliente},\n\nTe escribo por tu posición en *${ctx.ticker}* (+${ctx.rent?.toFixed(1)||''}%).\n\n📌 *${ctx.autor}*: "${ctx.nota}"\n\nPor ahora mi recomendación es *mantener*. Ya te voy actualizando. Cualquier duda, escribime. 👍`,
-  stop:     (ctx) => `Hola ${ctx.nombre||ctx.cliente}, necesito hablarte de tu posición en *${ctx.ticker}*.\n\nEl activo está en *${ctx.rent?.toFixed(1)||''}%* y conviene revisar juntos si seguimos o salimos.\n\n📌 *${ctx.autor}* recomienda: "${ctx.nota}"\n\nAvísame cuándo podés hablar para tomar una decisión. 🙏`,
+  ganancia: (ctx) => `Hola ${ctx.nombre||ctx.cliente}! 👋\n\nBuena noticia: tu posición en *${ctx.ticker}* ya subió +*${ctx.rent?.toFixed(1)||''}%* desde que la compramos, y para mí ya está en zona de tomar ganancia.\n\n${ctx.nota}\n\n¿Charlamos para ver si la aseguramos ahora o la dejamos correr un poco más?`,
+  caida:    (ctx) => `Hola ${ctx.nombre||ctx.cliente}, te escribo por tu posición en *${ctx.ticker}*: bajó *${Math.abs(ctx.rent||0).toFixed(1)}%* desde tu compra.\n\n${ctx.nota}\n\nPrefiero que lo hablemos antes de decidir nada — ¿tenés unos minutos esta semana?`,
+  acumular: (ctx) => `Hola ${ctx.nombre||ctx.cliente}! 📈\n\n*${ctx.ticker}* viene mostrando fuerza (+*${ctx.rent?.toFixed(1)||''}%*) y me parece buen momento para sumar si tenés ganas.\n\n${ctx.nota}\n\nDecime si lo vemos juntos.`,
+  mantener: (ctx) => `Hola ${ctx.nombre||ctx.cliente},\n\nPasando a contarte cómo viene *${ctx.ticker}*: +${ctx.rent?.toFixed(1)||''}%. Mi recomendación por ahora es mantenerlo como está.\n\n${ctx.nota}\n\nTe aviso apenas cambie algo — cualquier duda, escribime.`,
+  stop:     (ctx) => `Hola ${ctx.nombre||ctx.cliente}, necesito que hablemos de tu posición en *${ctx.ticker}*: está en *${ctx.rent?.toFixed(1)||''}%*.\n\nCreo que conviene revisar juntos si seguimos o salimos.\n\n${ctx.nota}\n\n¿Cuándo podés?`,
+};
+
+// Mapeo señal → key de plantilla, compartido entre WhatsApp (TEMPLATES) y mail (MAIL_TEMPLATES)
+// — antes vivía duplicado como un tplMap local dentro de abrirWppModal.
+const SENAL_TPL_MAP = { VENDER:'ganancia', STOP:'stop', ACUMULAR:'acumular', MANTENER:'mantener', ESPERAR:'mantener' };
+
+// Mismo criterio que TEMPLATES (WhatsApp) pero en formato mail: más formal, texto plano sin
+// negritas/emojis de WhatsApp, con asunto + cuerpo. Usa ctx.nota como la razón real de la regla.
+const MAIL_TEMPLATES = {
+  ganancia: (ctx) => ({
+    asunto: `Buena noticia sobre tu posición en ${ctx.ticker}`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTu posición en ${ctx.ticker} ya subió +${ctx.rent?.toFixed(1)||''}% desde la compra, y me parece que ya está en zona de tomar ganancia.\n\n${ctx.nota}\n\n¿Charlamos para ver si la aseguramos ahora o la dejamos correr un poco más?\n\nSaludos,\nNico`,
+  }),
+  caida: (ctx) => ({
+    asunto: `Sobre tu posición en ${ctx.ticker}`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTe escribo porque tu posición en ${ctx.ticker} bajó ${Math.abs(ctx.rent||0).toFixed(1)}% desde la compra.\n\n${ctx.nota}\n\nPrefiero que lo hablemos antes de decidir nada — ¿tenés unos minutos esta semana?\n\nSaludos,\nNico`,
+  }),
+  acumular: (ctx) => ({
+    asunto: `Oportunidad en ${ctx.ticker}`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\n${ctx.ticker} viene mostrando fuerza (+${ctx.rent?.toFixed(1)||''}%) y me parece buen momento para evaluar sumar posición.\n\n${ctx.nota}\n\nDecime si querés que lo veamos juntos.\n\nSaludos,\nNico`,
+  }),
+  mantener: (ctx) => ({
+    asunto: `Actualización de tu posición en ${ctx.ticker}`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTe comparto cómo viene tu posición en ${ctx.ticker}: +${ctx.rent?.toFixed(1)||''}%. Mi recomendación por ahora es mantenerla como está.\n\n${ctx.nota}\n\nCualquier duda, escribime.\n\nSaludos,\nNico`,
+  }),
+  stop: (ctx) => ({
+    asunto: `Necesito que hablemos de tu posición en ${ctx.ticker}`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTu posición en ${ctx.ticker} está en ${ctx.rent?.toFixed(1)||''}%. Creo que conviene revisar juntos si seguimos o salimos.\n\n${ctx.nota}\n\n¿Cuándo podés hablar?\n\nSaludos,\nNico`,
+  }),
 };
 
 function abrirWppModal(ctx) {
@@ -861,8 +958,7 @@ function abrirWppModal(ctx) {
     document.getElementById('wpp-send-btn').disabled = true;
   }
   // Pre-cargar template según señal
-  const tplMap = { VENDER:'ganancia', STOP:'stop', ACUMULAR:'acumular', MANTENER:'mantener', ESPERAR:'mantener' };
-  usarTemplate(tplMap[ctx.senal]||'mantener');
+  usarTemplate(SENAL_TPL_MAP[ctx.senal]||'mantener');
   document.getElementById('wpp-modal-overlay').style.display='flex';
 }
 
@@ -890,9 +986,11 @@ function abrirWhatsApp() {
 
 function mailBtnHtml(p) {
   if (!p.mail) return '<span style="font-size:10px;color:var(--ink-muted)">—</span>';
-  const nombre = p.nombre || p.cliente || '';
-  const subj = encodeURIComponent(`Información sobre su posición en ${p.ticker}`);
-  const body = encodeURIComponent(`Estimado/a ${nombre},\n\nMe comunico para informarle sobre su posición en ${p.ticker} (${p.instrumento}).\n\nQuedo a disposición ante cualquier consulta.\n\nSaludos,`);
+  const r = aplicarReglas(p);
+  const ctx = { ticker: p.ticker, cliente: p.cliente, nombre: p.nombre||p.cliente, rent: getRentEfectiva(p), nota: r.nota };
+  const { asunto, cuerpo } = (MAIL_TEMPLATES[SENAL_TPL_MAP[r.senal]]||MAIL_TEMPLATES.mantener)(ctx);
+  const subj = encodeURIComponent(asunto);
+  const body = encodeURIComponent(cuerpo);
   return `<a class="wpp-btn" style="background:rgba(46,125,140,.12);border-color:rgba(46,125,140,.35);color:#6BBFCC;" href="mailto:${p.mail}?subject=${subj}&body=${body}" title="${p.mail}">✉ Mail</a>`;
 }
 
@@ -914,6 +1012,162 @@ function wppBtnHtml(p, fromDetail=false) {
   </a>`;
 }
 
+// ── MAIL RESUMEN POR CLIENTE (individual y masivo comparten este generador) ──
+const SENAL_LABEL_MAIL = { VENDER:'Tomar ganancia', STOP:'Stop-loss / revisar', ACUMULAR:'Acumular / sumar', MANTENER:'Mantener', ESPERAR:'Esperar más datos' };
+
+// Pieza compartida: recibe un cliente + sus posiciones (todas, o un subconjunto filtrado) y
+// arma {asunto, cuerpo}. huboFiltro=true agrega la nota de que el resto de la cartera sigue en
+// mantener — se usa desde el mail masivo cuando el cliente tiene más posiciones que las que
+// matchearon el filtro; el mail individual (todas sus posiciones) pasa huboFiltro=false.
+function generarMailResumen(cliente, poss, huboFiltro) {
+  const nombre = poss[0]?.nombre || cliente;
+  const lineas = poss.map(p => {
+    const r = aplicarReglas(p);
+    const rent = getRentEfectiva(p);
+    const rentStr = rent!==null ? (rent>=0?'+':'')+rent.toFixed(1)+'%' : 'sin precio';
+    return `• ${p.ticker} — Tenencia: USD ${fmtN(p.tenencia)} (${rentStr})\n  Señal: ${SENAL_LABEL_MAIL[r.senal]||r.senal}\n  ${r.nota}`;
+  }).join('\n\n');
+  const resto = huboFiltro ? '\n\nEl resto de tu cartera sigue en "mantener", sin cambios.' : '';
+  const asunto = `Repaso de tu cartera — ${nombre}`;
+  const cuerpo = `Hola ${nombre},\n\nTe comparto un repaso de tu cartera:\n\n${lineas}${resto}\n\nSi querés que lo charlemos, respondeme este mail o coordinamos una llamada corta.\n\nSaludos,\nNico`;
+  return { asunto, cuerpo };
+}
+
+let mailCtx = null; // { cliente, mail, asunto, cuerpo } — mail individual (todas las posiciones del cliente)
+
+function abrirMailModal(cliente) {
+  const poss = posiciones.filter(p => p.cliente === cliente);
+  if (!poss.length) return;
+  const nombre = poss[0].nombre || cliente;
+  const mail = poss[0].mail || null;
+  const { asunto, cuerpo } = generarMailResumen(cliente, poss, false);
+  mailCtx = { cliente, mail };
+  document.getElementById('mail-modal-sub').textContent = `${nombre} · ${poss.length} posición(es)`;
+  document.getElementById('mail-asunto').value = asunto;
+  document.getElementById('mail-texto').value = cuerpo;
+  const toEl = document.getElementById('mail-to-display');
+  const sendBtn = document.getElementById('mail-send-btn');
+  if (mail) { toEl.innerHTML = `<span class="wpp-tel-val">${mail}</span>`; sendBtn.disabled = false; }
+  else { toEl.innerHTML = `<span class="wpp-tel-missing">Sin mail — cargá el Stock de cuentas</span>`; sendBtn.disabled = true; }
+  document.getElementById('mail-modal-overlay').style.display = 'flex';
+}
+function cerrarMailModal() { document.getElementById('mail-modal-overlay').style.display = 'none'; mailCtx = null; }
+function abrirMailCliente() {
+  if (!mailCtx || !mailCtx.mail) return;
+  const asunto = document.getElementById('mail-asunto').value;
+  const cuerpo = document.getElementById('mail-texto').value;
+  window.location.href = `mailto:${mailCtx.mail}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+}
+// mailto: puede truncar con textos largos (varias posiciones) en algunos clientes de mail —
+// por eso "Copiar" es respaldo necesario, no opcional (mismo motivo que en la spec de mail masivo).
+function copiarMail(btnEl) {
+  const asunto = document.getElementById('mail-asunto').value;
+  const cuerpo = document.getElementById('mail-texto').value;
+  navigator.clipboard.writeText(`Asunto: ${asunto}\n\n${cuerpo}`).then(() => {
+    if (!btnEl) return;
+    const original = btnEl.textContent;
+    btnEl.textContent = '✓ Copiado';
+    setTimeout(() => { btnEl.textContent = original; }, 1800);
+  }).catch(() => alert('No se pudo copiar. Seleccioná el texto manualmente.'));
+}
+
+// ── MAIL MASIVO (pestaña "Todas las posiciones", según filtros activos del panel izquierdo) ──
+function abrirMailMasivo() {
+  const filtradas = filtrarPosiciones();
+  if (!filtradas.length) { alert('No hay posiciones que matcheen los filtros actuales del panel izquierdo.'); return; }
+  const porCliente = {};
+  filtradas.forEach(p => { (porCliente[p.cliente] ||= []).push(p); });
+  const clientes = Object.keys(porCliente);
+  document.getElementById('mail-masivo-sub').textContent = `${clientes.length} cliente(s) · ${filtradas.length} posición(es) filtradas`;
+  const cardsEl = document.getElementById('mail-masivo-cards');
+  cardsEl.innerHTML = clientes.map((cliente, i) => {
+    const poss = porCliente[cliente];
+    const totalDelCliente = posiciones.filter(p => p.cliente === cliente).length;
+    const huboFiltro = totalDelCliente > poss.length;
+    const nombre = poss[0]?.nombre || cliente;
+    const mail = poss[0]?.mail || null;
+    const { asunto, cuerpo } = generarMailResumen(cliente, poss, huboFiltro);
+    return `<div class="cliente-card" style="margin-bottom:0;" data-mail="${(mail||'').replace(/"/g,'&quot;')}">
+      <div class="cliente-card-head" style="cursor:default;">
+        <div>
+          <div class="cliente-card-name">${nombre}</div>
+          <div class="cliente-card-meta">${poss.length} posición(es)${mail?(' · '+mail):' · sin mail cargado'}</div>
+        </div>
+      </div>
+      <div class="cliente-card-body open" style="display:block;">
+        <input class="wpp-input" id="masivo-asunto-${i}" value="${asunto.replace(/"/g,'&quot;')}" style="margin-bottom:8px;">
+        <textarea class="wpp-textarea" id="masivo-texto-${i}" style="min-height:100px;">${cuerpo}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <button class="btn-sm" onclick="copiarMailMasivo(${i},this)">📋 Copiar</button>
+          <button class="wpp-send-btn" style="background:#2E7D8C;" ${mail?'':'disabled'} onclick="abrirMailMasivoItem(${i})">✉ Abrir en mail</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('mail-masivo-overlay').style.display = 'flex';
+}
+function cerrarMailMasivo() { document.getElementById('mail-masivo-overlay').style.display = 'none'; }
+function abrirMailMasivoItem(i) {
+  const card = document.querySelectorAll('#mail-masivo-cards .cliente-card')[i];
+  const mail = card?.dataset.mail;
+  if (!mail) return;
+  const asunto = document.getElementById('masivo-asunto-'+i).value;
+  const cuerpo = document.getElementById('masivo-texto-'+i).value;
+  window.location.href = `mailto:${mail}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+}
+function copiarMailMasivo(i, btnEl) {
+  const asunto = document.getElementById('masivo-asunto-'+i).value;
+  const cuerpo = document.getElementById('masivo-texto-'+i).value;
+  navigator.clipboard.writeText(`Asunto: ${asunto}\n\n${cuerpo}`).then(() => {
+    if (!btnEl) return;
+    const original = btnEl.textContent;
+    btnEl.textContent = '✓ Copiado';
+    setTimeout(() => { btnEl.textContent = original; }, 1800);
+  }).catch(() => alert('No se pudo copiar. Seleccioná el texto manualmente.'));
+}
+// Respaldo si en el futuro se usa alguna herramienta de envío masivo real y hace falta pegar
+// los textos ahí — exporta todos los borradores generados en un solo archivo.
+function descargarMailMasivoTxt() {
+  const cards = document.querySelectorAll('#mail-masivo-cards .cliente-card');
+  if (!cards.length) return;
+  let out = '';
+  cards.forEach((card, i) => {
+    const asunto = document.getElementById('masivo-asunto-'+i)?.value || '';
+    const cuerpo = document.getElementById('masivo-texto-'+i)?.value || '';
+    const nombre = card.querySelector('.cliente-card-name')?.textContent || `Cliente ${i+1}`;
+    out += `=== ${nombre} ===\nAsunto: ${asunto}\n\n${cuerpo}\n\n\n`;
+  });
+  const blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `borradores_mail_${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+// ── HOLDERS POR TICKER (pestaña "Precios & Targets" → qué clientes tienen cada uno) ──
+function abrirHoldersTicker(ticker) {
+  const holders = posiciones.filter(p => p.ticker === ticker).sort((a,b) => b.tenencia - a.tenencia);
+  document.getElementById('holders-modal-title').textContent = `👤 Clientes con ${ticker}`;
+  const total = holders.reduce((a,p) => a + p.tenencia, 0);
+  document.getElementById('holders-modal-sub').textContent = holders.length ? `${holders.length} cliente(s) · Tenencia total USD ${fmtN(total)}` : '';
+  const body = document.getElementById('holders-modal-body');
+  if (!holders.length) {
+    body.innerHTML = `<div style="font-size:11px;color:var(--ink-muted);padding:16px 0;">Ningún cliente tuyo tiene ${ticker} en cartera actualmente.</div>`;
+  } else {
+    body.innerHTML = `<table><thead><tr><th>Cliente</th><th>Tenencia</th><th>Rent.</th></tr></thead><tbody>
+      ${holders.map(p => {
+        const rent = getRentEfectiva(p);
+        const rentStr = rent!==null ? (rent>=0?'+':'')+rent.toFixed(1)+'%' : '—';
+        const rentCls = rent===null?'neu':rent>=0?'pos':'neg';
+        return `<tr><td>${p.cliente}</td><td style="font-family:var(--font-mono);font-size:10px;">$${fmtN(p.tenencia)}</td><td><span class="td-rent ${rentCls}" style="font-size:11px;">${rentStr}</span></td></tr>`;
+      }).join('')}
+    </tbody></table>`;
+  }
+  document.getElementById('holders-modal-overlay').style.display = 'flex';
+}
+function cerrarHoldersTicker() { document.getElementById('holders-modal-overlay').style.display = 'none'; }
+
 // ── RENDER ──
 function renderResultados(){
   document.getElementById('empty-state').style.display='none';
@@ -933,10 +1187,14 @@ function filtrarPosiciones(){
   const rentMaxRaw=document.getElementById('f-rent-max')?.value;
   const diasMinRaw=document.getElementById('f-dias-min')?.value;
   const diasMaxRaw=document.getElementById('f-dias-max')?.value;
+  const tenMinRaw=document.getElementById('f-ten-min')?.value;
+  const tenMaxRaw=document.getElementById('f-ten-max')?.value;
   const rentMin=rentMinRaw!==''&&rentMinRaw!=null?parseFloat(rentMinRaw):null;
   const rentMax=rentMaxRaw!==''&&rentMaxRaw!=null?parseFloat(rentMaxRaw):null;
   const filtroDiasMin=diasMinRaw!==''&&diasMinRaw!=null?parseFloat(diasMinRaw):null;
   const filtroDiasMax=diasMaxRaw!==''&&diasMaxRaw!=null?parseFloat(diasMaxRaw):null;
+  const filtroTenMin=tenMinRaw!==''&&tenMinRaw!=null?parseFloat(tenMinRaw):null;
+  const filtroTenMax=tenMaxRaw!==''&&tenMaxRaw!=null?parseFloat(tenMaxRaw):null;
   const avanzado=document.getElementById('chk-modo-avanzado')?.checked||false;
   const senal=avanzado?(document.getElementById('f-senal')?.value||''):'';
   const chkTP=avanzado?(document.getElementById('chk-tp')?.checked!==false):true;
@@ -949,6 +1207,8 @@ function filtrarPosiciones(){
     if(rentMax!==null&&(rentP===null||rentP>rentMax)) return false;
     if(filtroDiasMin!==null&&p.dias<filtroDiasMin) return false;
     if(filtroDiasMax!==null&&p.dias>filtroDiasMax) return false;
+    if(filtroTenMin!==null&&p.tenencia<filtroTenMin) return false;
+    if(filtroTenMax!==null&&p.tenencia>filtroTenMax) return false;
     if(avanzado){
       const s=aplicarReglas(p).senal;
       if(senal&&s!==senal) return false;
@@ -1164,6 +1424,7 @@ function renderClientes(){
           <div class="cliente-card-meta">${poss.length} pos · $${fmtN(tenTotal)} · G/P: ${gpTotal>=0?'+':''}$${fmtN(Math.abs(gpTotal))} ${tel?'· 📱 '+tel:''}${poss[0]?.mail?` · <a href="mailto:${poss[0].mail}" style="color:#6BBFCC;text-decoration:none;">✉ ${poss[0].mail}</a>`:''}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <button onclick="event.stopPropagation();abrirMailModal('${cliente.replace(/'/g,"\\'")}')" style="background:rgba(46,125,140,.12);border:1px solid rgba(46,125,140,.35);color:#6BBFCC;padding:3px 9px;border-radius:2px;font-family:var(--font-mono);font-size:9px;cursor:pointer;" title="Mandarle un resumen de toda su cartera por mail">✉ Resumen</button>
           ${alertas>0?`<span style="background:rgba(192,69,59,.15);color:#E8837E;padding:2px 8px;border-radius:2px;font-family:var(--font-mono);font-size:9px">⚠ ${alertas} alertas</span>`:''}
           ${acumular>0?`<span style="background:rgba(46,125,140,.12);color:#6BBFCC;padding:2px 8px;border-radius:2px;font-family:var(--font-mono);font-size:9px">▲ ${acumular} acumular</span>`:''}
         </div>
@@ -1173,6 +1434,8 @@ function renderClientes(){
           <thead><tr><th>Ticker</th><th>Tipo</th><th>Rent.</th><th>Tenencia</th><th>G/P</th><th>Días</th><th>Señal</th><th>WPP</th><th>Mail</th></tr></thead>
           <tbody>${poss.sort((a,b)=>(getRentEfectiva(b)||0)-(getRentEfectiva(a)||0)).map(p=>{
             const rent=getRentEfectiva(p);const gan=getGananciaEfectiva(p);const r=aplicarReglas(p);
+            const upside=getUpsideEfectivo(p.ticker);
+            const upsideBadge=upside!=null?`<span style="font-family:var(--font-mono);font-size:9px;color:${upside>=0?'var(--jade)':'var(--danger)'};margin-left:5px;" title="Upside vs. precio objetivo de analistas">🎯${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:'';
             return `<tr>
               <td class="td-tick">${p.ticker}</td>
               <td style="font-family:var(--font-mono);font-size:9px;color:var(--ink-muted)">${p.tipo}</td>
@@ -1180,7 +1443,7 @@ function renderClientes(){
               <td style="font-family:var(--font-mono);font-size:10px">$${fmtN(p.tenencia)}</td>
               <td style="font-size:10px;color:${(gan||0)>=0?'var(--jade)':'var(--danger)'}">${gan!==null?(gan>=0?'+':'')+'$'+fmtN(Math.abs(gan)):'-'}</td>
               <td style="font-family:var(--font-mono);font-size:10px;color:var(--ink-muted)">${p.dias}d</td>
-              <td>${senalBadge(r.senal)}</td>
+              <td>${senalBadge(r.senal)}${upsideBadge}</td>
               <td>${wppBtnHtml(p)}</td>
               <td>${mailBtnHtml(p)}</td>
             </tr>`;
@@ -1290,15 +1553,28 @@ function renderTabPrecios(){
     const upside=px.upsideAnalistas;
     const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
     const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>':px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>':px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
+    const nHolders=posiciones.filter(p=>p.ticker===ticker).length;
+    const clientesCell=nHolders?`<button class="btn-sm" onclick="abrirHoldersTicker('${ticker}')" title="Ver qué clientes tienen ${ticker}">👤 ${nHolders}</button>`:`<span style="color:var(--ink-muted);font-size:10px;">—</span>`;
     return `<tr>
       <td class="td-tick">${ticker}</td>
       <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
       <td><input class="px-input" type="number" value="${px.targetPrice!=null?px.targetPrice.toFixed(2):''}" placeholder="—" title="${px.targetPrice==null?'Sin cobertura en Yahoo Finance':''}" onchange="editPrecio('${ticker}','target',this.value)" onfocus="this.select()"></td>
       <td id="upside-${ticker}">${upsideStr}</td>
       <td id="badge-${ticker}">${badge}</td>
+      <td>${clientesCell}</td>
       <td><button class="btn-refetch" onclick="refetchTicker('${ticker}')">↺</button></td>
     </tr>`;
   }).join('');
+}
+
+// Upside vs. precio objetivo (live o cacheado), sin la lógica extra de renderTabPrecios de
+// distinguir badge live/caché/manual — se usa en "Por cliente" para no ir a otra pestaña.
+function getUpsideEfectivo(ticker) {
+  const base = precios[ticker];
+  if (base?.upsideAnalistas != null) return base.upsideAnalistas;
+  const cachedTarget = loadTargetCache()[ticker.toUpperCase()] ?? null;
+  if (cachedTarget != null && base?.precio) return (cachedTarget / base.precio - 1) * 100;
+  return null;
 }
 
 function editPrecio(ticker, campo, val){

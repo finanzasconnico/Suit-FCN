@@ -1072,7 +1072,7 @@ function renderAll(){
 
   renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy);
   renderSameMoney(venta, compra, points, difCash, atH, currentHorizonAnios, hoy, tMax);
-  renderChart(points, venta, compra, difCash, currentHorizonAnios, hoy, tMax);
+  renderChart(points, venta, compra, difCash, currentHorizonAnios, hoy, tMax, atH);
   renderCondiciones(venta, compra, difCash, comisionPct);
   renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, currentHorizonAnios, comisionPct, hoy, tMax);
 
@@ -1245,7 +1245,7 @@ function renderSameMoney(venta, compra, points, difCash, atH, horizonElegido, ho
 // ═══════════════════════════════════════════════════════
 // GRÁFICO (SVG simple, sin librerías — 2 series categóricas)
 // ═══════════════════════════════════════════════════════
-function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax){
+function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax, atH){
   var costV = venta.nominales*venta.precio;
   var costC = compra.nominales*compra.precio;
   var offV = chartViewMode==='total' ? costV : 0;
@@ -1321,9 +1321,14 @@ function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax){
   var hx = xPix(horizonElegido);
   var marker = '<line x1="'+hx.toFixed(1)+'" y1="'+padT+'" x2="'+hx.toFixed(1)+'" y2="'+(padT+innerH)+'" stroke="#DBA03C" stroke-width="1.4" stroke-dasharray="4,3"/>';
 
-  // valores en el horizonte elegido para los dos puntos + labels directos
-  var vAtH = points.reduce(function(best,p){ return Math.abs(p.t-horizonElegido)<Math.abs(best.t-horizonElegido)?p:best; }, points[0]);
-  var valV = vAtH.v+offV, valC = vAtH.c+difCash+offC;
+  // valores en el horizonte elegido para los dos puntos + labels directos.
+  // OJO: acá se usaba antes el punto MUESTREADO más cercano a horizonElegido (de una grilla
+  // de 100), en vez del valor exacto ya calculado en atH (misma fórmula que usa el veredicto
+  // de texto, renderVerdict). Cerca de un cruce entre las dos curvas, con líneas casi paralelas,
+  // ese redondeo por muestreo podía hacer que el anillo verde marcara el punto "equivocado"
+  // (visualmente distinto del bando que el texto decía que convenía) — no era un error de
+  // fórmula, pero sí una inconsistencia real entre lo que se veía y lo que se leía.
+  var valV = atH.v+offV, valC = atH.c+difCash+offC;
   // El punto que conviene a tu horizonte se marca con un anillo verde — el
   // verde acá SIEMPRE significa "esto es lo que más te conviene hoy", nunca
   // identifica a una de las dos patas de forma fija (esa es la de línea

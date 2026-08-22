@@ -112,9 +112,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .files-status-dropdown.open{display:block;}
 .fsd-head{padding:11px 14px;font-family:var(--font-d);font-size:12.5px;color:var(--text);border-bottom:1px solid var(--border);}
 .fsd-list{max-height:280px;overflow-y:auto;}
-.fsd-row{display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);}
+.fsd-row{position:relative;display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);}
 .fsd-row:last-child{border-bottom:none;}
 .fsd-row:hover{background:var(--jade-d);}
+.fsd-row.drag{background:var(--ambar-d);}
+.fsd-row input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
 .fsd-name{font-size:11.5px;color:var(--text);flex-shrink:0;}
 .fsd-sub{font-size:10px;color:var(--muted);text-align:right;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fsd-row.miss .fsd-sub{color:var(--danger);}
@@ -1683,15 +1685,20 @@ async function renderDashFilesStatus(list) {
   }).join('');
 }
 
+// Cada fila es, además de un resumen de estado, un drop-zone / selector directo de archivo
+// (arrastrás el Excel encima o hacés clic) — así se puede actualizar un archivo compartido
+// sin salir de la herramienta que tenés abierta ni pasar por la pestaña Archivos. El listener
+// de drag&drop está más abajo, junto al de .file-drop-zone, y usa el mismo onFileSelected().
 function renderFilesStatusDropdown(list) {
   const box = document.getElementById('files-status-list');
   if (!box) return;
   box.innerHTML = list.map(row => {
     const dotCls = row.status === 'ok' ? '' : (row.status === 'miss' ? 'miss' : 'stale');
-    return `<div class="fsd-row ${row.status}" onclick="closeFilesStatusDropdown();showFiles();">
+    return `<div class="fsd-row ${row.status}" data-key="${row.sf.key}" title="Arrastrá el Excel acá o hacé clic para elegirlo — se aplica a todas las herramientas al toque">
       <span class="dash-filedot ${dotCls}"></span>
       <span class="fsd-name">${escHtml(row.sf.name)}</span>
       <span class="fsd-sub">${filesStatusSubtext(row)}</span>
+      <input type="file" accept="${row.sf.accept}" onchange="onFileSelected('${row.sf.key}', this); closeFilesStatusDropdown();">
     </div>`;
   }).join('');
 }
@@ -2151,26 +2158,39 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── DRAG & DROP en file cards ──
-document.addEventListener('dragover', e => {
+// ── DRAG & DROP en file cards (pestaña Archivos) y en las filas del pill del topbar ──
+// Mismo mecanismo para las dos: el target trae la key (por id en .file-drop-zone, por
+// data-key en .fsd-row) y ambos terminan llamando a onFileSelected() — no hay lógica
+// de carga duplicada entre la pestaña Archivos y el drop directo desde el topbar.
+function dragDropTarget(e) {
   const drop = e.target.closest('.file-drop-zone');
-  if (drop) { e.preventDefault(); drop.classList.add('drag'); }
+  if (drop) return { el: drop, key: drop.id.replace('fdrop-', '') };
+  const row = e.target.closest('.fsd-row');
+  if (row) return { el: row, key: row.dataset.key };
+  return null;
+}
+document.addEventListener('dragover', e => {
+  const t = dragDropTarget(e);
+  if (t) { e.preventDefault(); t.el.classList.add('drag'); }
 });
 document.addEventListener('dragleave', e => {
-  const drop = e.target.closest('.file-drop-zone');
-  if (drop) drop.classList.remove('drag');
+  const t = dragDropTarget(e);
+  if (t) t.el.classList.remove('drag');
 });
 document.addEventListener('drop', e => {
-  const drop = e.target.closest('.file-drop-zone');
-  if (!drop) return;
+  const t = dragDropTarget(e);
+  if (!t) return;
   e.preventDefault();
-  drop.classList.remove('drag');
-  const key  = drop.id.replace('fdrop-','');
+  t.el.classList.remove('drag');
   const file = e.dataTransfer.files[0];
-  if (file) {
-    const fakeInput = { files: [file] };
-    onFileSelected(key, fakeInput);
-  }
+  if (file) onFileSelected(t.key, { files: [file] });
+});
+// Arrastrar un archivo cerca del pill "Archivos" del topbar (sin haber hecho clic todavía)
+// abre el dropdown solo, para poder soltarlo directo sobre la fila correcta.
+document.getElementById('files-status-pill')?.addEventListener('dragenter', e => {
+  if (!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  closeClientPicker();
+  document.getElementById('files-status-dropdown')?.classList.add('open');
 });
 
 // ══════════════════════════════════════════════════════════════

@@ -674,17 +674,34 @@ function loadMonitorFull(input){
       var newBC=[],newBS=[],newBL=[];
 
       // ── CORPORATIVOS ──
-      // El Ticker puede estar en la columna A (offset 0) o B (offset 1) según
-      // la versión del export de Balanz — buscamos en ambas para no perder
-      // toda la hoja si el layout cambió (mismo criterio que Scanner ONs).
+      // Antes esto buscaba "Ticker" solo en columna A o B, y leía TIR/Cupón/etc. por offset
+      // fijo desde ahí (dr[c+4] para TIR, etc.) sin mirar el nombre del encabezado. Si Balanz
+      // corrió una columna en ESTA hoja puntual (Soberanos seguía andando bien, por eso no se
+      // notó antes), el offset dejaba de apuntar a TIR, parseFloat devolvía NaN y la fila se
+      // descartaba en silencio — corpCnt terminaba en 0 sin ningún error visible. Mismo bug de
+      // fondo que ya se arregló en FCN_Suite.html (parseMonitorTIR): ahora busca "Ticker" en
+      // CUALQUIER columna del header y resuelve cada columna por nombre, con el offset viejo
+      // como respaldo si el nombre no aparece.
       function buscarHeaderTicker(sheetName){
         var tr=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:true});
         for(var i=0;i<Math.min(tr.length,20);i++){
           var row=tr[i]||[];
-          if(String(row[0]||'').trim()==='Ticker') return {hdrRow:i,colOffset:0,rows:tr};
-          if(String(row[1]||'').trim()==='Ticker') return {hdrRow:i,colOffset:1,rows:tr};
+          for(var j=0;j<row.length;j++){
+            if(String(row[j]||'').trim()==='Ticker') return {hdrRow:i,tCol:j,rows:tr};
+          }
         }
         return null;
+      }
+      function buildColFinder(headerRow){
+        var colMap={};
+        headerRow.forEach(function(v,j){ if(v){var k=String(v).trim().toLowerCase(); if(colMap[k]===undefined) colMap[k]=j;} });
+        return function(fallback){
+          for(var i=1;i<arguments.length;i++){
+            var k=String(arguments[i]).toLowerCase();
+            if(colMap[k]!==undefined) return colMap[k];
+          }
+          return fallback;
+        };
       }
       var cName=findSheetCI(names,['Corporativos','Corporativo','Corp','ONs']);
       var cInfo=cName?buscarHeaderTicker(cName):null;
@@ -693,35 +710,40 @@ function loadMonitorFull(input){
         for(var sn of names){
           var info=buscarHeaderTicker(sn);
           if(info){
-            var hdrRowArr=info.rows[info.hdrRow]||[];
-            var c0=info.colOffset;
-            if(String(hdrRowArr[c0+4]||'').trim()==='TIR'){ cName=sn; cInfo=info; break; }
+            var findColTmp=buildColFinder(info.rows[info.hdrRow]||[]);
+            if(findColTmp(-1,'TIR')>=0){ cName=sn; cInfo=info; break; }
           }
         }
       }
       if(cInfo){
-        var rows=cInfo.rows, c=cInfo.colOffset;
+        var rows=cInfo.rows, tCol=cInfo.tCol;
+        var findCol=buildColFinder(rows[cInfo.hdrRow]||[]);
+        var iE=findCol(tCol+1,'Emisor','Empresa'), iVto=findCol(tCol+3,'Vencimiento','Vto','Vto.'),
+            iTIR=findCol(tCol+4,'TIR','TIR%','TIR %'), iCup=findCol(tCol+7,'Cupón','Cupon','Cupón %','Cupon %'),
+            iMeses=findCol(tCol+8,'Mes cupón','Meses cupón','Mes cupon'), iMon=findCol(tCol+9,'Moneda','Dólar','Dolar'),
+            iLey=findCol(tCol+10,'Ley'), iCal=findCol(tCol+11,'Calificación','Calificacion','Rating'),
+            iLam=findCol(tCol+12,'Lámina','Lamina');
         for(var di=cInfo.hdrRow+1;di<rows.length;di++){
           var dr=rows[di];
-          var tk=String(dr[c+0]||'').trim();
-          var em=String(dr[c+1]||'').trim();
+          var tk=String(dr[tCol]||'').trim();
+          var em=String(dr[iE]||'').trim();
           if(!tk||!em||tk==='Ticker'||tk==='Bonos'||tk==='Actualizado'||tk==='NaN')continue;
           if(!/^[A-Z0-9]{3,10}O$/.test(tk)&&!/^[A-Z0-9]{3,8}$/.test(tk))continue;
           if(em.length>60||em==='NaN')continue;
-          var tir=parseFloat(dr[c+4]);
+          var tir=parseFloat(dr[iTIR]);
           if(isNaN(tir))continue;
           if(newON[tk])continue;
-          var cup=parseFloat(dr[c+7]);
+          var cup=parseFloat(dr[iCup]);
           newON[tk]={
             ticker:tk,emisor:em,
-            vencimiento:excelSerial(dr[c+3]),
+            vencimiento:excelSerial(dr[iVto]),
             tir:tir, // stored as decimal 0.07 = 7%
             cupon:isNaN(cup)?null:cup, // also decimal
-            meses_cupon:String(dr[c+8]||'').trim(),
-            moneda:String(dr[c+9]||'').trim(),
-            ley:String(dr[c+10]||'').trim(),
-            calificacion:String(dr[c+11]||'').trim(),
-            lamina:parseFloat(dr[c+12])||null
+            meses_cupon:String(dr[iMeses]||'').trim(),
+            moneda:String(dr[iMon]||'').trim(),
+            ley:String(dr[iLey]||'').trim(),
+            calificacion:String(dr[iCal]||'').trim(),
+            lamina:parseFloat(dr[iLam])||null
           };
           corpCnt++;
           var v7=newON[tk].vencimiento?newON[tk].vencimiento.slice(0,7):'';
@@ -730,6 +752,10 @@ function loadMonitorFull(input){
           newBC.push({t:tk,n:nm,c:'Renta Fija | Corporativos (ONs)',m:'USD'});
         }
         monStat('corp',corpCnt,corpCnt>0?'ok':'warn');
+        if(corpCnt===0) monLog('⚠ Hoja Corporativos ('+cName+') encontrada pero 0 filas leídas — revisar si cambiaron las columnas','warn');
+      } else {
+        monLog('⚠ No se encontró la hoja de Corporativos en este Monitor','warn');
+        monStat('corp','0','warn');
       }
 
       // ── SOBERANOS ──
@@ -898,7 +924,14 @@ async function saveMonitorToCloud(ts){
   try{
     var r=await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN+'/latest',{headers:{'X-Access-Key':JSONBIN_KEY}});
     var d=await r.json();var cur=d.record||{};
-    cur.ons_db=ON_DB;cur.sov_db=SOV_DB;cur.let_db=LET_DB;cur.ons_updated=ts;
+    // Antes esto pisaba ons_db/sov_db/let_db en la nube SIEMPRE, incluso si el parseo local de
+    // esta hoja falló y ON_DB/SOV_DB/LET_DB quedaron vacíos — así una carga local rota borraba
+    // los datos buenos que ya tenía todo el equipo. Ahora solo se sube cada sección si el
+    // parseo local trajo algo; si una sección vino vacía, se deja la de la nube como estaba.
+    if(Object.keys(ON_DB).length) cur.ons_db=ON_DB;
+    if(Object.keys(SOV_DB).length) cur.sov_db=SOV_DB;
+    if(Object.keys(LET_DB).length) cur.let_db=LET_DB;
+    cur.ons_updated=ts;
     await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN,{method:'PUT',headers:{'Content-Type':'application/json','X-Access-Key':JSONBIN_KEY},body:JSON.stringify(cur)});
   }catch(e){console.warn('Cloud save:',e.message);}
 }
