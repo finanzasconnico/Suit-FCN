@@ -500,10 +500,19 @@ async function fetchTargetPrice(ticker) {
   return null;
 }
 
-// ══ PRECIOS OBJETIVO — cache local desde IndexedDB ══
+// ══ PRECIOS OBJETIVO — cache local desde IndexedDB, con fallback estático ══
+// Dos bugs arreglados acá:
+// 1. Antes esto solo leía IndexedDB local (_getShared) — en una compu que nunca subió
+//    "precios_objetivo" a mano (confía en el archivo publicado en data/), _preciosObjMap
+//    quedaba vacío para siempre. Ahora cae a fetchStaticFallback('data/precios_objetivo.xlsx')
+//    igual que el resto de las herramientas (mismo patrón canónico de Precios_Objetivo_FCN.html).
+// 2. Condición de carrera: antes onTickerBlur() podía dispararse antes de que esta carga
+//    asincrónica terminara, así que un blur rápido después de escribir el ticker caía directo
+//    a Yahoo Finance aunque el dato ya estuviera (o estuviera por llegar) en el archivo de
+//    Precios Objetivo. Ahora se expone _preciosObjReady (promise) y onTickerBlur lo espera.
 var _preciosObjMap = {}; // ticker.toUpperCase() → { precio, target, moneda, rec }
 
-(function loadPreciosObjetivo() {
+var _preciosObjReady = (function loadPreciosObjetivo() {
   var DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
   function _openDB() {
     return new Promise(function(res,rej){
@@ -521,6 +530,12 @@ var _preciosObjMap = {}; // ticker.toUpperCase() → { precio, target, moneda, r
         r.onerror = function(){res(null);};
       });
     }).catch(function(){return null;});
+  }
+  function _fetchStatic(url) {
+    return fetch(url, {cache:'no-store'}).then(function(r){
+      if (!r.ok) return null;
+      return r.arrayBuffer().then(function(buf){ return {data:buf, name:url.split('/').pop()}; });
+    }).catch(function(){ return null; });
   }
   function parse(entry) {
     if (!entry || !entry.data) return;
@@ -547,16 +562,22 @@ var _preciosObjMap = {}; // ticker.toUpperCase() → { precio, target, moneda, r
       });
     } catch(e) { console.warn('[PreciosObj] parse error', e); }
   }
-  window.addEventListener('DOMContentLoaded', function() {
-    _getShared('precios_objetivo').then(parse);
+  function load() {
+    return _getShared('precios_objetivo').then(function(entry){
+      return entry || _fetchStatic('data/precios_objetivo.xlsx');
+    }).then(parse);
+  }
+  var ready = new Promise(function(resolve){
+    window.addEventListener('DOMContentLoaded', function(){ load().then(resolve).catch(resolve); });
   });
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = function(e) {
       if (e.data && e.data.type === 'file_updated' && e.data.key === 'precios_objetivo') {
-        setTimeout(function(){ _getShared('precios_objetivo').then(parse); }, 500);
+        setTimeout(load, 500);
       }
     };
   }
+  return ready;
 })();
 
 async function fetchTickerData(ticker) {
@@ -582,6 +603,13 @@ async function fetchTickerData(ticker) {
   return { precioActual: null, targetPrice: null };
 }
 
+// Diseño (pedido explícito de Nico, 21/08): precio actual SIEMPRE en vivo desde Yahoo Finance
+// (es el dato que más cambia). Precio objetivo SIEMPRE prioriza el archivo Precios Objetivo
+// (research curado, cargado una vez por mes para todo el equipo) por sobre el target crudo de
+// Yahoo — es la fuente "oficial" del negocio, no un promedio automático de analistas al voleo.
+// Antes esto era todo-o-nada: si el ticker estaba en Precios Objetivo, ni siquiera se consultaba
+// Yahoo (ni para el precio actual, que quedaba desactualizado); si no estaba, se perdía la
+// preferencia por el target curado.
 async function onTickerBlur() {
   var type = document.getElementById('f-type').value;
   if (!type.includes('Renta Variable')) return;
@@ -592,30 +620,32 @@ async function onTickerBlur() {
   var badgeEl = document.getElementById('yf-badge');
   if (curEl.value && tgtEl.value) return;
 
-  // 1. Buscar en Precios Objetivo (local, sin red)
+  badgeEl.style.display = 'block';
+  badgeEl.innerHTML = '<span style="color:var(--cream-dim)">⟳ Consultando Yahoo Finance...</span>';
+  await _preciosObjReady; // espera a que termine de cargar Precios Objetivo (local o fallback) antes de decidir
   var local = _preciosObjMap[ticker];
-  if (local && local.precio) {
+  var data = await fetchTickerData(ticker);
+  var precioActual = data.precioActual;
+  var target = (local && local.target) ? local.target : data.targetPrice;
+  var fuenteTarget = (local && local.target) ? 'objetivo' : (data.targetPrice ? 'yahoo' : 'none');
+
+  if (precioActual) {
+    if (!curEl.value) curEl.value = precioActual.toFixed(2);
+    if (!tgtEl.value && target) tgtEl.value = target.toFixed(2);
+    calcRetFromPrice();
+    var recTxt = (fuenteTarget==='objetivo' && local.rec) ? ' · ' + local.rec.replace(/_/g,' ') : '';
+    badgeEl.innerHTML = fuenteTarget==='objetivo'
+      ? '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">Yahoo (precio) + 📊 Precios Objetivo (target)' + recTxt + '</span>'
+      : fuenteTarget==='yahoo'
+        ? '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">Yahoo Finance ✓</span>'
+        : '<span style="color:#D9892B;background:rgba(217,137,43,.1);border:1px solid rgba(217,137,43,.3);padding:1px 8px;border-radius:3px;">Solo precio</span>';
+  } else if (local && local.precio) {
+    // Yahoo no respondió (ticker no encontrado, rate limit, etc.) — como último recurso, cae al
+    // precio del archivo Precios Objetivo aunque pueda estar unos días desactualizado.
     if (!curEl.value) curEl.value = local.precio.toFixed(2);
     if (!tgtEl.value && local.target) tgtEl.value = local.target.toFixed(2);
     calcRetFromPrice();
-    badgeEl.style.display = 'block';
-    var recTxt = local.rec ? ' · ' + local.rec.replace(/_/g,' ') : '';
-    badgeEl.innerHTML = '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">📊 Precios Objetivo' + recTxt + '</span>';
-    setTimeout(function(){ badgeEl.style.display='none'; }, 5000);
-    return;
-  }
-
-  // 2. Fallback: Yahoo Finance
-  badgeEl.style.display = 'block';
-  badgeEl.innerHTML = '<span style="color:var(--cream-dim)">⟳ Consultando Yahoo Finance...</span>';
-  var data = await fetchTickerData(ticker);
-  if (data.precioActual) {
-    if (!curEl.value) curEl.value = data.precioActual.toFixed(2);
-    if (!tgtEl.value && data.targetPrice) tgtEl.value = data.targetPrice.toFixed(2);
-    calcRetFromPrice();
-    badgeEl.innerHTML = data.targetPrice
-      ? '<span style="color:#1C8C5F;background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);padding:1px 8px;border-radius:3px;">Yahoo Finance ✓</span>'
-      : '<span style="color:#D9892B;background:rgba(217,137,43,.1);border:1px solid rgba(217,137,43,.3);padding:1px 8px;border-radius:3px;">Solo precio</span>';
+    badgeEl.innerHTML = '<span style="color:#D9892B;background:rgba(217,137,43,.1);border:1px solid rgba(217,137,43,.3);padding:1px 8px;border-radius:3px;">📊 Precios Objetivo (Yahoo no respondió)</span>';
   } else {
     badgeEl.innerHTML = '<span style="color:#C0453B;background:rgba(192,69,59,.08);border:1px solid rgba(192,69,59,.25);padding:1px 8px;border-radius:3px;">Sin datos</span>';
   }

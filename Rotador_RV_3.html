@@ -205,6 +205,14 @@ body.modo-avanzado .col-senal{display:table-cell;}
 .wpp-input{width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-sans);font-size:12px;outline:none;}
 .wpp-input:focus{border-color:var(--ambar);}
 
+/* ── TOAST (reemplaza los alert() nativos — rompían la estética oscura de golpe) ── */
+.rv-toast{position:fixed;bottom:22px;right:22px;max-width:360px;background:var(--surface);border:1px solid var(--jade);border-radius:var(--radius);padding:11px 14px;font-family:var(--font-sans);font-size:12px;color:var(--text);line-height:1.55;display:flex;align-items:flex-start;gap:10px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.45);transition:transform 200ms ease-out,opacity 200ms ease-out;}
+.rv-toast.err{border-color:var(--danger);}
+.rv-toast.hidden{transform:translateY(10px);opacity:0;pointer-events:none;}
+.rv-toast-msg{flex:1;white-space:pre-line;}
+.rv-toast-close{background:none;border:none;color:var(--ink-muted);cursor:pointer;font-size:13px;line-height:1;padding:0;flex-shrink:0;}
+.rv-toast-close:hover{color:var(--text);}
+
 /* ── PRECIOS TAB ── */
 .px-table{width:100%;border-collapse:collapse;font-size:11px;}
 .px-table thead th{padding:7px 12px;text-align:left;font-family:var(--font-mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);border-bottom:1px solid var(--border);}
@@ -319,6 +327,12 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
     </div>
     <div id="holders-modal-body" style="max-height:320px;overflow-y:auto;"></div>
   </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="rv-toast hidden" id="rv-toast">
+  <span class="rv-toast-msg"></span>
+  <button class="rv-toast-close" onclick="cerrarToast()" title="Cerrar">✕</button>
 </div>
 
 <!-- ── TOPBAR ── -->
@@ -537,6 +551,23 @@ function fcnIrArchivos(e) {
   (window.top || window).location.href = 'FCN_Suite.html';
 }
 
+// Reemplaza los alert() nativos (rompían la estética oscura con un popup gris del navegador,
+// bloqueante). opts.err pinta el borde rojo y alarga la duración por default — pensado para
+// mensajes de error, no solo validaciones cortas. Mismo patrón visual que el toast de FCN_Suite.
+let _rvToastTimer;
+function showToast(msg, opts) {
+  opts = opts || {};
+  const t = document.getElementById('rv-toast');
+  if (!t) return;
+  t.querySelector('.rv-toast-msg').textContent = msg;
+  t.classList.toggle('err', !!opts.err);
+  t.classList.remove('hidden');
+  clearTimeout(_rvToastTimer);
+  const duration = opts.duration || (opts.err ? 6000 : 3200);
+  _rvToastTimer = setTimeout(() => t.classList.add('hidden'), duration);
+}
+function cerrarToast() { document.getElementById('rv-toast').classList.add('hidden'); clearTimeout(_rvToastTimer); }
+
 // ── STATE ──
 let dataBruta   = [];
 let posiciones  = [];
@@ -704,9 +735,9 @@ function handleStock(file) {
       if (posiciones.length) enriquecerPosiciones();
     } catch(err) {
       if (err.message && err.message.includes('ECMA-376')) {
-        alert('⚠ El archivo "Stock de cuentas por equipo" tiene etiqueta de confidencialidad.\n\nSolución:\n1. Abrí el Excel de Stock de cuentas\n2. Ctrl+E para seleccionar toda la tabla → Ctrl+C para copiar\n3. En Archivos hacé clic en "📋 Pegar desde Excel" en Stock de Cuentas');
+        showToast('⚠ El archivo "Stock de cuentas por equipo" tiene etiqueta de confidencialidad.\n\nSolución:\n1. Abrí el Excel de Stock de cuentas\n2. Ctrl+E para seleccionar toda la tabla → Ctrl+C para copiar\n3. En Archivos hacé clic en "📋 Pegar desde Excel" en Stock de Cuentas', { err: true, duration: 14000 });
       } else {
-        alert('Error leyendo Stock: ' + err.message);
+        showToast('Error leyendo Stock: ' + err.message, { err: true });
       }
     }
   };
@@ -823,7 +854,7 @@ function handleFile(file) {
       dz.classList.add('done');
       document.getElementById('upload-ok').textContent=`${dataBruta.length} posiciones cargadas`;
       document.getElementById('btn-fetch').disabled=false;
-    } catch(err){alert('Error: '+err.message);}
+    } catch(err){showToast('Error: '+err.message, { err: true });}
   };
   reader.readAsArrayBuffer(file);
 }
@@ -974,7 +1005,7 @@ function usarTemplate(tipo) {
 function abrirWhatsApp() {
   if (!wppCtx?.tel) return;
   const texto = document.getElementById('wpp-texto').value.trim();
-  if (!texto) { alert('Escribí un mensaje primero.'); return; }
+  if (!texto) { showToast('Escribí un mensaje primero.'); return; }
   const tel = wppCtx.tel.replace(/\D/g,'');
   const native = `whatsapp://send?phone=${tel}&text=${encodeURIComponent(texto)}`;
   const web    = `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`;
@@ -1068,13 +1099,13 @@ function copiarMail(btnEl) {
     const original = btnEl.textContent;
     btnEl.textContent = '✓ Copiado';
     setTimeout(() => { btnEl.textContent = original; }, 1800);
-  }).catch(() => alert('No se pudo copiar. Seleccioná el texto manualmente.'));
+  }).catch(() => showToast('No se pudo copiar. Seleccioná el texto manualmente.', { err: true }));
 }
 
 // ── MAIL MASIVO (pestaña "Todas las posiciones", según filtros activos del panel izquierdo) ──
 function abrirMailMasivo() {
   const filtradas = filtrarPosiciones();
-  if (!filtradas.length) { alert('No hay posiciones que matcheen los filtros actuales del panel izquierdo.'); return; }
+  if (!filtradas.length) { showToast('No hay posiciones que matcheen los filtros actuales del panel izquierdo.'); return; }
   const porCliente = {};
   filtradas.forEach(p => { (porCliente[p.cliente] ||= []).push(p); });
   const clientes = Object.keys(porCliente);
@@ -1123,7 +1154,7 @@ function copiarMailMasivo(i, btnEl) {
     const original = btnEl.textContent;
     btnEl.textContent = '✓ Copiado';
     setTimeout(() => { btnEl.textContent = original; }, 1800);
-  }).catch(() => alert('No se pudo copiar. Seleccioná el texto manualmente.'));
+  }).catch(() => showToast('No se pudo copiar. Seleccioná el texto manualmente.', { err: true }));
 }
 // Respaldo si en el futuro se usa alguna herramienta de envío masivo real y hace falta pegar
 // los textos ahí — exporta todos los borradores generados en un solo archivo.
@@ -1146,21 +1177,38 @@ function descargarMailMasivoTxt() {
 }
 
 // ── HOLDERS POR TICKER (pestaña "Precios & Targets" → qué clientes tienen cada uno) ──
+// La rentabilidad "proyectada a target" es POR CLIENTE, no del ticker en general — el precio
+// objetivo es el mismo para todos, pero cada uno compró a un precio distinto (ppc), así que el
+// mismo target les da un upside distinto. Por eso esta columna se calcula acá, fila por fila,
+// en vez de mostrar un solo % general para el ticker.
 function abrirHoldersTicker(ticker) {
   const holders = posiciones.filter(p => p.ticker === ticker).sort((a,b) => b.tenencia - a.tenencia);
   document.getElementById('holders-modal-title').textContent = `👤 Clientes con ${ticker}`;
   const total = holders.reduce((a,p) => a + p.tenencia, 0);
-  document.getElementById('holders-modal-sub').textContent = holders.length ? `${holders.length} cliente(s) · Tenencia total USD ${fmtN(total)}` : '';
+  // Mismo criterio de "target efectivo" que renderTabPrecios: live > editado a mano > caché.
+  const base = precios[ticker] || {};
+  const cachedTarget = loadTargetCache()[ticker.toUpperCase()] ?? null;
+  const targetEfectivo = base.targetPrice ?? cachedTarget;
+  document.getElementById('holders-modal-sub').textContent = holders.length
+    ? `${holders.length} cliente(s) · Tenencia total USD ${fmtN(total)}` + (targetEfectivo ? ` · Precio objetivo: $${targetEfectivo.toFixed(2)}` : '')
+    : '';
   const body = document.getElementById('holders-modal-body');
   if (!holders.length) {
     body.innerHTML = `<div style="font-size:11px;color:var(--ink-muted);padding:16px 0;">Ningún cliente tuyo tiene ${ticker} en cartera actualmente.</div>`;
   } else {
-    body.innerHTML = `<table><thead><tr><th>Cliente</th><th>Tenencia</th><th>Rent.</th></tr></thead><tbody>
+    body.innerHTML = `<table><thead><tr><th>Cliente</th><th>Tenencia</th><th>Rent. actual</th>${targetEfectivo ? '<th>Proyectada a target</th>' : ''}</tr></thead><tbody>
       ${holders.map(p => {
         const rent = getRentEfectiva(p);
         const rentStr = rent!==null ? (rent>=0?'+':'')+rent.toFixed(1)+'%' : '—';
         const rentCls = rent===null?'neu':rent>=0?'pos':'neg';
-        return `<tr><td>${p.cliente}</td><td style="font-family:var(--font-mono);font-size:10px;">$${fmtN(p.tenencia)}</td><td><span class="td-rent ${rentCls}" style="font-size:11px;">${rentStr}</span></td></tr>`;
+        let projCell = '';
+        if (targetEfectivo) {
+          const proj = p.ppc > 0 ? (targetEfectivo/p.ppc - 1)*100 : null;
+          const projStr = proj!==null ? (proj>=0?'+':'')+proj.toFixed(1)+'%' : '—';
+          const projCls = proj===null?'neu':proj>=0?'pos':'neg';
+          projCell = `<td><span class="td-rent ${projCls}" style="font-size:11px;" title="A precio de compra de este cliente ($${p.ppc.toFixed(3)}), si ${ticker} llega al objetivo">${projStr}</span></td>`;
+        }
+        return `<tr><td>${p.cliente}</td><td style="font-family:var(--font-mono);font-size:10px;">$${fmtN(p.tenencia)}</td><td><span class="td-rent ${rentCls}" style="font-size:11px;">${rentStr}</span></td>${projCell}</tr>`;
       }).join('')}
     </tbody></table>`;
   }

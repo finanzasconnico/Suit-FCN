@@ -292,6 +292,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .cc-table th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 8px 8px 0;font-weight:500;}
 .cc-table td{padding:7px 8px 7px 0;border-top:1px solid var(--border);color:var(--text);font-family:var(--font-m);}
 .cc-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
+.v360-row{cursor:pointer;}
+.v360-row:hover{background:var(--jade-d);}
+.v360-row:hover td:first-child{text-decoration:underline;text-decoration-color:var(--ambar);}
 .cc-total b{color:var(--jade);}
 
 /* ── FILES PANEL ── */
@@ -546,6 +549,19 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <div class="files-notice">
         <strong>📤 Para que un compañero lo vea desde otra compu:</strong> Monitor de Individuos y Precios Objetivo no tienen datos de clientes, así que además de guardarse acá se pueden publicar. Copiá el mismo Excel que subiste (el que ya tenés descargado) a la carpeta <code>data/</code> dentro de Trabajo Nico con el nombre <code>monitor.xlsx</code> o <code>precios_objetivo.xlsx</code> y corré <code>sync-y-publicar.bat</code> — recién ahí queda visible para cualquiera que abra la web, sea cual sea su compu. (Si en cambio pegás los datos desde el portapapeles, ahí sí el archivo se descarga solo, porque no existe un Excel original para copiar.) Tenencia y Stock de cuentas quedan siempre solo en tu navegador, porque tienen datos de clientes.
       </div>
+    </div>
+
+    <!-- CLIENTE 360 PANEL -->
+    <div class="hub-panel" id="cliente360-panel">
+      <div class="files-header">
+        <h2>🧭 Vista 360 por cliente</h2>
+        <p>Renta Fija y Renta Variable juntas, por cliente — quién tiene algo para rotar/vender y quién tiene liquidez sin invertir. Clic en un cliente para ver la cartera completa con la señal de cada posición.</p>
+      </div>
+      <div style="max-width:960px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;">
+        <input type="text" placeholder="Buscar cliente…" oninput="filtrarCliente360(this.value)" style="flex:1;padding:9px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
+        <span id="cliente360-count" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+      </div>
+      <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="cliente360-body"></div>
     </div>
 
     <!-- LOADING OVERLAY -->
@@ -831,10 +847,16 @@ function showApp() {
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
   { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador'] },
-  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['armador','monitor'] },
+  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','armador','monitor'] },
   { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
 ];
+// Paneles nativos que viven "dentro" de una categoría pero no son un TOOLS[] con iframe propio
+// (ver hideAllPanels/showFiles/showCliente360) — icon/label acá para no repetirlos en cada lugar.
+const NATIVE_PANELS = {
+  files:      { icon:'🗂', label:'Archivos',  show: showFiles },
+  cliente360: { icon:'🧭', label:'Vista 360', show: showCliente360 },
+};
 function categoryOf(toolId) {
   if (toolId === 'files') return 'utilidades';
   const cat = CATEGORIES.find(c => c.toolIds.includes(toolId));
@@ -848,7 +870,7 @@ function buildNav() {
 
   addTab(container, 'home', '🏠', 'Inicio', () => showHome(), true);
   CATEGORIES.forEach(cat => {
-    const hasAny = cat.toolIds.some(id => id === 'files' || tools.find(t => t.id === id));
+    const hasAny = cat.toolIds.some(id => NATIVE_PANELS[id] || tools.find(t => t.id === id));
     if (!hasAny) return;
     const btn = document.createElement('button');
     btn.className = 'tool-tab cat-tab';
@@ -864,9 +886,9 @@ function openCategory(catId) {
   const cat = CATEGORIES.find(c => c.id === catId);
   if (!cat) return;
   const tools = getUserTools();
-  const firstId = cat.toolIds.find(id => id === 'files' || tools.find(t => t.id === id));
+  const firstId = cat.toolIds.find(id => NATIVE_PANELS[id] || tools.find(t => t.id === id));
   if (!firstId) return;
-  if (firstId === 'files') showFiles(); else openTool(firstId);
+  if (NATIVE_PANELS[firstId]) NATIVE_PANELS[firstId].show(); else openTool(firstId);
 }
 
 function renderSubcategoryBar(catId) {
@@ -877,7 +899,7 @@ function renderSubcategoryBar(catId) {
   const tools = getUserTools();
   bar.innerHTML = '';
   cat.toolIds.forEach(id => {
-    if (id === 'files') { addSubTab(bar, 'files', '🗂', 'Archivos', () => showFiles(), true); return; }
+    if (NATIVE_PANELS[id]) { const np = NATIVE_PANELS[id]; addSubTab(bar, id, np.icon, np.label, () => np.show(), true); return; }
     const tool = tools.find(t => t.id === id);
     if (!tool) return;
     addSubTab(bar, tool.id, tool.icon, tool.name, () => openTool(tool.id), false);
@@ -1003,6 +1025,8 @@ function parseTenencia(entry) {
       }
       const val = parseFloat(r['Tenencia']) || 0;
       const nominales = parseFloat(r['Nominales']) || 0;
+      const ppc = parseFloat(r['Prec prom de compra']) || 0;
+      const dias = parseInt(r['Días de tenencia']) || 0;
       const tipo = String(r['Tipo'] || 'Otro').trim() || 'Otro';
       const comitente = String(r['Comitente'] || '').trim();
       const cliente = String(r['Cuenta'] || comitente || '').trim();
@@ -1034,7 +1058,7 @@ function parseTenencia(entry) {
       }
       if (cliente && ticker) {
         if (!carteraPorCliente[cliente]) carteraPorCliente[cliente] = [];
-        carteraPorCliente[cliente].push({ ticker, instrumento, tipo, grupo, tenencia: val, nominales });
+        carteraPorCliente[cliente].push({ ticker, instrumento, tipo, grupo, tenencia: val, nominales, ppc, dias });
       }
     });
     if (filasOmitidas) console.log(`[Dashboard] ${filasOmitidas} fila(s) omitida(s) por parecer totales/resumen, no posiciones.`);
@@ -1598,6 +1622,61 @@ function abrirHolders(ticker) {
 }
 function cerrarHolders() { document.getElementById('holdersOverlay').classList.remove('open'); }
 
+// ══════════════════════════════════════════════════════════════
+//  VISTA 360 POR CLIENTE — señal de venta/rotación por posición, reusando los mismos
+//  datos y umbrales que ya usan las cajas del dashboard y Rotador RV, sin fetch en vivo
+//  a Yahoo (para no pegarle a la API por cada posición de cada cliente — usa el precio
+//  implícito de la Tenencia, igual que hace Rotador RV antes de que alguien pida el
+//  precio en vivo). Devuelve null si la posición no tiene señal, o
+//  {senal, color, detalle, alt} — alt = sugerencia de alternativa comparable (solo RF).
+// ══════════════════════════════════════════════════════════════
+const V360_RV_TP = 30;    // % de ganancia — vender / tomar ganancia (mismo default que Rotador RV)
+const V360_RV_ACUM = 12;  // % de ganancia — zona de acumular (30*0.4, igual que Rotador RV)
+const V360_RV_STOP = 30;  // días mínimos de tenencia para que una pérdida cuente como STOP, no ruido de corto plazo
+
+function calcularSenalPosicion(item) {
+  if (item.grupo === 'Renta Fija') {
+    const m = dashData.monitor && dashData.monitor[item.ticker];
+    if (!m || m.tir == null) return null;
+    if (m.tir < DASH_RF_TIR_BAJA) {
+      const alt = mejorAlternativaRF(item.ticker, m);
+      return { senal: 'ROTAR', colorKey: 'danger', detalle: `TIR ${(m.tir*100).toFixed(2)}% — conviene rotar`, alt };
+    }
+    return null;
+  }
+  if (item.grupo === 'Renta Variable') {
+    if (!(item.ppc > 0) || !(item.nominales > 0)) return null;
+    const precioImplicito = item.tenencia / item.nominales;
+    const rent = (precioImplicito / item.ppc - 1) * 100;
+    if (rent >= V360_RV_TP) return { senal: 'VENDER', colorKey: 'danger', detalle: `+${rent.toFixed(1)}% — tomar ganancia` };
+    if (rent < 0 && item.dias > V360_RV_STOP) return { senal: 'STOP', colorKey: 'danger', detalle: `${rent.toFixed(1)}% en ${item.dias}d — evaluar salida` };
+    if (rent >= V360_RV_ACUM) return { senal: 'ACUMULAR', colorKey: 'jade', detalle: `+${rent.toFixed(1)}% — zona de momentum` };
+    return null;
+  }
+  return null;
+}
+
+// Alternativa simple para un ROTAR de renta fija: mejor TIR disponible con duration parecida
+// (±2 años) si hay dato de duration, si no el de mejor TIR entre 4-20% (mismo rango que la caja
+// "Mejores TIR disponibles" del dashboard, para no sugerir algo en zona de riesgo/distress).
+function mejorAlternativaRF(tickerActual, mActual) {
+  if (!dashData.monitor) return null;
+  const candidatos = Object.entries(dashData.monitor)
+    .filter(([tk, d]) => tk !== tickerActual && d.tir != null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX)
+    .filter(([, d]) => mActual.duration == null || d.duration == null || Math.abs(d.duration - mActual.duration) <= 2)
+    .sort((a, b) => b[1].tir - a[1].tir);
+  if (!candidatos.length) return null;
+  const [tk, d] = candidatos[0];
+  return { ticker: tk, tir: d.tir, emisor: d.emisor || d.instrumento };
+}
+
+const V360_COLOR = { danger: ['var(--danger)', 'var(--danger-d)'], jade: ['var(--jade)', 'var(--jade-d)'], ambar: ['var(--ambar)', 'var(--ambar-d)'] };
+function badgeSenalHtml(s) {
+  if (!s) return `<span style="color:var(--muted);font-size:10px;">—</span>`;
+  const [fg, bg] = V360_COLOR[s.colorKey] || V360_COLOR.ambar;
+  return `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:${fg};background:${bg};padding:2px 8px;border-radius:10px;" title="${escHtml(s.detalle)}">${s.senal}</span>`;
+}
+
 function abrirCarteraCliente(cliente) {
   if (!cliente) return;
   const items = (currentTenencia && currentTenencia.carteraPorCliente) ? (currentTenencia.carteraPorCliente[cliente] || []) : [];
@@ -1608,22 +1687,77 @@ function abrirCarteraCliente(cliente) {
     body.innerHTML = `<div class="hm-empty">Sin posiciones cargadas para este cliente.</div>`;
   } else {
     const tenTotal = items.reduce((a, i) => a + i.tenencia, 0);
-    document.getElementById('ccSub').textContent = `${items.length} posición(es) · Tenencia total USD ${fmtK(tenTotal)}`;
-    const rows = items.slice().sort((a, b) => b.tenencia - a.tenencia).map(i => `
+    const conSenal = items.map(i => ({ i, s: calcularSenalPosicion(i) }));
+    const nAlertas = conSenal.filter(({s}) => s).length;
+    document.getElementById('ccSub').textContent = `${items.length} posición(es) · Tenencia total USD ${fmtK(tenTotal)}` + (nAlertas ? ` · ${nAlertas} con señal` : '');
+    // Las que tienen señal van primero (lo más urgente arriba), después por tenencia desc.
+    const rows = conSenal.sort((a, b) => (b.s ? 1 : 0) - (a.s ? 1 : 0) || b.i.tenencia - a.i.tenencia).map(({i, s}) => `
       <tr>
         <td>${escHtml(i.ticker)}</td>
         <td style="font-family:var(--font-s);">${escHtml(i.instrumento || '—')}</td>
         <td>${escHtml(i.grupo)}</td>
         <td>USD ${fmtK(i.tenencia)}</td>
         <td>${i.nominales ? i.nominales.toLocaleString('es-AR') : '—'}</td>
+        <td>${badgeSenalHtml(s)}${s && s.alt ? `<div style="font-size:9px;color:var(--muted);margin-top:3px;">→ ${escHtml(s.alt.ticker)} (TIR ${(s.alt.tir*100).toFixed(1)}%)</div>` : ''}</td>
       </tr>`).join('');
-    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th></tr></thead>` +
+    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Señal</th></tr></thead>` +
       `<tbody>${rows}</tbody></table>` +
       `<div class="cc-total">Tenencia total: <b>USD ${fmtK(tenTotal)}</b></div>`;
   }
   document.getElementById('ccOverlay').classList.add('open');
 }
 function cerrarCarteraCliente() { document.getElementById('ccOverlay').classList.remove('open'); }
+
+const V360_LIQ_MIN = 500; // USD sin invertir en la cuenta de un cliente — a partir de acá se marca como alerta
+
+let v360Search = '';
+function filtrarCliente360(val) { v360Search = (val || '').trim().toLowerCase(); renderCliente360(); }
+
+// Tabla resumen: un cliente por fila, con cuántas posiciones tienen señal en cada grupo de
+// instrumento (mismo cálculo que abrirCarteraCliente usa para el detalle, ver
+// calcularSenalPosicion) más si tiene liquidez sin invertir por encima del umbral. Clic en la
+// fila abre el modal de cartera completa que ya existe (abrirCarteraCliente), ahora con columna
+// de Señal — no hace falta un modal de detalle nuevo.
+function renderCliente360() {
+  const el = document.getElementById('cliente360-body');
+  if (!el) return;
+  const tenencia = dashData.tenencia;
+  if (!tenencia || !tenencia.carteraPorCliente || !Object.keys(tenencia.carteraPorCliente).length) {
+    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> para ver acá el resumen de alertas por cliente.</div>`;
+    return;
+  }
+  let clientes = Object.keys(tenencia.carteraPorCliente).map(cliente => {
+    const items = tenencia.carteraPorCliente[cliente];
+    let rf = 0, rv = 0;
+    items.forEach(i => {
+      const s = calcularSenalPosicion(i);
+      if (!s) return;
+      if (i.grupo === 'Renta Fija') rf++; else if (i.grupo === 'Renta Variable') rv++;
+    });
+    const liq = (tenencia.porClienteMoneda[cliente] && tenencia.porClienteMoneda[cliente].USD) || 0;
+    const liqAlerta = liq >= V360_LIQ_MIN;
+    return { cliente, aum: tenencia.porCliente[cliente] || 0, rf, rv, liq, liqAlerta, total: rf + rv + (liqAlerta ? 1 : 0) };
+  });
+  if (v360Search) clientes = clientes.filter(c => c.cliente.toLowerCase().includes(v360Search));
+  clientes.sort((a, b) => b.total - a.total || b.aum - a.aum);
+  document.getElementById('cliente360-count').textContent = `${clientes.length} cliente(s)`;
+  if (!clientes.length) {
+    el.innerHTML = `<div class="dash-empty">Ningún cliente coincide con "${escHtml(v360Search)}".</div>`;
+    return;
+  }
+  el.innerHTML = `<table class="cc-table"><thead><tr>
+      <th>Cliente</th><th>AUM</th><th>🔵 Renta Fija</th><th>📈 Renta Variable</th><th>💵 Liquidez sin invertir</th>
+    </tr></thead><tbody>
+    ${clientes.map(c => `
+      <tr class="v360-row" onclick="abrirCarteraCliente('${escHtml(c.cliente).replace(/'/g,"\\'")}')" title="Ver cartera completa de ${escHtml(c.cliente)}">
+        <td>${escHtml(c.cliente)}</td>
+        <td>USD ${fmtK(c.aum)}</td>
+        <td>${c.rf ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--danger);background:var(--danger-d);padding:2px 8px;border-radius:10px;">${c.rf} rotar</span>` : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
+        <td>${c.rv ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--danger);background:var(--danger-d);padding:2px 8px;border-radius:10px;">${c.rv} señal(es)</span>` : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
+        <td>${c.liqAlerta ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--ambar);background:var(--ambar-d);padding:2px 8px;border-radius:10px;">USD ${fmtK(c.liq)}</span>` : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
 
 function dashStaleMs(key) { return key === 'precios_objetivo' ? 40 * 86400000 : 10 * 86400000; }
 
@@ -1641,6 +1775,20 @@ function dashStaleMs(key) { return key === 'precios_objetivo' ? 40 * 86400000 : 
 //  'auto' (no subido acá, pero se autocarga desde data/) · 'miss' (bloqueo real)
 // ══════════════════════════════════════════════════════════════
 const staticFallbackCache = {};
+// Copiado del patrón canónico (Precios_Objetivo_FCN.html). Hasta acá, FCN_Suite.html solo
+// chequeaba si el fallback estático EXISTE (hasStaticFallback, para la pill de estado) pero
+// nunca lo usaba para traer los datos — así, en una compu que nunca subió Monitor o Precios
+// Objetivo, el panel de Archivos mostraba bien "Autocargado desde la web" pero las cajas del
+// dashboard de inicio decían "Sin datos todavía": nunca había un fetch real, solo el HEAD.
+async function fetchStaticFallback(url) {
+  try {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const buf = await r.arrayBuffer();
+    return { data: buf, name: url.split('/').pop() };
+  } catch (e) { console.warn('[Dashboard] no se pudo traer el fallback estático', url, e); return null; }
+}
+
 async function hasStaticFallback(key) {
   const fixedName = STATIC_PUBLISH_KEYS[key];
   if (!fixedName) return false;
@@ -1794,7 +1942,10 @@ const DASH_KEY_TO_FIELD = { tenencia: 'tenencia', precios_objetivo: 'precios', m
 const DASH_PARSERS = { tenencia: parseTenencia, precios_objetivo: parsePreciosObjetivo, monitor: parseMonitorTIR, stock: parseStockFCN };
 
 async function loadDashKey(key) {
-  const entry = await getSharedFile(userKey(key));
+  let entry = await getSharedFile(userKey(key));
+  // tenencia/stock nunca tienen fallback estático (datos de clientes) — solo aplica a
+  // monitor/precios_objetivo, que sí se publican para todo el equipo.
+  if (!entry && STATIC_PUBLISH_KEYS[key]) entry = await fetchStaticFallback('data/' + STATIC_PUBLISH_KEYS[key]);
   dashData[DASH_KEY_TO_FIELD[key]] = DASH_PARSERS[key](entry);
 }
 
@@ -1811,6 +1962,7 @@ function renderDashboardAll() {
   renderDashVentaSugerida(tenencia, precios);
   renderDashRFOportunidades(monitor);
   renderDashRFRotar(monitor, tenencia);
+  renderCliente360();
 }
 
 async function refreshFilesStatusBits() {
@@ -2073,31 +2225,42 @@ async function pasteFromClipboard(key) {
 }
 
 // ── NAVIGATION ──
-function showHome() {
-  setActiveTab('home');
+// Paneles "nativos" del propio FCN_Suite.html (no son iframes de otra herramienta) — Inicio,
+// Archivos, y ahora Vista 360. hideAllPanels() centraliza el show/hide para no repetir la
+// misma lista de ids en cada show*() cada vez que se agrega un panel nuevo.
+const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel'];
+function hideAllPanels() {
   document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
-  document.getElementById('home-panel').classList.add('active');
-  document.getElementById('files-panel').classList.remove('active');
+  NATIVE_PANEL_IDS.forEach(id => document.getElementById(id)?.classList.remove('active'));
   document.getElementById('frame-loading').style.display = 'none';
   activeToolId = null;
 }
 
+function showHome() {
+  setActiveTab('home');
+  hideAllPanels();
+  document.getElementById('home-panel').classList.add('active');
+}
+
 function showFiles() {
   setActiveTab('files');
-  document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
-  document.getElementById('home-panel').classList.remove('active');
+  hideAllPanels();
   document.getElementById('files-panel').classList.add('active');
-  document.getElementById('frame-loading').style.display = 'none';
-  activeToolId = null;
   refreshFilesStatus();
+}
+
+function showCliente360() {
+  setActiveTab('cliente360');
+  hideAllPanels();
+  document.getElementById('cliente360-panel').classList.add('active');
+  renderCliente360();
 }
 
 function openTool(toolId) {
   const tool = TOOLS.find(t => t.id === toolId);
   if (!tool || !getUserTools().find(t => t.id === toolId)) return;
   setActiveTab(toolId);
-  document.getElementById('home-panel').classList.remove('active');
-  document.getElementById('files-panel').classList.remove('active');
+  hideAllPanels();
   const loadingEl = document.getElementById('frame-loading');
   loadingEl.style.display = 'flex';
   document.getElementById('loading-tool-name').textContent = `Cargando ${tool.name}…`;
