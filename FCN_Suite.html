@@ -103,6 +103,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .files-status-pill.warn{border-color:rgba(219,160,60,.55);background:var(--ambar-d);}
 .files-status-pill.warn .files-status-text{color:var(--ambar);}
 .files-status-pill.warn .files-status-badge{background:var(--ambar);color:#1a1400;}
+
+/* ── ACCESO RÁPIDO A POWERBI (topbar) — mismo ámbar que el pill de Archivos, pero chico:
+   este es solo un atajo de "ir a buscar el Excel", no tiene estado propio que mostrar. ── */
+.pwbi-picker{position:relative;flex-shrink:0;}
+.pwbi-pill{display:flex;align-items:center;gap:3px;background:var(--ambar-d);border:1px solid rgba(219,160,60,.55);border-radius:20px;padding:4px 9px;cursor:pointer;transition:all .2s;font-family:var(--font-m);font-size:9px;font-weight:700;letter-spacing:.03em;color:var(--ambar);}
+.pwbi-pill:hover{background:rgba(219,160,60,.25);}
+.pwbi-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;width:230px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;overflow:hidden;}
+.pwbi-dropdown.open{display:block;}
+.pwbi-head{padding:10px 14px;font-family:var(--font-d);font-size:12px;color:var(--text);border-bottom:1px solid var(--border);}
+.pwbi-row{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;color:var(--text);text-decoration:none;border-bottom:1px solid var(--border);transition:background .12s;}
+.pwbi-row:last-child{border-bottom:none;}
+.pwbi-row:hover{background:var(--jade-d);color:var(--text);}
 /* critical: falta un archivo sin fallback (Tenencia / Stock) → rojo, pulsa para llamar la atención */
 .files-status-pill.critical{border-color:rgba(192,69,59,.6);background:var(--danger-d);}
 .files-status-pill.critical .files-status-text{color:var(--danger);}
@@ -372,6 +384,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="topbar-tools" id="topbar-tools"></div>
     <button class="topbar-scroll-hint" id="topbar-scroll-hint" onclick="document.getElementById('topbar-tools').scrollBy({left:160,behavior:'smooth'})" title="Más herramientas →">›</button>
     <div class="topbar-right">
+      <div class="pwbi-picker" id="pwbi-picker">
+        <button class="pwbi-pill" id="pwbi-pill" onclick="togglePwbiDropdown(event)" title="Accesos rápidos a los reportes de Balanz PowerBI">PwBI</button>
+        <div class="pwbi-dropdown" id="pwbi-dropdown">
+          <div class="pwbi-head">Descargar de Balanz</div>
+          <div id="pwbi-list"></div>
+        </div>
+      </div>
       <div class="files-status-picker" id="files-status-picker">
         <button class="files-status-pill" id="files-status-pill" onclick="toggleFilesStatusDropdown(event)" title="Estado de los archivos compartidos">
           <span class="files-status-icon">🗂</span>
@@ -841,6 +860,7 @@ function showApp() {
   buildFilesPanel();
   initClientePicker();
   initFilesStatusPicker();
+  initPwbiPicker();
   showHome();
   setupTopbarScroll();
 }
@@ -1888,6 +1908,7 @@ function toggleFilesStatusDropdown(e) {
   if (!dd) return;
   if (dd.classList.contains('open')) { closeFilesStatusDropdown(); return; }
   closeClientPicker();
+  closePwbiDropdown();
   dd.classList.add('open');
 }
 
@@ -1900,6 +1921,41 @@ function initFilesStatusPicker() {
   document.addEventListener('click', e => {
     const picker = document.getElementById('files-status-picker');
     if (picker && !picker.contains(e.target)) closeFilesStatusDropdown();
+  });
+}
+
+// ── ACCESO RÁPIDO A POWERBI — reusa sf.sourceUrl de SHARED_FILES, no hay una lista separada
+// que mantener en dos lugares. Si más adelante se agrega sourceUrl a otro archivo (Monitor,
+// Precios Objetivo), aparece acá solo con eso, sin tocar este código.
+function renderPwbiDropdown() {
+  const box = document.getElementById('pwbi-list');
+  if (!box) return;
+  const conLink = SHARED_FILES.filter(sf => sf.sourceUrl);
+  box.innerHTML = conLink.length
+    ? conLink.map(sf => `<a class="pwbi-row" href="${sf.sourceUrl}" target="_blank" rel="noopener">${sf.icon} ${escHtml(sf.name)}</a>`).join('')
+    : `<div class="pwbi-row" style="cursor:default;">Sin links cargados todavía.</div>`;
+}
+
+function togglePwbiDropdown(e) {
+  if (e) e.stopPropagation();
+  const dd = document.getElementById('pwbi-dropdown');
+  if (!dd) return;
+  if (dd.classList.contains('open')) { closePwbiDropdown(); return; }
+  closeClientPicker();
+  closeFilesStatusDropdown();
+  dd.classList.add('open');
+}
+
+function closePwbiDropdown() {
+  const dd = document.getElementById('pwbi-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function initPwbiPicker() {
+  renderPwbiDropdown();
+  document.addEventListener('click', e => {
+    const picker = document.getElementById('pwbi-picker');
+    if (picker && !picker.contains(e.target)) closePwbiDropdown();
   });
 }
 
@@ -2035,6 +2091,7 @@ function toggleClientPicker() {
   if (!dd) return;
   if (dd.classList.contains('open')) { closeClientPicker(); return; }
   closeFilesStatusDropdown();
+  closePwbiDropdown();
   dd.classList.add('open');
   renderClientResults();
   const input = document.getElementById('client-search-input');
