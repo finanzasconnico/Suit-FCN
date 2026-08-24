@@ -327,6 +327,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn-notify:hover{background:rgba(28,140,95,.2);}
 .btn-paste{padding:8px 14px;background:rgba(219,160,60,.1);border:1px solid rgba(219,160,60,.3);border-radius:var(--r);color:var(--ambar);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .btn-paste:hover{background:rgba(219,160,60,.2);border-color:rgba(219,160,60,.6);}
+/* Link al reporte de Balanz de donde sale el Excel — antes del upload, no junto a él, porque
+   el paso lógico es "primero lo descargás de ahí" y recién después lo subís acá. */
+.btn-source{display:flex;align-items:center;gap:6px;padding:8px 14px;margin-bottom:10px;background:rgba(219,160,60,.1);border:1px solid rgba(219,160,60,.3);border-radius:var(--r);color:var(--ambar);font-family:var(--font-m);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none;justify-content:center;}
+.btn-source:hover{background:rgba(219,160,60,.2);border-color:rgba(219,160,60,.6);}
 .files-notice{max-width:820px;margin:16px auto 0;padding:12px 16px;background:var(--ambar-d);border:1px solid rgba(219,160,60,.2);border-radius:var(--r);font-size:11px;color:var(--muted);line-height:1.65;}
 .files-notice strong{color:var(--ambar);}
 
@@ -637,7 +641,8 @@ const SHARED_FILES = [
     icon:  '📊',
     hint:  'Exportar desde Balanz · hoja "Export" · .xlsx / .csv',
     usedBy: ['Rotador RV', 'Scanner ONs', 'Panorama de Mercado', 'Monitor Vivo'],
-    accept: '.xlsx,.xls,.csv'
+    accept: '.xlsx,.xls,.csv',
+    sourceUrl: 'https://app.powerbi.com/groups/me/apps/8023a337-6088-4fcc-a0a5-3423db1838a7/reports/03c5319d-9f1e-44d4-b31c-57d11aa4ae8b/fa0646621dacd719ca0d?ctid=1123ebae-a006-42c7-9ea3-c84a2feb0e65&experience=power-bi'
   },
   {
     key:   'stock',
@@ -645,7 +650,8 @@ const SHARED_FILES = [
     icon:  '📋',
     hint:  'Comitente → Teléfono · hoja "Export" · .xlsx / .csv (si tiene bloqueo IRM)',
     usedBy: ['Rotador RV', 'Scanner ONs'],
-    accept: '.xlsx,.xls,.csv'
+    accept: '.xlsx,.xls,.csv',
+    sourceUrl: 'https://app.powerbi.com/groups/me/apps/62751bd4-230e-4c07-8077-0f87512c8af8/reports/57730607-8a90-4b12-8a6e-e30763bbab96/0800f3c230e061e5c8eb?ctid=1123ebae-a006-42c7-9ea3-c84a2feb0e65&experience=power-bi'
   },
   {
     key:   'monitor',
@@ -2110,6 +2116,7 @@ function buildFileCard(sf, entry) {
       <span class="fcs-text">${statusText}</span>
       ${tsText}
     </div>
+    ${sf.sourceUrl ? `<a class="btn-source" href="${sf.sourceUrl}" target="_blank" rel="noopener" title="Abre el reporte en Balanz PowerBI. Ahí: ⋯ (arriba a la derecha) → Exportar datos → Datos con diseño actual → Exportar">🔗 Descargar de Balanz (PowerBI)</a>` : ''}
     <div class="file-card-actions">
       <div class="file-drop-zone" id="fdrop-${sf.key}">
         <input type="file" accept="${sf.accept}" onchange="onFileSelected('${sf.key}', this)">
