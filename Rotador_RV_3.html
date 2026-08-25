@@ -1586,6 +1586,21 @@ function switchTab(id){
   else renderTablaActiva();
 }
 
+// Último recurso cuando Yahoo no responde (proxy caído/bloqueado, rate limit — pasa seguido
+// con los proxies públicos que usa fetchYF): el precio implícito de la Tenencia (tenencia del
+// cliente / nominales), tomando el registro con menos días de tenencia como el más reciente.
+// No es una cotización en vivo, pero sirve de referencia — se marca aparte (badge "tenencia")
+// para que quede claro que no es lo mismo, y es editable como cualquier otro precio manual.
+function precioTenenciaImplicito(ticker){
+  let mejor=null;
+  posiciones.forEach(p=>{
+    if(p.ticker!==ticker || !(p.nominales>0)) return;
+    const precioImplicito=p.tenencia/p.nominales;
+    if(!mejor || p.dias<mejor.dias) mejor={precio:precioImplicito, dias:p.dias};
+  });
+  return mejor?mejor.precio:null;
+}
+
 function renderTabPrecios(){
   const tickers=[...new Set(posiciones.map(p=>p.ticker))].sort();
   const tbody=document.getElementById('tbody-precios');
@@ -1596,16 +1611,21 @@ function renderTabPrecios(){
     // Si no hay target live, rellenar del caché
     const cachedTarget = targetCache[ticker.toUpperCase()] ?? null;
     const effectiveTarget = base.targetPrice ?? cachedTarget;
-    const upsideFromCache = (effectiveTarget!=null && base.precio) ? ((effectiveTarget/base.precio)-1)*100 : base.upsideAnalistas;
-    const px = {...base, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromCache: base.targetPrice==null && cachedTarget!=null};
+    const precioTenencia = base.precio==null ? precioTenenciaImplicito(ticker) : null;
+    const precioEfectivo = base.precio ?? precioTenencia;
+    const upsideFromCache = (effectiveTarget!=null && precioEfectivo) ? ((effectiveTarget/precioEfectivo)-1)*100 : base.upsideAnalistas;
+    const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromCache: base.targetPrice==null && cachedTarget!=null, _fromTenencia: precioTenencia!=null};
     const upside=px.upsideAnalistas;
     const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
-    const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>':px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>':px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
+    const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>'
+      :px._fromTenencia?'<span class="px-badge-manual" title="Precio implícito de la Tenencia (no es cotización en vivo) — Yahoo no respondió, puede estar desactualizado">tenencia</span>'
+      :px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>'
+      :px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
     const nHolders=posiciones.filter(p=>p.ticker===ticker).length;
     const clientesCell=nHolders?`<button class="btn-sm" onclick="abrirHoldersTicker('${ticker}')" title="Ver qué clientes tienen ${ticker}">👤 ${nHolders}</button>`:`<span style="color:var(--ink-muted);font-size:10px;">—</span>`;
     return `<tr>
       <td class="td-tick">${ticker}</td>
-      <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
+      <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" title="${px._fromTenencia?'Precio implícito de la Tenencia, no en vivo — editalo si tenés uno mejor':''}" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
       <td><input class="px-input" type="number" value="${px.targetPrice!=null?px.targetPrice.toFixed(2):''}" placeholder="—" title="${px.targetPrice==null?'Sin cobertura en Yahoo Finance':''}" onchange="editPrecio('${ticker}','target',this.value)" onfocus="this.select()"></td>
       <td id="upside-${ticker}">${upsideStr}</td>
       <td id="badge-${ticker}">${badge}</td>

@@ -36,3 +36,16 @@ Movimientos_test.xlsx
 # se autocarguen en cualquier compu, sin tener que subirlos a mano cada vez)
 !data/monitor.xlsx
 !data/precios_objetivo.xlsx
+
+# Excepción: lista de tickers del workflow de Precios Objetivo (solo tickers, sin datos de
+# clientes) — sin esto, la regla general de *.txt de arriba se lo comía y GitHub Actions no
+# tenía de dónde leer la lista.
+!.github/scripts/tickers.txt
+
+# Caché de progreso del workflow de Precios Objetivo — no aporta nada versionado, se regenera
+# sola en cada corrida.
+.github/scripts/.cache_precios_objetivo.json
+
+# Bytecode compilado de Python (queda si se corre/importa el script a mano para probarlo)
+__pycache__/
+*.pyc
