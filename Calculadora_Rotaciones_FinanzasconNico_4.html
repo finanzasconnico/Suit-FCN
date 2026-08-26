@@ -305,7 +305,7 @@ table.compare-table tr.hl td{background:rgba(255,255,255,.03);font-weight:600;}
           <div class="field"><label>Ticker (interno)</label><input type="text" id="v-ticker" style="text-transform:uppercase;" oninput="onCondChange('venta')"></div>
           <div class="field"><label>Emisor</label><input type="text" id="v-emisor" oninput="onCondChange('venta')"></div>
           <div class="field-row">
-            <div class="field"><label>TIR (%)</label><input type="number" step="0.01" id="v-tir" oninput="onCondChange('venta')"></div>
+            <div class="field"><label>TIR (%) — calculada del precio</label><input type="text" id="v-tir" readonly style="opacity:.7;cursor:not-allowed;" placeholder="—" title="Se calcula sola a partir del precio y el cronograma de flujos — para modelar otra TIR, cambiá el precio."></div>
             <div class="field"><label>Duration (calculada)</label><input type="text" id="v-duration" readonly style="opacity:.7;cursor:not-allowed;" placeholder="—"></div>
           </div>
           <div class="field-row">
@@ -364,7 +364,7 @@ table.compare-table tr.hl td{background:rgba(255,255,255,.03);font-weight:600;}
           <div class="field"><label>Ticker (interno)</label><input type="text" id="c-ticker" style="text-transform:uppercase;" oninput="onCondChange('compra')"></div>
           <div class="field"><label>Emisor</label><input type="text" id="c-emisor" oninput="onCondChange('compra')"></div>
           <div class="field-row">
-            <div class="field"><label>TIR (%)</label><input type="number" step="0.01" id="c-tir" oninput="onCondChange('compra')"></div>
+            <div class="field"><label>TIR (%) — calculada del precio</label><input type="text" id="c-tir" readonly style="opacity:.7;cursor:not-allowed;" placeholder="—" title="Se calcula sola a partir del precio y el cronograma de flujos — para modelar otra TIR, cambiá el precio."></div>
             <div class="field"><label>Duration (calculada)</label><input type="text" id="c-duration" readonly style="opacity:.7;cursor:not-allowed;" placeholder="—"></div>
           </div>
           <div class="field-row">
@@ -569,6 +569,55 @@ function macaulayDuration(scheduleUSD, tirDecimal, hoy){
     sumTPV += t*pv;
   });
   return sumPV>0 ? sumTPV/sumPV : null;
+}
+
+// ═══════════════════════════════════════════════════════
+// TIR IMPLÍCITA EN EL PRECIO — resuelve la tasa r tal que el valor presente del
+// cronograma de flujos descontado a r sea igual al monto pagado (precio×nominales).
+// Newton-Raphson (rápido, converge en pocas iteraciones para un cronograma de bono
+// normal) con fallback a bisección si no converge (cronogramas irregulares/atípicos).
+// ═══════════════════════════════════════════════════════
+function pvSchedule(scheduleUSD, r, hoy){
+  var s = 0;
+  scheduleUSD.forEach(function(cf){
+    var t = yearFrac(hoy, cf.date);
+    if(t>0) s += cf.total / Math.pow(1+r, t);
+  });
+  return s;
+}
+function dPvSchedule(scheduleUSD, r, hoy){
+  var s = 0;
+  scheduleUSD.forEach(function(cf){
+    var t = yearFrac(hoy, cf.date);
+    if(t>0) s += -t * cf.total / Math.pow(1+r, t+1);
+  });
+  return s;
+}
+function tirDesdePrecio(scheduleUSD, monto, hoy, seedPct){
+  if(!scheduleUSD || !scheduleUSD.length || !(monto>0)) return seedPct!=null?seedPct:null;
+  var r = (seedPct!=null && !isNaN(seedPct) && seedPct>-99) ? seedPct/100 : 0.10;
+  var found = null;
+  for(var i=0;i<60;i++){
+    var f = pvSchedule(scheduleUSD, r, hoy) - monto;
+    var fp = dPvSchedule(scheduleUSD, r, hoy);
+    if(Math.abs(fp) < 1e-8) break;
+    var rNext = r - f/fp;
+    if(!isFinite(rNext) || rNext <= -0.99) rNext = r/2; // salvavidas si Newton diverge
+    if(Math.abs(rNext-r) < 1e-8){ found = rNext; break; }
+    r = rNext;
+  }
+  if(found===null){
+    // Newton no convergió — bisección en un rango amplio de tasas como respaldo
+    var lo=-0.5, hi=5, flo=pvSchedule(scheduleUSD,lo,hoy)-monto, fhi=pvSchedule(scheduleUSD,hi,hoy)-monto;
+    if(flo*fhi>0) return seedPct!=null?seedPct:null; // no hay raíz en el rango: mantiene lo que había
+    for(var j=0;j<80;j++){
+      var mid=(lo+hi)/2, fmid=pvSchedule(scheduleUSD,mid,hoy)-monto;
+      found = mid;
+      if(Math.abs(fmid)<1e-6) break;
+      if(flo*fmid<0){ hi=mid; fhi=fmid; } else { lo=mid; flo=fmid; }
+    }
+  }
+  return found*100;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -999,12 +1048,12 @@ function readBond(pata){
   var fechaVenc = parseISO(document.getElementById(p+'-venc').value);
   var precio = parseFloat(document.getElementById(p+'-precio').value);
   var nominales = parseFloat(document.getElementById(p+'-nominales').value);
-  if(!ticker||isNaN(tir)||isNaN(cuponAnual)||!fechaEmision||!fechaVenc||fechaVenc<=fechaEmision||isNaN(precio)||isNaN(nominales)||!nominales) return null;
+  if(!ticker||isNaN(cuponAnual)||!fechaEmision||!fechaVenc||fechaVenc<=fechaEmision||isNaN(precio)||isNaN(nominales)||!nominales) return null;
   var amortInicioVal = document.getElementById(p+'-amort-inicio').value;
   var amortStart = amortInicioVal ? parseISO(amortInicioVal) : fechaEmision;
   return {
     ticker:ticker, emisor:document.getElementById(p+'-emisor').value,
-    tir:tir, duration:null,
+    tir:isNaN(tir)?null:tir, duration:null, // tir es solo semilla — se recalcula del precio en renderAll()
     cuponAnual:cuponAnual, freq:freq,
     fechaEmision:fechaEmision, fechaVenc:fechaVenc,
     amortType:amortTypes[pata], amortStart:amortStart,
@@ -1041,6 +1090,15 @@ function renderAll(){
 
   var schedV = getScheduleForLeg(venta, hoy);
   var schedC = getScheduleForLeg(compra, hoy);
+
+  // TIR calculada del precio + cronograma real (antes era un campo libre que podía quedar
+  // desincronizado si se tocaba el precio a mano sin actualizarla) — mismo criterio que ya
+  // usaba "Duration". Se resuelve la tasa que hace que el VP de los flujos futuros iguale
+  // al monto pagado hoy (nominales × precio).
+  venta.tir = tirDesdePrecio(schedV, venta.nominales*venta.precio, hoy, venta.tir);
+  compra.tir = tirDesdePrecio(schedC, compra.nominales*compra.precio, hoy, compra.tir);
+  document.getElementById('v-tir').value = venta.tir!=null ? fmtNum(venta.tir,2) : '';
+  document.getElementById('c-tir').value = compra.tir!=null ? fmtNum(compra.tir,2) : '';
 
   venta.duration = macaulayDuration(schedV, venta.tir/100, hoy);
   compra.duration = macaulayDuration(schedC, compra.tir/100, hoy);
