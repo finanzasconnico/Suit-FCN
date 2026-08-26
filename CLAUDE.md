@@ -10,7 +10,13 @@ Objetivo de negocio actual: subir facturación de ~5.000 a 10.000 USD/mes para B
 Problemas de fondo que el negocio está resolviendo con estas herramientas: muchos leads pero pocos cierres, ghosteo en conversaciones, mucho trabajo manual, dificultad para escalar sin perder calidad, leads que no llegan a abrir/fondear cuenta. Ahora tengo que reactivar pagina de instagram, viene inactiva hace algunos meses, idea de publicaciones semanales, tenemos que trabajar sobre eso, crear un programa recurrente con claude para publicaciones, guiones y videos. Utilizar skills y conectar META para analisis y mejoras
 
 ## Qué es este repo
-Suite de herramientas HTML/JS de un solo archivo (sin build, sin framework, XLSX.js para parsear Excel), pensadas para abrirse directo en el navegador. Se publican en Netlify (`https://fcn-suite.netlify.app`) corriendo `sync-y-publicar.bat` (hace `git add -A && git commit -m "Actualizacion %date% %time%" && git push && netlify deploy --dir . --prod`).
+Suite de herramientas HTML/JS de un solo archivo (sin build, sin framework, XLSX.js para parsear Excel), pensadas para abrirse directo en el navegador. Repo: `github.com/finanzasconnico/Suit-FCN` (público). `sync-y-publicar.bat` hace `git add -A && git commit -m "Actualizacion %date% %time%" && git push && netlify deploy --dir . --prod`.
+
+**URL principal (26/08/2026 en adelante): `https://suit-fcn.vercel.app`** — proyecto de Vercel conectado por integración Git al repo de GitHub, se auto-despliega solo en cada `git push` a `main` (sin paso manual aparte, ni tocar `sync-y-publicar.bat`). Nico lo armó porque en la red de la oficina (Balanz) el firewall Fortinet corta las conexiones HTTPS a `github.io` con `NET::ERR_CERT_AUTHORITY_INVALID` (inspección SSL del firewall, no un bug del código — confirmado 26/08/2026).
+
+Otros hosts, ambos desactualizados/en pausa, no usar como referencia salvo que Nico diga lo contrario:
+- **Netlify** (`https://fcn-suite.netlify.app`): pausado desde ~24/08/2026 por creditos operativos agotados en el team "strijland" (`sync-y-publicar.bat` va a fallar el paso de `netlify deploy` hasta que Nico resuelva el billing). El paso de Netlify sigue en el .bat por si se reactiva, pero no es la fuente de verdad mientras tanto.
+- **GitHub Pages** (`https://finanzasconnico.github.io/Suit-FCN/`): se armó como fallback interino cuando Netlify se quedó sin créditos, pero queda bloqueado por el Fortinet de la oficina (ver arriba) — Vercel lo reemplaza como URL principal.
 
 Entrada real de la web: `index.html` redirige a `FCN_Suite.html` (el hub central, donde se cargan los archivos una sola vez para todas las herramientas).
 

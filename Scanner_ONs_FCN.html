@@ -1036,7 +1036,6 @@ function toggleMostrarContactados() {
 function scoreCliente(posiciones) {
   const hoy = Date.now();
   const umbBajo = umbralTIR / 100;
-  const umbAlto = umbralTIRAlta / 100;
   let maxScore = 0;
   let motivos = [];
   let tenenciaTotal = 0;
@@ -1085,12 +1084,13 @@ function scoreCliente(posiciones) {
   if (bajasPos.length > 0) motivos.push('rot');
   if (bajasPos.length === 0 && diasSinContacto > 180) motivos.push('seg');
 
-  // Buscar sugerencia: ON con TIR más alta en monitor
+  // Buscar sugerencia: mismos parámetros que la pestaña "Todas" (buscarComparables) — duration
+  // y calificación similar a la posición más floja, mejor TIR. Se calcula sobre la posición de
+  // TIR más baja del cliente (la que se muestra primero como "Vender" en la tarjeta).
   if (bajasPos.length > 0) {
-    const mejores = Object.entries(dataMonitor)
-      .filter(([tk, m]) => m.tipo === 'corporativo' && m.tir !== null && m.tir > umbAlto)
-      .sort((a, b) => b[1].tir - a[1].tir);
-    if (mejores.length > 0) sugerido = { ticker: mejores[0][0], tir: mejores[0][1].tir };
+    const peor = bajasPos.slice().sort((a, b) => a.tir - b.tir)[0];
+    const candidatos = buscarComparables(peor.ticker, leerFiltrosRotacion());
+    if (candidatos.length > 0) sugerido = { ticker: candidatos[0].ticker, tir: candidatos[0].tir };
   }
 
   return { score: maxScore, motivos, tenenciaTotal, tieneVtoProximo, diasSinContacto, sugerido, tirMinima: tirMinima === Infinity ? null : tirMinima, bajasCount: bajasPos.length };
