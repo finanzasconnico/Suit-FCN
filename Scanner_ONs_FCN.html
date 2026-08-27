@@ -310,7 +310,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     <div>
       <div class="section-title">1 · Cargar archivos</div>
       <div class="upload-card" id="card-tenencia" onclick="document.getElementById('inp-tenencia').click()">
-        <input type="file" id="inp-tenencia" accept=".xlsx,.xls" style="display:none" onchange="cargarTenencia(this)">
+        <input type="file" id="inp-tenencia" accept=".xlsx,.xls" style="display:none" onchange="subirCompartido('tenencia', this, cargarTenencia)">
         <span class="upload-icon" id="icon-tenencia">📥</span>
         <div class="upload-name">Tenencia por Ticker</div>
         <div class="upload-hint">Exportar desde Balanz · hoja Export</div>
@@ -318,7 +318,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       </div>
       <div style="height:8px"></div>
       <div class="upload-card" id="card-monitor" onclick="document.getElementById('inp-monitor').click()">
-        <input type="file" id="inp-monitor" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="cargarMonitor(this)">
+        <input type="file" id="inp-monitor" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="subirCompartido('monitor', this, cargarMonitor)">
         <span class="upload-icon" id="icon-monitor">📥</span>
         <div class="upload-name">Monitor de Individuos</div>
         <div class="upload-hint">.xlsm directo — extrae Corporativos automáticamente</div>
@@ -326,7 +326,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       </div>
       <div style="height:8px"></div>
       <div class="upload-card" id="card-stock" onclick="document.getElementById('inp-stock').click()">
-        <input type="file" id="inp-stock" accept=".xlsx,.xls" style="display:none" onchange="cargarStock(this)">
+        <input type="file" id="inp-stock" accept=".xlsx,.xls" style="display:none" onchange="subirCompartido('stock', this, cargarStock)">
         <span class="upload-icon" id="icon-stock">📋</span>
         <div class="upload-name">Stock de cuentas</div>
         <div class="upload-hint">Comitente → Teléfono · hoja Export</div>
@@ -672,6 +672,37 @@ function saveLicitaciones() {
 }
 
 // =================== FILE LOADERS ===================
+
+// Publica el archivo recién elegido en el storage compartido (fcn_shared_v1) además de
+// parsearlo para la vista local — antes esta tarjeta de carga (la de Scanner ONs, distinta
+// de la de "Archivos" en FCN Suite) solo actualizaba esta herramienta: si alguien la usaba
+// para subir el archivo, el resto de la Suite (Inicio, otras herramientas) nunca se enteraba.
+function subirCompartido(key, input, cargarFn) {
+  const file = input.files[0];
+  cargarFn(input); // vista local, como siempre
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const db = await new Promise((res, rej) => {
+        const r = indexedDB.open('fcn_shared_v1', 1);
+        r.onupgradeneeded = ev => ev.target.result.createObjectStore('files');
+        r.onsuccess = ev => res(ev.target.result);
+        r.onerror = () => rej(r.error);
+      });
+      await new Promise((res, rej) => {
+        const req = db.transaction('files', 'readwrite').objectStore('files')
+          .put({ data: e.target.result, name: file.name, ts: Date.now() }, key);
+        req.onsuccess = () => res();
+        req.onerror = () => rej(req.error);
+      });
+      if (typeof BroadcastChannel !== 'undefined') {
+        new BroadcastChannel('fcn_shared').postMessage({ type: 'file_updated', key: key, rawKey: key });
+      }
+    } catch (err) { console.warn('[fcn_shared] no se pudo publicar', key, err); }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 function cargarTenencia(input) {
   const file=input.files[0]; if(!file) return;
