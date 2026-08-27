@@ -86,6 +86,14 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .chip-rent-pos{background:rgba(12,163,12,.1);border-color:rgba(12,163,12,.3);color:var(--good);}
 .chip-rent-neg{background:rgba(208,59,59,.1);border-color:rgba(208,59,59,.3);color:var(--critical);}
 .chip-cliente{background:rgba(59,130,196,.1);border-color:rgba(59,130,196,.3);}
+.ticker-holders{margin-top:2px;}
+.ticker-holders:empty{margin-top:0;}
+.ticker-holders-label{font-size:9.5px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.04em;margin:6px 0 5px;}
+.ticker-holders-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.holder-chip{cursor:pointer;font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(59,130,196,.1);border:1px solid rgba(59,130,196,.3);color:var(--cream);transition:background .15s;}
+.holder-chip:hover{background:rgba(59,130,196,.25);}
+.holder-more-btn{cursor:pointer;font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--cream-dim);transition:all .15s;}
+.holder-more-btn:hover{border-color:rgba(255,255,255,.3);color:#fff;}
 .chip b{color:#fff;}
 
 #cliente-picker-wrap .chip-row:empty{margin:0;}
@@ -276,7 +284,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
           <span class="cliente-quitar" onclick="limpiarClienteActivo()">✕ quitar</span>
         </div>
         <div class="umbral-tir-cliente-row">
-          Marcar en rojo si TIR &lt; <input type="number" step="0.5" id="umbral-tir-cliente" placeholder="—" oninput="onCambioUmbralTirCliente()">%
+          Marcar en rojo si TIR &lt; <input type="number" step="0.5" id="umbral-tir-cliente" value="5" oninput="onCambioUmbralTirCliente()">%
         </div>
         <div class="chip-row" id="cliente-ticker-chips"></div>
       </div>
@@ -292,6 +300,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="v-precio" oninput="onCondChange('venta')"></div>
       </div>
       <div class="chip-row" id="v-chips"></div>
+      <div class="ticker-holders" id="v-holders"></div>
 
       <details class="cond-details" id="v-details">
         <summary>Condiciones (autocompletadas) — editar si hace falta</summary>
@@ -351,6 +360,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <label for="chk-automatch" style="margin:0;text-transform:none;color:var(--cream-dim);">🔗 Calcular nominales solo (cash matcheado con la venta) — desmarcá para poner un número vos</label>
       </div>
       <div class="chip-row" id="c-chips"></div>
+      <div class="ticker-holders" id="c-holders"></div>
 
       <details class="cond-details" id="c-details">
         <summary>Condiciones (autocompletadas) — editar si hace falta</summary>
@@ -1201,18 +1211,42 @@ function renderChips(p, bond){
     }
   }
 
-  // Qué clientes tienen esta ON en su Tenencia — informativo tanto para la pata que se vende
-  // (quién más la tiene) como para la que se sugiere comprar (a quién más ofrecérsela).
-  var holders = TENENCIA_POR_TICKER[bond.ticker] || [];
-  if(holders.length){
-    var MAX_CHIPS_CLIENTES = 6;
-    holders.slice(0, MAX_CHIPS_CLIENTES).forEach(function(h){
-      chips += '<span class="chip chip-cliente" title="'+fmtUSD(h.tenencia)+' en tenencia">👤 '+h.cliente+'</span>';
-    });
-    if(holders.length > MAX_CHIPS_CLIENTES) chips += '<span class="chip">+'+(holders.length-MAX_CHIPS_CLIENTES)+' más</span>';
-  }
-
   el.innerHTML = chips;
+  renderHolders(p, bond.ticker);
+}
+
+// ═══════════════════════════════════════════════════════
+// "CLIENTES CON ESTE BONO" — quién más lo tiene en su Tenencia, aparte de los chips de datos
+// técnicos del bono (mezclarlos ahí quedaba desprolijo). Muestra los que más tenencia tienen,
+// con un "+N clientes" que despliega el resto — cualquiera de la lista, clic y pasa a ser el
+// cliente activo (reemplaza al que hubiera antes), igual que elegirlo por el buscador.
+// ═══════════════════════════════════════════════════════
+var HOLDERS_PREVIEW_N = 3;
+function chipHolderHTML(h){
+  return '<span class="holder-chip" onclick="seleccionarClienteActivo(\''+h.cliente.replace(/'/g,"\\'")+'\')" title="'+fmtUSD(h.tenencia)+' en tenencia — clic para elegirlo como cliente activo">👤 '+h.cliente+'</span>';
+}
+function renderHolders(p, ticker){
+  var el = document.getElementById(p+'-holders');
+  if(!el) return;
+  var holders = TENENCIA_POR_TICKER[ticker] || [];
+  if(!holders.length){ el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="ticker-holders-label">Clientes con este bono:</div><div class="ticker-holders-row" id="'+p+'-holders-row"></div>';
+  el.dataset.ticker = ticker;
+  pintarHoldersRow(p, false);
+}
+function pintarHoldersRow(p, expandido){
+  var row = document.getElementById(p+'-holders-row');
+  var wrap = document.getElementById(p+'-holders');
+  if(!row || !wrap) return;
+  var holders = TENENCIA_POR_TICKER[wrap.dataset.ticker] || [];
+  if(expandido || holders.length<=HOLDERS_PREVIEW_N){
+    row.innerHTML = holders.map(chipHolderHTML).join('') +
+      (holders.length>HOLDERS_PREVIEW_N ? '<span class="holder-more-btn" onclick="pintarHoldersRow(\''+p+'\',false)">ver menos</span>' : '');
+  } else {
+    var resto = holders.length - HOLDERS_PREVIEW_N;
+    row.innerHTML = holders.slice(0,HOLDERS_PREVIEW_N).map(chipHolderHTML).join('') +
+      '<span class="holder-more-btn" onclick="pintarHoldersRow(\''+p+'\',true)">+'+resto+' cliente'+(resto===1?'':'s')+'</span>';
+  }
 }
 
 function onHorizonSlide(){
@@ -1850,7 +1884,7 @@ function tirActualDeTicker(ticker){
   return tir!=null ? tir : null;
 }
 
-var umbralTirCliente = null; // %, null = sin umbral activo (todos los chips en verde) hasta que se escribe algo
+var umbralTirCliente = 5; // %, precargado en 5 — se puede editar libremente al lado de los chips
 function onCambioUmbralTirCliente(){
   var v = parseFloat(document.getElementById('umbral-tir-cliente').value);
   umbralTirCliente = isNaN(v) ? null : v;
