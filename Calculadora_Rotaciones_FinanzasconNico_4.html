@@ -437,7 +437,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="h-title">¿Hasta cuándo pensás mantenerlo?</div>
         <div class="h-value" id="horizon-value-label">2,0 años</div>
       </div>
-      <input type="range" class="horizon-slider" id="horizon-slider" min="0.25" max="10" step="0.25" value="2" oninput="onHorizonSlide()">
+      <input type="range" class="horizon-slider" id="horizon-slider" min="0" max="10" step="0.25" value="2" oninput="onHorizonSlide()">
       <div class="preset-chips" id="preset-chips"></div>
     </div>
 
@@ -1142,7 +1142,16 @@ function renderAll(){
   renderChips('v', venta);
   renderChips('c', compra);
 
-  var difCash = venta.nominales*venta.precio*(1-comisionPct/100) - compra.nominales*compra.precio*(1+comisionPct/100);
+  // Se vende el 100% de venta (es lo que en la práctica se hace — no tiene sentido dejar un
+  // resto chico invertido aparte). Lo que sobra después de comprar compra en lotes redondos
+  // queda como CASH — real, disponible — pero en la comparación de "qué conviene" ese cash
+  // se suma a valor cara, SIN crecer (no es "ganancia" del bono nuevo, es plata parada). Antes
+  // se sumaba directo a la ganancia de compra, mezclando principal con rendimiento — eso inflaba
+  // la ventaja de rotar con montos que en realidad eran solo cash sin invertir, no rendimiento
+  // real (ver CLAUDE.md, caso BPOB7→BPOA7 y YM37O→CICAO).
+  var montoVTotal = venta.nominales*venta.precio;
+  var difCash = montoVTotal*(1-comisionPct/100) - compra.nominales*compra.precio*(1+comisionPct/100);
+  var cashSobrante = Math.max(0, difCash); // solo se suma si sobra plata; si falta (difCash<0), no se resta acá — eso ya se muestra aparte como "poner cash extra"
 
   var vencAniosV = yearFrac(hoy, venta.fechaVenc);
   var vencAniosC = yearFrac(hoy, compra.fechaVenc);
@@ -1156,7 +1165,7 @@ function renderAll(){
 
   renderPresetChips(venta, compra, vencAniosV, vencAniosC, tMax);
 
-  function retV(anios){ return retornoAHorizonteAnios(schedV, venta.tir/100, hoy, comisionPct, anios).valorHorizonte - venta.nominales*venta.precio; }
+  function retV(anios){ return retornoAHorizonteAnios(schedV, venta.tir/100, hoy, comisionPct, anios).valorHorizonte - montoVTotal; }
   function retC(anios){ return retornoAHorizonteAnios(schedC, compra.tir/100, hoy, comisionPct, anios).valorHorizonte - compra.nominales*compra.precio; }
 
   // muestreo para el gráfico y para hallar el cruce (breakeven)
@@ -1168,7 +1177,14 @@ function renderAll(){
   }
 
   var atH = {t:currentHorizonAnios, v:retV(currentHorizonAnios), c:retC(currentHorizonAnios)};
-  var ventajaHoy = (atH.c + difCash) - atH.v;
+  // Comparación por VALOR TOTAL a horizonte, no por "ganancia" suelta — sino, sumar el cash
+  // sobrante directo a la ganancia de compra queda mal apenas venta y compra tienen montos
+  // distintos (que es prácticamente siempre, por el redondeo a lote): compra invierte menos
+  // plata que venta, así que su "ganancia" sola no es comparable con la de venta sin antes
+  // igualar cuánto capital hay de cada lado.
+  var totalMantener = montoVTotal + atH.v;
+  var totalRotar = compra.nominales*compra.precio + atH.c + cashSobrante;
+  var ventajaHoy = totalRotar - totalMantener;
 
   renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy);
   renderSameMoney(venta, compra, points, difCash, atH, currentHorizonAnios, hoy, tMax);
@@ -1294,7 +1310,7 @@ function renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy){
     sub = 'A '+fmtNum(currentHorizonAnios,2)+' años ('+fmtDateAR(horizDate)+'), rotar a <b>'+compra.ticker+'</b> te dejaría <b>'+fmtUSD(absVentaja)+' menos</b> que quedarte como estás.';
   }
   var cashNote = Math.abs(difCash) >= 1
-    ? (difCash>0 ? ' Además, hoy la rotación libera '+fmtUSD(difCash)+' de cash.' : ' Además, hoy la rotación requiere poner '+fmtUSD(Math.abs(difCash))+' extra de cash.')
+    ? (difCash>0 ? ' Además, hoy la rotación libera '+fmtUSD(difCash)+' de cash (queda como efectivo, no se cuenta como ganancia del bono nuevo).' : ' Además, hoy la rotación requiere poner '+fmtUSD(Math.abs(difCash))+' extra de cash.')
     : '';
 
   var wppBtnHtml = '';
@@ -1367,12 +1383,16 @@ function enviarWppRotacion(){
 }
 
 function renderSameMoney(venta, compra, points, difCash, atH, horizonElegido, hoy, tMax){
+  difCash = Math.max(0, difCash); // el cash que sobra suma a valor cara, sin crecer — no es rendimiento de compra
   var wrap = document.getElementById('samemoney-wrap');
-  var target = atH.v; // lo que te da mantener, a tu horizonte elegido
+  // Comparación por valor TOTAL (igual que ventajaHoy en renderAll) — no alcanza con comparar
+  // ganancia contra ganancia cuando venta y compra tienen montos invertidos distintos.
+  var montoVTotal = venta.nominales*venta.precio, montoC = compra.nominales*compra.precio;
+  var target = montoVTotal + atH.v; // valor total que te da mantener, a tu horizonte elegido
   // buscamos el primer t (en la grilla de puntos) donde rotar (incl. difCash) alcanza ese monto
   var found = null;
   for(var i=0;i<points.length;i++){
-    if((points[i].c + difCash) >= target){ found = points[i]; break; }
+    if((montoC + points[i].c + difCash) >= target){ found = points[i]; break; }
   }
   if(!found){
     wrap.innerHTML = '<div class="samemoney-box">Rotando a <b>'+compra.ticker+'</b>, dentro del rango mostrado (hasta '+fmtNum(tMax,1)+' años) no llegás a igualar los '+fmtUSD(target)+' que te da mantener <b>'+venta.ticker+'</b> a tus '+fmtNum(horizonElegido,2)+' años.</div>';
@@ -1391,6 +1411,10 @@ function renderSameMoney(venta, compra, points, difCash, atH, horizonElegido, ho
 // GRÁFICO (SVG simple, sin librerías — 2 series categóricas)
 // ═══════════════════════════════════════════════════════
 function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax, atH){
+  // El cash que sobra al rotar se suma a la curva "Rotar" a valor cara (no crece con el tiempo,
+  // es plata parada); si en cambio falta plata (difCash negativo) no se resta acá — eso ya se
+  // avisa aparte como "requiere poner cash extra", no tiene que hundir la curva.
+  difCash = Math.max(0, difCash);
   var costV = venta.nominales*venta.precio;
   var costC = compra.nominales*compra.precio;
   var offV = chartViewMode==='total' ? costV : 0;
@@ -1540,6 +1564,10 @@ function filaCompHTML(label, valV, valC, ladoMejor){
 function renderCondiciones(v, c, difCash, comisionPct){
   var montoV = v.nominales*v.precio, montoC = c.nominales*c.precio;
   var comV = montoV*(comisionPct/100), comC = montoC*(comisionPct/100);
+  var cashLbl = difCash < -1 ? 'Cash extra que necesitás poner hoy' : 'Cash de la operación hoy';
+  var cashVal = difCash < -1
+    ? fmtUSD(Math.abs(difCash))
+    : fmtUSD(difCash)+(Math.abs(difCash)<1?' (matcheado)':' — queda como efectivo, no se cuenta como ganancia');
   var html =
     filaCompHTML('Emisor', v.emisor||'—', c.emisor||'—', null) +
     filaCompHTML('TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%', mejorLado(v.tir, c.tir, true)) +
@@ -1557,7 +1585,7 @@ function renderCondiciones(v, c, difCash, comisionPct){
     filaCompHTML('Comisión en USD', '-'+fmtUSD(comV), '-'+fmtUSD(comC), null) +
     filaCompHTML('Monto neto después de comisión', fmtUSD(montoV-comV)+' (te acreditan)', fmtUSD(montoC+comC)+' (necesitás poner)', null) +
     '<tr class="hl"><td class="lbl">Comisión total de la rotación</td><td>—</td><td>'+fmtUSD(comV+comC)+' (ambas puntas)</td></tr>' +
-    '<tr class="hl"><td class="lbl">Cash de la operación hoy</td><td>—</td><td>'+fmtUSD(difCash)+(Math.abs(difCash)<1?' (matcheado)':'')+'</td></tr>';
+    '<tr class="hl"><td class="lbl">'+cashLbl+'</td><td>—</td><td>'+cashVal+'</td></tr>';
   document.getElementById('tbl-condiciones').innerHTML = html;
 }
 
@@ -1665,7 +1693,9 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
 
   var montoV = venta.nominales*venta.precio, montoC = compra.nominales*compra.precio;
   var comV = montoV*(comisionPct/100), comC = montoC*(comisionPct/100);
-  var valorHorizV = montoV+atH.v, valorHorizC = montoC+atH.c+difCash;
+  var cashSobranteAv = Math.max(0, difCash); // el cash que sobra se suma a valor cara, sin crecer — no es ganancia del bono nuevo
+  var valorHorizV = montoV+atH.v;
+  var valorHorizC = montoC+atH.c+cashSobranteAv;
   var statsHTML = '<div class="av-subhead">Ficha comparativa</div>'+
     '<table class="compare-table"><thead><tr><th>Diferencias</th><th class="col-head-venta">'+venta.ticker+'</th><th class="col-head-compra">'+compra.ticker+'</th></tr></thead><tbody>' +
     filaCompHTML('Emisor', venta.emisor||'—', compra.emisor||'—', null) +
@@ -1686,7 +1716,7 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
     : '';
   var lecturaTxt =
     '<b>'+compra.ticker+'</b> rinde '+(bps>=0?'+':'')+fmtNum(bps,0)+' bps '+(bps>=0?'más':'menos')+' que <b>'+venta.ticker+'</b> ('+fmtNum(tirC)+'% vs '+fmtNum(tirV)+'%)'+durTxt+'. '+
-    'La comisión total de la rotación es '+fmtUSD(comV+comC)+(Math.abs(difCash)>=1 ? (difCash>0?', y hoy libera '+fmtUSD(difCash)+' de cash.':', y hoy requiere poner '+fmtUSD(Math.abs(difCash))+' extra de cash.') : '.')+' '+
+    'La comisión total de la rotación es '+fmtUSD(comV+comC)+(Math.abs(difCash)>=1 ? (difCash>0?', y hoy libera '+fmtUSD(difCash)+' de cash (queda como efectivo, no suma como rendimiento).':', y hoy requiere poner '+fmtUSD(Math.abs(difCash))+' extra de cash.') : '.')+' '+
     'A tu horizonte de '+fmtNum(horizonElegido,2)+' años, conviene '+accion+
     (Math.abs(ventajaHoy)>=1 ? (' — te deja '+fmtUSD(Math.abs(ventajaHoy))+' '+(ventajaHoy>0?'más':'menos')+' que la otra opción.') : ', aunque la diferencia es prácticamente nula.');
   var lecturaHTML = '<div class="av-lectura"><span class="tag">📝 Lectura del asesor</span>'+lecturaTxt+'</div>';
