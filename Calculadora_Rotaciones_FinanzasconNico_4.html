@@ -225,6 +225,7 @@ table.compare-table th{padding:8px 10px;text-align:left;font-size:9.5px;font-wei
 table.compare-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);}
 table.compare-table td.lbl{color:var(--cream-dim);font-weight:500;}
 table.compare-table tr.hl td{background:rgba(255,255,255,.03);font-weight:600;}
+table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0 0 1.5px var(--good);color:var(--good);font-weight:600;}
 .col-head-venta{color:var(--series-mantener);}
 .col-head-compra{color:var(--series-rotar);}
 
@@ -1464,32 +1465,43 @@ function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax, 
   hoverRect.addEventListener('mouseleave', function(){ tooltip.style.display='none'; });
 }
 
+// Determina qué lado gana en una fila comparable (null si no aplica resaltar, p.ej. nombre/ley).
+function mejorLado(valV, valC, higherIsBetter){
+  if(valV==null || valC==null || isNaN(valV) || isNaN(valC) || valV===valC) return null;
+  if(higherIsBetter) return valV>valC ? 'v' : 'c';
+  return valV<valC ? 'v' : 'c';
+}
+// Fila de tabla comparativa: si ladoMejor es 'v'/'c', esa celda se resalta en verde con un ✓.
+function filaCompHTML(label, valV, valC, ladoMejor){
+  var clsV = ladoMejor==='v' ? ' class="mejor"' : '';
+  var clsC = ladoMejor==='c' ? ' class="mejor"' : '';
+  var chkV = ladoMejor==='v' ? ' ✓' : '';
+  var chkC = ladoMejor==='c' ? ' ✓' : '';
+  return '<tr><td class="lbl">'+label+'</td><td'+clsV+'>'+valV+chkV+'</td><td'+clsC+'>'+valC+chkC+'</td></tr>';
+}
+
 function renderCondiciones(v, c, difCash, comisionPct){
   var montoV = v.nominales*v.precio, montoC = c.nominales*c.precio;
   var comV = montoV*(comisionPct/100), comC = montoC*(comisionPct/100);
-  var rows = [
-    ['Emisor', v.emisor||'—', c.emisor||'—'],
-    ['TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%'],
-    ['Duration', v.duration!=null?fmtNum(v.duration):'—', c.duration!=null?fmtNum(c.duration):'—'],
-    ['Vencimiento', fmtDateAR(v.fechaVenc), fmtDateAR(c.fechaVenc)],
-    ['Cupón anual', fmtNum(v.cuponAnual)+'%', fmtNum(c.cuponAnual)+'%'],
-    ['Pagos por año', v.freq, c.freq],
-    ['Amortización', v.amortType==='bullet'?'Bullet':'Amortizable', c.amortType==='bullet'?'Bullet':'Amortizable'],
-    ['Ley', v.ley||'—', c.ley||'—'],
-    ['Calificación', v.calif||'—', c.calif||'—'],
-    ['Precio referencia', fmtNum(v.precio,4), fmtNum(c.precio,4)],
-    ['Nominales', fmtNum(v.nominales,0), fmtNum(c.nominales,0)],
-    ['Monto operado (bruto)', fmtUSD(montoV), fmtUSD(montoC)],
-    ['Comisión aplicada (%, c/punta)', fmtNum(comisionPct,2)+'%', fmtNum(comisionPct,2)+'%'],
-    ['Comisión en USD', '-'+fmtUSD(comV), '-'+fmtUSD(comC)],
-    ['Monto neto después de comisión', fmtUSD(montoV-comV)+' (te acreditan)', fmtUSD(montoC+comC)+' (necesitás poner)'],
-    ['Comisión total de la rotación', '—', fmtUSD(comV+comC) + ' (ambas puntas)', true],
-    ['Cash de la operación hoy', '—', fmtUSD(difCash) + (Math.abs(difCash)<1?' (matcheado)':''), true]
-  ];
-  document.getElementById('tbl-condiciones').innerHTML = rows.map(function(r,i){
-    var hl = r[3] ? ' hl' : '';
-    return '<tr class="'+hl.trim()+'"><td class="lbl">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>';
-  }).join('');
+  var html =
+    filaCompHTML('Emisor', v.emisor||'—', c.emisor||'—', null) +
+    filaCompHTML('TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%', mejorLado(v.tir, c.tir, true)) +
+    filaCompHTML('Duration', v.duration!=null?fmtNum(v.duration):'—', c.duration!=null?fmtNum(c.duration):'—', mejorLado(v.duration, c.duration, false)) +
+    filaCompHTML('Vencimiento', fmtDateAR(v.fechaVenc), fmtDateAR(c.fechaVenc), null) +
+    filaCompHTML('Cupón anual', fmtNum(v.cuponAnual)+'%', fmtNum(c.cuponAnual)+'%', mejorLado(v.cuponAnual, c.cuponAnual, true)) +
+    filaCompHTML('Pagos por año', v.freq, c.freq, null) +
+    filaCompHTML('Amortización', v.amortType==='bullet'?'Bullet':'Amortizable', c.amortType==='bullet'?'Bullet':'Amortizable', null) +
+    filaCompHTML('Ley', v.ley||'—', c.ley||'—', null) +
+    filaCompHTML('Calificación', v.calif||'—', c.calif||'—', null) +
+    filaCompHTML('Precio referencia', fmtNum(v.precio,4), fmtNum(c.precio,4), null) +
+    filaCompHTML('Nominales', fmtNum(v.nominales,0), fmtNum(c.nominales,0), null) +
+    filaCompHTML('Monto operado (bruto)', fmtUSD(montoV), fmtUSD(montoC), null) +
+    filaCompHTML('Comisión aplicada (%, c/punta)', fmtNum(comisionPct,2)+'%', fmtNum(comisionPct,2)+'%', null) +
+    filaCompHTML('Comisión en USD', '-'+fmtUSD(comV), '-'+fmtUSD(comC), null) +
+    filaCompHTML('Monto neto después de comisión', fmtUSD(montoV-comV)+' (te acreditan)', fmtUSD(montoC+comC)+' (necesitás poner)', null) +
+    '<tr class="hl"><td class="lbl">Comisión total de la rotación</td><td>—</td><td>'+fmtUSD(comV+comC)+' (ambas puntas)</td></tr>' +
+    '<tr class="hl"><td class="lbl">Cash de la operación hoy</td><td>—</td><td>'+fmtUSD(difCash)+(Math.abs(difCash)<1?' (matcheado)':'')+'</td></tr>';
+  document.getElementById('tbl-condiciones').innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1514,16 +1526,36 @@ function fmtCompactUSD(n){
   return '$'+Math.round(n);
 }
 
-function bucketizeSchedule(sched, hoy, tMax){
+function bucketizeSchedule(sched, hoy, tMax, modo){
   var buckets = {};
   (sched||[]).forEach(function(cf){
     var t = yearFrac(hoy, cf.date);
     if(t<=0 || t>tMax+0.01) return;
-    var yr = Math.max(1, Math.ceil(t));
-    buckets[yr] = (buckets[yr]||0) + cf.total;
+    var key = modo==='mensual' ? (cf.date.getFullYear()*12+cf.date.getMonth()) : Math.max(1, Math.ceil(t));
+    buckets[key] = (buckets[key]||0) + cf.total;
   });
   return buckets;
 }
+var MES_ABR3 = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+// Eje X del gráfico de flujo: cubre TODO el horizonte con una entrada por año/mes, incluidos
+// los que no tienen pago (en 0) — así se ve el ritmo real de cobro, no solo cuándo hay plata.
+function construirEjesFlujo(hoy, tMax, modo){
+  var ejes = [];
+  if(modo==='mensual'){
+    var startKey = hoy.getFullYear()*12+hoy.getMonth();
+    var endDate = new Date(hoy.getTime()); endDate.setMonth(endDate.getMonth()+Math.ceil(tMax*12));
+    var endKey = endDate.getFullYear()*12+endDate.getMonth();
+    for(var k=startKey; k<=endKey; k++){
+      ejes.push({key:k, label: MES_ABR3[k%12]+" '"+String(Math.floor(k/12)).slice(-2)});
+    }
+  } else {
+    var maxYr = Math.max(1, Math.ceil(tMax));
+    for(var y=1;y<=maxYr;y++) ejes.push({key:y, label:'Año '+y});
+  }
+  return ejes;
+}
+var flujoModoVista = 'anual'; // 'anual' | 'mensual'
+function setFlujoModo(modo){ flujoModoVista = modo; renderAll(); }
 
 function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, horizonElegido, comisionPct, hoy, tMax){
   var body = document.getElementById('avanzada-body');
@@ -1576,21 +1608,19 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
 
   var montoV = venta.nominales*venta.precio, montoC = compra.nominales*compra.precio;
   var comV = montoV*(comisionPct/100), comC = montoC*(comisionPct/100);
-  var statRows = [
-    ['Emisor', venta.emisor||'—', compra.emisor||'—'],
-    ['Vencimiento', fmtDateAR(venta.fechaVenc), fmtDateAR(compra.fechaVenc)],
-    ['Ley', venta.ley||'—', compra.ley||'—'],
-    ['Calificación', venta.calif||'—', compra.calif||'—'],
-    ['Precio', fmtNum(venta.precio,4), fmtNum(compra.precio,4)],
-    ['Nominales', fmtNum(venta.nominales,0), fmtNum(compra.nominales,0)],
-    ['Monto operado', fmtUSD(montoV), fmtUSD(montoC)],
-    ['Comisión', fmtUSD(comV), fmtUSD(comC)],
-    ['Valor total a '+fmtNum(horizonElegido,1)+' a. (capital + interés)', fmtUSD(montoV+atH.v), fmtUSD(montoC+atH.c+difCash)]
-  ];
-  var statsHTML = '<div class="av-subhead">Ficha comparativa</div><div class="av-stats-grid">' +
-    statRows.map(function(r){
-      return '<div class="av-stat-cell"><div class="l">'+r[0]+'</div><div class="v-two"><span class="venta">'+r[1]+'</span><span class="compra">'+r[2]+'</span></div></div>';
-    }).join('') + '</div>';
+  var valorHorizV = montoV+atH.v, valorHorizC = montoC+atH.c+difCash;
+  var statsHTML = '<div class="av-subhead">Ficha comparativa</div>'+
+    '<table class="compare-table"><thead><tr><th>Diferencias</th><th class="col-head-venta">'+venta.ticker+'</th><th class="col-head-compra">'+compra.ticker+'</th></tr></thead><tbody>' +
+    filaCompHTML('Emisor', venta.emisor||'—', compra.emisor||'—', null) +
+    filaCompHTML('Vencimiento', fmtDateAR(venta.fechaVenc), fmtDateAR(compra.fechaVenc), null) +
+    filaCompHTML('Ley', venta.ley||'—', compra.ley||'—', null) +
+    filaCompHTML('Calificación', venta.calif||'—', compra.calif||'—', null) +
+    filaCompHTML('Precio', fmtNum(venta.precio,4), fmtNum(compra.precio,4), null) +
+    filaCompHTML('Nominales', fmtNum(venta.nominales,0), fmtNum(compra.nominales,0), null) +
+    filaCompHTML('Monto operado', fmtUSD(montoV), fmtUSD(montoC), null) +
+    filaCompHTML('Comisión', fmtUSD(comV), fmtUSD(comC), null) +
+    filaCompHTML('Valor total a '+fmtNum(horizonElegido,1)+' a. (capital + interés)', fmtUSD(valorHorizV), fmtUSD(valorHorizC), mejorLado(valorHorizV, valorHorizC, true)) +
+    '</tbody></table>';
 
   var bps = (tirC-tirV)*100;
   var accion = ventajaHoy>0 ? ('rotar a <b>'+compra.ticker+'</b>') : ('mantener <b>'+venta.ticker+'</b>');
@@ -1604,37 +1634,43 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
     (Math.abs(ventajaHoy)>=1 ? (' — te deja '+fmtUSD(Math.abs(ventajaHoy))+' '+(ventajaHoy>0?'más':'menos')+' que la otra opción.') : ', aunque la diferencia es prácticamente nula.');
   var lecturaHTML = '<div class="av-lectura"><span class="tag">📝 Lectura del asesor</span>'+lecturaTxt+'</div>';
 
-  var bucketsV = bucketizeSchedule(schedV, hoy, tMax);
-  var bucketsC = bucketizeSchedule(schedC, hoy, tMax);
-  var maxYr = Math.max(1, Math.ceil(tMax));
+  var bucketsV = bucketizeSchedule(schedV, hoy, tMax, flujoModoVista);
+  var bucketsC = bucketizeSchedule(schedC, hoy, tMax, flujoModoVista);
+  var ejesFlujo = construirEjesFlujo(hoy, tMax, flujoModoVista);
   var maxVal = 1;
-  for(var y=1;y<=maxYr;y++){ maxVal = Math.max(maxVal, bucketsV[y]||0, bucketsC[y]||0); }
+  ejesFlujo.forEach(function(e){ maxVal = Math.max(maxVal, bucketsV[e.key]||0, bucketsC[e.key]||0); });
 
   var FW=900, FH=190, fPadL=10, fPadR=10, fPadT=18, fPadB=26;
   var fInnerW = FW-fPadL-fPadR, fInnerH = FH-fPadT-fPadB;
-  var groupW = fInnerW/maxYr;
+  var nEjes = ejesFlujo.length;
+  var groupW = fInnerW/nEjes;
   var barW = Math.min(30, groupW*0.30);
+  var lblFontSize = nEjes>16 ? 6.5 : (nEjes>10 ? 8 : 10); // vista mensual con horizontes largos -> mas barras, texto mas chico
   var flowBars = '';
-  for(var yy=1; yy<=maxYr; yy++){
-    var gx = fPadL + (yy-0.5)*groupW;
-    var vVal = bucketsV[yy]||0, cVal = bucketsC[yy]||0;
+  ejesFlujo.forEach(function(e, idx){
+    var gx = fPadL + (idx+0.5)*groupW;
+    var vVal = bucketsV[e.key]||0, cVal = bucketsC[e.key]||0;
     var vH = (vVal/maxVal)*fInnerH, cH = (cVal/maxVal)*fInnerH;
     var vX = gx - barW - 3, cX = gx + 3;
     var vY = fPadT+fInnerH-vH, cY = fPadT+fInnerH-cH;
     if(vVal>0){
       flowBars += '<rect x="'+vX.toFixed(1)+'" y="'+vY.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+Math.max(1,vH).toFixed(1)+'" fill="var(--series-mantener)" rx="2"/>';
-      flowBars += '<text x="'+(vX+barW/2).toFixed(1)+'" y="'+(vY-4).toFixed(1)+'" text-anchor="middle" font-size="8.5" fill="var(--series-mantener)">'+fmtCompactUSD(vVal)+'</text>';
+      flowBars += '<text x="'+(vX+barW/2).toFixed(1)+'" y="'+(vY-4).toFixed(1)+'" text-anchor="middle" font-size="'+lblFontSize+'" fill="var(--series-mantener)">'+fmtCompactUSD(vVal)+'</text>';
     }
     if(cVal>0){
       flowBars += '<rect x="'+cX.toFixed(1)+'" y="'+cY.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+Math.max(1,cH).toFixed(1)+'" fill="var(--series-rotar)" rx="2"/>';
-      flowBars += '<text x="'+(cX+barW/2).toFixed(1)+'" y="'+(cY-4).toFixed(1)+'" text-anchor="middle" font-size="8.5" fill="var(--series-rotar)">'+fmtCompactUSD(cVal)+'</text>';
+      flowBars += '<text x="'+(cX+barW/2).toFixed(1)+'" y="'+(cY-4).toFixed(1)+'" text-anchor="middle" font-size="'+lblFontSize+'" fill="var(--series-rotar)">'+fmtCompactUSD(cVal)+'</text>';
     }
-    flowBars += '<text x="'+gx.toFixed(1)+'" y="'+(FH-8)+'" text-anchor="middle" font-size="10" fill="#898781">Año '+yy+'</text>';
-  }
-  var flowSvg = '<svg viewBox="0 0 '+FW+' '+FH+'" style="width:100%;height:auto;display:block;">'+
+    flowBars += '<text x="'+gx.toFixed(1)+'" y="'+(FH-8)+'" text-anchor="middle" font-size="'+lblFontSize+'" fill="#898781">'+e.label+'</text>';
+  });
+  var flowSvg = '<svg id="flujo-svg" viewBox="0 0 '+FW+' '+FH+'" style="width:100%;height:auto;display:block;">'+
     '<line x1="'+fPadL+'" y1="'+(fPadT+fInnerH)+'" x2="'+(FW-fPadR)+'" y2="'+(fPadT+fInnerH)+'" stroke="#2c2c2a"/>'+
     flowBars + '</svg>';
-  var flowHTML = '<div class="av-subhead">Flujo de pagos proyectado (cupón + amortización, agrupado por año)</div><div class="av-flow-wrap">'+flowSvg+'</div>';
+  var flowToggleHTML = '<div class="preset-chips" style="margin:6px 0 8px;">'+
+      '<div class="preset-chip'+(flujoModoVista==='anual'?' active':'')+'" onclick="setFlujoModo(\'anual\')">Por año</div>'+
+      '<div class="preset-chip'+(flujoModoVista==='mensual'?' active':'')+'" onclick="setFlujoModo(\'mensual\')">Por mes</div>'+
+    '</div>';
+  var flowHTML = '<div class="av-subhead">Flujo de pagos proyectado (cupón + amortización, agrupado por '+(flujoModoVista==='mensual'?'mes':'año')+')</div>'+flowToggleHTML+'<div class="av-flow-wrap">'+flowSvg+'</div>';
 
   body.innerHTML = tirRow + barsHTML + statsHTML + lecturaHTML + flowHTML;
   window._avanzadaDebug = {tirV:tirV, tirC:tirC, winnerTir:winnerTir, bucketsV:bucketsV, bucketsC:bucketsC}; // expuesto para debugging
@@ -1934,7 +1970,10 @@ async function descargarReportePDF(){
     '<div>Rotación: <b style="color:#fff;">'+venta.ticker+' → '+compra.ticker+'</b></div>';
   root.appendChild(meta);
 
-  root.appendChild(document.getElementById('verdict-banner-wrap').cloneNode(true));
+  var verdictClone = document.getElementById('verdict-banner-wrap').cloneNode(true);
+  var wppEnClon = verdictClone.querySelector('.verdict-wpp-wrap');
+  if (wppEnClon) wppEnClon.remove(); // el botón "Enviarle a..." es una acción, no algo para una presentación al cliente
+  root.appendChild(verdictClone);
   root.appendChild(document.getElementById('samemoney-wrap').cloneNode(true));
 
   var chartSection = document.createElement('div');
@@ -1966,6 +2005,30 @@ async function descargarReportePDF(){
   }
   chartSection.appendChild(chartWrapClone);
   root.appendChild(chartSection);
+
+  var flujoSection = document.createElement('div');
+  flujoSection.className = 'section-block';
+  var hFlujo = document.createElement('h3'); hFlujo.textContent = 'Flujo de pagos proyectado (cupón + amortización, agrupado por '+(flujoModoVista==='mensual'?'mes':'año')+')';
+  flujoSection.appendChild(hFlujo);
+  var flujoWrapClone = document.createElement('div');
+  flujoWrapClone.className = 'av-flow-wrap';
+  var flujoSvgEl = document.getElementById('flujo-svg');
+  if (flujoSvgEl) {
+    try {
+      var flujoPngUrl = await svgToDataUrlPng(flujoSvgEl, 900, 190, 2);
+      var flujoImg = document.createElement('img');
+      flujoImg.width = 900; flujoImg.height = 190;
+      flujoImg.src = flujoPngUrl;
+      flujoImg.style.cssText = 'width:100%;height:auto;display:block;';
+      flujoWrapClone.appendChild(flujoImg);
+      try { await flujoImg.decode(); } catch(e) {}
+    } catch(e) {
+      console.warn('[Reporte PDF] no se pudo convertir el gráfico de flujo a imagen, se usa el SVG original', e);
+      flujoWrapClone.appendChild(flujoSvgEl.cloneNode(true));
+    }
+    flujoSection.appendChild(flujoWrapClone);
+    root.appendChild(flujoSection);
+  }
 
   var tablaSection = document.createElement('div');
   tablaSection.className = 'section-block';
