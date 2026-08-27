@@ -293,7 +293,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
           <span class="cliente-quitar" onclick="limpiarClienteActivo()">✕ quitar</span>
         </div>
         <div class="umbral-tir-cliente-row">
-          Marcar en rojo si TIR &lt; <input type="number" step="0.5" id="umbral-tir-cliente" value="5" oninput="onCambioUmbralTirCliente()">%
+          Marcar en rojo si TIR &lt; <input type="number" step="0.5" id="umbral-tir-cliente" placeholder="—" oninput="onCambioUmbralTirCliente()">%
         </div>
         <div class="chip-row" id="cliente-ticker-chips"></div>
       </div>
@@ -1867,10 +1867,10 @@ function tirActualDeTicker(ticker){
   return tir!=null ? tir : null;
 }
 
-var umbralTirCliente = 5; // %, configurable con el input de al lado de los chips
+var umbralTirCliente = null; // %, null = sin umbral activo (todos los chips en verde) hasta que se escribe algo
 function onCambioUmbralTirCliente(){
   var v = parseFloat(document.getElementById('umbral-tir-cliente').value);
-  umbralTirCliente = isNaN(v) ? 5 : v;
+  umbralTirCliente = isNaN(v) ? null : v;
   renderClienteTickerChips();
 }
 
@@ -1883,7 +1883,7 @@ function renderClienteTickerChips(){
   }
   wrap.innerHTML = items.map(function(it){
     var tir = tirActualDeTicker(it.ticker);
-    var esBaja = tir!=null && tir < umbralTirCliente;
+    var esBaja = umbralTirCliente!=null && tir!=null && tir < umbralTirCliente;
     var tirTxt = tir!=null ? ' · TIR '+fmtNum(tir)+'%' : '';
     return '<span class="chip chip-cliente-ticker'+(esBaja?' tir-baja':'')+'" onclick="autofillClienteBono(\''+it.ticker.replace(/'/g,"\\'")+'\','+it.nominales+','+it.tenencia+')" title="Clic para cargarlo como bono a VENDER">'+
       '<b>'+it.ticker+'</b> · '+fmtNum(it.nominales,0)+' nom.'+tirTxt+'</span>';
@@ -2228,6 +2228,53 @@ async function descargarReportePDF(){
         const entry = await getShared('stock');
         if (entry) parseStock(entry);
       }
+    };
+  }
+})();
+
+// ── CLIENTE ACTIVO (desde el Suite) — antes esta herramienta solo tomaba el cliente si se
+// llegaba por un link con ?cliente=X (el flujo "Todas las ONs" → elegir ticker → Rotar);
+// entrando directo (o desde el picker "Cliente: ..." de FCN Suite) nunca se enteraba. Mismo
+// patrón que ya usa Scanner de ONs para sincronizarse con ese picker compartido.
+(function() {
+  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
+  function openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = () => rej();
+    });
+  }
+  async function getActiveClient() {
+    try {
+      const db = await openDB();
+      return new Promise(res => {
+        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get('activeClient');
+        r.onsuccess = () => res(r.result ? r.result.cliente : null);
+        r.onerror = () => res(null);
+      });
+    } catch { return null; }
+  }
+  function waitForDataAndApply(cliente, tries) {
+    tries = tries || 0;
+    if (typeof CLIENTE_LIST !== 'undefined' && CLIENTE_LIST.indexOf(cliente) >= 0) { seleccionarClienteActivo(cliente); return; }
+    if (tries > 20) { if (typeof CLIENTE_LIST !== 'undefined' && CLIENTE_LIST.length) seleccionarClienteActivo(cliente); return; } // ~10s de espera máx a que cargue la Tenencia
+    setTimeout(() => waitForDataAndApply(cliente, tries + 1), 500);
+  }
+  async function init() {
+    // Si ya vino un cliente por la URL (link de Scanner ONs), ese manda — no lo pisamos.
+    var params = new URLSearchParams(location.search);
+    if (params.get('cliente')) return;
+    const cliente = await getActiveClient();
+    if (cliente) waitForDataAndApply(cliente);
+  }
+  window.addEventListener('DOMContentLoaded', init);
+  if (typeof BroadcastChannel !== 'undefined') {
+    new BroadcastChannel('fcn_shared').onmessage = e => {
+      if (!e.data || e.data.type !== 'client_selected') return;
+      if (e.data.cliente) seleccionarClienteActivo(e.data.cliente);
+      else limpiarClienteActivo();
     };
   }
 })();
