@@ -1265,13 +1265,8 @@ function alertaSinStock(){
 }
 
 function construirMensajeRotacion(ctx){
-  var nombrePila = (ctx.cliente||'').split(' ')[0];
   var lineas = [];
-  lineas.push('Hola '+nombrePila+'! 👋');
-  lineas.push('');
-  lineas.push('Te comparto una recomendación para tu cartera:');
-  lineas.push('');
-  lineas.push('🔄 *Rotar de '+ctx.venta.ticker+' a '+ctx.compra.ticker+'*');
+  lineas.push('*Rotar de '+ctx.venta.ticker+' a '+ctx.compra.ticker+'*');
   lineas.push('');
   lineas.push('• TIR actual ('+ctx.venta.ticker+'): '+fmtNum(ctx.venta.tir)+'%');
   lineas.push('• TIR nueva ('+ctx.compra.ticker+'): '+fmtNum(ctx.compra.tir)+'%');
@@ -1281,9 +1276,6 @@ function construirMensajeRotacion(ctx){
       ? '• Además, hoy la rotación libera '+fmtUSD(ctx.difCash)+' de cash.'
       : '• Además, la rotación requiere poner '+fmtUSD(Math.abs(ctx.difCash))+' extra de cash hoy.');
   }
-  lineas.push('');
-  lineas.push('Cualquier duda, quedo a disposición 🙌');
-  lineas.push('Nico');
   return lineas.join('\n');
 }
 
