@@ -93,6 +93,9 @@ body.modo-cliente details.cond-details{display:none !important;}
 
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px;}
 .chip{font-size:10.5px;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--cream);}
+.chip-rent-pos{background:rgba(12,163,12,.1);border-color:rgba(12,163,12,.3);color:var(--good);}
+.chip-rent-neg{background:rgba(208,59,59,.1);border-color:rgba(208,59,59,.3);color:var(--critical);}
+.chip-cliente{background:rgba(59,130,196,.1);border-color:rgba(59,130,196,.3);}
 .chip b{color:#fff;}
 
 #cliente-picker-wrap .chip-row:empty{margin:0;}
@@ -1182,7 +1185,7 @@ function renderChips(p, bond){
   var flujoTag = esReal
     ? '<span class="chip flujo-real-chip">📋 Cronograma real</span>'
     : '<span class="chip">≈ Cronograma estimado</span>';
-  el.innerHTML =
+  var chips =
     '<span class="chip">'+(bond.emisor||'—')+'</span>'+
     '<span class="chip">TIR <b>'+fmtNum(bond.tir)+'%</b></span>'+
     '<span class="chip">Duration <b>'+(bond.duration!=null?fmtNum(bond.duration):'—')+' a.</b></span>'+
@@ -1190,6 +1193,35 @@ function renderChips(p, bond){
     '<span class="chip">'+(bond.amortType==='bullet'?'Bullet':'Amortizable')+'</span>'+
     flujoTag+
     (bond.calif ? '<span class="chip">'+bond.calif+'</span>' : '');
+
+  // Días de tenencia + rentabilidad ya obtenida — solo en la pata de VENTA, y solo si hay un
+  // cliente activo con una posición real de este ticker en su Tenencia (precio de compra real
+  // vs. el precio actual cargado arriba). Si se lo compraste hace poco, puede no tener sentido
+  // rotarlo todavía aunque la TIR mejore.
+  if(p==='v' && clienteActivoNombre){
+    var posiciones = TENENCIA_POR_CLIENTE[clienteActivoNombre] || [];
+    var pos = posiciones.filter(function(x){ return x.ticker===bond.ticker; })[0];
+    if(pos){
+      if(pos.dias!=null) chips += '<span class="chip">📅 '+Math.round(pos.dias)+' días en cartera</span>';
+      if(pos.ppc!=null && pos.ppc>0 && bond.precio!=null){
+        var rent = (bond.precio-pos.ppc)/pos.ppc*100;
+        chips += '<span class="chip '+(rent>=0?'chip-rent-pos':'chip-rent-neg')+'">'+(rent>=0?'+':'')+fmtNum(rent)+'% desde la compra</span>';
+      }
+    }
+  }
+
+  // Qué clientes tienen esta ON en su Tenencia — informativo tanto para la pata que se vende
+  // (quién más la tiene) como para la que se sugiere comprar (a quién más ofrecérsela).
+  var holders = TENENCIA_POR_TICKER[bond.ticker] || [];
+  if(holders.length){
+    var MAX_CHIPS_CLIENTES = 6;
+    holders.slice(0, MAX_CHIPS_CLIENTES).forEach(function(h){
+      chips += '<span class="chip chip-cliente" title="'+fmtUSD(h.tenencia)+' en tenencia">👤 '+h.cliente+'</span>';
+    });
+    if(holders.length > MAX_CHIPS_CLIENTES) chips += '<span class="chip">+'+(holders.length-MAX_CHIPS_CLIENTES)+' más</span>';
+  }
+
+  el.innerHTML = chips;
 }
 
 function onHorizonSlide(){
@@ -1680,7 +1712,8 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
 // MODO ASESOR — cliente activo: autocompleta el bono a VENDER
 // con lo que ese cliente ya tiene en su Tenencia (ticker, nominales, precio).
 // ═══════════════════════════════════════════════════════
-var TENENCIA_POR_CLIENTE = {}; // { cliente: [{ticker, nominales, tenencia}] } — solo Renta Fija
+var TENENCIA_POR_CLIENTE = {}; // { cliente: [{ticker, nominales, tenencia, ppc, dias}] } — solo Renta Fija
+var TENENCIA_POR_TICKER = {}; // { ticker: [{cliente, nominales, tenencia}] } — índice inverso, para "qué clientes tienen esta ON"
 var CLIENTE_LIST = [];
 var clienteActivoNombre = null;
 var TIPO_RENTA_FIJA = {corporativos:true, bonos:true, letras:true};
@@ -1713,17 +1746,35 @@ function parseTenenciaParaClientes(entry){
       var comitente = String(r['Comitente']||'').trim();
       var cliente = String(r['Cuenta']||comitente||'').trim();
       if(!cliente) return;
+      var ppc = parseFloat(r['Prec prom de compra'])||null;
+      var dias = parseFloat(r['Días de tenencia']);
+      if(isNaN(dias)) dias = null;
       if(!porCliente[cliente]) porCliente[cliente] = {};
-      if(!porCliente[cliente][ticker]) porCliente[cliente][ticker] = {ticker:ticker, nominales:0, tenencia:0};
-      porCliente[cliente][ticker].nominales += nominales;
-      porCliente[cliente][ticker].tenencia += tenenciaUSD;
+      if(!porCliente[cliente][ticker]) porCliente[cliente][ticker] = {ticker:ticker, nominales:0, tenencia:0, _ppcNomSum:0, _diasNomSum:0};
+      var pos = porCliente[cliente][ticker];
+      pos.nominales += nominales;
+      pos.tenencia += tenenciaUSD;
+      // Promedio ponderado por nominales — un cliente puede tener varios lotes del mismo
+      // ticker comprados en momentos/precios distintos.
+      if(ppc!=null) pos._ppcNomSum += ppc*nominales;
+      if(dias!=null) pos._diasNomSum += dias*nominales;
       if(comitente && !comitentePorCliente[cliente]) comitentePorCliente[cliente] = comitente;
     });
     var resultado = {};
+    var porTicker = {};
     Object.keys(porCliente).forEach(function(cli){
-      resultado[cli] = Object.values(porCliente[cli]).sort(function(a,b){ return b.tenencia-a.tenencia; });
+      resultado[cli] = Object.values(porCliente[cli]).map(function(pos){
+        pos.ppc = pos.nominales ? (pos._ppcNomSum/pos.nominales) || null : null;
+        pos.dias = pos.nominales ? (pos._diasNomSum/pos.nominales) || null : null;
+        delete pos._ppcNomSum; delete pos._diasNomSum;
+        if(!porTicker[pos.ticker]) porTicker[pos.ticker] = [];
+        porTicker[pos.ticker].push({cliente:cli, nominales:pos.nominales, tenencia:pos.tenencia});
+        return pos;
+      }).sort(function(a,b){ return b.tenencia-a.tenencia; });
     });
+    Object.keys(porTicker).forEach(function(tk){ porTicker[tk].sort(function(a,b){ return b.tenencia-a.tenencia; }); });
     TENENCIA_POR_CLIENTE = resultado;
+    TENENCIA_POR_TICKER = porTicker;
     COMITENTE_POR_CLIENTE = comitentePorCliente;
     CLIENTE_LIST = Object.keys(resultado).sort(function(a,b){ return a.localeCompare(b,'es'); });
   } catch(e){ console.warn('[Rotaciones] error leyendo tenencia', e); }
