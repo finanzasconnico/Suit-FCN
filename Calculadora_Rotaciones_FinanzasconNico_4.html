@@ -106,6 +106,11 @@ body.modo-cliente details.cond-details{display:none !important;}
 .chip-cliente-ticker{cursor:pointer;background:rgba(28,140,95,0.12);border-color:rgba(28,140,95,0.4);transition:background .15s;}
 .chip-cliente-ticker:hover{background:rgba(28,140,95,0.28);}
 .chip-cliente-ticker b{color:#8fe28f;}
+.chip-cliente-ticker.tir-baja{background:rgba(208,59,59,.14);border-color:rgba(208,59,59,.45);}
+.chip-cliente-ticker.tir-baja:hover{background:rgba(208,59,59,.3);}
+.chip-cliente-ticker.tir-baja b{color:#f0a09c;}
+.umbral-tir-cliente-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--cream-dim);margin:6px 0 2px;}
+.umbral-tir-cliente-row input{width:52px;padding:3px 6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--cream);font-size:10.5px;}
 
 .pdf-report-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
 .pdf-report-bar input{max-width:240px;padding:7px 10px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:12px;outline:none;}
@@ -286,6 +291,9 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div id="cliente-activo-label" style="display:none;">
           Cliente activo: <b id="cliente-activo-nombre"></b>
           <span class="cliente-quitar" onclick="limpiarClienteActivo()">✕ quitar</span>
+        </div>
+        <div class="umbral-tir-cliente-row">
+          Marcar en rojo si TIR &lt; <input type="number" step="0.5" id="umbral-tir-cliente" value="5" oninput="onCambioUmbralTirCliente()">%
         </div>
         <div class="chip-row" id="cliente-ticker-chips"></div>
       </div>
@@ -1847,6 +1855,25 @@ function limpiarClienteActivo(){
   document.getElementById('cliente-ticker-chips').innerHTML = '';
   if(lastCtx) renderAll();
 }
+// TIR "actual" de un ticker fuera de una rotación puntual — mismo orden de prioridad que usa
+// seleccionarBono() al autocompletar (cronograma real > MEP/Cable según el tipo elegido).
+function tirActualDeTicker(ticker){
+  var real = FLUJO_DB[ticker];
+  if(real && real.tirEfectiva!=null) return real.tirEfectiva;
+  var b = BOND_DB[ticker];
+  if(!b) return null;
+  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  var tir = tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
+  return tir!=null ? tir : null;
+}
+
+var umbralTirCliente = 5; // %, configurable con el input de al lado de los chips
+function onCambioUmbralTirCliente(){
+  var v = parseFloat(document.getElementById('umbral-tir-cliente').value);
+  umbralTirCliente = isNaN(v) ? 5 : v;
+  renderClienteTickerChips();
+}
+
 function renderClienteTickerChips(){
   var wrap = document.getElementById('cliente-ticker-chips');
   var items = clienteActivoNombre ? (TENENCIA_POR_CLIENTE[clienteActivoNombre]||[]) : [];
@@ -1855,8 +1882,11 @@ function renderClienteTickerChips(){
     return;
   }
   wrap.innerHTML = items.map(function(it){
-    return '<span class="chip chip-cliente-ticker" onclick="autofillClienteBono(\''+it.ticker.replace(/'/g,"\\'")+'\','+it.nominales+','+it.tenencia+')" title="Clic para cargarlo como bono a VENDER">'+
-      '<b>'+it.ticker+'</b> · '+fmtNum(it.nominales,0)+' nom.</span>';
+    var tir = tirActualDeTicker(it.ticker);
+    var esBaja = tir!=null && tir < umbralTirCliente;
+    var tirTxt = tir!=null ? ' · TIR '+fmtNum(tir)+'%' : '';
+    return '<span class="chip chip-cliente-ticker'+(esBaja?' tir-baja':'')+'" onclick="autofillClienteBono(\''+it.ticker.replace(/'/g,"\\'")+'\','+it.nominales+','+it.tenencia+')" title="Clic para cargarlo como bono a VENDER">'+
+      '<b>'+it.ticker+'</b> · '+fmtNum(it.nominales,0)+' nom.'+tirTxt+'</span>';
   }).join('');
 }
 
