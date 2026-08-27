@@ -294,7 +294,7 @@ table.compare-table tr.hl td{background:rgba(255,255,255,.03);font-weight:600;}
       </div>
       <div class="field-row field-big">
         <div class="field"><label>Nominales</label><input type="number" step="1" id="v-nominales" value="10000" oninput="onCondChange('venta')"></div>
-        <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="v-precio" oninput="onPrecioManual('venta');onCondChange('venta')"></div>
+        <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="v-precio" oninput="onCondChange('venta')"></div>
       </div>
       <div class="chip-row" id="v-chips"></div>
 
@@ -349,7 +349,7 @@ table.compare-table tr.hl td{background:rgba(255,255,255,.03);font-weight:600;}
       </div>
       <div class="field-row field-big">
         <div class="field"><label>Nominales</label><input type="number" step="1" id="c-nominales" value="0" oninput="onNominalesCompraManual()"></div>
-        <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="c-precio" oninput="onPrecioManual('compra');onCondChange('compra')"></div>
+        <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="c-precio" oninput="onCondChange('compra')"></div>
       </div>
       <div class="autolink-row advisor-only">
         <input type="checkbox" id="chk-automatch" checked onchange="onGlobalChange()">
@@ -939,13 +939,6 @@ function buscarBonoInput(pata, q){
 }
 function cerrarAC(pata){ document.getElementById('ac-dd-'+pata).classList.remove('open'); }
 
-// El precio que viene del Monitor de Individuos ya sale con la comisión de Balanz sumada
-// (precio "todo incluido"); el que se carga a mano es el precio limpio del activo, sin
-// comisión. Por eso hay que trackear el origen por pata: si es 'monitor', no se le vuelve a
-// aplicar la comisión global encima (se duplicaría); si es 'manual', sí se aplica normal.
-var precioFuente = { venta: 'manual', compra: 'manual' };
-function onPrecioManual(pata){ precioFuente[pata] = 'manual'; }
-
 function seleccionarBono(pata, ticker){
   var b = BOND_DB[ticker];
   var real = FLUJO_DB[ticker];
@@ -964,7 +957,6 @@ function seleccionarBono(pata, ticker){
   var precio = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
   document.getElementById(p+'-tir').value = tir!=null ? tir : '';
   document.getElementById(p+'-precio').value = precio!=null ? precio : '';
-  precioFuente[pata] = precio!=null ? 'monitor' : 'manual';
 
   var cuponAnual = (real && real.cuponAnual!=null) ? real.cuponAnual : (b?b.cuponAnual:null);
   document.getElementById(p+'-cupon').value = cuponAnual!=null ? cuponAnual : '';
@@ -1017,7 +1009,6 @@ function seleccionarBono(pata, ticker){
 
 function cargarManual(pata){
   var p = pata==='venta' ? 'v' : 'c';
-  precioFuente[pata] = 'manual';
   document.getElementById(p+'-details').open = true;
   ['ticker','emisor','tir','cupon','venc'].forEach(function(f){ document.getElementById(p+'-'+f).value=''; });
   document.getElementById(p+'-freq').value='2';
@@ -1096,8 +1087,7 @@ function readBond(pata){
     fechaEmision:fechaEmision, fechaVenc:fechaVenc,
     amortType:amortTypes[pata], amortStart:amortStart,
     ley:document.getElementById(p+'-ley').value, calif:document.getElementById(p+'-calif').value,
-    precio:precio, nominales:nominales,
-    precioIncluyeComision: precioFuente[pata]==='monitor'
+    precio:precio, nominales:nominales
   };
 }
 
@@ -1147,12 +1137,7 @@ function renderAll(){
   renderChips('v', venta);
   renderChips('c', compra);
 
-  // Si el precio vino del Monitor de Individuos, ya sale con la comisión de Balanz sumada —
-  // no se le vuelve a aplicar la comisión global encima (se duplicaría). Si se cargó a mano,
-  // es el precio limpio del activo y sí corresponde aplicarla.
-  var comisionPctV = venta.precioIncluyeComision ? 0 : comisionPct;
-  var comisionPctC = compra.precioIncluyeComision ? 0 : comisionPct;
-  var difCash = venta.nominales*venta.precio*(1-comisionPctV/100) - compra.nominales*compra.precio*(1+comisionPctC/100);
+  var difCash = venta.nominales*venta.precio*(1-comisionPct/100) - compra.nominales*compra.precio*(1+comisionPct/100);
 
   var vencAniosV = yearFrac(hoy, venta.fechaVenc);
   var vencAniosC = yearFrac(hoy, compra.fechaVenc);
@@ -1183,8 +1168,8 @@ function renderAll(){
   renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy);
   renderSameMoney(venta, compra, points, difCash, atH, currentHorizonAnios, hoy, tMax);
   renderChart(points, venta, compra, difCash, currentHorizonAnios, hoy, tMax, atH);
-  renderCondiciones(venta, compra, difCash, comisionPctV, comisionPctC);
-  renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, currentHorizonAnios, comisionPctV, comisionPctC, hoy, tMax);
+  renderCondiciones(venta, compra, difCash, comisionPct);
+  renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, currentHorizonAnios, comisionPct, hoy, tMax);
 
   lastCtx = {venta:venta, compra:compra, difCash:difCash, hoy:hoy, comisionPct:comisionPct, tMax:tMax, retV:retV, retC:retC};
 }
@@ -1487,11 +1472,9 @@ function renderChart(points, venta, compra, difCash, horizonElegido, hoy, tMax, 
   hoverRect.addEventListener('mouseleave', function(){ tooltip.style.display='none'; });
 }
 
-function renderCondiciones(v, c, difCash, comisionPctV, comisionPctC){
+function renderCondiciones(v, c, difCash, comisionPct){
   var montoV = v.nominales*v.precio, montoC = c.nominales*c.precio;
-  var comV = montoV*(comisionPctV/100), comC = montoC*(comisionPctC/100);
-  var comTxtV = v.precioIncluyeComision ? '0,00% (ya incluida en el precio del Monitor)' : fmtNum(comisionPctV,2)+'%';
-  var comTxtC = c.precioIncluyeComision ? '0,00% (ya incluida en el precio del Monitor)' : fmtNum(comisionPctC,2)+'%';
+  var comV = montoV*(comisionPct/100), comC = montoC*(comisionPct/100);
   var rows = [
     ['Emisor', v.emisor||'—', c.emisor||'—'],
     ['TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%'],
@@ -1505,7 +1488,7 @@ function renderCondiciones(v, c, difCash, comisionPctV, comisionPctC){
     ['Precio referencia', fmtNum(v.precio,4), fmtNum(c.precio,4)],
     ['Nominales', fmtNum(v.nominales,0), fmtNum(c.nominales,0)],
     ['Monto operado (bruto)', fmtUSD(montoV), fmtUSD(montoC)],
-    ['Comisión aplicada (%, c/punta)', comTxtV, comTxtC],
+    ['Comisión aplicada (%, c/punta)', fmtNum(comisionPct,2)+'%', fmtNum(comisionPct,2)+'%'],
     ['Comisión en USD', '-'+fmtUSD(comV), '-'+fmtUSD(comC)],
     ['Monto neto después de comisión', fmtUSD(montoV-comV)+' (te acreditan)', fmtUSD(montoC+comC)+' (necesitás poner)'],
     ['Comisión total de la rotación', '—', fmtUSD(comV+comC) + ' (ambas puntas)', true],
@@ -1550,7 +1533,7 @@ function bucketizeSchedule(sched, hoy, tMax){
   return buckets;
 }
 
-function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, horizonElegido, comisionPctV, comisionPctC, hoy, tMax){
+function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, horizonElegido, comisionPct, hoy, tMax){
   var body = document.getElementById('avanzada-body');
   if(!body) return;
 
@@ -1600,7 +1583,7 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
     '</div>';
 
   var montoV = venta.nominales*venta.precio, montoC = compra.nominales*compra.precio;
-  var comV = montoV*(comisionPctV/100), comC = montoC*(comisionPctC/100);
+  var comV = montoV*(comisionPct/100), comC = montoC*(comisionPct/100);
   var statRows = [
     ['Emisor', venta.emisor||'—', compra.emisor||'—'],
     ['Vencimiento', fmtDateAR(venta.fechaVenc), fmtDateAR(compra.fechaVenc)],
