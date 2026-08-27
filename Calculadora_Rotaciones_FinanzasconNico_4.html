@@ -19,16 +19,6 @@
 body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;font-size:13px;}
 .topbar{background:var(--navy-mid);border-bottom:1px solid var(--border);padding:14px 26px;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;}
 .topbar-left{display:flex;align-items:center;gap:14px;}
-.modo-toggle-wrap{display:flex;align-items:center;gap:9px;}
-.modo-toggle{position:relative;display:inline-block;width:38px;height:20px;flex-shrink:0;}
-.modo-toggle input{opacity:0;width:0;height:0;}
-.modo-toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.15);border:1px solid var(--border);border-radius:20px;transition:.2s;}
-.modo-toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;}
-.modo-toggle input:checked + .modo-toggle-slider{background:var(--balanz);}
-.modo-toggle input:checked + .modo-toggle-slider:before{transform:translateX(18px);}
-.modo-toggle-label{font-size:10.5px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.05em;min-width:98px;}
-body.modo-cliente .advisor-only{display:none !important;}
-body.modo-cliente details.cond-details{display:none !important;}
 .flujo-real-chip{border-color:rgba(12,163,12,0.4) !important;color:#8fe28f !important;}
 .topbar-logo{width:34px;height:34px;border-radius:7px;background:var(--balanz);display:flex;align-items:center;justify-content:center;font-family:'Spectral',serif;font-size:17px;color:#fff;font-weight:600;}
 .topbar-title{font-family:'Spectral',serif;font-size:20px;font-weight:300;letter-spacing:.05em;color:var(--cream);}
@@ -256,13 +246,6 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <div class="topbar-title">finanzasconnico · <span>Calculadora de Rotaciones</span></div>
       <div class="topbar-subtitle">¿Conviene cambiar de bono? — simple y directo</div>
     </div>
-  </div>
-  <div class="modo-toggle-wrap">
-    <span class="modo-toggle-label" id="modo-toggle-label">Modo asesor</span>
-    <label class="modo-toggle">
-      <input type="checkbox" id="chk-modo-cliente" onchange="toggleModoCliente()">
-      <span class="modo-toggle-slider"></span>
-    </label>
   </div>
 </div>
 
@@ -1905,16 +1888,6 @@ function autofillClienteBono(ticker, nominales, tenenciaUSD){
     precioEl.value = (tenenciaUSD/nominales).toFixed(4);
   }
   onCondChange('venta');
-}
-
-// ═══════════════════════════════════════════════════════
-// MODO CLIENTE — esconde comisión, upload, buscador y fichas técnicas
-// para presentarle la pantalla al cliente sin exponer el detrás de escena.
-// ═══════════════════════════════════════════════════════
-function toggleModoCliente(){
-  var checked = document.getElementById('chk-modo-cliente').checked;
-  document.body.classList.toggle('modo-cliente', checked);
-  document.getElementById('modo-toggle-label').textContent = checked ? 'Modo cliente' : 'Modo asesor';
 }
 
 // ═══════════════════════════════════════════════════════

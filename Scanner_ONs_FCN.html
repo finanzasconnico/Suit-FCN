@@ -1525,9 +1525,10 @@ function abrirCarteraCliente(cn) {
         <td>${formatVto(d.vencimiento)}</td>
         <td>$${formatNum(d.tenencia)}</td>
         <td>${d.nominales ? d.nominales.toLocaleString('es-AR') : '—'}</td>
+        <td>${d.diasTenencia}</td>
         <td>${d.calificacion || '—'}</td>
       </tr>`).join('');
-    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>ON</th><th>TIR</th><th>Vto.</th><th>Tenencia USD</th><th>Nominales</th><th>Calif.</th></tr></thead>`
+    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>ON</th><th>TIR</th><th>Vto.</th><th>Tenencia USD</th><th>Nominales</th><th>Días</th><th>Calif.</th></tr></thead>`
       + `<tbody>${rows}</tbody></table>`
       + `<div class="cc-total">Tenencia total: <b>$${formatNum(tenTotal)}</b></div>`;
   }

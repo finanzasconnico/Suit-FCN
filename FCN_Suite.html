@@ -1704,16 +1704,27 @@ function abrirCarteraCliente(cliente) {
     const nAlertas = conSenal.filter(({s}) => s).length;
     document.getElementById('ccSub').textContent = `${items.length} posición(es) · Tenencia total USD ${fmtK(tenTotal)}` + (nAlertas ? ` · ${nAlertas} con señal` : '');
     // Las que tienen señal van primero (lo más urgente arriba), después por tenencia desc.
-    const rows = conSenal.sort((a, b) => (b.s ? 1 : 0) - (a.s ? 1 : 0) || b.i.tenencia - a.i.tenencia).map(({i, s}) => `
+    const rows = conSenal.sort((a, b) => (b.s ? 1 : 0) - (a.s ? 1 : 0) || b.i.tenencia - a.i.tenencia).map(({i, s}) => {
+      // Rentabilidad ya obtenida: precio implícito (tenencia/nominales) vs. precio promedio de
+      // compra — mismo cálculo que ya usan Rotador RV y Scanner ONs, para que quede consistente
+      // en toda la Suite. Si hace poco que lo tiene, capaz no conviene tocarlo todavía aunque
+      // haya señal.
+      const precioImplicito = i.nominales > 0 ? i.tenencia / i.nominales : null;
+      const rent = (i.ppc > 0 && precioImplicito != null) ? (precioImplicito / i.ppc - 1) * 100 : null;
+      const rentHtml = rent != null ? `<span style="color:${rent>=0?'var(--jade)':'var(--danger)'};">${rent>=0?'+':''}${rent.toFixed(1)}%</span>` : '—';
+      return `
       <tr>
         <td>${escHtml(i.ticker)}</td>
         <td style="font-family:var(--font-s);">${escHtml(i.instrumento || '—')}</td>
         <td>${escHtml(i.grupo)}</td>
         <td>USD ${fmtK(i.tenencia)}</td>
         <td>${i.nominales ? i.nominales.toLocaleString('es-AR') : '—'}</td>
+        <td>${i.dias || '—'}</td>
+        <td>${rentHtml}</td>
         <td>${badgeSenalHtml(s)}${s && s.alt ? `<div style="font-size:9px;color:var(--muted);margin-top:3px;">→ ${escHtml(s.alt.ticker)} (TIR ${(s.alt.tir*100).toFixed(1)}%)</div>` : ''}</td>
-      </tr>`).join('');
-    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Señal</th></tr></thead>` +
+      </tr>`;
+    }).join('');
+    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Días</th><th>Rent.</th><th>Señal</th></tr></thead>` +
       `<tbody>${rows}</tbody></table>` +
       `<div class="cc-total">Tenencia total: <b>USD ${fmtK(tenTotal)}</b></div>`;
   }
