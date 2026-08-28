@@ -2247,11 +2247,17 @@ async function descargarReportePDF(){
   var navyColor = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#081917';
   var nombreArchivo = 'Rotacion_'+venta.ticker+'_a_'+compra.ticker+(cliente?'_'+cliente.replace(/\s+/g,''):'')+'.pdf';
 
+  // windowWidth/windowHeight tienen que ser el tamaño del REPORTE (root), no el de toda la
+  // página en pantalla — antes usaban document.documentElement.scrollHeight (toda la
+  // calculadora, ahora siempre larga porque Vista avanzada quedó desplegada por defecto), y esa
+  // diferencia de alto es justo lo que le agregaba una hoja en blanco al final cuando el reporte
+  // queda corto (sin la ficha comparativa) — con la ficha, por casualidad, los altos quedaban
+  // más parecidos y no se notaba.
   html2pdf().set({
     margin: 0,
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
-    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true, scrollX:0, scrollY:0, windowWidth:document.documentElement.scrollWidth, windowHeight:document.documentElement.scrollHeight },
+    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true, scrollX:0, scrollY:0, windowWidth:w, windowHeight:h },
     jsPDF: { unit:'px', format:[w, h], orientation:'portrait' },
     pagebreak: { mode:['avoid-all'] }
   }).from(root).save().then(function(){
