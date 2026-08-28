@@ -1583,7 +1583,7 @@ function abrirWppLiquidez(cliente) {
   if (m.USD) partes.push('USD ' + fmtK(m.USD));
   if (m.ARS) partes.push('ARS ' + fmtK(m.ARS));
   const nombrePila = cliente.split(' ')[0];
-  const texto = `Hola ${nombrePila}! 👋\n\nVi que tenés ${partes.join(' y ')} de liquidez sin invertir en tu cuenta.\n\n¿Charlamos unos minutos para ver alguna alternativa y que ese dinero empiece a generarte una renta?\n\nQuedo a disposición 🙌\n${nombreAsesorFirma()}`;
+  const texto = `Hola ${nombrePila}! 👋\n\nVeo que tenés ${partes.join(' y ')} de liquidez sin invertir en tu cuenta.\n\n¿Querés contarme por acá o por llamado qué estás pensando hacer con eso? Así vemos juntos alguna estrategia, en base a tus necesidades u objetivos, para que ese dinero empiece a generarte una renta.\n\n${nombreAsesorFirma()}`;
   document.getElementById('wppLiqTexto').value = texto;
   const telEl = document.getElementById('wppLiqTel');
   const sendBtn = document.getElementById('wppLiqSendBtn');
