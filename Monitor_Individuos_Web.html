@@ -501,9 +501,13 @@ function renderCardsCliente(cfg, rows) {
 
 function updateFootNote(count) {
   const cfg = SHEETS[currentTab];
+  // Antes decía fijo "Consultá con Nico" sin importar quién muestra esta pantalla — sale del
+  // "usuario" que pasa FCN Suite como ?u=... en la URL, igual que en el resto de la Suite.
+  const asesorFootNote = (new URLSearchParams(location.search).get('u') || '').trim();
+  const nombreFootNote = asesorFootNote ? (/nico/i.test(asesorFootNote) ? 'Nico' : asesorFootNote.split(' ')[0]) : 'tu asesor';
   document.getElementById('footNote').innerHTML =
     `${count != null ? count + ' instrumentos · ' : ''}Fuente: Monitor Individuos (Balanz / Refinitiv), cargado manualmente. ` +
-    `Precios de referencia, no vinculantes. Consultá con Nico antes de operar.`;
+    `Precios de referencia, no vinculantes. Consultá con ${nombreFootNote} antes de operar.`;
 }
 </script>
 </body>

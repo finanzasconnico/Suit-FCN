@@ -950,28 +950,37 @@ const TEMPLATES = {
 // — antes vivía duplicado como un tplMap local dentro de abrirWppModal.
 const SENAL_TPL_MAP = { VENDER:'ganancia', STOP:'stop', ACUMULAR:'acumular', MANTENER:'mantener', ESPERAR:'mantener' };
 
+// Nombre para firmar los mails — antes quedaba fijo "Nico" sin importar quién los mandaba
+// (rompía apenas un compañero lo usaba con su cliente). Sale del "usuario" que FCN Suite pasa
+// como ?u=... en la URL, igual que en el resto de la Suite; sin ese dato, firma genérico.
+function nombreAsesorFirma(){
+  var u = (new URLSearchParams(location.search).get('u') || '').trim();
+  if (!u) return 'Tu asesor';
+  return /nico/i.test(u) ? 'Nico' : u.split(' ')[0];
+}
+
 // Mismo criterio que TEMPLATES (WhatsApp) pero en formato mail: más formal, texto plano sin
 // negritas/emojis de WhatsApp, con asunto + cuerpo. Usa ctx.nota como la razón real de la regla.
 const MAIL_TEMPLATES = {
   ganancia: (ctx) => ({
     asunto: `Buena noticia sobre tu posición en ${ctx.ticker}`,
-    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTu posición en ${ctx.ticker} ya subió +${ctx.rent?.toFixed(1)||''}% desde la compra, y me parece que ya está en zona de tomar ganancia.\n\n${ctx.nota}\n\n¿Charlamos para ver si la aseguramos ahora o la dejamos correr un poco más?\n\nSaludos,\nNico`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTu posición en ${ctx.ticker} ya subió +${ctx.rent?.toFixed(1)||''}% desde la compra, y me parece que ya está en zona de tomar ganancia.\n\n${ctx.nota}\n\n¿Charlamos para ver si la aseguramos ahora o la dejamos correr un poco más?\n\nSaludos,\n${nombreAsesorFirma()}`,
   }),
   caida: (ctx) => ({
     asunto: `Sobre tu posición en ${ctx.ticker}`,
-    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTe escribo porque tu posición en ${ctx.ticker} bajó ${Math.abs(ctx.rent||0).toFixed(1)}% desde la compra.\n\n${ctx.nota}\n\nPrefiero que lo hablemos antes de decidir nada — ¿tenés unos minutos esta semana?\n\nSaludos,\nNico`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTe escribo porque tu posición en ${ctx.ticker} bajó ${Math.abs(ctx.rent||0).toFixed(1)}% desde la compra.\n\n${ctx.nota}\n\nPrefiero que lo hablemos antes de decidir nada — ¿tenés unos minutos esta semana?\n\nSaludos,\n${nombreAsesorFirma()}`,
   }),
   acumular: (ctx) => ({
     asunto: `Oportunidad en ${ctx.ticker}`,
-    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\n${ctx.ticker} viene mostrando fuerza (+${ctx.rent?.toFixed(1)||''}%) y me parece buen momento para evaluar sumar posición.\n\n${ctx.nota}\n\nDecime si querés que lo veamos juntos.\n\nSaludos,\nNico`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\n${ctx.ticker} viene mostrando fuerza (+${ctx.rent?.toFixed(1)||''}%) y me parece buen momento para evaluar sumar posición.\n\n${ctx.nota}\n\nDecime si querés que lo veamos juntos.\n\nSaludos,\n${nombreAsesorFirma()}`,
   }),
   mantener: (ctx) => ({
     asunto: `Actualización de tu posición en ${ctx.ticker}`,
-    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTe comparto cómo viene tu posición en ${ctx.ticker}: +${ctx.rent?.toFixed(1)||''}%. Mi recomendación por ahora es mantenerla como está.\n\n${ctx.nota}\n\nCualquier duda, escribime.\n\nSaludos,\nNico`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTe comparto cómo viene tu posición en ${ctx.ticker}: +${ctx.rent?.toFixed(1)||''}%. Mi recomendación por ahora es mantenerla como está.\n\n${ctx.nota}\n\nCualquier duda, escribime.\n\nSaludos,\n${nombreAsesorFirma()}`,
   }),
   stop: (ctx) => ({
     asunto: `Necesito que hablemos de tu posición en ${ctx.ticker}`,
-    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTu posición en ${ctx.ticker} está en ${ctx.rent?.toFixed(1)||''}%. Creo que conviene revisar juntos si seguimos o salimos.\n\n${ctx.nota}\n\n¿Cuándo podés hablar?\n\nSaludos,\nNico`,
+    cuerpo: `Hola ${ctx.nombre||ctx.cliente},\n\nTu posición en ${ctx.ticker} está en ${ctx.rent?.toFixed(1)||''}%. Creo que conviene revisar juntos si seguimos o salimos.\n\n${ctx.nota}\n\n¿Cuándo podés hablar?\n\nSaludos,\n${nombreAsesorFirma()}`,
   }),
 };
 
@@ -1060,7 +1069,7 @@ function generarMailResumen(cliente, poss, huboFiltro) {
   }).join('\n\n');
   const resto = huboFiltro ? '\n\nEl resto de tu cartera sigue en "mantener", sin cambios.' : '';
   const asunto = `Repaso de tu cartera — ${nombre}`;
-  const cuerpo = `Hola ${nombre},\n\nTe comparto un repaso de tu cartera:\n\n${lineas}${resto}\n\nSi querés que lo charlemos, respondeme este mail o coordinamos una llamada corta.\n\nSaludos,\nNico`;
+  const cuerpo = `Hola ${nombre},\n\nTe comparto un repaso de tu cartera:\n\n${lineas}${resto}\n\nSi querés que lo charlemos, respondeme este mail o coordinamos una llamada corta.\n\nSaludos,\n${nombreAsesorFirma()}`;
   return { asunto, cuerpo };
 }
 

@@ -1141,8 +1141,11 @@ function renderAll(){
 
   venta.duration = macaulayDuration(schedV, venta.tir/100, hoy);
   compra.duration = macaulayDuration(schedC, compra.tir/100, hoy);
-  document.getElementById('v-duration').value = venta.duration!=null ? fmtNum(venta.duration) : '—';
-  document.getElementById('c-duration').value = compra.duration!=null ? fmtNum(compra.duration) : '—';
+  // 3 decimales (no 2) — a veces dos bonos tienen duration casi igual pero no exactamente, y con
+  // solo 2 decimales se veían iguales aunque el sistema ya sabía cuál era mejor (marcaba el ✓ o
+  // resaltaba un lado sin que se notara la diferencia real que lo justificaba).
+  document.getElementById('v-duration').value = venta.duration!=null ? fmtNum(venta.duration,3) : '—';
+  document.getElementById('c-duration').value = compra.duration!=null ? fmtNum(compra.duration,3) : '—';
 
   renderChips('v', venta);
   renderChips('c', compra);
@@ -1215,7 +1218,7 @@ function renderChips(p, bond){
   var chips =
     '<span class="chip">'+(bond.emisor||'—')+'</span>'+
     '<span class="chip">TIR <b>'+fmtNum(bond.tir)+'%</b></span>'+
-    '<span class="chip">Duration <b>'+(bond.duration!=null?fmtNum(bond.duration):'—')+' a.</b></span>'+
+    '<span class="chip">Duration <b>'+(bond.duration!=null?fmtNum(bond.duration,3):'—')+' a.</b></span>'+
     '<span class="chip">Vence <b>'+fmtDateAR(bond.fechaVenc)+'</b></span>'+
     '<span class="chip">'+(bond.amortType==='bullet'?'Bullet':'Amortizable')+'</span>'+
     flujoTag+
@@ -1584,7 +1587,7 @@ function renderCondiciones(v, c, difCash, comisionPct){
   var html =
     filaCompHTML('Emisor', v.emisor||'—', c.emisor||'—', null) +
     filaCompHTML('TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%', mejorLado(v.tir, c.tir, true)) +
-    filaCompHTML('Duration', v.duration!=null?fmtNum(v.duration):'—', c.duration!=null?fmtNum(c.duration):'—', mejorLado(v.duration, c.duration, false)) +
+    filaCompHTML('Duration', v.duration!=null?fmtNum(v.duration,3):'—', c.duration!=null?fmtNum(c.duration,3):'—', mejorLado(v.duration, c.duration, false)) +
     filaCompHTML('Vencimiento', fmtDateAR(v.fechaVenc), fmtDateAR(c.fechaVenc), null) +
     filaCompHTML('Cupón anual', fmtNum(v.cuponAnual)+'%', fmtNum(c.cuponAnual)+'%', mejorLado(v.cuponAnual, c.cuponAnual, true)) +
     filaCompHTML('Pagos por año', v.freq, c.freq, null) +
@@ -1705,7 +1708,7 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
     '<div class="av-subhead">Comparativa por métrica <span style="color:var(--series-mantener);">■ '+venta.ticker+'</span> &nbsp;<span style="color:var(--series-rotar);">■ '+compra.ticker+'</span></div>'+
     '<div class="av-bars">'+
       barRow('TIR', tirV, tirC, function(v){return fmtNum(v)+'%';}, true)+
-      barRow('Duration', venta.duration, compra.duration, function(v){return v!=null?fmtNum(v)+' a.':'—';}, false)+
+      barRow('Duration', venta.duration, compra.duration, function(v){return v!=null?fmtNum(v,3)+' a.':'—';}, false)+
       barRow('Cupón anual', venta.cuponAnual, compra.cuponAnual, function(v){return v!=null?fmtNum(v)+'%':'—';}, true)+
     '</div>';
 
@@ -1730,7 +1733,7 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
   var bps = (tirC-tirV)*100;
   var accion = ventajaHoy>0 ? ('rotar a <b>'+compra.ticker+'</b>') : ('mantener <b>'+venta.ticker+'</b>');
   var durTxt = (venta.duration!=null && compra.duration!=null)
-    ? (', con duration '+(compra.duration>venta.duration?'más larga':(compra.duration<venta.duration?'más corta':'similar'))+' ('+fmtNum(compra.duration)+' vs '+fmtNum(venta.duration)+' años)')
+    ? (', con duration '+(compra.duration>venta.duration?'más larga':(compra.duration<venta.duration?'más corta':'similar'))+' ('+fmtNum(compra.duration,3)+' vs '+fmtNum(venta.duration,3)+' años)')
     : '';
   var lecturaTxt =
     '<b>'+compra.ticker+'</b> rinde '+(bps>=0?'+':'')+fmtNum(bps,0)+' bps '+(bps>=0?'más':'menos')+' que <b>'+venta.ticker+'</b> ('+fmtNum(tirC)+'% vs '+fmtNum(tirV)+'%)'+durTxt+'. '+
@@ -2094,19 +2097,23 @@ async function descargarReportePDF(){
   root.style.cssText = 'width:840px;background:var(--navy);color:var(--cream);font-family:"Hanken Grotesk",sans-serif;padding:36px 40px;';
 
   // Nombre del asesor que arma el informe: viene del "usuario" que FCN Suite pasa a esta
-  // herramienta como ?u=... en la URL (mismo mecanismo que usan el resto de las herramientas
-  // de la Suite) — así el PDF sale a nombre de quien realmente lo generó, no siempre Nico. Sin
-  // ese dato (herramienta abierta suelta, sin usuario cargado en el Suite) queda genérico, sin
-  // inventar un nombre. Tampoco lleva más la marca "finanzasconnico" — es la comunidad personal
-  // de Nico en Instagram, no algo que tenga sentido en un informe que arma un compañero.
+  // herramienta como ?u=... en la URL (mismo mecanismo que usan el resto de las herramientas de
+  // la Suite). Si sos vos (Nico), sale tu nombre completo y la marca "finanzasconnico", como
+  // siempre. Si es un compañero, sale a su nombre y sin "finanzasconnico" (es tu comunidad
+  // personal de Instagram, no algo que tenga sentido en el informe de otro asesor). Sin usuario
+  // cargado (herramienta abierta suelta) queda genérico, sin inventar un nombre.
   var asesorPdf = (new URLSearchParams(location.search).get('u') || '').trim();
-  var lineaAsesor = asesorPdf ? ('Preparado por '+asesorPdf+' — Asesor financiero, Balanz') : 'Asesor financiero, Balanz';
+  var esNico = /nico/i.test(asesorPdf);
+  var tituloInforme = esNico ? 'finanzasconnico · <span style="color:#fff;font-weight:600;">Informe de rotación de bonos</span>' : 'Informe de rotación de bonos';
+  var lineaAsesor = esNico ? 'Preparado por Nicolás Strijland — Asesor financiero, Balanz'
+    : asesorPdf ? ('Preparado por '+asesorPdf+' — Asesor financiero, Balanz')
+    : 'Asesor financiero, Balanz';
   var header = document.createElement('div');
   header.style.cssText = 'display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:2px solid var(--balanz);margin-bottom:18px;';
   header.innerHTML =
     '<div class="topbar-logo" style="width:44px;height:44px;font-size:20px;flex-shrink:0;">B</div>'+
     '<div>'+
-      '<div style="font-family:\'Spectral\',serif;font-size:21px;font-weight:300;color:#fff;">Informe de rotación de bonos</div>'+
+      '<div style="font-family:\'Spectral\',serif;font-size:21px;font-weight:300;color:var(--cream);">'+tituloInforme+'</div>'+
       '<div style="font-size:10.5px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">'+lineaAsesor+'</div>'+
     '</div>';
   root.appendChild(header);

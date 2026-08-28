@@ -929,7 +929,11 @@ function updateFootNote(count) {
   } else {
     srcNote = 'Fuente: precio y volumen en vivo de A3 Mercados/MAE · cronograma de pagos de bonistas.com · TIR calculada por esta herramienta (aproximada, sin interés corrido).';
   }
-  document.getElementById('footNote').innerHTML = `${count} instrumentos · ${srcNote} Precios de referencia, no vinculantes. Consultá con Nico antes de operar.`;
+  // Antes decía fijo "Consultá con Nico" sin importar quién muestra esta pantalla — sale del
+  // "usuario" que pasa FCN Suite como ?u=... en la URL, igual que en el resto de la Suite.
+  const asesorFootNote = (new URLSearchParams(location.search).get('u') || '').trim();
+  const nombreFootNote = asesorFootNote ? (/nico/i.test(asesorFootNote) ? 'Nico' : asesorFootNote.split(' ')[0]) : 'tu asesor';
+  document.getElementById('footNote').innerHTML = `${count} instrumentos · ${srcNote} Precios de referencia, no vinculantes. Consultá con ${nombreFootNote} antes de operar.`;
 }
 
 renderTab();

@@ -1565,6 +1565,14 @@ function alertaSinStockFCN() {
   alert('Para poder enviar WhatsApp directo, primero subí el "Stock de cuentas" en la pestaña Archivos — de ahí sale el teléfono del cliente.');
 }
 
+// Nombre para firmar los mensajes — antes quedaba fijo "Nico" sin importar quién lo mandaba,
+// rompía apenas un compañero lo usaba con su cliente. Sale del "usuario" cargado en el Suite.
+function nombreAsesorFirma() {
+  const u = getSavedUsername().trim();
+  if (!u) return 'Tu asesor';
+  return /nico/i.test(u) ? 'Nico' : u.split(' ')[0];
+}
+
 function abrirWppLiquidez(cliente) {
   if (!cliente || !currentTenencia) return;
   const m = currentTenencia.porClienteMoneda[cliente] || { ARS: 0, USD: 0 };
@@ -1575,7 +1583,7 @@ function abrirWppLiquidez(cliente) {
   if (m.USD) partes.push('USD ' + fmtK(m.USD));
   if (m.ARS) partes.push('ARS ' + fmtK(m.ARS));
   const nombrePila = cliente.split(' ')[0];
-  const texto = `Hola ${nombrePila}! 👋\n\nVi que tenés ${partes.join(' y ')} de liquidez sin invertir en tu cuenta.\n\n¿Charlamos unos minutos para ver alguna alternativa y que ese dinero empiece a generarte una renta?\n\nQuedo a disposición 🙌\nNico`;
+  const texto = `Hola ${nombrePila}! 👋\n\nVi que tenés ${partes.join(' y ')} de liquidez sin invertir en tu cuenta.\n\n¿Charlamos unos minutos para ver alguna alternativa y que ese dinero empiece a generarte una renta?\n\nQuedo a disposición 🙌\n${nombreAsesorFirma()}`;
   document.getElementById('wppLiqTexto').value = texto;
   const telEl = document.getElementById('wppLiqTel');
   const sendBtn = document.getElementById('wppLiqSendBtn');

@@ -1588,8 +1588,11 @@ function shareCarteraWA(){
   var risk=document.getElementById('client-risk').value;
   var horiz=document.getElementById('client-horizon').value;
   var total=assets.reduce(function(s,a){return s+a.pct;},0);
+  // Mismo campo "Firma / Asesor" que ya usa el PDF (arriba del todo) — antes acá quedaba fijo
+  // "finanzasconnico" sin importar quién lo mandaba, ahora sale a nombre de quien lo generó.
+  var firmWA=document.getElementById('firm-name').value.trim();
   var lines=[];
-  lines.push('*Propuesta de Cartera — finanzasconnico*');
+  lines.push('*Propuesta de Cartera'+(firmWA?' — '+firmWA:'')+'*');
   if(cn)lines.push('Cliente: '+cn);
   if(ps>0)lines.push('Monto: '+fmt(ps,pc));
   if(risk)lines.push('Perfil: '+risk+(horiz?' · '+horiz:''));
