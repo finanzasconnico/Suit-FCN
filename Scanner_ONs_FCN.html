@@ -425,6 +425,42 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       </div>
     </div>
     <div class="divider"></div>
+    <div>
+      <div class="section-title">5 · Tenencia (USD)</div>
+      <div class="range-block">
+        <div class="range-row">
+          <span class="range-lbl" style="width:28px;">Mín</span>
+          <input type="number" id="inp-ten-min" class="range-num-input" value="0" min="0" step="1000" oninput="actualizarFiltrosTen()">
+          <span class="range-unit">USD</span>
+        </div>
+        <div class="range-sep"></div>
+        <div class="range-row">
+          <span class="range-lbl" style="width:28px;">Máx</span>
+          <input type="number" id="inp-ten-max" class="range-num-input" value="0" min="0" step="1000" oninput="actualizarFiltrosTen()">
+          <span class="range-unit">USD</span>
+        </div>
+        <div style="font-size:9px;color:var(--ink-muted);padding-top:4px;">0 en Máx = sin límite superior</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="section-title">6 · Días de tenencia</div>
+      <div class="range-block">
+        <div class="range-row">
+          <span class="range-lbl" style="width:28px;">Mín</span>
+          <input type="number" id="inp-dias-min" class="range-num-input" value="0" min="0" step="30" oninput="actualizarFiltrosDias()">
+          <span class="range-unit">días</span>
+        </div>
+        <div class="range-sep"></div>
+        <div class="range-row">
+          <span class="range-lbl" style="width:28px;">Máx</span>
+          <input type="number" id="inp-dias-max" class="range-num-input" value="0" min="0" step="30" oninput="actualizarFiltrosDias()">
+          <span class="range-unit">días</span>
+        </div>
+        <div style="font-size:9px;color:var(--ink-muted);padding-top:4px;">0 en Máx = sin límite superior</div>
+      </div>
+    </div>
+    <div class="divider"></div>
     <div id="log-panel" style="display:none">
       <div class="section-title">Estado</div>
       <div id="log-lines"></div>
@@ -650,6 +686,10 @@ let umbralTIR = 5.0;
 let umbralTIRAlta = 8.0;
 let umbralDurMax = 0;
 let umbralDurMin = 0;
+let umbralTenMin = 0;
+let umbralTenMax = 0;
+let umbralDiasMin = 0;
+let umbralDiasMax = 0;
 let modoTIRVis = 'todos'; // 'todos' | 'baja' | 'alta'
 let sortResumen = 'bajas';
 let sortState = { tabla: null, col: null, dir: 'asc' };
@@ -1019,6 +1059,10 @@ function aplicarFiltros() {
     if(calif&&!d.calificacion.toLowerCase().includes(calif)) return false;
     if(umbralDurMin>0&&d.duration!==null&&d.duration<umbralDurMin) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
+    if(umbralTenMin>0&&d.tenencia<umbralTenMin) return false;
+    if(umbralTenMax>0&&d.tenencia>umbralTenMax) return false;
+    if(umbralDiasMin>0&&d.diasTenencia<umbralDiasMin) return false;
+    if(umbralDiasMax>0&&d.diasTenencia>umbralDiasMax) return false;
     if(filtrarTipo&&!(tipoMap[d.tipo]??true)) return false;
     if(modoTIRVis!=='todos'&&d.tir!==null){
       if(modoTIRVis==='baja'&&d.tir>=minTIR) return false;
@@ -1898,6 +1942,20 @@ function actualizarFiltrosDur() {
   const mx=parseFloat(document.getElementById('inp-dur-max').value);
   umbralDurMin=isNaN(mn)||mn<0?0:mn;
   umbralDurMax=isNaN(mx)||mx<0?0:mx;
+  if(datosFusionados.length>0) aplicarFiltros();
+}
+function actualizarFiltrosTen() {
+  const mn=parseFloat(document.getElementById('inp-ten-min').value);
+  const mx=parseFloat(document.getElementById('inp-ten-max').value);
+  umbralTenMin=isNaN(mn)||mn<0?0:mn;
+  umbralTenMax=isNaN(mx)||mx<0?0:mx;
+  if(datosFusionados.length>0) aplicarFiltros();
+}
+function actualizarFiltrosDias() {
+  const mn=parseFloat(document.getElementById('inp-dias-min').value);
+  const mx=parseFloat(document.getElementById('inp-dias-max').value);
+  umbralDiasMin=isNaN(mn)||mn<0?0:mn;
+  umbralDiasMax=isNaN(mx)||mx<0?0:mx;
   if(datosFusionados.length>0) aplicarFiltros();
 }
 
