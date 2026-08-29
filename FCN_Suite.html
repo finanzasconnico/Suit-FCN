@@ -652,11 +652,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
           <div class="aliq-preview" id="aliqPreview">Calculando…</div>
 
-          <div class="aliq-help" id="aliqHelpFooter">Se descarga <code>aviso-liquidez.csv</code> a tu carpeta de Descargas. Abrí la plantilla <code>Aviso-liquidez.docx</code>, combiná con ese archivo, y Word manda un mail por cliente desde tu Outlook — nunca en copia. Instrucciones completas en la carpeta <code>plantillas-mail</code>.</div>
+          <div class="aliq-help" id="aliqHelpFooter">Se descargan <b>dos archivos</b> a Descargas: <code>Aviso-liquidez.docx</code> (ya con tus datos) y <code>aviso-liquidez.csv</code> (los clientes). Abrí el Word → Correspondencia → Seleccionar destinatarios → el CSV → Finalizar y combinar → Enviar por mail. Un mail por cliente, nunca en copia. Necesitás Outlook clásico abierto.</div>
 
           <div class="aliq-actions">
             <button class="aliq-btn-cancel" onclick="cerrarAvisoLiquidez()">Cancelar</button>
-            <button class="aliq-btn-gen" id="aliqBtnGen" onclick="generarDatosLiquidez()">⬇ Descargar archivo</button>
+            <button class="aliq-btn-gen" id="aliqBtnGen" onclick="generarDatosLiquidez()">⬇ Descargar Word + CSV</button>
           </div>
         </div>
       </div>
@@ -1737,8 +1737,9 @@ const AVISO_SUPA_URL = 'https://wixbbcziostbtqfmphcc.supabase.co';
 const AVISO_SUPA_KEY = 'sb_publishable_olGxTFFfHuoZ-wzxQbq5_Q_1JfYE2yw';
 const AVISO_MIN_KEY = 'fcn_aviso_liq_minimos';
 const AVISO_PERFIL_KEY = 'fcn_aviso_liq_perfil';
-const AVISO_COLS = ['Nombre', 'Email', 'MontoTexto', 'Asesor', 'Telefono', 'Instagram'];
+const AVISO_COLS = ['Nombre', 'Email', 'MontoTexto']; // lo que cambia por cliente; el resto va fijo en el .docx
 const AVISO_IG_DEFAULT = 'https://www.instagram.com/balanzcapital';
+const AVISO_PLANTILLA_URL = 'plantillas-mail/plantilla-aviso.docx';
 
 let _avisoBajasSet = null;     // Set<string> de mails dados de baja (minúsculas)
 let _avisoBajasError = false;  // true si falló el fetch a Supabase
@@ -1936,7 +1937,7 @@ function renderAvisoPreview() {
   el.innerHTML = html;
   if (btn) {
     btn.disabled = !canGen;
-    btn.textContent = prueba ? '⬇ Descargar archivo de prueba' : '⬇ Descargar archivo';
+    btn.textContent = prueba ? '⬇ Descargar Word + CSV de prueba' : '⬇ Descargar Word + CSV';
   }
 }
 
@@ -1970,13 +1971,84 @@ function cerrarAvisoLiquidez() {
   document.getElementById('avisoLiqOverlay').classList.remove('open');
 }
 
-// El archivo de datos es un CSV (UTF-8 con BOM, todos los campos entre comillas). Word lo
+// El CSV lleva solo lo que cambia por cliente (UTF-8 con BOM, campos entre comillas). Word lo
 // combina sin el cartel de seguridad "esto va a correr un SQL" que sí aparece con .xlsx.
 function _toCSV(rows) {
   const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
   const lines = [AVISO_COLS.map(esc).join(',')];
   for (const r of rows) lines.push(AVISO_COLS.map(c => esc(r[c])).join(','));
   return '﻿' + lines.join('\r\n') + '\r\n';
+}
+
+// ── mini-zip: leer/reescribir un .docx cuyas entradas están sin comprimir (STORED) ──
+// La plantilla base se genera así a propósito para no depender de una librería de deflate.
+const _crcTab = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function _crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = _crcTab[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function _zipRead(ab) {
+  const dv = new DataView(ab), u8 = new Uint8Array(ab);
+  let eo = u8.length - 22;
+  while (eo >= 0 && dv.getUint32(eo, true) !== 0x06054b50) eo--;
+  if (eo < 0) throw new Error('ZIP inválido (EOCD)');
+  const n = dv.getUint16(eo + 10, true);
+  let off = dv.getUint32(eo + 16, true);
+  const files = {}, order = [];
+  for (let i = 0; i < n; i++) {
+    const fnLen = dv.getUint16(off + 28, true), exLen = dv.getUint16(off + 30, true), cmLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(off + 46, off + 46 + fnLen));
+    const lfn = dv.getUint16(lho + 26, true), lex = dv.getUint16(lho + 28, true), size = dv.getUint32(lho + 18, true);
+    const start = lho + 30 + lfn + lex;
+    files[name] = u8.slice(start, start + size);
+    order.push(name);
+    off += 46 + fnLen + exLen + cmLen;
+  }
+  return { files, order };
+}
+function _zipWrite(files, order) {
+  const enc = new TextEncoder(), parts = [], central = []; let offset = 0;
+  for (const name of order) {
+    const data = files[name], nameB = enc.encode(name), crc = _crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, nameB.length, true);
+    parts.push(new Uint8Array(lh.buffer), nameB, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, nameB.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30 + nameB.length + data.length;
+  }
+  let cdSize = 0; for (const p of central) cdSize += p.length;
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(8, order.length, true); eocd.setUint16(10, order.length, true);
+  eocd.setUint32(12, cdSize, true); eocd.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, new Uint8Array(eocd.buffer)],
+    { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+const _xmlEsc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+async function _docxPersonalizado(perfil) {
+  const r = await fetch(AVISO_PLANTILLA_URL, { cache: 'no-store' });
+  if (!r.ok) throw new Error('No se pudo bajar la plantilla base (' + r.status + ')');
+  const { files, order } = _zipRead(await r.arrayBuffer());
+  const dec = new TextDecoder(), enc = new TextEncoder();
+  const asesor = _xmlEsc(_asesorFirma()), wpp = _xmlEsc(perfil.wpp || '');
+  let doc = dec.decode(files['word/document.xml']);
+  doc = doc.split('@@ASESOR@@').join(asesor).split('@@WHATSAPP@@').join(wpp);
+  files['word/document.xml'] = enc.encode(doc);
+  let rels = dec.decode(files['word/_rels/document.xml.rels']);
+  rels = rels.split('@@INSTAGRAM_URL@@').join(_xmlEsc(_instagramAviso(perfil)));
+  files['word/_rels/document.xml.rels'] = enc.encode(rels);
+  return _zipWrite(files, order);
+}
+function _descargar(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
 async function generarDatosLiquidez() {
@@ -1988,18 +2060,15 @@ async function generarDatosLiquidez() {
     return;
   }
 
-  let rows, fname, msg;
+  let rows, sufijo, filtradas = 0;
   if (prueba) {
     rows = filasPruebaAviso(perfil);
-    // aplicar el mismo filtro de bajas que en la corrida real
-    let filtradas = 0;
     if (_avisoBajasSet) rows = rows.filter(r => {
       if (_avisoBajasSet.has(String(r.Email).trim().toLowerCase())) { filtradas++; return false; }
       return true;
     });
     if (!rows.length) { showToast('Cargá al menos un mail de prueba.'); return; }
-    fname = 'aviso-liquidez-PRUEBA.csv';
-    msg = `✓ Archivo de prueba — ${rows.length} fila${rows.length === 1 ? '' : 's'}` + (filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : '') + '. Combiná con la plantilla de Word.';
+    sufijo = '-PRUEBA';
   } else {
     if (_avisoBajasError) {
       const ok = confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi generás igual, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Generar de todos modos?');
@@ -2008,19 +2077,27 @@ async function generarDatosLiquidez() {
     const res = calcularAvisoLiquidez(min, _avisoBajasSet, perfil);
     if (!res.rows.length) { showToast('Ningún cliente supera el mínimo ahora mismo.'); return; }
     rows = res.rows;
-    fname = 'aviso-liquidez.csv';
-    msg = `✓ Archivo descargado (${rows.length} cliente${rows.length === 1 ? '' : 's'}). Abrí la plantilla de Word y combiná.`;
+    sufijo = '';
   }
 
-  const blob = new Blob([_toCSV(rows)], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = fname;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  const btn = document.getElementById('aliqBtnGen');
+  if (btn) { btn.disabled = true; btn.textContent = 'Armando el Word…'; }
+  try {
+    const docx = await _docxPersonalizado(perfil);
+    _descargar(docx, `Aviso-liquidez${sufijo}.docx`);
+    _descargar(new Blob([_toCSV(rows)], { type: 'text/csv;charset=utf-8' }), `aviso-liquidez${sufijo}.csv`);
+  } catch (e) {
+    console.error('[Aviso liquidez]', e);
+    if (btn) { btn.disabled = false; btn.textContent = prueba ? '⬇ Descargar archivos de prueba' : '⬇ Descargar archivos'; }
+    showToast('No se pudo armar el Word: ' + e.message);
+    return;
+  }
 
   cerrarAvisoLiquidez();
-  showToast(msg);
+  const n = rows.length;
+  showToast(prueba
+    ? `✓ Word + CSV de prueba (${n} fila${n === 1 ? '' : 's'}${filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : ''}). Abrí el Word y combiná con el CSV.`
+    : `✓ Word + CSV descargados (${n} cliente${n === 1 ? '' : 's'}). Abrí el Word y combiná con el CSV.`);
 }
 
 function holdersCount(ticker) {
