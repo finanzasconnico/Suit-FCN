@@ -1,0 +1,27 @@
+name: Supabase keep-alive (fcn-bajas)
+
+# El plan Free de Supabase pausa el proyecto tras 7 días sin actividad. El aviso de liquidez
+# se usa 1 vez por mes, así que sin esto el proyecto se dormiría entre usos y tanto la página
+# de baja (unsubscribe.html) como la lectura de la lista desde el Suite quedarían caídas.
+# Este workflow hace un request trivial cada 3 días para mantenerlo despierto.
+# La key es la "publishable" (pública a propósito, ya va en unsubscribe.html) — no es un secreto.
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping vista bajas_emails
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://wixbbcziostbtqfmphcc.supabase.co/rest/v1/bajas_emails?select=email&limit=1" \
+            -H "apikey: sb_publishable_olGxTFFfHuoZ-wzxQbq5_Q_1JfYE2yw")
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::Supabase respondió $code (esperado 200). El proyecto puede estar pausado — entrá al dashboard y restauralo."
+            exit 1
+          fi

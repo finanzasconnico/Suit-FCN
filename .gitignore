@@ -42,6 +42,13 @@ Movimientos_test.xlsx
 # tenía de dónde leer la lista.
 !.github/scripts/tickers.txt
 
+# Excepción: plantilla de Word del aviso mensual de liquidez (cuerpo + campos de combinación,
+# sin datos de clientes). El .csv de datos y el .docm de cada asesor no se versionan.
+!plantillas-mail/Aviso-liquidez.docx
+plantillas-mail/_*
+plantillas-mail/aviso-liquidez*.csv
+plantillas-mail/*.docm
+
 # Caché de progreso del workflow de Precios Objetivo — no aporta nada versionado, se regenera
 # sola en cada corrida.
 .github/scripts/.cache_precios_objetivo.json

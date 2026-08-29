@@ -264,6 +264,37 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .wpp-liq-btn-send svg{width:13px;height:13px;fill:#08381f;}
 .wpp-liq-btn-send:disabled{opacity:.4;cursor:not-allowed;}
 
+/* ── AVISO MENSUAL DE LIQUIDEZ POR MAIL ── */
+.aviso-liq-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--jade-d);border:1px solid var(--jade);color:var(--jade);border-radius:20px;font-family:var(--font-s);font-size:10.5px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.aviso-liq-btn:hover{background:rgba(28,140,95,.22);}
+.aviso-liq-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:850;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:20px;}
+.aviso-liq-overlay.open{display:flex;}
+.aviso-liq-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:520px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.aviso-liq-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.aviso-liq-title{font-family:var(--font-d);font-size:16px;color:var(--text);}
+.aviso-liq-sub{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.aviso-liq-body{padding:16px 20px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;}
+.aliq-fieldset{border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
+.aliq-legend{font-family:var(--font-m);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.aliq-row{display:flex;gap:10px;margin-bottom:8px;}
+.aliq-row:last-child{margin-bottom:0;}
+.aliq-field{flex:1;display:flex;flex-direction:column;gap:4px;}
+.aliq-field label{font-size:10px;color:var(--muted);}
+.aliq-field input{width:100%;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;}
+.aliq-field input:focus{border-color:var(--jade);}
+.aliq-preview{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-size:11.5px;color:var(--text);line-height:1.7;}
+.aliq-preview .big{font-family:var(--font-d);font-size:22px;color:var(--jade);}
+.aliq-preview .warn{color:var(--ambar);}
+.aliq-preview .err{color:var(--danger);}
+.aliq-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:2px;}
+.aliq-btn-cancel{padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:11px;cursor:pointer;}
+.aliq-btn-cancel:hover{border-color:rgba(255,255,255,.3);}
+.aliq-btn-gen{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--jade);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-s);font-size:11px;font-weight:600;cursor:pointer;}
+.aliq-btn-gen:hover{background:#22a870;}
+.aliq-btn-gen:disabled{opacity:.4;cursor:not-allowed;}
+.aliq-help{font-size:10px;color:var(--muted);line-height:1.6;}
+.aliq-help a{color:var(--jade);}
+
 /* ── MODAL: CLIENTES QUE TIENEN UN TICKER ── */
 .holders-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:20px;}
 .holders-overlay.open{display:flex;}
@@ -440,7 +471,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <div id="dash-composicion" class="dash-scrollbox"></div>
           </div>
           <div class="dash-card">
-            <div class="dash-section-title">💵 Liquidez por moneda <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(clic en un cliente para ver su cartera)</span></div>
+            <div class="dash-section-title">💵 Liquidez por moneda <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(clic en un cliente para ver su cartera)</span>
+              <button class="aviso-liq-btn" onclick="abrirAvisoLiquidez()" title="Genera el archivo con todos los clientes con liquidez, para el envío mensual por mail">✉ Notificar a todos por mail</button>
+            </div>
             <div id="dash-liquidez-totales"></div>
             <div class="liq-toggle" id="liq-toggle">
               <button class="liq-toggle-btn usd active" onclick="setLiqMoneda('USD')">USD</button>
@@ -540,6 +573,78 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
               <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
               Abrir WhatsApp
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODAL: AVISO MENSUAL DE LIQUIDEZ POR MAIL ── -->
+    <div class="aviso-liq-overlay" id="avisoLiqOverlay" onclick="if(event.target===this) cerrarAvisoLiquidez()">
+      <div class="aviso-liq-modal">
+        <div class="aviso-liq-head">
+          <div>
+            <div class="aviso-liq-title">✉ Aviso mensual de liquidez</div>
+            <div class="aviso-liq-sub">Genera el archivo con todos los clientes que tienen liquidez sin invertir. Después lo combinás con la plantilla de Word para mandar el mail — uno por cliente, nunca en copia.</div>
+          </div>
+          <button class="wpp-liq-close" onclick="cerrarAvisoLiquidez()">✕</button>
+        </div>
+        <div class="aviso-liq-body">
+
+          <div class="aliq-fieldset" id="aliqMinBox">
+            <div class="aliq-legend">Mínimo para incluir a un cliente</div>
+            <div class="aliq-row">
+              <div class="aliq-field">
+                <label>En dólares (USD)</label>
+                <input type="number" id="aliqMinUSD" min="0" step="10">
+              </div>
+              <div class="aliq-field">
+                <label>En pesos (ARS)</label>
+                <input type="number" id="aliqMinARS" min="0" step="1000">
+              </div>
+            </div>
+            <div class="aliq-help">Si un cliente supera el mínimo en una sola moneda, el mail menciona solo esa.</div>
+          </div>
+
+          <div class="aliq-fieldset">
+            <div class="aliq-legend">Tu perfil</div>
+            <div class="aliq-row">
+              <div class="aliq-field">
+                <label>WhatsApp (con código de país) — va en el cuerpo del mail</label>
+                <input type="text" id="aliqWpp" placeholder="+54 9 11 ...">
+              </div>
+            </div>
+            <div class="aliq-help">Tu nombre sale del chip de usuario (arriba a la derecha). La foto y los links de comunidad / Instagram van en tu copia de la plantilla de Word — se configuran una sola vez.</div>
+          </div>
+
+          <div class="aliq-fieldset">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text);">
+              <input type="checkbox" id="aliqTestChk" style="width:15px;height:15px;">
+              🧪 Modo prueba — genera 3 mails de ejemplo a tu casilla, no manda a clientes
+            </label>
+            <div id="aliqTestFields" style="display:none;margin-top:12px;">
+              <div class="aliq-row">
+                <div class="aliq-field">
+                  <label>Mail(es) de prueba — reciben los 3 casos (separá con coma o Enter)</label>
+                  <input type="text" id="aliqTestMail" placeholder="tumail@balanz.com, otro@mail.com">
+                </div>
+              </div>
+              <div class="aliq-row">
+                <div class="aliq-field">
+                  <label>Mail(es) para probar el filtro de bajas — deberían NO recibir nada (separá con coma)</label>
+                  <input type="text" id="aliqTestBajaMail" placeholder="mail-dado-de-baja@mail.com, otro@mail.com">
+                </div>
+              </div>
+              <div class="aliq-help">Datte de baja de esos mails en <code>unsubscribe.html</code> primero. Si el filtro anda, esas filas no aparecen en el archivo.</div>
+            </div>
+          </div>
+
+          <div class="aliq-preview" id="aliqPreview">Calculando…</div>
+
+          <div class="aliq-help" id="aliqHelpFooter">Se descarga <code>aviso-liquidez.csv</code> a tu carpeta de Descargas. Abrí la plantilla <code>Aviso-liquidez.docx</code>, combiná con ese archivo, y Word manda un mail por cliente desde tu Outlook — nunca en copia. Instrucciones completas en la carpeta <code>plantillas-mail</code>.</div>
+
+          <div class="aliq-actions">
+            <button class="aliq-btn-cancel" onclick="cerrarAvisoLiquidez()">Cancelar</button>
+            <button class="aliq-btn-gen" id="aliqBtnGen" onclick="generarDatosLiquidez()">⬇ Descargar archivo</button>
           </div>
         </div>
       </div>
@@ -1608,6 +1713,274 @@ function enviarWppLiquidez() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => window.open(web, '_blank'), 1500);
   cerrarWppLiquidez();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AVISO MENSUAL DE LIQUIDEZ POR MAIL
+//  Genera un .xlsx (nombre, mail, monto, links del perfil del asesor) para
+//  combinar con la plantilla de Word. Excluye a los que se dieron de baja
+//  (lista en Supabase, proyecto fcn-bajas). Cada asesor usa su propio navegador.
+// ══════════════════════════════════════════════════════════════
+const AVISO_SUPA_URL = 'https://wixbbcziostbtqfmphcc.supabase.co';
+const AVISO_SUPA_KEY = 'sb_publishable_olGxTFFfHuoZ-wzxQbq5_Q_1JfYE2yw';
+const AVISO_MIN_KEY = 'fcn_aviso_liq_minimos';
+const AVISO_PERFIL_KEY = 'fcn_aviso_liq_perfil';
+const AVISO_COLS = ['Nombre', 'Email', 'MontoTexto', 'Asesor', 'Telefono'];
+
+let _avisoBajasSet = null;     // Set<string> de mails dados de baja (minúsculas)
+let _avisoBajasError = false;  // true si falló el fetch a Supabase
+
+function getAvisoMinimos() {
+  try {
+    const s = JSON.parse(localStorage.getItem(AVISO_MIN_KEY) || '{}');
+    return { USD: Number.isFinite(s.USD) ? s.USD : 100, ARS: Number.isFinite(s.ARS) ? s.ARS : 100000 };
+  } catch { return { USD: 100, ARS: 100000 }; }
+}
+function getAvisoPerfil() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(AVISO_PERFIL_KEY) || '{}'); } catch {}
+  const esNico = getSavedUsername().toLowerCase() === 'nicolas';
+  const def = esNico ? {
+    wpp: '+54 9 11 2328 4509',
+    testMail: 'nstrijland@balanz.com',
+    testBajaMail: 'nicostrijland@gmail.com, naico55@hotmail.com'
+  } : { wpp: '', testMail: '', testBajaMail: '' };
+  return {
+    wpp: s.wpp != null ? s.wpp : def.wpp,
+    testMail: s.testMail != null ? s.testMail : def.testMail,
+    testBajaMail: s.testBajaMail != null ? s.testBajaMail : def.testBajaMail
+  };
+}
+function _readAvisoPerfilInputs() {
+  return {
+    wpp: document.getElementById('aliqWpp').value.trim(),
+    testMail: document.getElementById('aliqTestMail').value.trim(),
+    testBajaMail: document.getElementById('aliqTestBajaMail').value.trim()
+  };
+}
+function guardarAvisoConfig() {
+  const min = {
+    USD: Math.max(0, Number(document.getElementById('aliqMinUSD').value) || 0),
+    ARS: Math.max(0, Number(document.getElementById('aliqMinARS').value) || 0)
+  };
+  localStorage.setItem(AVISO_MIN_KEY, JSON.stringify(min));
+  const perfil = _readAvisoPerfilInputs();
+  localStorage.setItem(AVISO_PERFIL_KEY, JSON.stringify(perfil));
+  return { min, perfil };
+}
+
+function tcNombre(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  return s.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (_, sep, c) => sep + c.toUpperCase());
+}
+function fmtMonto(n) { return Math.round(n).toLocaleString('es-AR'); }
+
+// Filas sintéticas para el modo prueba — cubren solo-USD, solo-ARS y ambas monedas + un
+// nombre con tilde. Los mails de "prueba" reciben todo; el de "baja" se agrega para
+// verificar que el filtro de Supabase realmente lo saca.
+function filasPruebaAviso(perfil) {
+  const asesor = _asesorFirma();
+  const base = () => ({ Asesor: asesor, Telefono: perfil.wpp || '' });
+  const dest = (perfil.testMail || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+  const casos = [
+    { Nombre: 'Juan', MontoTexto: 'USD ' + fmtMonto(1200) },
+    { Nombre: 'María José', MontoTexto: 'ARS ' + fmtMonto(450000) },
+    { Nombre: 'Carlos', MontoTexto: 'USD ' + fmtMonto(800) + ' y ARS ' + fmtMonto(300000) }
+  ];
+  const rows = casos.map((c, i) => {
+    const mail = dest.length ? dest[i % dest.length] : 'prueba@ejemplo.com';
+    return { ...c, Email: mail, ...base() };
+  });
+  const bajas = _avisoTestBajas(perfil);
+  const nombresBaja = ['Pedro', 'Ana', 'Sofía', 'Diego', 'Lucía'];
+  bajas.forEach((mail, i) => rows.push({
+    Nombre: (nombresBaja[i] || 'Baja' + (i + 1)) + ' (debería filtrarse)',
+    MontoTexto: 'USD ' + fmtMonto(5000), Email: mail, ...base()
+  }));
+  return rows;
+}
+function _avisoTestBajas(perfil) {
+  return (perfil.testBajaMail || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+}
+
+function _asesorFirma() {
+  let a = getDisplayUser().displayName;
+  if (!a || a === '?') a = getSavedUsername();
+  return (a || '').trim();
+}
+
+async function fetchBajasSet() {
+  try {
+    const r = await fetch(AVISO_SUPA_URL + '/rest/v1/bajas_emails?select=email', { headers: { apikey: AVISO_SUPA_KEY } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    return new Set((data || []).map(x => String(x.email || '').trim().toLowerCase()).filter(Boolean));
+  } catch (e) {
+    console.warn('[Aviso liquidez] no se pudo leer la lista de bajas:', e);
+    return null;
+  }
+}
+
+// Devuelve { rows: [...], excl: {sinDato, sinMail, baja} } aplicando los mínimos actuales
+function calcularAvisoLiquidez(min, bajasSet, perfil) {
+  const out = { rows: [], excl: { sinDato: 0, sinMail: 0, baja: 0 } };
+  if (!currentTenencia || !currentTenencia.porClienteMoneda) return out;
+  const asesor = _asesorFirma();
+  for (const [cliente, m] of Object.entries(currentTenencia.porClienteMoneda)) {
+    const usd = m.USD || 0, ars = m.ARS || 0;
+    const okUSD = usd > 0 && usd >= min.USD;
+    const okARS = ars > 0 && ars >= min.ARS;
+    if (!okUSD && !okARS) continue;
+    const comitente = currentTenencia.comitentePorCliente[cliente];
+    if (!comitente) { out.excl.sinDato++; continue; }
+    const stock = currentStockMap ? currentStockMap[comitente] : null;
+    const mail = stock && stock.mail ? String(stock.mail).trim().toLowerCase() : '';
+    if (!mail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { out.excl.sinMail++; continue; }
+    if (bajasSet && bajasSet.has(mail)) { out.excl.baja++; continue; }
+    const partes = [];
+    if (okUSD) partes.push('USD ' + fmtMonto(usd));
+    if (okARS) partes.push('ARS ' + fmtMonto(ars));
+    out.rows.push({
+      Nombre: tcNombre(stock.nombre) || tcNombre(String(cliente).split(/[\s,]+/)[0]) || 'Hola',
+      Email: mail,
+      MontoTexto: partes.join(' y '),
+      Asesor: asesor,
+      Telefono: perfil.wpp || ''
+    });
+  }
+  out.rows.sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es'));
+  return out;
+}
+
+function _avisoModoPrueba() {
+  const c = document.getElementById('aliqTestChk');
+  return !!(c && c.checked);
+}
+
+function renderAvisoPreview() {
+  const el = document.getElementById('aliqPreview');
+  const btn = document.getElementById('aliqBtnGen');
+  if (!el) return;
+  const min = {
+    USD: Math.max(0, Number(document.getElementById('aliqMinUSD').value) || 0),
+    ARS: Math.max(0, Number(document.getElementById('aliqMinARS').value) || 0)
+  };
+  const perfil = _readAvisoPerfilInputs();
+  const prueba = _avisoModoPrueba();
+  document.getElementById('aliqTestFields').style.display = prueba ? 'block' : 'none';
+  document.getElementById('aliqMinBox').style.opacity = prueba ? '.4' : '1';
+
+  let html, canGen;
+  if (prueba) {
+    const dest = (perfil.testMail || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+    const bajas = _avisoTestBajas(perfil);
+    html = `<span class="big">🧪</span> Archivo de <b>prueba</b>: ${3 + bajas.length} filas de ejemplo (no tus clientes).`;
+    html += dest.length
+      ? `<br>Los 3 casos (solo USD / solo ARS / ambas) van a: <b>${dest.map(escHtml).join(', ')}</b>.`
+      : `<br><span class="err">⚠ Cargá al menos un mail de prueba abajo.</span>`;
+    bajas.forEach(m => {
+      const enLista = _avisoBajasSet && _avisoBajasSet.has(m);
+      html += enLista
+        ? `<br><span style="color:var(--jade)">✓ <b>${escHtml(m)}</b> se va a filtrar (está en la lista de bajas).</span>`
+        : `<br><span class="warn">⚠ <b>${escHtml(m)}</b> NO está en la lista de bajas — datte de baja en unsubscribe.html primero, o esa fila NO se filtra.</span>`;
+    });
+    canGen = dest.length > 0;
+  } else {
+    const res = calcularAvisoLiquidez(min, _avisoBajasSet, perfil);
+    const n = res.rows.length;
+    html = `<span class="big">${n}</span> cliente${n === 1 ? '' : 's'} ${n === 1 ? 'va' : 'van'} a recibir el aviso.`;
+    const exc = [];
+    if (res.excl.baja) exc.push(`${res.excl.baja} dado/s de baja`);
+    if (res.excl.sinMail) exc.push(`${res.excl.sinMail} sin mail en el Stock`);
+    if (res.excl.sinDato) exc.push(`${res.excl.sinDato} sin comitente para cruzar`);
+    if (exc.length) html += `<br>Excluidos: ${exc.join(' · ')}.`;
+    if (!currentStockMap) html += `<br><span class="err">⚠ Falta el Stock de cuentas — sin eso no hay mails. Subilo en la pestaña Archivos.</span>`;
+    if (!_asesorFirma()) html += `<br><span class="warn">⚠ No tenés nombre configurado — la firma del mail va a salir vacía. Ponelo en el chip de usuario, arriba a la derecha.</span>`;
+    canGen = n > 0;
+  }
+  if (_avisoBajasError) html += `<br><span class="err">⚠ No se pudo verificar la lista de bajas — revisá tu conexión antes de generar.</span>`;
+  el.innerHTML = html;
+  if (btn) {
+    btn.disabled = !canGen;
+    btn.textContent = prueba ? '⬇ Descargar archivo de prueba' : '⬇ Descargar archivo';
+  }
+}
+
+async function abrirAvisoLiquidez() {
+  if (!currentTenencia || !currentTenencia.porClienteMoneda || !Object.keys(currentTenencia.porClienteMoneda).length) {
+    showToast('Primero subí la Tenencia por Ticker en la pestaña Archivos.');
+    return;
+  }
+  const min = getAvisoMinimos(), perfil = getAvisoPerfil();
+  document.getElementById('aliqMinUSD').value = min.USD;
+  document.getElementById('aliqMinARS').value = min.ARS;
+  document.getElementById('aliqWpp').value = perfil.wpp;
+  document.getElementById('aliqTestMail').value = perfil.testMail;
+  document.getElementById('aliqTestBajaMail').value = perfil.testBajaMail;
+  document.getElementById('aliqTestChk').checked = false;
+  ['aliqMinUSD', 'aliqMinARS', 'aliqWpp', 'aliqTestMail', 'aliqTestBajaMail'].forEach(id => {
+    document.getElementById(id).oninput = renderAvisoPreview;
+  });
+  document.getElementById('aliqTestChk').onchange = renderAvisoPreview;
+  document.getElementById('aliqPreview').textContent = 'Verificando lista de bajas…';
+  document.getElementById('avisoLiqOverlay').classList.add('open');
+
+  _avisoBajasSet = await fetchBajasSet();
+  _avisoBajasError = _avisoBajasSet === null;
+  renderAvisoPreview();
+}
+
+function cerrarAvisoLiquidez() {
+  document.getElementById('avisoLiqOverlay').classList.remove('open');
+}
+
+// El archivo de datos es un CSV (UTF-8 con BOM, todos los campos entre comillas). Word lo
+// combina sin el cartel de seguridad "esto va a correr un SQL" que sí aparece con .xlsx.
+function _toCSV(rows) {
+  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const lines = [AVISO_COLS.map(esc).join(',')];
+  for (const r of rows) lines.push(AVISO_COLS.map(c => esc(r[c])).join(','));
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
+
+async function generarDatosLiquidez() {
+  const { min, perfil } = guardarAvisoConfig();
+  const prueba = _avisoModoPrueba();
+
+  let rows, fname, msg;
+  if (prueba) {
+    rows = filasPruebaAviso(perfil);
+    // aplicar el mismo filtro de bajas que en la corrida real
+    let filtradas = 0;
+    if (_avisoBajasSet) rows = rows.filter(r => {
+      if (_avisoBajasSet.has(String(r.Email).trim().toLowerCase())) { filtradas++; return false; }
+      return true;
+    });
+    if (!rows.length) { showToast('Cargá al menos un mail de prueba.'); return; }
+    fname = 'aviso-liquidez-PRUEBA.csv';
+    msg = `✓ Archivo de prueba — ${rows.length} fila${rows.length === 1 ? '' : 's'}` + (filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : '') + '. Combiná con la plantilla de Word.';
+  } else {
+    if (_avisoBajasError) {
+      const ok = confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi generás igual, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Generar de todos modos?');
+      if (!ok) return;
+    }
+    const res = calcularAvisoLiquidez(min, _avisoBajasSet, perfil);
+    if (!res.rows.length) { showToast('Ningún cliente supera el mínimo ahora mismo.'); return; }
+    rows = res.rows;
+    fname = 'aviso-liquidez.csv';
+    msg = `✓ Archivo descargado (${rows.length} cliente${rows.length === 1 ? '' : 's'}). Abrí la plantilla de Word y combiná.`;
+  }
+
+  const blob = new Blob([_toCSV(rows)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  cerrarAvisoLiquidez();
+  showToast(msg);
 }
 
 function holdersCount(ticker) {

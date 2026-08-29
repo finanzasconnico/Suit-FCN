@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
 <title>Darme de baja — FinanzasconNico</title>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -135,6 +136,15 @@ input::placeholder { color: var(--dim); }
   margin-top: 4px;
 }
 .btn:hover { background: #22a870; }
+.btn:disabled { opacity: .55; cursor: default; }
+
+.err-msg {
+  display: none;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--danger);
+  line-height: 1.5;
+}
 
 /* Success state */
 .success {
@@ -187,50 +197,99 @@ input::placeholder { color: var(--dim); }
   <!-- Formulario -->
   <div id="formSection">
     <h1>Darme de baja</h1>
-    <p class="subtitle">Si no querés recibir más comunicaciones de nuestro equipo, completá tu dirección de mail y te removemos de la lista.</p>
+    <p class="subtitle">Si no querés recibir más los avisos automáticos de nuestro equipo, ingresá tu dirección de mail y te sacamos de la lista al instante.</p>
 
-    <form name="bajas" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="unsubForm">
-      <input type="hidden" name="form-name" value="bajas">
-      <div style="display:none"><input name="bot-field"></div>
-
+    <form id="unsubForm" novalidate>
       <div class="form-group">
         <label for="email">Tu dirección de mail</label>
-        <input type="email" id="email" name="email" placeholder="ejemplo@mail.com" required>
+        <input type="email" id="email" name="email" placeholder="ejemplo@mail.com" autocomplete="email" required>
       </div>
 
       <div class="form-group">
         <label for="nombre">Tu nombre <span style="color:var(--dim)">(opcional)</span></label>
-        <input type="text" id="nombre" name="nombre" placeholder="Juan García">
+        <input type="text" id="nombre" name="nombre" placeholder="Juan García" autocomplete="name">
       </div>
 
-      <button type="submit" class="btn">Darme de baja</button>
+      <button type="submit" class="btn" id="submitBtn">Darme de baja</button>
+      <p class="err-msg" id="errMsg"></p>
     </form>
 
-    <p class="footer-note">FinanzasconNico · Acceso al equipo interno</p>
+    <p class="footer-note">FinanzasconNico</p>
   </div>
 
   <!-- Éxito -->
   <div class="success" id="successSection">
     <div class="success-icon">✓</div>
-    <h2>¡Listo!</h2>
-    <p>Recibimos tu solicitud. En las próximas 48 horas tu mail quedará removido de todas nuestras listas.</p>
-    <p class="footer-note">FinanzasconNico · Si tenés dudas escribinos directamente.</p>
+    <h2>Listo, te dimos de baja</h2>
+    <p id="successText">Ya no vas a recibir más los avisos automáticos de liquidez. Si en algún momento querés volver a recibirlos, escribile a tu asesor.</p>
+    <p class="footer-note">FinanzasconNico</p>
   </div>
 
 </div>
 
 <script>
-  const form = document.getElementById('unsubForm');
+  // ── Config Supabase (proyecto fcn-bajas) ──
+  // La publishable key es pública a propósito: la seguridad real está en las
+  // políticas del proyecto (el anónimo solo puede llamar a la función darse_de_baja).
+  const SUPABASE_URL = 'https://wixbbcziostbtqfmphcc.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_olGxTFFfHuoZ-wzxQbq5_Q_1JfYE2yw';
+
+  const form    = document.getElementById('unsubForm');
+  const emailIn = document.getElementById('email');
+  const nombreIn= document.getElementById('nombre');
+  const btn     = document.getElementById('submitBtn');
+  const errMsg  = document.getElementById('errMsg');
+
+  // Precargar mail desde el link del correo: unsubscribe.html?e=juan%40mail.com
+  try {
+    const params = new URLSearchParams(location.search);
+    const e = (params.get('e') || params.get('email') || '').trim();
+    const n = (params.get('n') || params.get('nombre') || '').trim();
+    if (e) emailIn.value = e;
+    if (n) nombreIn.value = n;
+  } catch {}
+
+  function showError(msg) {
+    errMsg.textContent = msg;
+    errMsg.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Darme de baja';
+  }
+
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    const data = new FormData(form);
+    errMsg.style.display = 'none';
+
+    const email = emailIn.value.trim().toLowerCase();
+    const nombre = nombreIn.value.trim();
+
+    if (!email || email.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('Revisá que el mail esté bien escrito.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Dándote de baja…';
+
     try {
-      await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(data).toString() });
-      document.getElementById('formSection').style.display = 'none';
-      const s = document.getElementById('successSection');
-      s.style.display = 'flex';
+      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/darse_de_baja', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: email, p_nombre: nombre || null })
+      });
+
+      if (res.ok) {
+        document.getElementById('formSection').style.display = 'none';
+        document.getElementById('successSection').style.display = 'flex';
+        return;
+      }
+      if (res.status === 400) {
+        showError('El mail no parece válido. Revisá que esté bien escrito.');
+        return;
+      }
+      showError('Hubo un problema al procesar la baja. Probá de nuevo en un rato, o escribile directo a tu asesor y te sacamos de la lista.');
     } catch {
-      alert('Hubo un error. Por favor intentá de nuevo o escribinos directamente.');
+      showError('No pudimos conectar. Revisá tu conexión e intentá de nuevo, o escribile directo a tu asesor.');
     }
   });
 </script>

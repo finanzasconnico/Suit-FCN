@@ -80,6 +80,13 @@ También hubo una acumulación de candados `.git/index.lock`/`HEAD.lock` por ses
 
 ### Grandes / con diseño dedicado
 
+**Aviso mensual por mail a clientes con liquidez sin invertir — CONSTRUIDO (29/08/2026), pendiente de que Nico lo pruebe con "modo prueba" y de armar la versión `.docm`.** Tres partes:
+1. **Baja instantánea** — proyecto Supabase `fcn-bajas` (URL + publishable key hardcodeadas a propósito en `unsubscribe.html` y `FCN_Suite.html`; la seguridad está en la RLS). El cliente se da de baja llamando a la función `darse_de_baja(p_email, p_nombre)` (SECURITY DEFINER); el Suite lee la lista por la vista `bajas_emails`. `unsubscribe.html` reescrita (antes era Netlify Forms, muerto al pasar a Vercel + sin camino de vuelta al Suite). Keep-alive: `.github/workflows/supabase_keepalive.yml` (plan Free pausa a los 7 días).
+2. **Botón + generación en `FCN_Suite.html`** — "✉ Notificar a todos por mail" arriba del cuadro de Liquidez (Inicio). Modal `abrirAvisoLiquidez()`: mínimos (default USD 100 / ARS 100.000, en localStorage), WhatsApp del asesor, y **modo prueba** (filas sintéticas a la casilla del asesor + filas que deberían filtrarse por baja). Genera **`aviso-liquidez.csv`** (CSV con BOM, no xlsx — ver gotcha abajo). Columnas: `Nombre, Email, MontoTexto, Asesor, WhatsApp`. Funciones: `calcularAvisoLiquidez` / `filasPruebaAviso` / `generarDatosLiquidez` / `_toCSV`.
+3. **Plantilla Word** — `plantillas-mail/Aviso-liquidez.docx` (+ `INSTRUCCIONES.md` + `macro.vba` para la versión `.docm` de un clic). Generada con python-docx. 5 campos de combinación, los 10 deep-links de Balanz embebidos en el texto. Sin foto (opcional, cada asesor la pega). `.gitignore` tiene excepción para el `.docx`; el `.csv` de datos nunca se versiona.
+
+**Gotcha clave (por qué CSV y no Excel):** conectar un `.xlsx` como origen de datos en Word dispara el cartel de seguridad "esto va a correr un SQL". Con CSV + `OpenDataSource ... Format:=0` (wdOpenFormatText) NO aparece. Verificado con merge real vía Word COM — acentos OK con BOM UTF-8.
+
 **Rotador RV — mail (masivo + individual) y "Precios y Targets" — CONSTRUIDO (21/08/2026), pendiente de que Nico lo pruebe.** Spec en `Spec_RotadorRV_Mail_PreciosTargets.md` (v2, corregida). Las 6 prioridades de la spec están implementadas en `Rotador_RV_3.html`:
 1. `MAIL_TEMPLATES` señal-consciente (calcado de `TEMPLATES` de WhatsApp, mismo `SENAL_TPL_MAP` compartido) — `mailBtnHtml(p)` ya lo usa en vez del texto genérico de antes.
 2. Botón "✉ Resumen" en cada `cliente-card` de "Por cliente" → modal `mail-modal-overlay` (asunto + cuerpo editables, "Abrir en mail" y "Copiar"), generado por `generarMailResumen(cliente, poss, huboFiltro)`.
