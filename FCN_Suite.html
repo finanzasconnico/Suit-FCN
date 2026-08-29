@@ -609,6 +609,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <div class="aliq-legend">Tu perfil (obligatorio)</div>
             <div class="aliq-row">
               <div class="aliq-field">
+                <label>Tu nombre y apellido (firma del mail)</label>
+                <input type="text" id="aliqFirma" placeholder="Nombre Apellido">
+              </div>
+            </div>
+            <div class="aliq-row">
+              <div class="aliq-field">
                 <label>WhatsApp (con código de país)</label>
                 <input type="text" id="aliqWpp" placeholder="+54 9 11 ...">
               </div>
@@ -619,7 +625,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
                 <input type="text" id="aliqInstagram" placeholder="https://www.instagram.com/balanzcapital">
               </div>
             </div>
-            <div class="aliq-help">Tu nombre sale del chip de usuario (arriba a la derecha). La foto y el link de comunidad de WhatsApp van en tu copia de la plantilla de Word.</div>
+            <div class="aliq-help">Se guardan en este navegador. La foto y el link de comunidad de WhatsApp van en tu copia de la plantilla de Word.</div>
           </div>
 
           <div class="aliq-fieldset">
@@ -1748,12 +1754,14 @@ function getAvisoPerfil() {
   try { s = JSON.parse(localStorage.getItem(AVISO_PERFIL_KEY) || '{}'); } catch {}
   const esNico = getSavedUsername().toLowerCase() === 'nicolas';
   const def = esNico ? {
+    firma: 'Nicolás Strijland',
     wpp: '+54 9 11 2328 4509',
     instagram: 'https://www.instagram.com/finanzasconnico_',
     testMail: 'nstrijland@balanz.com',
     testBajaMail: 'nicostrijland@gmail.com, naico55@hotmail.com'
-  } : { wpp: '', instagram: '', testMail: '', testBajaMail: '' };
+  } : { firma: '', wpp: '', instagram: '', testMail: '', testBajaMail: '' };
   return {
+    firma: s.firma != null ? s.firma : def.firma,
     wpp: s.wpp != null ? s.wpp : def.wpp,
     instagram: s.instagram != null ? s.instagram : def.instagram,
     testMail: s.testMail != null ? s.testMail : def.testMail,
@@ -1762,6 +1770,7 @@ function getAvisoPerfil() {
 }
 function _readAvisoPerfilInputs() {
   return {
+    firma: document.getElementById('aliqFirma').value.trim(),
     wpp: document.getElementById('aliqWpp').value.trim(),
     instagram: document.getElementById('aliqInstagram').value.trim(),
     testMail: document.getElementById('aliqTestMail').value.trim(),
@@ -1816,6 +1825,11 @@ function _avisoTestBajas(perfil) {
 }
 
 function _asesorFirma() {
+  // El nombre y apellido del modal manda; si no, el displayName del usuario; si no, el username.
+  const inp = document.getElementById('aliqFirma');
+  if (inp && inp.value.trim()) return inp.value.trim();
+  const saved = (getAvisoPerfil().firma || '').trim();
+  if (saved) return saved;
   let a = getDisplayUser().displayName;
   if (!a || a === '?') a = getSavedUsername();
   return (a || '').trim();
@@ -1912,8 +1926,8 @@ function renderAvisoPreview() {
   }
   // Bloqueos duros — sin estos el mail sale mal
   const faltan = [];
-  if (!_asesorFirma()) faltan.push('tu <b>nombre</b> (chip de usuario, arriba a la derecha)');
-  if (!(perfil.wpp || '').trim()) faltan.push('tu <b>WhatsApp</b> (acá arriba, en "Tu perfil")');
+  if (!_asesorFirma()) faltan.push('tu <b>nombre y apellido</b>');
+  if (!(perfil.wpp || '').trim()) faltan.push('tu <b>WhatsApp</b>');
   if (faltan.length) {
     html += `<br><span class="err">⚠ Antes de generar, completá: ${faltan.join(' y ')}.</span>`;
     canGen = false;
@@ -1934,12 +1948,13 @@ async function abrirAvisoLiquidez() {
   const min = getAvisoMinimos(), perfil = getAvisoPerfil();
   document.getElementById('aliqMinUSD').value = min.USD;
   document.getElementById('aliqMinARS').value = min.ARS;
+  document.getElementById('aliqFirma').value = perfil.firma || (getDisplayUser().displayName === '?' ? '' : getDisplayUser().displayName || '');
   document.getElementById('aliqWpp').value = perfil.wpp;
   document.getElementById('aliqInstagram').value = perfil.instagram;
   document.getElementById('aliqTestMail').value = perfil.testMail;
   document.getElementById('aliqTestBajaMail').value = perfil.testBajaMail;
   document.getElementById('aliqTestChk').checked = false;
-  ['aliqMinUSD', 'aliqMinARS', 'aliqWpp', 'aliqInstagram', 'aliqTestMail', 'aliqTestBajaMail'].forEach(id => {
+  ['aliqMinUSD', 'aliqMinARS', 'aliqFirma', 'aliqWpp', 'aliqInstagram', 'aliqTestMail', 'aliqTestBajaMail'].forEach(id => {
     document.getElementById(id).oninput = renderAvisoPreview;
   });
   document.getElementById('aliqTestChk').onchange = renderAvisoPreview;
@@ -1969,7 +1984,7 @@ async function generarDatosLiquidez() {
   const prueba = _avisoModoPrueba();
 
   if (!_asesorFirma() || !(perfil.wpp || '').trim()) {
-    showToast('Completá tu nombre (chip de usuario) y tu WhatsApp antes de generar.');
+    showToast('Completá tu nombre y apellido y tu WhatsApp en "Tu perfil" antes de generar.');
     return;
   }
 
