@@ -62,5 +62,9 @@ El `.docm` no está en el repo, hay que crearlo:
 4. `Ctrl + S` → cerrá el editor (la X).
 5. Guardá el `.docm` y compartilo con el equipo (mail / drive / repo).
 
-Cada asesor que quiera la foto o sus propios links de Instagram/comunidad, que edite su copia
-del `.docx` **antes** de guardarla como `.docm` (clic derecho sobre el link → Modificar hipervínculo).
+**Qué sale de dónde:**
+- Nombre del asesor, WhatsApp e **Instagram** → los pone la Suite en el archivo (el Instagram se
+  configura en el modal; si el asesor lo deja vacío, usa el de Balanz automáticamente).
+- **Foto** y **link de comunidad de WhatsApp** → los agrega cada asesor a su copia del `.docx`,
+  una sola vez (Insertar → Imagen para la foto; para la comunidad, escribí el texto en el pie y
+  seleccionalo → Insertar → Vínculo).
