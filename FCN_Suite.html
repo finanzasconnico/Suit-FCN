@@ -722,8 +722,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         <h2>🏆 Ranking de Rentabilidad</h2>
         <p>Clientes ordenados por rentabilidad ponderada desde que compraron cada posición (Renta Fija y Renta Variable juntas). Todavía no es "rentabilidad de los últimos N meses" — para eso hace falta guardar fotos históricas de la cartera, que no tenemos por ahora.</p>
       </div>
-      <div style="max-width:960px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;">
-        <input type="text" placeholder="Buscar cliente…" oninput="filtrarRanking(this.value)" style="flex:1;padding:9px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
+      <div style="max-width:960px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <input type="text" placeholder="Buscar cliente…" oninput="filtrarRanking(this.value)" style="flex:1;min-width:160px;padding:9px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label for="ranking-min-tenencia" style="font-size:11px;color:var(--muted);white-space:nowrap;">Tenencia mín. (USD)</label>
+          <input type="number" id="ranking-min-tenencia" placeholder="0" min="0" step="500" oninput="filtrarRankingMinTenencia(this.value)" style="width:110px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
+        </div>
         <span id="ranking-count" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
       </div>
       <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="ranking-body"></div>
@@ -2352,7 +2356,9 @@ function renderCliente360() {
 //  fotos históricas de la cartera, que no guardamos) — se aclara en pantalla.
 // ══════════════════════════════════════════════════════════════
 let rankingSearch = '';
+let rankingMinTenencia = 0;
 function filtrarRanking(val) { rankingSearch = (val || '').trim().toLowerCase(); renderRanking(); }
+function filtrarRankingMinTenencia(val) { rankingMinTenencia = Math.max(0, parseFloat(val) || 0); renderRanking(); }
 
 function renderRanking() {
   const el = document.getElementById('ranking-body');
@@ -2366,8 +2372,9 @@ function renderRanking() {
   }
   let filas = Object.keys(cartera).map(cliente => {
     const posiciones = cartera[cliente];
-    let costoTotal = 0, valorTotal = 0, incluidas = 0, excluidas = 0;
+    let costoTotal = 0, valorTotal = 0, tenenciaTotalCliente = 0, incluidas = 0, excluidas = 0;
     posiciones.forEach(p => {
+      tenenciaTotalCliente += p.tenencia || 0; // cartera completa, incluye Liquidez y sin dato de compra
       if (p.grupo === 'Liquidez') return; // el efectivo no tiene "rentabilidad"
       if (!(p.ppc > 0) || !(p.nominales > 0)) { excluidas++; return; }
       incluidas++;
@@ -2379,16 +2386,17 @@ function renderRanking() {
       cliente,
       rentabilidad: (valorTotal / costoTotal - 1) * 100,
       ganancia: valorTotal - costoTotal,
-      valorTotal, incluidas, excluidas,
+      valorTotal, tenenciaTotalCliente, incluidas, excluidas,
     };
   }).filter(Boolean);
 
   if (rankingSearch) filas = filas.filter(f => f.cliente.toLowerCase().includes(rankingSearch));
+  if (rankingMinTenencia > 0) filas = filas.filter(f => f.tenenciaTotalCliente >= rankingMinTenencia);
   filas.sort((a, b) => b.rentabilidad - a.rentabilidad);
 
   if (countEl) countEl.textContent = `${filas.length} cliente(s)`;
   if (!filas.length) {
-    el.innerHTML = `<div class="dash-empty">Sin resultados — ningún cliente tiene posiciones con precio de compra registrado.</div>`;
+    el.innerHTML = `<div class="dash-empty">Sin resultados${rankingMinTenencia > 0 ? ' con ese filtro de tenencia mínima' : ' — ningún cliente tiene posiciones con precio de compra registrado'}.</div>`;
     return;
   }
   el.innerHTML = `<table class="cc-table"><thead><tr>
