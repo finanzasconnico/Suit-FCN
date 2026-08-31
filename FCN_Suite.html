@@ -589,6 +589,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <button class="wpp-liq-close" onclick="cerrarAvisoLiquidez()">✕</button>
         </div>
         <div class="aviso-liq-body">
+         <div id="aliqForm">
 
           <div class="aliq-fieldset" id="aliqMinBox">
             <div class="aliq-legend">Mínimo para incluir a un cliente</div>
@@ -658,6 +659,32 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <button class="aliq-btn-cancel" onclick="cerrarAvisoLiquidez()">Cancelar</button>
             <button class="aliq-btn-gen" id="aliqBtnGen" onclick="generarDatosLiquidez()">⬇ Descargar Word + CSV</button>
           </div>
+         </div>
+
+         <div id="aliqDone" style="display:none">
+           <div class="aliq-preview" style="text-align:center;padding:18px 14px;">
+             <span class="big">✓</span><br><b id="aliqDoneN">Listo</b>
+           </div>
+           <div class="aliq-fieldset">
+             <div class="aliq-legend">Asunto del mail — copialo</div>
+             <div style="display:flex;gap:8px;">
+               <input type="text" id="aliqAsunto" readonly style="flex:1;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;">
+               <button class="aliq-btn-gen" style="padding:8px 14px;" onclick="copiarAsuntoAviso(this)">Copiar</button>
+             </div>
+           </div>
+           <div class="aliq-fieldset">
+             <div class="aliq-legend">Pasos en Word</div>
+             <ol style="margin:0;padding-left:18px;font-size:11.5px;color:var(--text);line-height:1.9;">
+               <li>Abrí <b>Outlook (classic)</b> y esperá el "Conectado a Microsoft Exchange".</li>
+               <li>Abrí <code>Aviso-liquidez.docx</code> de Descargas.</li>
+               <li><b>Correspondencia</b> → <b>Seleccionar destinatarios</b> → <b>Usar una lista existente</b> → <code>aviso-liquidez.csv</code> (codificación <b>UTF-8</b>).</li>
+               <li><b>Finalizar y combinar</b> → <b>Enviar mensajes de correo electrónico</b>: Para = <code>Email</code>, Asunto = pegá el de arriba, Formato = <b>HTML</b>.</li>
+             </ol>
+           </div>
+           <div class="aliq-actions">
+             <button class="aliq-btn-gen" onclick="cerrarAvisoLiquidez()">Entendido</button>
+           </div>
+         </div>
         </div>
       </div>
     </div>
@@ -1740,6 +1767,7 @@ const AVISO_PERFIL_KEY = 'fcn_aviso_liq_perfil';
 const AVISO_COLS = ['Nombre', 'Email', 'MontoTexto']; // lo que cambia por cliente; el resto va fijo en el .docx
 const AVISO_IG_DEFAULT = 'https://www.instagram.com/balanzcapital';
 const AVISO_PLANTILLA_URL = 'plantillas-mail/plantilla-aviso.docx';
+const AVISO_ASUNTO = 'Tenés dinero sin invertir en tu cuenta de Balanz';
 
 let _avisoBajasSet = null;     // Set<string> de mails dados de baja (minúsculas)
 let _avisoBajasError = false;  // true si falló el fetch a Supabase
@@ -1960,6 +1988,7 @@ async function abrirAvisoLiquidez() {
   });
   document.getElementById('aliqTestChk').onchange = renderAvisoPreview;
   document.getElementById('aliqPreview').textContent = 'Verificando lista de bajas…';
+  _avisoMostrarPaso('form');
   document.getElementById('avisoLiqOverlay').classList.add('open');
 
   _avisoBajasSet = await fetchBajasSet();
@@ -1969,6 +1998,23 @@ async function abrirAvisoLiquidez() {
 
 function cerrarAvisoLiquidez() {
   document.getElementById('avisoLiqOverlay').classList.remove('open');
+}
+
+function copiarAsuntoAviso(btn) {
+  const v = document.getElementById('aliqAsunto').value;
+  navigator.clipboard.writeText(v).then(() => {
+    const t = btn.textContent; btn.textContent = '✓ Copiado';
+    setTimeout(() => { btn.textContent = t; }, 1500);
+  }).catch(() => {
+    document.getElementById('aliqAsunto').select();
+    document.execCommand('copy');
+    btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = 'Copiar'; }, 1500);
+  });
+}
+
+function _avisoMostrarPaso(paso) { // 'form' | 'done'
+  document.getElementById('aliqForm').style.display = paso === 'form' ? '' : 'none';
+  document.getElementById('aliqDone').style.display = paso === 'done' ? '' : 'none';
 }
 
 // El CSV lleva solo lo que cambia por cliente (UTF-8 con BOM, campos entre comillas). Word lo
@@ -2088,16 +2134,17 @@ async function generarDatosLiquidez() {
     _descargar(new Blob([_toCSV(rows)], { type: 'text/csv;charset=utf-8' }), `aviso-liquidez${sufijo}.csv`);
   } catch (e) {
     console.error('[Aviso liquidez]', e);
-    if (btn) { btn.disabled = false; btn.textContent = prueba ? '⬇ Descargar archivos de prueba' : '⬇ Descargar archivos'; }
+    if (btn) { btn.disabled = false; btn.textContent = prueba ? '⬇ Descargar Word + CSV de prueba' : '⬇ Descargar Word + CSV'; }
     showToast('No se pudo armar el Word: ' + e.message);
     return;
   }
 
-  cerrarAvisoLiquidez();
   const n = rows.length;
-  showToast(prueba
-    ? `✓ Word + CSV de prueba (${n} fila${n === 1 ? '' : 's'}${filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : ''}). Abrí el Word y combiná con el CSV.`
-    : `✓ Word + CSV descargados (${n} cliente${n === 1 ? '' : 's'}). Abrí el Word y combiná con el CSV.`);
+  document.getElementById('aliqAsunto').value = AVISO_ASUNTO;
+  document.getElementById('aliqDoneN').textContent = prueba
+    ? `Word + CSV de prueba listos (${n} fila${n === 1 ? '' : 's'}${filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : ''})`
+    : `Word + CSV descargados — ${n} cliente${n === 1 ? '' : 's'}`;
+  _avisoMostrarPaso('done');
 }
 
 function holdersCount(ticker) {
