@@ -717,6 +717,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="cliente360-body"></div>
     </div>
 
+    <div class="hub-panel" id="ranking-panel">
+      <div class="files-header">
+        <h2>🏆 Ranking de Rentabilidad</h2>
+        <p>Clientes ordenados por rentabilidad ponderada desde que compraron cada posición (Renta Fija y Renta Variable juntas). Todavía no es "rentabilidad de los últimos N meses" — para eso hace falta guardar fotos históricas de la cartera, que no tenemos por ahora.</p>
+      </div>
+      <div style="max-width:960px;margin:0 auto 16px;display:flex;align-items:center;gap:12px;">
+        <input type="text" placeholder="Buscar cliente…" oninput="filtrarRanking(this.value)" style="flex:1;padding:9px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
+        <span id="ranking-count" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
+      </div>
+      <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="ranking-body"></div>
+    </div>
+
     <!-- LOADING OVERLAY -->
     <div class="frame-loading" id="frame-loading" style="display:none;">
       <div class="spinner"></div>
@@ -1004,7 +1016,7 @@ function showApp() {
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
   { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador'] },
-  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','armador','monitor'] },
+  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','armador','monitor'] },
   { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
 ];
@@ -1013,6 +1025,7 @@ const CATEGORIES = [
 const NATIVE_PANELS = {
   files:      { icon:'🗂', label:'Archivos',  show: showFiles },
   cliente360: { icon:'🧭', label:'Vista 360', show: showCliente360 },
+  ranking:    { icon:'🏆', label:'Ranking Rentabilidad', show: showRanking },
 };
 function categoryOf(toolId) {
   if (toolId === 'files') return 'utilidades';
@@ -2328,6 +2341,71 @@ function renderCliente360() {
     </tbody></table>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+//  RANKING DE RENTABILIDAD — clientes ordenados por rentabilidad ponderada
+//  desde que compraron cada posición (Renta Fija + Renta Variable juntas,
+//  la Liquidez no entra porque no tiene "precio de compra"). Ponderada por
+//  monto: se suma costo total (ppc×nominales) y valor actual (tenencia) de
+//  TODAS las posiciones del cliente con dato de compra, no se promedian los
+//  % de cada posición sueltos — así una posición grande pesa lo que debe.
+//  Todavía NO es "rentabilidad de los últimos N meses" (eso necesitaría
+//  fotos históricas de la cartera, que no guardamos) — se aclara en pantalla.
+// ══════════════════════════════════════════════════════════════
+let rankingSearch = '';
+function filtrarRanking(val) { rankingSearch = (val || '').trim().toLowerCase(); renderRanking(); }
+
+function renderRanking() {
+  const el = document.getElementById('ranking-body');
+  const countEl = document.getElementById('ranking-count');
+  if (!el) return;
+  const cartera = (currentTenencia && currentTenencia.carteraPorCliente) ? currentTenencia.carteraPorCliente : null;
+  if (!cartera || !Object.keys(cartera).length) {
+    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> para ver el ranking.</div>`;
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+  let filas = Object.keys(cartera).map(cliente => {
+    const posiciones = cartera[cliente];
+    let costoTotal = 0, valorTotal = 0, incluidas = 0, excluidas = 0;
+    posiciones.forEach(p => {
+      if (p.grupo === 'Liquidez') return; // el efectivo no tiene "rentabilidad"
+      if (!(p.ppc > 0) || !(p.nominales > 0)) { excluidas++; return; }
+      incluidas++;
+      costoTotal += p.ppc * p.nominales;
+      valorTotal += p.tenencia;
+    });
+    if (costoTotal <= 0) return null; // ninguna posición con precio de compra registrado — no entra al ranking
+    return {
+      cliente,
+      rentabilidad: (valorTotal / costoTotal - 1) * 100,
+      ganancia: valorTotal - costoTotal,
+      valorTotal, incluidas, excluidas,
+    };
+  }).filter(Boolean);
+
+  if (rankingSearch) filas = filas.filter(f => f.cliente.toLowerCase().includes(rankingSearch));
+  filas.sort((a, b) => b.rentabilidad - a.rentabilidad);
+
+  if (countEl) countEl.textContent = `${filas.length} cliente(s)`;
+  if (!filas.length) {
+    el.innerHTML = `<div class="dash-empty">Sin resultados — ningún cliente tiene posiciones con precio de compra registrado.</div>`;
+    return;
+  }
+  el.innerHTML = `<table class="cc-table"><thead><tr>
+      <th>#</th><th>Cliente</th><th>Rentabilidad</th><th>Ganancia</th><th>Tenencia (con dato)</th><th>Posiciones</th>
+    </tr></thead><tbody>
+    ${filas.map((f, i) => `
+      <tr class="v360-row" onclick="abrirCarteraCliente('${escHtml(f.cliente).replace(/'/g,"\\'")}')" title="Ver cartera completa de ${escHtml(f.cliente)}">
+        <td>${i + 1}</td>
+        <td>${escHtml(f.cliente)}</td>
+        <td style="font-weight:700;color:${f.rentabilidad >= 0 ? 'var(--jade)' : 'var(--danger)'};">${f.rentabilidad >= 0 ? '+' : ''}${f.rentabilidad.toFixed(1)}%</td>
+        <td style="color:${f.ganancia >= 0 ? 'var(--jade)' : 'var(--danger)'};">${f.ganancia >= 0 ? '+' : '-'}$${fmtK(Math.abs(f.ganancia))}</td>
+        <td>USD ${fmtK(f.valorTotal)}</td>
+        <td style="font-size:9px;color:var(--muted);">${f.incluidas}${f.excluidas ? ` (+${f.excluidas} sin precio de compra)` : ''}</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
 function dashStaleMs(key) { return key === 'precios_objetivo' ? 40 * 86400000 : 10 * 86400000; }
 
 // ══════════════════════════════════════════════════════════════
@@ -2534,6 +2612,7 @@ function renderDashboardAll() {
   renderDashRFOportunidades(monitor);
   renderDashRFRotar(monitor, tenencia);
   renderCliente360();
+  renderRanking();
 }
 
 async function refreshFilesStatusBits() {
@@ -2800,7 +2879,7 @@ async function pasteFromClipboard(key) {
 // Paneles "nativos" del propio FCN_Suite.html (no son iframes de otra herramienta) — Inicio,
 // Archivos, y ahora Vista 360. hideAllPanels() centraliza el show/hide para no repetir la
 // misma lista de ids en cada show*() cada vez que se agrega un panel nuevo.
-const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel'];
+const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel', 'ranking-panel'];
 function hideAllPanels() {
   document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
   NATIVE_PANEL_IDS.forEach(id => document.getElementById(id)?.classList.remove('active'));
@@ -2826,6 +2905,13 @@ function showCliente360() {
   hideAllPanels();
   document.getElementById('cliente360-panel').classList.add('active');
   renderCliente360();
+}
+
+function showRanking() {
+  setActiveTab('ranking');
+  hideAllPanels();
+  document.getElementById('ranking-panel').classList.add('active');
+  renderRanking();
 }
 
 function openTool(toolId) {
