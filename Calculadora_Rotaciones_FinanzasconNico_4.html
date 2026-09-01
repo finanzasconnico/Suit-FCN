@@ -96,6 +96,24 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .holder-more-btn:hover{border-color:rgba(255,255,255,.3);color:#fff;}
 .chip b{color:#fff;}
 
+.rot-comp-wrap{margin:0 0 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+.rot-comp-header{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.05em;}
+.rot-comp-count{color:var(--cream);text-transform:none;letter-spacing:0;font-weight:600;}
+.rot-comp-toggle{cursor:pointer;color:var(--cream-dim);text-transform:none;letter-spacing:0;}
+.rot-comp-toggle:hover{color:#fff;}
+.rot-comp-filtros{display:flex;gap:16px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.rot-comp-filtros label{font-size:10px;color:var(--cream-dim);display:flex;align-items:center;gap:6px;}
+.rot-comp-filtros input{width:52px;padding:4px 6px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--cream);font-size:10.5px;}
+.rot-comp-list{margin-top:6px;}
+.rot-comp-empty{font-size:10.5px;color:var(--cream-dim);padding:4px 0;}
+.rot-comp-row{display:flex;align-items:center;gap:8px;padding:6px 5px;border-radius:4px;cursor:pointer;font-size:11px;transition:background .15s;}
+.rot-comp-row:hover{background:rgba(255,255,255,.06);}
+.rot-comp-row .rc-ticker{font-weight:700;color:var(--cream);width:58px;flex-shrink:0;}
+.rot-comp-row .rc-emisor{color:var(--cream-dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rot-comp-row .rc-tir{color:var(--good);font-weight:600;width:56px;text-align:right;flex-shrink:0;}
+.rot-comp-row .rc-dur{color:var(--cream-dim);width:48px;text-align:right;flex-shrink:0;}
+.rot-comp-row .rc-calif{width:44px;text-align:right;color:var(--cream-dim);flex-shrink:0;}
+
 #cliente-picker-wrap .chip-row:empty{margin:0;}
 #cliente-activo-label{font-size:10.5px;color:var(--cream-dim);margin-top:8px;}
 #cliente-activo-label b{color:#fff;}
@@ -354,6 +372,19 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
           oninput="buscarBonoInput('compra', this.value)" onblur="setTimeout(function(){cerrarAC('compra')},180)">
         <div class="ac-dropdown" id="ac-dd-compra"></div>
       </div>
+
+      <div class="rot-comp-wrap advisor-only" id="rot-comp-wrap" style="display:none;">
+        <div class="rot-comp-header">
+          <span>🔍 Alternativas para rotar <span class="rot-comp-count" id="rot-comp-count"></span></span>
+          <span class="rot-comp-toggle" onclick="toggleFiltrosComparables()">⚙ Filtros</span>
+        </div>
+        <div class="rot-comp-filtros" id="rot-comp-filtros" style="display:none;">
+          <label>Duration ± años <input type="number" step="0.5" min="0" id="rc-durtol" value="1.5" oninput="renderComparablesRotacion()"></label>
+          <label>Calificación ± notches <input type="number" step="1" min="0" id="rc-calnotch" value="1" oninput="renderComparablesRotacion()"></label>
+        </div>
+        <div class="rot-comp-list" id="rot-comp-list"></div>
+      </div>
+
       <div class="field-row field-big">
         <div class="field"><label>Nominales</label><input type="number" step="1" id="c-nominales" value="0" oninput="onNominalesCompraManual()"></div>
         <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="c-precio" oninput="onCondChange('compra')"></div>
@@ -701,6 +732,7 @@ function ingestRows(rows, categoria){
   rows.forEach(function(r){
     var tirMep = parseFloat(r.tir); var tirCable = parseFloat(r.tirCable);
     if((isNaN(tirMep)||tirMep<=0) && (isNaN(tirCable)||tirCable<=0)) return;
+    var durationExcel = parseFloat(r.duration);
     BOND_DB[r.ticker] = {
       ticker:r.ticker, emisor:r.emisor||'', categoria:categoria,
       cuponAnual: isNaN(parseFloat(r.cupon)) ? null : Math.round(parseFloat(r.cupon)*10000)/100,
@@ -711,6 +743,7 @@ function ingestRows(rows, categoria){
       ley: String(r.ley||'').trim(),
       calif: String(r.calif||'').trim(),
       laminaMin: r.laminaMin || r.nominMin || null,
+      duration: (!isNaN(durationExcel) && durationExcel>0) ? durationExcel : null,
       tirMep: isNaN(tirMep)?null:Math.round(tirMep*10000)/100,
       tirCable: isNaN(tirCable)?null:Math.round(tirCable*10000)/100,
       precioMep: parseFloat(r.precioMep)||null,
@@ -903,6 +936,7 @@ function loadDBFromStorage(){
           ley: o.ley||'',
           calif: o.calif||o.calificacion||'',
           laminaMin: o.laminaMin||null,
+          duration: o.duration!==undefined?o.duration:null,
           tirMep: o.tirMep!==undefined?o.tirMep:(o.tir_ref!==undefined?o.tir_ref:o.tir),
           tirCable: o.tirCable!==undefined?o.tirCable:null,
           precioMep: o.precioMep!==undefined?o.precioMep:o.precio_ref,
@@ -1121,6 +1155,8 @@ function renderAll(){
   if(!venta || !compra){
     document.getElementById('empty-state').style.display='';
     document.getElementById('results-area').style.display='none';
+    lastVentaParaComparables = null;
+    document.getElementById('rot-comp-wrap').style.display='none';
     return;
   }
 
@@ -1140,6 +1176,7 @@ function renderAll(){
   document.getElementById('c-tir').value = compra.tir!=null ? fmtNum(compra.tir,2) : '';
 
   venta.duration = macaulayDuration(schedV, venta.tir/100, hoy);
+  renderComparablesRotacion(venta);
   compra.duration = macaulayDuration(schedC, compra.tir/100, hoy);
   // 3 decimales (no 2) — a veces dos bonos tienen duration casi igual pero no exactamente, y con
   // solo 2 decimales se veían iguales aunque el sistema ya sabía cuál era mejor (marcaba el ✓ o
@@ -1276,6 +1313,103 @@ function pintarHoldersRow(p, expandido){
     row.innerHTML = holders.slice(0,HOLDERS_PREVIEW_N).map(chipHolderHTML).join('') +
       '<span class="holder-more-btn" onclick="pintarHoldersRow(\''+p+'\',true)">+'+resto+' cliente'+(resto===1?'':'s')+'</span>';
   }
+}
+
+// ═══════════════════════════════════════════════════════
+// "ALTERNATIVAS PARA ROTAR" — comparables sugeridos en base al bono a VENDER, mismo
+// criterio que ya usa Scanner ONs (mejor TIR, duration y calificación similar): mejor TIR
+// que el bono actual, duration a ± años y calificación a ± notches. Se recalcula solo
+// (sin tocar renderAll) cuando se ajustan los filtros ⚙, y se refresca entero cada vez
+// que cambia el bono a vender (llamado desde renderAll con el "venta" ya resuelto).
+// ═══════════════════════════════════════════════════════
+var ESCALA_CALIF = ['AAA','AA+','AA','AA-','A+','A','A-','BBB+','BBB','BBB-','BB+','BB','BB-','B+','B','B-','CCC+','CCC','CCC-','CC','C','D'];
+function calificacionRank(calif){
+  if(!calif) return null;
+  var up = String(calif).toUpperCase();
+  var mejor = -1, mejorLen = 0;
+  ESCALA_CALIF.forEach(function(tok){ if(up.indexOf(tok)>=0 && tok.length>mejorLen){ mejor = ESCALA_CALIF.indexOf(tok); mejorLen = tok.length; } });
+  return mejor>=0 ? mejor : null;
+}
+var lastVentaParaComparables = null;
+function tirEfectivaBond(b){
+  var real = FLUJO_DB[b.ticker];
+  if(real && real.tirEfectiva!=null) return real.tirEfectiva;
+  var tipo = document.getElementById('p-precio-tipo').value;
+  return tipo==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
+}
+function durationBond(b){
+  var real = FLUJO_DB[b.ticker];
+  if(real && real.duration!=null) return real.duration;
+  return b.duration!=null ? b.duration : null;
+}
+function califBond(b){
+  var real = FLUJO_DB[b.ticker];
+  return (real && real.calif) ? real.calif : b.calif;
+}
+// mismo universo que usa el buscador de ticker (buscarBonoInput): BOND_DB + lo que
+// solo existe como hoja individual en FLUJO_DB (sin duplicar los que ya están en BOND_DB).
+function universoBonos(){
+  var list = Object.keys(BOND_DB).map(function(tk){ return BOND_DB[tk]; });
+  var seen = {}; list.forEach(function(b){ seen[b.ticker]=true; });
+  Object.keys(FLUJO_DB).forEach(function(tk){
+    if(seen[tk]) return;
+    var r = FLUJO_DB[tk];
+    list.push({ticker:tk, emisor:r.emisor, calif:r.calif, duration:null, tirMep:null, tirCable:null});
+  });
+  return list;
+}
+function buscarComparablesRotacion(baseTicker, baseTir, baseDuration, baseCalif, filtros){
+  var baseRank = calificacionRank(baseCalif);
+  var candidatos = [];
+  universoBonos().forEach(function(b){
+    if(b.ticker===baseTicker) return;
+    var tir = tirEfectivaBond(b);
+    if(tir==null) return;
+    if(baseTir!=null && tir<=baseTir) return; // solo sugerir algo que rinda más
+    var dur = durationBond(b);
+    if(filtros.durTol!=null && baseDuration!=null && dur!=null && Math.abs(dur-baseDuration)>filtros.durTol) return;
+    if(filtros.calNotches!=null && baseRank!=null){
+      var cRank = calificacionRank(califBond(b));
+      if(cRank===null || Math.abs(cRank-baseRank)>filtros.calNotches) return;
+    }
+    candidatos.push({ticker:b.ticker, emisor:b.emisor, tir:tir, duration:dur, calif:califBond(b)});
+  });
+  candidatos.sort(function(a,b2){ return b2.tir-a.tir; });
+  return candidatos.slice(0,8);
+}
+function toggleFiltrosComparables(){
+  var el = document.getElementById('rot-comp-filtros');
+  el.style.display = el.style.display==='none' ? '' : 'none';
+}
+function leerFiltrosComparablesRotacion(){
+  var num = function(id,def){ var v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?def:v; };
+  return { durTol: num('rc-durtol',1.5), calNotches: num('rc-calnotch',1) };
+}
+function renderComparablesRotacion(venta){
+  var wrap = document.getElementById('rot-comp-wrap');
+  var list = document.getElementById('rot-comp-list');
+  var countEl = document.getElementById('rot-comp-count');
+  if(venta) lastVentaParaComparables = venta;
+  venta = lastVentaParaComparables;
+  if(!venta || !venta.ticker){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  var filtros = leerFiltrosComparablesRotacion();
+  var candidatos = buscarComparablesRotacion(venta.ticker, venta.tir, venta.duration, venta.calif, filtros);
+  if(!candidatos.length){
+    countEl.textContent = '';
+    list.innerHTML = '<div class="rot-comp-empty">No encontré alternativas con estos filtros — probá ampliar duration o calificación en ⚙ Filtros.</div>';
+    return;
+  }
+  countEl.textContent = '('+candidatos.length+')';
+  list.innerHTML = candidatos.map(function(c){
+    return '<div class="rot-comp-row" onclick="seleccionarBono(\'compra\',\''+c.ticker.replace(/'/g,"\\'")+'\')" title="Elegir '+c.ticker+' como bono a comprar">'+
+      '<span class="rc-ticker">'+c.ticker+'</span>'+
+      '<span class="rc-emisor">'+(c.emisor||'—')+'</span>'+
+      '<span class="rc-tir">'+fmtNum(c.tir,2)+'%</span>'+
+      '<span class="rc-dur">'+(c.duration!=null?fmtNum(c.duration,1)+'a':'—')+'</span>'+
+      '<span class="rc-calif">'+(c.calif||'—')+'</span>'+
+    '</div>';
+  }).join('');
 }
 
 function onHorizonSlide(){
