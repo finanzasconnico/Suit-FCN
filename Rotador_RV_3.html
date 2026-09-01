@@ -679,10 +679,22 @@ async function fetchPrecioTicker(ticker) {
       });
     } catch { return null; }
   }
+  // Fallback estático (sin PII) — mismo patrón que el resto de la Suite (ver CLAUDE.md), para
+  // que los targets aparezcan aunque esta compu nunca haya subido el archivo a mano.
+  async function fetchStaticFallback(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const buf = await r.arrayBuffer();
+      return { data: buf, name: url.split('/').pop() };
+    } catch { return null; }
+  }
   async function loadShared() {
-    const [ten, stk] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock'))]);
+    const [ten, stk, po] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared('precios_objetivo')]);
     if (ten) handleFile(new File([ten.data], ten.name));
     if (stk) handleStock(new File([stk.data], stk.name));
+    const poEntry = po || await fetchStaticFallback('data/precios_objetivo.xlsx');
+    if (poEntry) parsePreciosObjetivo(new File([poEntry.data], poEntry.name));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
@@ -694,6 +706,7 @@ async function fetchPrecioTicker(ticker) {
       const raw = e.data.rawKey || e.data.key;
       if (raw === 'tenencia') handleFile(new File([entry.data], entry.name));
       if (raw === 'stock')    handleStock(new File([entry.data], entry.name));
+      if (raw === 'precios_objetivo') parsePreciosObjetivo(new File([entry.data], entry.name));
     };
   }
 })();
@@ -740,6 +753,36 @@ function handleStock(file) {
         showToast('Error leyendo Stock: ' + err.message, { err: true });
       }
     }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── PRECIOS OBJETIVO (archivo mensual compartido de la Suite, precios_objetivo.xlsx) ──
+// Mismo formato que ya parsea Precios_Objetivo_FCN.html (columnas Ticker_original/
+// Ticker_usado/Precio_objetivo_promedio/etc., generado 1 vez por mes). Se usa como fuente de
+// target cuando no hay live de Yahoo — antes esta herramienta solo mostraba targets si se
+// apretaba "Obtener cotizaciones" (lento, rate-limited) o si ya estaban en el caché local de
+// esta compu, ignorando el archivo que la Suite ya tiene cargado para el resto de las
+// herramientas.
+let PRECIOS_OBJETIVO_DB = {};
+function nOrNull(v) { return v===undefined||v===null||v===''?null:Number(v); }
+function parsePreciosObjetivo(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb  = XLSX.read(e.target.result, { type:'array' });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      const db  = {};
+      raw.forEach(r => {
+        const ticker = String(r['Ticker_original'] || r['Ticker_usado'] || '').trim().toUpperCase();
+        const target = nOrNull(r['Precio_objetivo_promedio']);
+        if (!ticker || target===null) return;
+        db[ticker] = { target, precio: nOrNull(r['Precio_actual']), analistas: nOrNull(r['N_analistas']), rec: String(r['Recomendacion']||'').trim() };
+      });
+      PRECIOS_OBJETIVO_DB = db;
+      if (posiciones.length) { renderTabPrecios(); renderResultados(); }
+    } catch(err) { console.warn('[Rotador RV] error leyendo Precios Objetivo compartido:', err); }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -1611,26 +1654,31 @@ function precioTenenciaImplicito(ticker){
 }
 
 function renderTabPrecios(){
-  const tickers=[...new Set(posiciones.map(p=>p.ticker))].sort();
+  const filtradas=filtrarPosiciones();
+  const tickers=[...new Set(filtradas.map(p=>p.ticker))].sort();
   const tbody=document.getElementById('tbody-precios');
   if(!tbody) return;
   const targetCache=loadTargetCache();
   tbody.innerHTML=tickers.map(ticker=>{
     const base=precios[ticker]||{precio:null,targetPrice:null,upsideAnalistas:null,source:'none'};
-    // Si no hay target live, rellenar del caché
+    // Cadena de targets: live de Yahoo > Precios Objetivo (archivo mensual compartido de la
+    // Suite) > caché local de esta compu (targets ya vistos en sesiones anteriores).
+    const mensual = PRECIOS_OBJETIVO_DB[ticker.toUpperCase()] || null;
     const cachedTarget = targetCache[ticker.toUpperCase()] ?? null;
-    const effectiveTarget = base.targetPrice ?? cachedTarget;
+    const effectiveTarget = base.targetPrice ?? mensual?.target ?? cachedTarget;
     const precioTenencia = base.precio==null ? precioTenenciaImplicito(ticker) : null;
     const precioEfectivo = base.precio ?? precioTenencia;
     const upsideFromCache = (effectiveTarget!=null && precioEfectivo) ? ((effectiveTarget/precioEfectivo)-1)*100 : base.upsideAnalistas;
-    const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromCache: base.targetPrice==null && cachedTarget!=null, _fromTenencia: precioTenencia!=null};
+    const fromMensual = base.targetPrice==null && mensual?.target!=null;
+    const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromMensual: fromMensual, _fromCache: base.targetPrice==null && !fromMensual && cachedTarget!=null, _fromTenencia: precioTenencia!=null};
     const upside=px.upsideAnalistas;
     const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
     const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>'
       :px._fromTenencia?'<span class="px-badge-manual" title="Precio implícito de la Tenencia (no es cotización en vivo) — Yahoo no respondió, puede estar desactualizado">tenencia</span>'
+      :px._fromMensual?'<span class="px-badge-manual" title="Precio Objetivo del archivo mensual compartido de la Suite">mensual</span>'
       :px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>'
       :px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
-    const nHolders=posiciones.filter(p=>p.ticker===ticker).length;
+    const nHolders=filtradas.filter(p=>p.ticker===ticker).length;
     const clientesCell=nHolders?`<button class="btn-sm" onclick="abrirHoldersTicker('${ticker}')" title="Ver qué clientes tienen ${ticker}">👤 ${nHolders}</button>`:`<span style="color:var(--ink-muted);font-size:10px;">—</span>`;
     return `<tr>
       <td class="td-tick">${ticker}</td>
@@ -1649,8 +1697,10 @@ function renderTabPrecios(){
 function getUpsideEfectivo(ticker) {
   const base = precios[ticker];
   if (base?.upsideAnalistas != null) return base.upsideAnalistas;
-  const cachedTarget = loadTargetCache()[ticker.toUpperCase()] ?? null;
-  if (cachedTarget != null && base?.precio) return (cachedTarget / base.precio - 1) * 100;
+  const mensualTarget = PRECIOS_OBJETIVO_DB[ticker.toUpperCase()]?.target ?? null;
+  const cachedTarget = mensualTarget ?? (loadTargetCache()[ticker.toUpperCase()] ?? null);
+  const precioRef = base?.precio ?? precioTenenciaImplicito(ticker);
+  if (cachedTarget != null && precioRef) return (cachedTarget / precioRef - 1) * 100;
   return null;
 }
 
