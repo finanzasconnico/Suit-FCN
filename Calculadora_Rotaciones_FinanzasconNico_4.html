@@ -381,6 +381,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="rot-comp-filtros" id="rot-comp-filtros" style="display:none;">
           <label>Duration ± años <input type="number" step="0.5" min="0" id="rc-durtol" value="1.5" oninput="renderComparablesRotacion()"></label>
           <label>Calificación ± notches <input type="number" step="1" min="0" id="rc-calnotch" value="1" oninput="renderComparablesRotacion()"></label>
+          <label title="Descarta candidatos con TIR por encima de esto — filtra datos corruptos del Monitor (ej. Letras del Tesoro con columnas desalineadas), no es un límite real de mercado">TIR máx. (%) <input type="number" step="1" min="0" id="rc-tirmax" value="20" oninput="renderComparablesRotacion()"></label>
         </div>
         <div class="rot-comp-list" id="rot-comp-list"></div>
       </div>
@@ -1152,11 +1153,23 @@ function renderAll(){
   var venta = readBond('venta');
   var compra = readBond('compra');
 
+  // Comparables — solo depende de "venta", no de "compra". Se calcula ACÁ, antes del
+  // early-return de abajo (que sí necesita las dos patas) — si no, la lista de alternativas
+  // (pensada para ayudar a elegir qué comprar) recién aparecía DESPUÉS de ya haber cargado
+  // algo en "compra" a mano, que es exactamente al revés de para qué sirve.
+  if(venta){
+    var schedVComp = getScheduleForLeg(venta, hoy);
+    venta.tir = tirDesdePrecio(schedVComp, venta.nominales*venta.precio, hoy, venta.tir);
+    venta.duration = macaulayDuration(schedVComp, venta.tir/100, hoy);
+    renderComparablesRotacion(venta);
+  } else {
+    lastVentaParaComparables = null;
+    document.getElementById('rot-comp-wrap').style.display='none';
+  }
+
   if(!venta || !compra){
     document.getElementById('empty-state').style.display='';
     document.getElementById('results-area').style.display='none';
-    lastVentaParaComparables = null;
-    document.getElementById('rot-comp-wrap').style.display='none';
     return;
   }
 
@@ -1176,7 +1189,6 @@ function renderAll(){
   document.getElementById('c-tir').value = compra.tir!=null ? fmtNum(compra.tir,2) : '';
 
   venta.duration = macaulayDuration(schedV, venta.tir/100, hoy);
-  renderComparablesRotacion(venta);
   compra.duration = macaulayDuration(schedC, compra.tir/100, hoy);
   // 3 decimales (no 2) — a veces dos bonos tienen duration casi igual pero no exactamente, y con
   // solo 2 decimales se veían iguales aunque el sistema ya sabía cuál era mejor (marcaba el ✓ o
@@ -1365,14 +1377,21 @@ function buscarComparablesRotacion(baseTicker, baseTir, baseDuration, baseCalif,
     if(b.ticker===baseTicker) return;
     var tir = tirEfectivaBond(b);
     if(tir==null) return;
+    // Techo de sanidad — algunas categorías del Monitor (ej. Letras del Tesoro) vienen con la
+    // columna de TIR mal alineada en el Excel y devuelven valores absurdos (varios miles de %).
+    // Mismo criterio que ya usa Scanner ONs para no sugerir basura de datos como "mejor TIR".
+    if(filtros.tirMax!=null && tir>filtros.tirMax) return;
     if(baseTir!=null && tir<=baseTir) return; // solo sugerir algo que rinda más
     var dur = durationBond(b);
     if(filtros.durTol!=null && baseDuration!=null && dur!=null && Math.abs(dur-baseDuration)>filtros.durTol) return;
+    var calif = califBond(b);
+    var cRank = calificacionRank(calif);
     if(filtros.calNotches!=null && baseRank!=null){
-      var cRank = calificacionRank(califBond(b));
       if(cRank===null || Math.abs(cRank-baseRank)>filtros.calNotches) return;
     }
-    candidatos.push({ticker:b.ticker, emisor:b.emisor, tir:tir, duration:dur, calif:califBond(b)});
+    // Si la calificación no matchea ningún rating conocido (ej. quedó con basura de otra
+    // columna por el mismo problema de alineación), no la mostramos como si fuera un dato real.
+    candidatos.push({ticker:b.ticker, emisor:b.emisor, tir:tir, duration:dur, calif: cRank!=null ? calif : null});
   });
   candidatos.sort(function(a,b2){ return b2.tir-a.tir; });
   return candidatos.slice(0,8);
@@ -1383,7 +1402,7 @@ function toggleFiltrosComparables(){
 }
 function leerFiltrosComparablesRotacion(){
   var num = function(id,def){ var v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?def:v; };
-  return { durTol: num('rc-durtol',1.5), calNotches: num('rc-calnotch',1) };
+  return { durTol: num('rc-durtol',1.5), calNotches: num('rc-calnotch',1), tirMax: num('rc-tirmax',20) };
 }
 function renderComparablesRotacion(venta){
   var wrap = document.getElementById('rot-comp-wrap');
