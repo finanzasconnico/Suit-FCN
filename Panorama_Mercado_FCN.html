@@ -122,9 +122,11 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
 .no-holders{background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;color:var(--muted);font-size:12px;}
 .copy-btn{font-size:10.5px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;}
 .copy-btn:hover{color:var(--ambar);border-color:var(--ambar);}
-.modal-cta{padding:14px 22px 0;}
-.btn-rotar{display:block;text-align:center;padding:11px 16px;border-radius:5px;background:var(--jade);color:#fff;font-weight:600;font-size:12.5px;text-decoration:none;transition:opacity .15s;}
+.modal-cta{padding:14px 22px 0;display:flex;gap:8px;}
+.btn-rotar{flex:1;display:block;text-align:center;padding:11px 16px;border-radius:5px;background:var(--jade);color:#fff;font-weight:600;font-size:12.5px;text-decoration:none;transition:opacity .15s;}
 .btn-rotar:hover{opacity:.88;}
+.btn-rotar-out{flex:1;display:block;text-align:center;padding:10px 16px;border-radius:5px;background:transparent;border:1px solid var(--jade);color:var(--jade);font-weight:600;font-size:12.5px;text-decoration:none;transition:background .15s,color .15s;}
+.btn-rotar-out:hover{background:var(--jade);color:#fff;}
 </style>
 </head>
 <body>
@@ -268,7 +270,8 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
       <div class="modal-stat"><div class="l">Lámina mín.</div><div class="v" id="m-lamina">—</div></div>
     </div>
     <div class="modal-cta">
-      <a class="btn-rotar" id="m-rotar-link" href="#" target="_blank" rel="noopener">📈 Armar rotación hacia este bono en la Calculadora →</a>
+      <a class="btn-rotar-out" id="m-rotar-desde-link" href="#" target="_blank" rel="noopener" title="Lo carga como bono a VENDER — la Calculadora te sugiere solita alternativas comparables para elegir hacia dónde rotar">← Rotar desde este bono</a>
+      <a class="btn-rotar" id="m-rotar-link" href="#" target="_blank" rel="noopener">Rotar hacia este bono →</a>
     </div>
     <div class="modal-body">
       <div class="holders-title">
@@ -803,6 +806,9 @@ function openModal(p){
   document.getElementById('m-ticker').textContent = p.ticker;
   document.getElementById('m-emisor').textContent = p.emisor || '—';
   document.getElementById('m-rotar-link').href = 'Calculadora_Rotaciones_FinanzasconNico_4.html?compra=' + encodeURIComponent(p.ticker);
+  // "Rotar DESDE" — lo carga como venta y deja compra vacío; la Calculadora ya sugiere solita
+  // alternativas comparables (misma TIR/duration/calificación) apenas detecta el bono a vender.
+  document.getElementById('m-rotar-desde-link').href = 'Calculadora_Rotaciones_FinanzasconNico_4.html?vender=' + encodeURIComponent(p.ticker);
   document.getElementById('m-badges').innerHTML = `
     <span class="badge">${p.tipo}</span>
     ${p.calificacion ? `<span class="badge">${p.calificacion}</span>` : ''}
