@@ -1043,7 +1043,7 @@ function aplicarFiltros() {
   const cliente=document.getElementById('inp-cliente').value.toLowerCase();
   const tickerRaw=document.getElementById('inp-ticker').value.trim();
   const tickers=tickerRaw?tickerRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean):[];
-  const calif=document.getElementById('sel-calif').value.toLowerCase();
+  const calif=document.getElementById('sel-calif').value;
   const chkCorp=document.getElementById('chk-corp')?.checked??true;
   const chkSob=document.getElementById('chk-sob')?.checked??true;
   const chkProv=document.getElementById('chk-prov')?.checked??true;
@@ -1056,7 +1056,7 @@ function aplicarFiltros() {
     if(asesor&&!d.asesor.toLowerCase().includes(asesor)) return false;
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
     if(tickers.length&&!tickers.some(t=>d.ticker.toLowerCase().includes(t))) return false;
-    if(calif&&!d.calificacion.toLowerCase().includes(calif)) return false;
+    if(calif&&!(CALIF_GRUPOS_FILTRO[calif]||[calif]).includes(calificacionToken(d.calificacion))) return false;
     if(umbralDurMin>0&&d.duration!==null&&d.duration<umbralDurMin) return false;
     if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
     if(umbralTenMin>0&&d.tenencia<umbralTenMin) return false;
@@ -1402,6 +1402,14 @@ function calificacionRank(calif) {
   });
   return mejor >= 0 ? mejor : null;
 }
+// Igual que calificacionRank pero devuelve el token de la escala (no el índice) —
+// lo usa el filtro por calificación del dropdown para agrupar notches (AA+/AA/AA-)
+// bajo la misma categoría amplia sin que "AA" matchee "AAA" por substring.
+function calificacionToken(calif) {
+  const idx = calificacionRank(calif);
+  return idx === null ? null : ESCALA_CALIF[idx];
+}
+const CALIF_GRUPOS_FILTRO = { AAA: ['AAA'], AA: ['AA+', 'AA', 'AA-'], A: ['A+', 'A', 'A-'] };
 
 function leerFiltrosRotacion() {
   const num = (id, def) => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
