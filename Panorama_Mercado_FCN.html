@@ -359,7 +359,13 @@ function subirCompartido(key, input, cargarFn) {
 // ══════════════════════════════════════════════════════════════
 function cargarMonitor(input) {
   const file = input.files ? input.files[0] : null;
-  if (!file) return;
+  if (!file) return Promise.resolve();
+  // Devuelve una Promise que se resuelve cuando terminó de parsear — lo necesita loadShared()
+  // para esperar a que dataMonitor esté poblado ANTES de cruzar Tenencia contra él (si no, la
+  // carga automática dispara los dos parseos en paralelo y Tenencia casi siempre termina
+  // primero, así que construirHolders() encuentra dataMonitor todavía vacío y descarta TODAS
+  // las filas — quedaba "En cartera de clientes: 0" siempre, sin importar los datos reales).
+  return new Promise(resolve => {
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -452,13 +458,19 @@ function cargarMonitor(input) {
       const total=corpCnt+sovCnt;
       if(total===0) throw new Error('No se encontraron tickers válidos en el Monitor.');
       showToast(`✓ Monitor cargado: ${corpCnt} ONs + ${sovCnt} Soberanos/Sub-sober.`);
+      // Si Tenencia ya se había cargado (ej. el Monitor se actualiza después), re-cruzar contra
+      // el dataMonitor fresco — si no, holdersByTicker queda armado contra tickers viejos.
+      if (dataTenencia.length) construirHolders();
       poblarFiltros();
       render();
     } catch(err){
       showToast('❌ Error leyendo Monitor: ' + err.message);
+    } finally {
+      resolve();
     }
   };
   reader.readAsArrayBuffer(file);
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -466,7 +478,9 @@ function cargarMonitor(input) {
 // ══════════════════════════════════════════════════════════════
 function cargarTenencia(input) {
   const file = input.files ? input.files[0] : null;
-  if (!file) return;
+  if (!file) return Promise.resolve();
+  // Ídem cargarMonitor — devuelve Promise para que loadShared() pueda esperar el orden correcto.
+  return new Promise(resolve => {
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -480,9 +494,12 @@ function cargarTenencia(input) {
       render();
     } catch(err){
       showToast('❌ Error leyendo Tenencia: ' + err.message);
+    } finally {
+      resolve();
     }
   };
   reader.readAsArrayBuffer(file);
+  });
 }
 
 function construirHolders(){
@@ -872,11 +889,15 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     } catch { return null; }
   }
   async function loadShared() {
-    const ten = await getShared('tenencia');
-    if (ten) cargarTenencia(fakeInput(ten));
+    // Monitor PRIMERO y esperado (await) — construirHolders() (disparado por cargarTenencia)
+    // necesita que dataMonitor ya esté poblado para poder cruzar los tickers de Tenencia contra
+    // él; si no, todas las filas quedan descartadas silenciosamente (ver comentario en
+    // cargarMonitor). El orden inverso fue justo el bug reportado: "En cartera: 0" siempre.
     let mon = await getShared('monitor');
     if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
-    if (mon) cargarMonitor(fakeInput(mon));
+    if (mon) await cargarMonitor(fakeInput(mon));
+    const ten = await getShared('tenencia');
+    if (ten) await cargarTenencia(fakeInput(ten));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
