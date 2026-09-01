@@ -317,7 +317,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 
 <!-- ── HOLDERS POR TICKER (desde la pestaña "Precios & Targets") ── -->
 <div class="wpp-modal-overlay" id="holders-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarHoldersTicker()">
-  <div class="wpp-modal" style="max-width:440px;">
+  <div class="wpp-modal" style="max-width:560px;">
     <div class="wpp-modal-header">
       <div>
         <div class="wpp-modal-title" id="holders-modal-title">—</div>
@@ -531,7 +531,16 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
           <div id="import-badge" style="display:none;font-family:var(--font-mono);font-size:9px;"></div>
         </div>
         <div class="tbl-wrap"><table class="px-table">
-          <thead><tr><th>Ticker</th><th>Precio actual (USD)</th><th>Target analistas (USD)</th><th>Upside estimado</th><th>Fuente</th><th>Clientes</th><th></th></tr></thead>
+          <thead><tr>
+            <th onclick="ordenarColPrecios('ticker')" style="cursor:pointer;" title="Ordenar por ticker">Ticker ⇅</th>
+            <th onclick="ordenarColPrecios('precio')" style="cursor:pointer;" title="Ordenar por precio actual">Precio actual (USD) ⇅</th>
+            <th onclick="ordenarColPrecios('target')" style="cursor:pointer;" title="Ordenar por target">Target analistas (USD) ⇅</th>
+            <th onclick="ordenarColPrecios('upside')" style="cursor:pointer;" title="Ordenar por upside">Upside estimado ⇅</th>
+            <th onclick="ordenarColPrecios('tenencia')" style="cursor:pointer;" title="Ordenar por tenencia">Tenencia (USD) ⇅</th>
+            <th>Fuente</th>
+            <th onclick="ordenarColPrecios('clientes')" style="cursor:pointer;" title="Ordenar por cantidad de clientes">Clientes ⇅</th>
+            <th></th>
+          </tr></thead>
           <tbody id="tbody-precios"></tbody>
         </table></div>
       </div>
@@ -1154,14 +1163,15 @@ function copiarMail(btnEl) {
   }).catch(() => showToast('No se pudo copiar. Seleccioná el texto manualmente.', { err: true }));
 }
 
-// ── MAIL MASIVO (pestaña "Todas las posiciones", según filtros activos del panel izquierdo) ──
-function abrirMailMasivo() {
-  const filtradas = filtrarPosiciones();
-  if (!filtradas.length) { showToast('No hay posiciones que matcheen los filtros actuales del panel izquierdo.'); return; }
+// ── MAIL MASIVO (pestaña "Todas las posiciones", según filtros activos del panel izquierdo —
+// o una lista explícita, ej. los tenedores de un ticker puntual desde "Precios & Targets") ──
+function abrirMailMasivo(listaCustom, labelExtra) {
+  const filtradas = listaCustom || filtrarPosiciones();
+  if (!filtradas.length) { showToast(listaCustom ? 'Ningún cliente tuyo tiene este ticker en cartera actualmente.' : 'No hay posiciones que matcheen los filtros actuales del panel izquierdo.'); return; }
   const porCliente = {};
   filtradas.forEach(p => { (porCliente[p.cliente] ||= []).push(p); });
   const clientes = Object.keys(porCliente);
-  document.getElementById('mail-masivo-sub').textContent = `${clientes.length} cliente(s) · ${filtradas.length} posición(es) filtradas`;
+  document.getElementById('mail-masivo-sub').textContent = `${labelExtra?labelExtra+' · ':''}${clientes.length} cliente(s) · ${filtradas.length} posición(es)${listaCustom?'':' filtradas'}`;
   const cardsEl = document.getElementById('mail-masivo-cards');
   cardsEl.innerHTML = clientes.map((cliente, i) => {
     const poss = porCliente[cliente];
@@ -1237,18 +1247,20 @@ function abrirHoldersTicker(ticker) {
   const holders = posiciones.filter(p => p.ticker === ticker).sort((a,b) => b.tenencia - a.tenencia);
   document.getElementById('holders-modal-title').textContent = `👤 Clientes con ${ticker}`;
   const total = holders.reduce((a,p) => a + p.tenencia, 0);
-  // Mismo criterio de "target efectivo" que renderTabPrecios: live > editado a mano > caché.
+  // Mismo criterio de "target efectivo" que renderTabPrecios: live > Precios Objetivo mensual > caché.
   const base = precios[ticker] || {};
+  const mensual = PRECIOS_OBJETIVO_DB[ticker.toUpperCase()]?.target ?? null;
   const cachedTarget = loadTargetCache()[ticker.toUpperCase()] ?? null;
-  const targetEfectivo = base.targetPrice ?? cachedTarget;
-  document.getElementById('holders-modal-sub').textContent = holders.length
+  const targetEfectivo = base.targetPrice ?? mensual ?? cachedTarget;
+  document.getElementById('holders-modal-sub').innerHTML = holders.length
     ? `${holders.length} cliente(s) · Tenencia total USD ${fmtN(total)}` + (targetEfectivo ? ` · Precio objetivo: $${targetEfectivo.toFixed(2)}` : '')
+      + ` · <a href="javascript:void(0)" onclick="abrirMailMasivoTicker('${ticker}')" style="color:var(--verde);text-decoration:underline;">✉ Mail a todos</a>`
     : '';
   const body = document.getElementById('holders-modal-body');
   if (!holders.length) {
     body.innerHTML = `<div style="font-size:11px;color:var(--ink-muted);padding:16px 0;">Ningún cliente tuyo tiene ${ticker} en cartera actualmente.</div>`;
   } else {
-    body.innerHTML = `<table><thead><tr><th>Cliente</th><th>Tenencia</th><th>Rent. actual</th>${targetEfectivo ? '<th>Proyectada a target</th>' : ''}</tr></thead><tbody>
+    body.innerHTML = `<table><thead><tr><th>Cliente</th><th>Tenencia</th><th>Rent. actual</th>${targetEfectivo ? '<th>Proyectada a target</th>' : ''}<th></th></tr></thead><tbody>
       ${holders.map(p => {
         const rent = getRentEfectiva(p);
         const rentStr = rent!==null ? (rent>=0?'+':'')+rent.toFixed(1)+'%' : '—';
@@ -1260,13 +1272,19 @@ function abrirHoldersTicker(ticker) {
           const projCls = proj===null?'neu':proj>=0?'pos':'neg';
           projCell = `<td><span class="td-rent ${projCls}" style="font-size:11px;" title="A precio de compra de este cliente ($${p.ppc.toFixed(3)}), si ${ticker} llega al objetivo">${projStr}</span></td>`;
         }
-        return `<tr><td>${p.cliente}</td><td style="font-family:var(--font-mono);font-size:10px;">$${fmtN(p.tenencia)}</td><td><span class="td-rent ${rentCls}" style="font-size:11px;">${rentStr}</span></td>${projCell}</tr>`;
+        return `<tr><td>${p.cliente}</td><td style="font-family:var(--font-mono);font-size:10px;">$${fmtN(p.tenencia)}</td><td><span class="td-rent ${rentCls}" style="font-size:11px;">${rentStr}</span></td>${projCell}<td>${wppBtnHtml(p)}</td></tr>`;
       }).join('')}
     </tbody></table>`;
   }
   document.getElementById('holders-modal-overlay').style.display = 'flex';
 }
 function cerrarHoldersTicker() { document.getElementById('holders-modal-overlay').style.display = 'none'; }
+// Mail masivo acotado a los tenedores de un ticker puntual (desde el modal de holders) —
+// reusa abrirMailMasivo pasándole la lista ya filtrada por ticker en vez del filtro general.
+function abrirMailMasivoTicker(ticker) {
+  const holders = posiciones.filter(p => p.ticker === ticker);
+  abrirMailMasivo(holders, `Tenedores de ${ticker}`);
+}
 
 // ── RENDER ──
 function renderResultados(){
@@ -1349,6 +1367,7 @@ function renderTablaActiva(){
   if(tabActiva==='t-tabla') renderTabla();
   if(tabActiva==='t-senales') renderSenales();
   if(tabActiva==='t-clientes') renderClientes();
+  if(tabActiva==='t-precios') renderTabPrecios();
 }
 
 // Orden por clic en el título de columna — antes solo existía para Tenencia
@@ -1653,13 +1672,31 @@ function precioTenenciaImplicito(ticker){
   return mejor?mejor.precio:null;
 }
 
+// Orden por clic en el título de columna — mismo patrón que ordenarColTabla ("Todas las
+// posiciones"), duplicado a propósito (esta pestaña tiene filas por TICKER, no por posición,
+// así que los getters son distintos) para no acoplar ambas tablas entre sí.
+let ordenColManualPrecios = null; // {col, dir:'asc'|'desc'} | null
+const ORDEN_COL_GETTERS_PRECIOS = {
+  ticker:   f => f.ticker || '',
+  precio:   f => f.precio,
+  target:   f => f.targetPrice,
+  upside:   f => f.upside,
+  tenencia: f => f.tenenciaTicker,
+  clientes: f => f.nHolders,
+};
+function ordenarColPrecios(col){
+  if (ordenColManualPrecios && ordenColManualPrecios.col === col) ordenColManualPrecios.dir = ordenColManualPrecios.dir === 'desc' ? 'asc' : 'desc';
+  else ordenColManualPrecios = { col, dir: col==='ticker' ? 'asc' : 'desc' };
+  renderTabPrecios();
+}
+
 function renderTabPrecios(){
   const filtradas=filtrarPosiciones();
   const tickers=[...new Set(filtradas.map(p=>p.ticker))].sort();
   const tbody=document.getElementById('tbody-precios');
   if(!tbody) return;
   const targetCache=loadTargetCache();
-  tbody.innerHTML=tickers.map(ticker=>{
+  let filas=tickers.map(ticker=>{
     const base=precios[ticker]||{precio:null,targetPrice:null,upsideAnalistas:null,source:'none'};
     // Cadena de targets: live de Yahoo > Precios Objetivo (archivo mensual compartido de la
     // Suite) > caché local de esta compu (targets ya vistos en sesiones anteriores).
@@ -1670,21 +1707,45 @@ function renderTabPrecios(){
     const precioEfectivo = base.precio ?? precioTenencia;
     const upsideFromCache = (effectiveTarget!=null && precioEfectivo) ? ((effectiveTarget/precioEfectivo)-1)*100 : base.upsideAnalistas;
     const fromMensual = base.targetPrice==null && mensual?.target!=null;
+    const posTicker = filtradas.filter(p=>p.ticker===ticker);
     const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromMensual: fromMensual, _fromCache: base.targetPrice==null && !fromMensual && cachedTarget!=null, _fromTenencia: precioTenencia!=null};
-    const upside=px.upsideAnalistas;
+    return {
+      ticker, precio: px.precio, targetPrice: px.targetPrice, upside: px.upsideAnalistas,
+      source: px.source, _fromTenencia: px._fromTenencia, _fromMensual: px._fromMensual, _fromCache: px._fromCache,
+      tenenciaTicker: posTicker.reduce((a,p)=>a+p.tenencia,0), nHolders: posTicker.length,
+    };
+  });
+
+  if (ordenColManualPrecios) {
+    const getter = ORDEN_COL_GETTERS_PRECIOS[ordenColManualPrecios.col];
+    const dir = ordenColManualPrecios.dir === 'asc' ? 1 : -1;
+    const fallbackNum = dir === -1 ? -Infinity : Infinity; // los null (ej. sin cobertura) siempre al final
+    filas.sort((a,b) => {
+      const va = getter(a), vb = getter(b);
+      if (typeof va === 'string' || typeof vb === 'string') return dir * String(va).localeCompare(String(vb));
+      const na = (va===null||va===undefined) ? fallbackNum : va;
+      const nb = (vb===null||vb===undefined) ? fallbackNum : vb;
+      return dir * (na - nb);
+    });
+  }
+
+  tbody.innerHTML=filas.map(px=>{
+    const ticker=px.ticker;
+    const upside=px.upside;
     const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
     const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>'
       :px._fromTenencia?'<span class="px-badge-manual" title="Precio implícito de la Tenencia (no es cotización en vivo) — Yahoo no respondió, puede estar desactualizado">tenencia</span>'
       :px._fromMensual?'<span class="px-badge-manual" title="Precio Objetivo del archivo mensual compartido de la Suite">mensual</span>'
       :px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>'
       :px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
-    const nHolders=filtradas.filter(p=>p.ticker===ticker).length;
+    const nHolders=px.nHolders;
     const clientesCell=nHolders?`<button class="btn-sm" onclick="abrirHoldersTicker('${ticker}')" title="Ver qué clientes tienen ${ticker}">👤 ${nHolders}</button>`:`<span style="color:var(--ink-muted);font-size:10px;">—</span>`;
     return `<tr>
       <td class="td-tick">${ticker}</td>
       <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" title="${px._fromTenencia?'Precio implícito de la Tenencia, no en vivo — editalo si tenés uno mejor':''}" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
       <td><input class="px-input" type="number" value="${px.targetPrice!=null?px.targetPrice.toFixed(2):''}" placeholder="—" title="${px.targetPrice==null?'Sin cobertura en Yahoo Finance':''}" onchange="editPrecio('${ticker}','target',this.value)" onfocus="this.select()"></td>
       <td id="upside-${ticker}">${upsideStr}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;">USD ${fmtN(px.tenenciaTicker)}</td>
       <td id="badge-${ticker}">${badge}</td>
       <td>${clientesCell}</td>
       <td><button class="btn-refetch" onclick="refetchTicker('${ticker}')">↺</button></td>

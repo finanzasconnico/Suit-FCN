@@ -700,6 +700,34 @@ function excelDateToISO(v){
   if(typeof v==='string' && v.length>=10) return v.slice(0,10);
   return '';
 }
+// Nombres de encabezado candidatos por campo — si el header de la fila coincide con alguno
+// (sin importar mayúsculas), se usa ESA columna en vez del offset fijo de FIELDS_CORP/FIELDS_SOB.
+// Si no matchea ninguno, cae al offset fijo (comportamiento de siempre) — esto es puramente
+// defensivo, nunca puede dar un resultado peor que antes.
+// Por qué: alguna categoría del Monitor (ej. Letras del Tesoro dentro de la hoja Soberanos)
+// tiene las columnas corridas respecto al resto, y leer por offset fijo agarraba el TIR/
+// calificación de la columna equivocada (TIR mostraba ~4200%, calificación mostraba el ticker
+// repetido) — pasó de verdad, ver "Alternativas para rotar" en CLAUDE.md.
+var FIELD_HEADER_NAMES = {
+  precioMep:['Precio Mep','Precio MEP','Px Mep','Precio actual','Precio','Px Compra','Precio Compra'],
+  vencimiento:['Vencimiento','Fecha Vencimiento','Vto','Vcto'],
+  tir:['TIR','TIR Mep','Tir Mep','Yield','TIR Efectiva','Tir efectiva'],
+  duration:['Duration','Dur.','Dur','Duration (años)','Duración','Duracion'],
+  amortizacion:['Amortización','Amortizacion','Amort','Tipo Amortización'],
+  cupon:['Cupón','Cupon','Cupón Anual','Cupon Anual','Coupon'],
+  mesCupon:['Mes Cupón','Mes Cupon','Meses Cupón','Meses Cupon','Meses de pago'],
+  dolar:['Dólar','Dolar','Moneda de Cobro'],
+  ley:['Ley'],
+  calif:['Calificación','Calificacion','Rating'],
+  laminaMin:['Lámina min.','Lamina min.','Lámina mín.','Lamina mín.','Lám. min.','Lámina Min','Lamina Min'],
+  nominMin:['Nominales mín.','Nominal Mínimo','Nominales Min','Nominal Min'],
+  sector:['Sector'],
+  paridad:['Paridad'],
+  varDiaria:['Var. Diaria','Variación Diaria','Var Diaria'],
+  precioCable:['Precio Cable','Px Cable'],
+  tirCable:['TIR Cable','Tir Cable'],
+  durationCable:['Duration Cable','Dur Cable','Duración Cable']
+};
 function parseBlock(ws, fieldOffsets){
   var raw = XLSX.utils.sheet_to_json(ws, {defval:null, header:1, raw:true});
   var hIdx=-1, tIdx=-1;
@@ -709,16 +737,23 @@ function parseBlock(ws, fieldOffsets){
     if(hIdx>=0) break;
   }
   if(hIdx<0) return [];
+  var colMap = {};
+  (raw[hIdx]||[]).forEach(function(v,j){ if(v!==null && v!==undefined && v!==''){ var k=String(v).trim().toLowerCase(); if(colMap[k]===undefined) colMap[k]=j; } });
+  var findCol = function(names){ for(var n=0;n<names.length;n++){ var k=names[n].toLowerCase(); if(colMap[k]!==undefined) return colMap[k]; } return -1; };
+  var colIdx = {};
+  for(var key in fieldOffsets){
+    var byName = FIELD_HEADER_NAMES[key] ? findCol(FIELD_HEADER_NAMES[key]) : -1;
+    colIdx[key] = byName>=0 ? byName : (tIdx+fieldOffsets[key]);
+  }
   var out=[];
   for(var r=hIdx+1;r<raw.length;r++){
     var row2 = raw[r]||[];
-    var tkRaw = row2[tIdx+fieldOffsets.ticker];
+    var tkRaw = row2[colIdx.ticker];
     var tk = String(tkRaw||'').trim();
     if(!tk || tk.toLowerCase()==='ticker' || !/^[A-Za-z0-9][A-Za-z0-9.\-]{1,9}$/.test(tk)) continue;
     var rec={};
-    for(var key in fieldOffsets){
-      var off = fieldOffsets[key];
-      rec[key] = row2[tIdx+off]!==undefined ? row2[tIdx+off] : null;
+    for(var key2 in fieldOffsets){
+      rec[key2] = row2[colIdx[key2]]!==undefined ? row2[colIdx[key2]] : null;
     }
     rec.ticker = tk.toUpperCase();
     out.push(rec);
