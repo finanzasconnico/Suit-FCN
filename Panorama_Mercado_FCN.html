@@ -171,6 +171,14 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
     </div>
 
     <div class="field">
+      <div class="field-label">Tenencia (USD)</div>
+      <div class="range-row">
+        <input type="number" id="f-ten-min" placeholder="Min" step="1000" oninput="render()">
+        <input type="number" id="f-ten-max" placeholder="Max" step="1000" oninput="render()">
+      </div>
+    </div>
+
+    <div class="field">
       <div class="field-label">Tipo</div>
       <label class="chk-row"><input type="checkbox" id="chk-corp" checked onchange="render()"> Corporativos (ONs)</label>
       <label class="chk-row"><input type="checkbox" id="chk-sob" checked onchange="render()"> Soberanos</label>
@@ -573,6 +581,8 @@ function render(){
   const fAsesor = document.getElementById('f-asesor').value;
   const durMin = parseFloat(document.getElementById('f-dur-min').value);
   const durMax = parseFloat(document.getElementById('f-dur-max').value);
+  const tenMin = parseFloat(document.getElementById('f-ten-min').value);
+  const tenMax = parseFloat(document.getElementById('f-ten-max').value);
   const chkCorp = document.getElementById('chk-corp').checked;
   const chkSob = document.getElementById('chk-sob').checked;
   const chkProv = document.getElementById('chk-prov').checked;
@@ -591,6 +601,11 @@ function render(){
     const enCartera = holders.length > 0;
     if (fCartera === 'si' && !enCartera) return false;
     if (fCartera === 'no' && enCartera) return false;
+    if (!isNaN(tenMin) || !isNaN(tenMax)) {
+      const tenTotal = holders.reduce((a,h)=>a+h.tenencia,0);
+      if (!isNaN(tenMin) && tenTotal < tenMin) return false;
+      if (!isNaN(tenMax) && tenTotal > tenMax) return false;
+    }
     return true;
   });
 

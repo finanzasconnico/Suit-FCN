@@ -106,8 +106,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 /* ── Ícono chico de PowerBI, inline dentro de cada fila del desplegable de Archivos
    (ver renderFilesStatusDropdown) — mismo criterio visual que .liq-wpp-btn. ── */
-.fsd-pwbi-btn{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--ambar-d);border:1px solid rgba(219,160,60,.5);color:var(--ambar);font-size:9px;text-decoration:none;position:relative;z-index:2;}
-.fsd-pwbi-btn:hover{background:rgba(219,160,60,.3);}
+.fsd-pwbi-btn{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.45);color:#4ade80;text-decoration:none;position:relative;z-index:2;transition:background .15s,border-color .15s;}
+.fsd-pwbi-btn:hover{background:rgba(37,211,102,.28);border-color:rgba(37,211,102,.7);}
+.fsd-pwbi-btn svg{width:12px;height:12px;flex-shrink:0;}
 /* critical: falta un archivo sin fallback (Tenencia / Stock) → rojo, pulsa para llamar la atención */
 .files-status-pill.critical{border-color:rgba(192,69,59,.6);background:var(--danger-d);}
 .files-status-pill.critical .files-status-text{color:var(--danger);}
@@ -2502,7 +2503,7 @@ function renderFilesStatusDropdown(list) {
       <span class="fsd-name">${escHtml(row.sf.name)}</span>
       <span class="fsd-sub">${filesStatusSubtext(row)}</span>
       <input type="file" accept="${row.sf.accept}" onchange="onFileSelected('${row.sf.key}', this); closeFilesStatusDropdown();">
-      ${row.sf.sourceUrl ? `<a class="fsd-pwbi-btn" href="${row.sf.sourceUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${escHtml(row.sf.sourceLabel || ('Descargar ' + row.sf.name + ' desde Balanz (PowerBI)'))}">📊</a>` : ''}
+      ${row.sf.sourceUrl ? `<a class="fsd-pwbi-btn" href="${row.sf.sourceUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${escHtml(row.sf.sourceLabel || ('Descargar ' + row.sf.name + ' desde Balanz (PowerBI)'))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 7v7"/><path d="M8.5 11.5 12 15l3.5-3.5"/></svg></a>` : ''}
     </div>`;
   }).join('');
 }
