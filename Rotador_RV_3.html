@@ -666,6 +666,12 @@ async function fetchPrecioTicker(ticker) {
 }
 
 
+// ── FILTRO "TOP N CLIENTES POR CAPITAL" (elegido en FCN Suite) ──
+// Se comporta como si el universo de clientes fuera SOLO el top N — se aplica en
+// procesarPosiciones(), antes de que cualquier otra cosa (tablas, holders, mail masivo, etc.)
+// vea los datos, así no hay que acordarse de filtrar en cada lugar por separado.
+let topClientesFiltroSet = null; // null = sin filtro | Set<string> de nombres de cliente
+
 // ── SHARED FILES AUTO-LOAD ──
 (function() {
   const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
@@ -699,7 +705,8 @@ async function fetchPrecioTicker(ticker) {
     } catch { return null; }
   }
   async function loadShared() {
-    const [ten, stk, po] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared('precios_objetivo')]);
+    const [ten, stk, po, topF] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared('precios_objetivo'), getShared('topClientsFilter')]);
+    if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
     if (ten) handleFile(new File([ten.data], ten.name));
     if (stk) handleStock(new File([stk.data], stk.name));
     const poEntry = po || await fetchStaticFallback('data/precios_objetivo.xlsx');
@@ -708,7 +715,13 @@ async function fetchPrecioTicker(ticker) {
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = async e => {
-      if (!e.data || e.data.type !== 'file_updated') return;
+      if (!e.data) return;
+      if (e.data.type === 'top_clients_selected') {
+        topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
+        if (dataBruta.length) procesarPosiciones();
+        return;
+      }
+      if (e.data.type !== 'file_updated') return;
       await new Promise(r => setTimeout(r, 1500));
       const entry = await getShared(e.data.key);
       if (!entry) return;
@@ -938,7 +951,8 @@ function procesarPosiciones() {
       nombre:stockEntry.nombre || null,
       mail:  stockEntry.mail  || null,
     };
-  }).filter(p=>p.ticker&&p.tenencia>0);
+  }).filter(p=>p.ticker&&p.tenencia>0)
+    .filter(p=>!topClientesFiltroSet||topClientesFiltroSet.has(p.cliente));
   renderResultados();
 }
 

@@ -682,6 +682,9 @@ let dataTenencia = [];
 let dataMonitor = {};
 let datosFusionados = [];
 let datosFiltrados = [];
+// "Top N clientes por capital" elegido en FCN Suite — se comporta como si el universo de
+// clientes fuera solo el top N. null = sin filtro | Set<string> con los nombres.
+let topClientesFiltroSet = null;
 let umbralTIR = 5.0;
 let umbralTIRAlta = 8.0;
 let umbralDurMax = 0;
@@ -1001,7 +1004,9 @@ function analizarCarteras() {
   // Solo incluir filas cuyo ticker existe en el Monitor (= ONs corporativas reales)
   const filasONs=dataTenencia.filter(row=>{
     const ticker=String(row['Ticker']||'').trim();
-    return ticker && dataMonitor[ticker];
+    if(!ticker || !dataMonitor[ticker]) return false;
+    if(topClientesFiltroSet && !topClientesFiltroSet.has(String(row['Cuenta']||'').trim())) return false;
+    return true;
   });
   datosFusionados=filasONs.map(row=>{
     const ticker=String(row['Ticker']||'').trim();
@@ -2059,14 +2064,37 @@ function actualizarFiltrosDias() {
     if (tries > 20) { applyClientFilter(cliente); return; } // ~10s de espera máx, después aplica igual
     setTimeout(() => waitForDataAndApply(cliente, tries + 1), 500);
   }
+  async function getSharedRaw(key) {
+    try {
+      const db = await openDB();
+      return new Promise(res => {
+        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
+        r.onsuccess = () => res(r.result || null);
+        r.onerror = () => res(null);
+      });
+    } catch { return null; }
+  }
+  function reanalizarSiHayDatos() {
+    if (typeof analizarCarteras === 'function' && dataTenencia.length) analizarCarteras();
+  }
   async function init() {
-    const cliente = await getActiveClient();
+    const [cliente, topF] = await Promise.all([getActiveClient(), getSharedRaw('topClientsFilter')]);
+    if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
+    // Por si analizarCarteras() ya corrió (carrera con el otro auto-load) sin conocer todavía
+    // el filtro — se re-corre para no dejar clientes fuera del top N mostrados igual.
+    reanalizarSiHayDatos();
     if (cliente) waitForDataAndApply(cliente);
   }
   window.addEventListener('DOMContentLoaded', init);
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = e => {
-      if (!e.data || e.data.type !== 'client_selected') return;
+      if (!e.data) return;
+      if (e.data.type === 'top_clients_selected') {
+        topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
+        reanalizarSiHayDatos();
+        return;
+      }
+      if (e.data.type !== 'client_selected') return;
       applyClientFilter(e.data.cliente);
     };
   }

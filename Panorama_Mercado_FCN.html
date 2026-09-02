@@ -303,6 +303,9 @@ function fcnIrArchivos(e) {
 let dataMonitor = {};   // ticker -> {tipo,tir,cupon,vencimiento,calificacion,emisor,tirCable,dolar,instrumento,duration,laminaMin}
 let dataTenencia = [];  // filas crudas de Tenencia por Ticker
 let holdersByTicker = {}; // ticker -> [{cliente,asesor,tenencia,nominales,precioCompra,diasTenencia}]
+// "Top N clientes por capital" elegido en FCN Suite — se comporta como si el universo de
+// clientes fuera solo el top N. null = sin filtro | Set<string> con los nombres.
+let topClientesFiltroSet = null;
 let chart = null;
 let umbral = 50; // bps
 
@@ -510,6 +513,8 @@ function construirHolders(){
   dataTenencia.forEach(row=>{
     const ticker = String(row['Ticker']||'').trim();
     if(!ticker || !dataMonitor[ticker]) return;
+    const clienteRow = String(row['Cuenta']||row['Comitente']||'').trim();
+    if(topClientesFiltroSet && !topClientesFiltroSet.has(clienteRow)) return;
     if(!holdersByTicker[ticker]) holdersByTicker[ticker] = [];
     holdersByTicker[ticker].push({
       cliente: row['Cuenta']||row['Comitente']||'—',
@@ -902,13 +907,21 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     let mon = await getShared('monitor');
     if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
     if (mon) await cargarMonitor(fakeInput(mon));
+    const topF = await getShared('topClientsFilter');
+    if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
     const ten = await getShared('tenencia');
     if (ten) await cargarTenencia(fakeInput(ten));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = async e => {
-      if (!e.data || e.data.type !== 'file_updated') return;
+      if (!e.data) return;
+      if (e.data.type === 'top_clients_selected') {
+        topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
+        if (dataTenencia.length) { construirHolders(); render(); }
+        return;
+      }
+      if (e.data.type !== 'file_updated') return;
       await new Promise(r => setTimeout(r, 1500));
       const entry = await getShared(e.data.key);
       if (!entry) return;

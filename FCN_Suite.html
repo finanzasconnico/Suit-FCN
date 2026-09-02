@@ -440,6 +440,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <span class="topn-lbl">Top por capital:</span>
             <button class="topn-chip" onclick="aplicarTopNClientes(20)">20</button>
             <button class="topn-chip" onclick="aplicarTopNClientes(50)">50</button>
+            <button class="topn-chip" onclick="aplicarTopNClientes(60)">60</button>
             <button class="topn-chip" onclick="aplicarTopNClientes(100)">100</button>
             <input type="number" id="topn-custom" class="topn-custom" placeholder="Otro…" min="1" onkeydown="if(event.key==='Enter')aplicarTopNClientes(parseInt(this.value)||0)">
           </div>

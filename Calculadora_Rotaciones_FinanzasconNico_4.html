@@ -1990,6 +1990,9 @@ var TIPO_RENTA_FIJA = {corporativos:true, bonos:true, letras:true};
 var COMITENTE_POR_CLIENTE = {}; // { cliente (Cuenta) : comitente } — para cruzar con Stock de cuentas
 var stockMap = {}; // comitente -> { tel, nombre, denominacion, mail }
 var wppRotCtx = null;
+// "Top N clientes por capital" elegido en FCN Suite — se comporta como si el universo de
+// clientes fuera solo el top N. null = sin filtro | Set<string> con los nombres.
+var topClientesFiltroSet = null;
 
 function esFilaTotalRot(r, ticker){
   if(!ticker) return true;
@@ -2016,6 +2019,7 @@ function parseTenenciaParaClientes(entry){
       var comitente = String(r['Comitente']||'').trim();
       var cliente = String(r['Cuenta']||comitente||'').trim();
       if(!cliente) return;
+      if(topClientesFiltroSet && !topClientesFiltroSet.has(cliente)) return;
       var ppc = parseFloat(r['Prec prom de compra'])||null;
       var dias = parseFloat(r['Días de tenencia']);
       if(isNaN(dias)) dias = null;
@@ -2501,6 +2505,8 @@ async function descargarReportePDF(){
   }
   async function loadShared() {
     await loadMonitorShared();
+    const topF = await getShared('topClientsFilter');
+    if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
     const ten = await getShared('tenencia');
     if (ten) parseTenenciaParaClientes(ten);
     const stk = await getShared('stock');
@@ -2509,7 +2515,14 @@ async function descargarReportePDF(){
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = async e => {
-      if (!e.data || e.data.type !== 'file_updated') return;
+      if (!e.data) return;
+      if (e.data.type === 'top_clients_selected') {
+        topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
+        const entry = await getShared('tenencia');
+        if (entry) parseTenenciaParaClientes(entry);
+        return;
+      }
+      if (e.data.type !== 'file_updated') return;
       const raw = e.data.rawKey || e.data.key;
       if (raw === 'monitor') {
         await new Promise(r => setTimeout(r, 1500));
