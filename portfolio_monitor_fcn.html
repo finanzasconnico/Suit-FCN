@@ -2460,7 +2460,14 @@ function downloadReport(){
     '<style>*{margin:0;padding:0;box-sizing:border-box;}'+
     'body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11px;color:#1a1a2e;background:#f8fafc;padding:0;}'+
     '@page{margin:12mm 12mm;size:A4;}'+
-    '@media print{body{background:white;}.no-print{display:none!important;}section{break-inside:avoid;page-break-inside:avoid;}}'+
+    // Antes TODAS las <section> tenían break-inside:avoid — una sección larga (Detalle de
+    // posiciones, Operaciones cerradas: tablas de largo variable según cuántas posiciones
+    // tenga el cliente) que no entraba entera en lo que quedaba de la hoja se mandaba COMPLETA
+    // a la hoja siguiente, dejando un bloque de espacio en blanco enorme donde terminaba la
+    // sección anterior. Ahora eso solo se evita en las secciones cortas (con .compact) — las
+    // tablas largas fluyen normalmente entre hojas, repitiendo el encabezado y sin partir una
+    // fila al medio.
+    '@media print{body{background:white;}.no-print{display:none!important;}.compact{break-inside:avoid;page-break-inside:avoid;}thead{display:table-header-group;}tr{break-inside:avoid;page-break-inside:avoid;}}'+
     '.cover{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#1e40af 100%);color:white;padding:48px 52px;min-height:160px;}'+
     '.cover h1{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px;}'+
     '.cover .sub{font-size:13px;opacity:.7;margin-bottom:24px;}'+
@@ -2509,7 +2516,7 @@ function downloadReport(){
     '<div class="mitem"><div class="mlbl">Posiciones</div><div class="mval">'+Object.keys(pos).length+'</div></div>'+
     '</div></div>'+
 
-    '<section><h2>Resumen</h2><div class="cards">'+
+    '<section class="compact"><h2>Resumen</h2><div class="cards">'+
     '<div class="card"><div class="lbl">Valor de cartera</div><div class="val">'+U2(totalVal)+'</div><div class="sub">Al tipo de cambio MEP</div></div>'+
     '<div class="card"><div class="lbl">Capital invertido</div><div class="val">'+U2(totalCost)+'</div></div>'+
     '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'% s/ capital</div></div>'+
@@ -2517,7 +2524,7 @@ function downloadReport(){
     '<div class="card"><div class="lbl">Rendimiento total</div><div class="val '+(rendTotal>=0?'green':'red')+'">'+(rendTotal>=0?'+':'')+N(rendTotal,2)+'%</div><div class="sub">Ganancia + renta / capital</div></div>'+
     '</div></section>'+
 
-    '<section><h2>Composición y Ganancia / Pérdida por instrumento</h2>'+
+    '<section class="compact"><h2>Composición y Ganancia / Pérdida por instrumento</h2>'+
     '<div class="charts-row">'+
     '<div class="chart-box" style="max-width:280px;">'+
     '<h3>Composición por categoría</h3>'+
@@ -2531,7 +2538,7 @@ function downloadReport(){
     '</div></div></section>'+
 
     (incBarData.length?
-    '<section><h2>Renta cobrada por mes (últimos '+meses.length+' meses)</h2>'+
+    '<section class="compact"><h2>Renta cobrada por mes (últimos '+meses.length+' meses)</h2>'+
     '<div class="chart-box">'+
     '<svg viewBox="0 -10 380 95" width="100%" style="overflow:visible;">'+incBarSVG+'</svg>'+
     '</div></section>':'') +
@@ -2546,14 +2553,14 @@ function downloadReport(){
     '<td class="num '+(gp>=0?'green':'red')+'"><strong>'+(gpPct>=0?'+':'')+N(gpPct,1)+'%</strong></td></tr>'+
     '</tbody></table></section>'+
 
-    '<section><h2>Ranking de rendimiento positivo (top 10)</h2>'+
+    '<section class="compact"><h2>Ranking de rendimiento positivo (top 10)</h2>'+
     '<table><thead><tr><th>#</th><th>Ticker</th><th>Instrumento</th>'+
     '<th class="num">Valor actual</th><th class="num">G/P USD</th><th class="num">G/P %</th></tr></thead>'+
     '<tbody>'+topTableRows+'</tbody></table></section>'+
 
     // ── RENDIMIENTO REAL VS. DEPÓSITOS ──
     (gpReal!==null&&netoAp>0?
-    '<section><h2>Rendimiento real vs. capital aportado</h2>'+
+    '<section class="compact"><h2>Rendimiento real vs. capital aportado</h2>'+
     '<div class="cards">'+
     '<div class="card"><div class="lbl">Total en cuenta hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos '+(cashVR>0?'+ efectivo '+U2(cashVR):'')+'</div></div>'+
     '<div class="card"><div class="lbl">Depósitos realizados</div><div class="val">'+U2(tDep)+'</div></div>'+
