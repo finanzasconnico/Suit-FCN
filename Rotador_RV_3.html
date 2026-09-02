@@ -243,7 +243,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 
 
 <!-- ── WPP MODAL ── -->
-<div class="wpp-modal-overlay" id="wpp-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarWppModal()">
+<div class="wpp-modal-overlay" id="wpp-modal-overlay" style="display:none" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true')cerrarWppModal()">
   <div class="wpp-modal">
     <div class="wpp-modal-header">
       <div>
@@ -275,7 +275,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 </div>
 
 <!-- ── MAIL MODAL (resumen individual, pestaña "Por cliente") ── -->
-<div class="wpp-modal-overlay" id="mail-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarMailModal()">
+<div class="wpp-modal-overlay" id="mail-modal-overlay" style="display:none" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true')cerrarMailModal()">
   <div class="wpp-modal">
     <div class="wpp-modal-header">
       <div>
@@ -299,7 +299,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 </div>
 
 <!-- ── MAIL MASIVO (borradores por cliente, según filtros activos de "Todas las posiciones") ── -->
-<div class="wpp-modal-overlay" id="mail-masivo-overlay" style="display:none" onclick="if(event.target===this)cerrarMailMasivo()">
+<div class="wpp-modal-overlay" id="mail-masivo-overlay" style="display:none" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true')cerrarMailMasivo()">
   <div class="wpp-modal" style="max-width:720px;max-height:85vh;overflow-y:auto;">
     <div class="wpp-modal-header">
       <div>
@@ -316,7 +316,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 </div>
 
 <!-- ── HOLDERS POR TICKER (desde la pestaña "Precios & Targets") ── -->
-<div class="wpp-modal-overlay" id="holders-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarHoldersTicker()">
+<div class="wpp-modal-overlay" id="holders-modal-overlay" style="display:none" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true')cerrarHoldersTicker()">
   <div class="wpp-modal" style="max-width:560px;">
     <div class="wpp-modal-header">
       <div>
@@ -1200,6 +1200,22 @@ function abrirMailMasivo(listaCustom, labelExtra) {
   document.getElementById('mail-masivo-overlay').style.display = 'flex';
 }
 function cerrarMailMasivo() { document.getElementById('mail-masivo-overlay').style.display = 'none'; }
+
+// Esc cierra el popup que esté abierto — antes solo se podía cerrar con clic afuera (y eso
+// tenía el bug de arriba) o con el botón ✕.
+document.addEventListener('keydown', function(e){
+  if(e.key!=='Escape') return;
+  var overlays = {
+    'wpp-modal-overlay': cerrarWppModal,
+    'mail-modal-overlay': cerrarMailModal,
+    'mail-masivo-overlay': cerrarMailMasivo,
+    'holders-modal-overlay': cerrarHoldersTicker,
+  };
+  Object.keys(overlays).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && el.style.display && el.style.display !== 'none') overlays[id]();
+  });
+});
 function abrirMailMasivoItem(i) {
   const card = document.querySelectorAll('#mail-masivo-cards .cliente-card')[i];
   const mail = card?.dataset.mail;
