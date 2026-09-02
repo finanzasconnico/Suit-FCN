@@ -52,6 +52,9 @@ body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:
 .search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px 7px 30px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;transition:border-color .2s;}
 .search-wrap input:focus{border-color:var(--jade);}
 .search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:11px;pointer-events:none;}
+.mult-pick{display:flex;align-items:center;gap:6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap;}
+.mult-pick select{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;padding:6px 8px;outline:none;cursor:pointer;text-transform:none;letter-spacing:0;}
+.mult-pick select:focus{border-color:var(--jade);}
 .filter-chips{display:flex;gap:4px;flex-wrap:wrap;}
 .chip{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-s);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .chip:hover{border-color:rgba(28,140,95,.4);color:var(--text);}
@@ -133,6 +136,16 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <span class="search-icon">🔍</span>
       <input type="text" id="search-input" placeholder="Buscar ticker o empresa…" oninput="render()">
     </div>
+    <label class="mult-pick" id="mult-pick">Múltiplo
+      <select id="mult-sel" onchange="setMult(this.value)">
+        <option value="auto">Según sector</option>
+        <option value="PE">P/E</option>
+        <option value="PS">P/S</option>
+        <option value="EVEBITDA">EV/EBITDA</option>
+        <option value="PFCF">P/FCF</option>
+        <option value="PB">P/B</option>
+      </select>
+    </label>
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
     <span class="counter" id="counter"></span>
@@ -248,15 +261,15 @@ function multiplosDeSector(sector){
 //  ESTADO
 // ══════════════════════════════════════════
 let allRows=[];
-let activeTab='Resumen';
+let activeTab='Múltiplos';
 let activeSector='todos';
+let multSel='auto';                 // 'auto' (según sector) | 'PE' | 'PS' | 'EVEBITDA' | 'PFCF' | 'PB'
 let soloCartera=false, _carteraTocado=false;
 let sortState={};   // { tabName: {col, asc} }
 let dataTenencia=[], holdersByTicker={};
 let FOOT_BASE='';
 
-const TABS=['Resumen','PER','P/S','EV/EBITDA','P/FCF','P/B','Técnico'];
-const TAB_MULT={ 'PER':'PE','P/S':'PS','EV/EBITDA':'EVEBITDA','P/FCF':'PFCF','P/B':'PB' };
+const TABS=['Múltiplos','Técnico'];
 
 // ══════════════════════════════════════════
 //  HELPERS DE CÁLCULO
@@ -386,12 +399,14 @@ function parseBuffer(entry){
   }).filter(r=>r.ticker);
 }
 
-// múltiplo "titular" para el Resumen: el primer primario del sector que tenga dato
-function multTitular(r){
-  const prim=multiplosDeSector(r.sector);
-  for(const k of prim){ if(r.m[k] && r.m[k].actual!==null && r.m[k].p5!==null) return k; }
-  for(const k of prim){ if(r.m[k] && r.m[k].actual!==null) return k; }
-  return prim[0]||null;
+// múltiplo primario de un sector (siempre el mismo, tenga dato o no — así la tabla es predecible)
+function multPrimario(sector){
+  const prim=multiplosDeSector(sector);
+  return prim[0] || DEFAULT_MULTIPLOS[0];
+}
+// qué múltiplo mostrar para una fila, según el selector
+function multDeFila(r){
+  return multSel==='auto' ? multPrimario(r.sector) : multSel;
 }
 
 // ══════════════════════════════════════════
@@ -417,6 +432,7 @@ function buildSectorChips(){
     + secs.map(s=>`<button class="chip ${activeSector===s?'active':''}" onclick="setSector(${JSON.stringify(s).replace(/"/g,'&quot;')})">${s}</button>`).join('');
 }
 function setSector(s){ activeSector=s; buildSectorChips(); render(); }
+function setMult(v){ multSel=v; render(); }
 function toggleCartera(){
   soloCartera=!soloCartera;
   _carteraTocado=true;
@@ -424,69 +440,46 @@ function toggleCartera(){
   render();
 }
 
+// filtro base (search + sector + cartera) — común a las dos pestañas.
+// NO se filtra por "tiene dato o no": se muestran todos, con "—" donde falte.
 function visibleRows(){
   const q=(document.getElementById('search-input')?.value||'').toLowerCase().trim();
   return allRows.filter(r=>{
     if(q && !r.ticker.toLowerCase().includes(q) && !r.empresa.toLowerCase().includes(q)) return false;
     if(activeSector!=='todos' && r.sector!==activeSector) return false;
     if(soloCartera && !holdersFor(r).length) return false;
-    if(activeTab==='Técnico') return (r.mm21!==null||r.mm50!==null||r.mm200!==null||r.precio!==null);
-    if(activeTab in TAB_MULT){
-      const k=TAB_MULT[activeTab];
-      return r.m[k] && (r.m[k].actual!==null||r.m[k].p3!==null||r.m[k].p5!==null||r.m[k].p10!==null);
-    }
-    // Resumen: solo los que ya tienen al menos un múltiplo primario con dato
-    const k=multTitular(r);
-    return !!(k && r.m[k] && r.m[k].actual!==null && r.m[k].p5!==null);
+    return true;
   });
-}
-// tickers que pasan search/sector/cartera pero todavía no tienen múltiplos cargados
-function sinMultiplosCount(){
-  const q=(document.getElementById('search-input')?.value||'').toLowerCase().trim();
-  return allRows.filter(r=>{
-    if(q && !r.ticker.toLowerCase().includes(q) && !r.empresa.toLowerCase().includes(q)) return false;
-    if(activeSector!=='todos' && r.sector!==activeSector) return false;
-    if(soloCartera && !holdersFor(r).length) return false;
-    const k=multTitular(r);
-    return !(k && r.m[k] && r.m[k].actual!==null && r.m[k].p5!==null);
-  }).length;
 }
 
 // ══════════════════════════════════════════
 //  SORT
 // ══════════════════════════════════════════
 function sortGetters(){
-  if(activeTab==='Resumen'){
-    return {
-      ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector,
-      precio:r=>r.precio, mult:r=>multTitular(r)||'',
-      actual:r=>{const k=multTitular(r);return k?r.m[k].actual:null;},
-      prom5:r=>{const k=multTitular(r);return k?r.m[k].p5:null;},
-      corr5:r=>{const k=multTitular(r);return k?corr(r.m[k].actual,r.m[k].p5):null;},
-      obj5:r=>{const k=multTitular(r);return k?precioObj(r.precio,r.m[k].actual,r.m[k].p5):null;},
-    };
-  }
   if(activeTab==='Técnico'){
     return {
-      ticker:r=>r.ticker, empresa:r=>r.empresa, precio:r=>r.precio,
+      ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, precio:r=>r.precio,
       mm21:r=>r.mm21, mm50:r=>r.mm50, mm200:r=>r.mm200,
       v21:r=>(r.precio!==null&&r.mm21)?r.precio/r.mm21-1:null,
       v50:r=>(r.precio!==null&&r.mm50)?r.precio/r.mm50-1:null,
       v200:r=>(r.precio!==null&&r.mm200)?r.precio/r.mm200-1:null,
     };
   }
-  const k=TAB_MULT[activeTab];
+  // Múltiplos: el múltiplo depende de la fila (modo auto) o es fijo (selector)
+  const mk=r=>multDeFila(r);
   return {
-    ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, precio:r=>r.precio,
-    actual:r=>r.m[k].actual, p3:r=>r.m[k].p3, p5:r=>r.m[k].p5, p10:r=>r.m[k].p10,
-    c3:r=>corr(r.m[k].actual,r.m[k].p3), c5:r=>corr(r.m[k].actual,r.m[k].p5), c10:r=>corr(r.m[k].actual,r.m[k].p10),
-    obj5:r=>precioObj(r.precio,r.m[k].actual,r.m[k].p5),
+    ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, mult:r=>MULT[mk(r)]?.label||'',
+    precio:r=>r.precio,
+    actual:r=>r.m[mk(r)]?.actual ?? null,
+    p3:r=>r.m[mk(r)]?.p3 ?? null, p5:r=>r.m[mk(r)]?.p5 ?? null, p10:r=>r.m[mk(r)]?.p10 ?? null,
+    c3:r=>corr(r.m[mk(r)]?.actual,r.m[mk(r)]?.p3),
+    c5:r=>corr(r.m[mk(r)]?.actual,r.m[mk(r)]?.p5),
+    c10:r=>corr(r.m[mk(r)]?.actual,r.m[mk(r)]?.p10),
+    obj5:r=>precioObj(r.precio,r.m[mk(r)]?.actual,r.m[mk(r)]?.p5),
   };
 }
 function defaultSort(){
-  if(activeTab==='Resumen') return {col:'corr5',asc:true};
-  if(activeTab==='Técnico') return {col:'v200',asc:true};
-  return {col:'c5',asc:true};
+  return activeTab==='Técnico' ? {col:'v200',asc:true} : {col:'c5',asc:true};
 }
 function currentSort(){
   if(!sortState[activeTab]) sortState[activeTab]=defaultSort();
@@ -531,30 +524,14 @@ function render(){
   const thead=document.getElementById('thead'), tbody=document.getElementById('tbody');
   if(!thead||!tbody) return;
   const rows=applySort(visibleRows());
+  const pick=document.getElementById('mult-pick');
+  if(pick) pick.style.display = activeTab==='Múltiplos' ? '' : 'none';
 
-  let headHtml='', bodyHtml='';
+  let headHtml='', bodyHtml='', ncols=12;
 
-  if(activeTab==='Resumen'){
-    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}${th('mult','Múlt.')}
-      ${th('precio','Precio',1)}${th('actual','Actual',1)}${th('prom5','Prom. 5Y',1)}${th('corr5','% corr. 5Y',1)}${th('obj5','P. objetivo',1)}</tr>`;
-    bodyHtml=rows.map(r=>{
-      const k=multTitular(r);
-      const mm=k?r.m[k]:null;
-      const c5=mm?corr(mm.actual,mm.p5):null;
-      const o5=mm?precioObj(r.precio,mm.actual,mm.p5):null;
-      return `<tr>${tkCell(r)}
-        <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
-        <td class="td-sector">${r.sector||'—'}</td>
-        <td>${k?`<span class="mult-badge">${MULT[k].label}</span>`:'<span class="dash">—</span>'}</td>
-        <td class="num">${nCell(r.precio)}</td>
-        <td class="num">${mm?nCell(mm.actual):'<span class="dash">—</span>'}</td>
-        <td class="num">${mm?nCell(mm.p5):'<span class="dash">—</span>'}</td>
-        <td class="num">${corrCell(c5)}</td>
-        <td class="num">${nCell(o5)}</td></tr>`;
-    }).join('');
-
-  }else if(activeTab==='Técnico'){
-    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('precio','Precio',1)}
+  if(activeTab==='Técnico'){
+    ncols=9;
+    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}${th('precio','Precio',1)}
       ${th('mm21','MM 21s',1)}${th('mm50','MM 50s',1)}${th('mm200','MM 200s',1)}
       ${th('v21','vs 21s',1)}${th('v50','vs 50s',1)}${th('v200','vs 200s',1)}</tr>`;
     const vs=(p,m)=>{
@@ -563,20 +540,27 @@ function render(){
     };
     bodyHtml=rows.map(r=>`<tr>${tkCell(r)}
       <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
+      <td class="td-sector">${r.sector||'—'}</td>
       <td class="num">${nCell(r.precio)}</td>
       <td class="num">${nCell(r.mm21)}</td><td class="num">${nCell(r.mm50)}</td><td class="num">${nCell(r.mm200)}</td>
       <td class="num">${vs(r.precio,r.mm21)}</td><td class="num">${vs(r.precio,r.mm50)}</td><td class="num">${vs(r.precio,r.mm200)}</td></tr>`).join('');
 
   }else{
-    const k=TAB_MULT[activeTab];
-    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}${th('precio','Precio',1)}
-      ${th('actual','Actual',1)}${th('p3','Prom. 3Y',1)}${th('p5','Prom. 5Y',1)}${th('p10','Prom. 10Y',1)}
-      ${th('c3','% corr. 3Y',1)}${th('c5','% corr. 5Y',1)}${th('c10','% corr. 10Y',1)}${th('obj5','P. objetivo 5Y',1)}</tr>`;
+    // MÚLTIPLOS — una sola tabla, el múltiplo lo fija el selector (o el sector en modo auto)
+    const auto = multSel==='auto';
+    ncols = auto ? 13 : 12;
+    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}`
+      +(auto?th('mult','Múlt.'):'')
+      +`${th('precio','Precio',1)}${th('actual','Actual',1)}${th('p3','Prom. 3Y',1)}${th('p5','Prom. 5Y',1)}${th('p10','Prom. 10Y',1)}`
+      +`${th('c3','% corr. 3Y',1)}${th('c5','% corr. 5Y',1)}${th('c10','% corr. 10Y',1)}${th('obj5','P. objetivo 5Y',1)}</tr>`;
     bodyHtml=rows.map(r=>{
-      const mm=r.m[k];
+      const k=multDeFila(r);
+      const mm=r.m[k]||{actual:null,p3:null,p5:null,p10:null};
+      const badge=(auto && !r.sector) ? '<span class="dash">—</span>' : `<span class="mult-badge">${MULT[k]?.label||k}</span>`;
       return `<tr>${tkCell(r)}
         <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
         <td class="td-sector">${r.sector||'—'}</td>
+        ${auto?`<td>${badge}</td>`:''}
         <td class="num">${nCell(r.precio)}</td>
         <td class="num">${nCell(mm.actual)}</td><td class="num">${nCell(mm.p3)}</td><td class="num">${nCell(mm.p5)}</td><td class="num">${nCell(mm.p10)}</td>
         <td class="num">${corrCell(corr(mm.actual,mm.p3))}</td><td class="num">${corrCell(corr(mm.actual,mm.p5))}</td><td class="num">${corrCell(corr(mm.actual,mm.p10))}</td>
@@ -585,22 +569,23 @@ function render(){
   }
 
   thead.innerHTML=headHtml;
-  tbody.innerHTML=bodyHtml || `<tr><td colspan="12" style="padding:30px;text-align:center;color:var(--muted);">Sin filas para este filtro.</td></tr>`;
+  tbody.innerHTML=bodyHtml || `<tr><td colspan="${ncols}" style="padding:30px;text-align:center;color:var(--muted);">Sin filas para este filtro.</td></tr>`;
 
-  document.getElementById('counter').innerHTML=`<strong>${rows.length}</strong> de <strong>${allRows.length}</strong> tickers`;
+  // contador: cuántos de los visibles ya tienen el dato de esta vista
+  let conDato;
+  if(activeTab==='Técnico') conDato=rows.filter(r=>r.mm200!==null||r.mm50!==null).length;
+  else conDato=rows.filter(r=>{const m=r.m[multDeFila(r)];return m&&m.actual!==null&&m.p5!==null;}).length;
+  document.getElementById('counter').innerHTML=
+    `<strong>${rows.length}</strong> tickers · <strong>${conDato}</strong> con datos`;
 
-  // nota contextual segun la pestaña
+  // nota al pie
   let note=FOOT_BASE;
-  if(activeTab==='Resumen'){
-    const faltan=sinMultiplosCount();
-    if(faltan) note=`⏳ ${faltan} ticker(s) todavía sin múltiplos — el bot los completa en las próximas corridas (la pestaña Técnico ya los muestra). `+FOOT_BASE;
-  }
+  const faltan=rows.length-conDato;
   if(activeTab==='Técnico'){
-    const conMM=rows.filter(r=>r.mm200!==null||r.mm50!==null||r.mm21!==null).length;
-    if(rows.length && conMM/rows.length < 0.5)
-      note='⏳ El bot todavía no calculó las medias móviles para la mayoría de los tickers (corre y se completa en la próxima actualización). '+FOOT_BASE;
-    else
-      note='Medias móviles = promedio del precio de cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo Finance). Verde = el precio está por encima de la media; rojo = por debajo.';
+    note='Medias móviles = promedio del cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo). Verde: precio por encima de la media · rojo: por debajo.'
+      + (faltan>0?` — ${faltan} todavía sin calcular.`:'');
+  }else if(faltan>0){
+    note=`⏳ ${faltan} de ${rows.length} todavía sin múltiplos — el bot de FMP los completa en las próximas corridas diarias. `+FOOT_BASE;
   }
   const fn=document.getElementById('foot-note'); if(fn) fn.innerHTML=note;
 }
@@ -648,7 +633,7 @@ async function loadAndRender(){
 
   const semilla=allRows.length && allRows.every(r=>r.fuente==='SEMILLA');
   FOOT_BASE=(semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot los reemplaza con la cartera completa en la próxima actualización. ':'')
-    +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. Múltiplos mostrados según el sector de cada empresa.';
+    +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. En "Según sector" cada empresa muestra el múltiplo más relevante para su rubro; con el selector podés fijar uno para toda la lista.';
   document.getElementById('foot-note').innerHTML=FOOT_BASE;
 
   buildTabs();
