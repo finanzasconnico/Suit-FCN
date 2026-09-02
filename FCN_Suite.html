@@ -808,7 +808,8 @@ const TOOLS = [
   { id:'monindiv',  name:'Monitor Vivo',    icon:'📈', desc:'Soberanos y Letras en vivo (A3 Mercados/MAE + bonistas.com) + ONs y Equity desde el Monitor de Individuos. Filtro por calificación (AAA/AA/A...).', badge:'Renta Fija', file:'Monitor_Vivo_Web.html', color:'jade' },
   { id:'calcbonos', name:'Calculadora de Bonos',     icon:'🧮', desc:'Precio ↔ TIR, cronograma de flujos, Duration y DV01 para ONs y Soberanos. Se autocompleta con el Monitor.', badge:'Renta Fija', file:'Calculadora_Bonos_FinanzasconNico.html', color:'jade' },
   { id:'calcrot',   name:'Calculadora de Rotaciones', icon:'🔁', desc:'¿Conviene cambiar de bono? Comparación simple y directa. Se autocompleta con el Monitor.',                            badge:'Renta Fija', file:'Calculadora_Rotaciones_FinanzasconNico_4.html', color:'amber' },
-  { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' }
+  { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' },
+  { id:'multiplos', name:'Valuación por Múltiplos', icon:'⚖️', desc:'Múltiplos (P/E, P/S, EV/EBITDA, P/FCF, P/B) actual vs. promedio histórico de 3/5/10 años + medias móviles semanales, seleccionados por sector.', badge:'Research', file:'Valuacion_Multiplos_FCN.html', color:'jade' }
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -850,6 +851,14 @@ const SHARED_FILES = [
     hint:   'Generado con precios_objetivo.py una vez por mes · .xlsx · 📤 se puede publicar para que lo vean todos',
     usedBy: ['Precios Objetivo', 'Armador de Carteras'],
     accept: '.xlsx,.xls,.csv'
+  },
+  {
+    key:    'valuacion_multiplos',
+    name:   'Valuación por Múltiplos (semanal)',
+    icon:   '⚖️',
+    hint:   'Generado por GitHub Actions (valuacion_multiplos.py) una vez por semana · .xlsx · 📤 se puede publicar para que lo vean todos',
+    usedBy: ['Valuación por Múltiplos'],
+    accept: '.xlsx,.xls,.csv'
   }
 ];
 
@@ -857,7 +866,7 @@ const SHARED_FILES = [
 // que se publican como archivo estático en la carpeta data/ del sitio, para que
 // cualquier compañero que abra la web en otra compu los vea sin tener que subirlos
 // él mismo. Tenencia y Stock quedan afuera a propósito: tienen datos de clientes.
-const STATIC_PUBLISH_KEYS = { monitor: 'monitor.xlsx', precios_objetivo: 'precios_objetivo.xlsx' };
+const STATIC_PUBLISH_KEYS = { monitor: 'monitor.xlsx', precios_objetivo: 'precios_objetivo.xlsx', valuacion_multiplos: 'valuacion_multiplos.xlsx' };
 
 function downloadForPublish(key, arrayBuffer) {
   const fixedName = STATIC_PUBLISH_KEYS[key];
@@ -1067,7 +1076,7 @@ function showApp() {
 // ══════════════════════════════════════════════════════════════
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
-  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador'] },
+  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','armador','monitor'] },
   { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },

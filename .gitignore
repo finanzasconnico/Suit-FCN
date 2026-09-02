@@ -36,6 +36,7 @@ Movimientos_test.xlsx
 # se autocarguen en cualquier compu, sin tener que subirlos a mano cada vez)
 !data/monitor.xlsx
 !data/precios_objetivo.xlsx
+!data/valuacion_multiplos.xlsx
 
 # Excepción: lista de tickers del workflow de Precios Objetivo (solo tickers, sin datos de
 # clientes) — sin esto, la regla general de *.txt de arriba se lo comía y GitHub Actions no
@@ -55,6 +56,12 @@ plantillas-mail/*.vba
 # Caché de progreso del workflow de Precios Objetivo — no aporta nada versionado, se regenera
 # sola en cada corrida.
 .github/scripts/.cache_precios_objetivo.json
+
+# Valuación por Múltiplos: el caché .cache_valuacion_multiplos.json SÍ se versiona (a
+# diferencia del de Precios Objetivo) — es lo que permite retomar el barrido entre corridas
+# diarias sin repetir calls; sin él el free tier de FMP (250/día) nunca terminaría el primer
+# sweep de ~319 tickers. Son ratios de mercado, sin datos de clientes. Solo se ignora el .tmp.
+.github/scripts/.cache_valuacion_multiplos.json.tmp
 
 # Bytecode compilado de Python (queda si se corre/importa el script a mano para probarlo)
 __pycache__/

@@ -1,0 +1,55 @@
+name: Actualizar Valuacion por Multiplos
+
+# Corre 1 vez por dia (05:30 UTC = 02:30 ART) y tambien a mano desde la pestaña "Actions"
+# (boton "Run workflow"). Es diario -y no semanal- porque el free tier de FMP topea en 250
+# requests/dia: con ~319 tickers el primer barrido tarda ~3 corridas. El script cachea el
+# avance en .github/scripts/.cache_valuacion_multiplos.json (se commitea) y retoma solo. Una
+# vez completo, cada corrida diaria solo refresca lo que tenga mas de 6 dias.
+#
+# Con un key de FMP pago se puede bajar la frecuencia (cron semanal) y subir MAX_FMP_CALLS
+# dentro del script.
+#
+# Requiere el secret FMP_API_KEY (Settings -> Secrets and variables -> Actions).
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: valuacion-multiplos
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests yfinance pandas openpyxl --upgrade
+
+      - name: Generar valuacion_multiplos.xlsx
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: python .github/scripts/valuacion_multiplos.py
+
+      - name: Commitear y pushear si cambio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/valuacion_multiplos.xlsx .github/scripts/.cache_valuacion_multiplos.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios, no hay nada para commitear."
+          else
+            git commit -m "Actualizacion automatica de Valuacion por Multiplos ($(date +%Y-%m-%d))"
+            git push
+          fi
