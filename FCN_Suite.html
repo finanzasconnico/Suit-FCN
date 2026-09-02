@@ -593,18 +593,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
          <div id="aliqForm">
 
           <div class="aliq-fieldset" id="aliqMinBox">
-            <div class="aliq-legend">Mínimo para incluir a un cliente</div>
+            <div class="aliq-legend">Mínimo de liquidez para incluir a un cliente</div>
             <div class="aliq-row">
               <div class="aliq-field">
-                <label>En dólares (USD)</label>
+                <label>Liquidez en dólares</label>
                 <input type="number" id="aliqMinUSD" min="0" step="10">
               </div>
               <div class="aliq-field">
-                <label>En pesos (ARS)</label>
-                <input type="number" id="aliqMinARS" min="0" step="1000">
+                <label>Liquidez en pesos <span style="color:var(--muted)">(valor dolarizado)</span></label>
+                <input type="number" id="aliqMinARS" min="0" step="10">
               </div>
             </div>
-            <div class="aliq-help">Si un cliente supera el mínimo en una sola moneda, el mail menciona solo esa.</div>
+            <div class="aliq-help">Los montos de la Tenencia vienen convertidos a dólares, así que <b>los dos mínimos se comparan en USD</b> (por eso el default de ambos es 100). Si un cliente supera el mínimo en una sola, el mail menciona solo esa.</div>
           </div>
 
           <div class="aliq-fieldset">
@@ -1791,10 +1791,12 @@ let _avisoBajasSet = null;     // Set<string> de mails dados de baja (minúscula
 let _avisoBajasError = false;  // true si falló el fetch a Supabase
 
 function getAvisoMinimos() {
+  // La Tenencia viene dolarizada: la liquidez en pesos también está expresada en USD.
+  // Por eso los dos mínimos se comparan en dólares y el default de ambos es 100.
   try {
     const s = JSON.parse(localStorage.getItem(AVISO_MIN_KEY) || '{}');
-    return { USD: Number.isFinite(s.USD) ? s.USD : 100, ARS: Number.isFinite(s.ARS) ? s.ARS : 100000 };
-  } catch { return { USD: 100, ARS: 100000 }; }
+    return { USD: Number.isFinite(s.USD) ? s.USD : 100, ARS: Number.isFinite(s.ARS) ? s.ARS : 100 };
+  } catch { return { USD: 100, ARS: 100 }; }
 }
 function getAvisoPerfil() {
   let s = {};
@@ -1843,6 +1845,15 @@ function tcNombre(s) {
 }
 function fmtMonto(n) { return Math.round(n).toLocaleString('es-AR'); }
 
+// La liquidez de la Tenencia está toda dolarizada (incluida la de pesos). El texto del
+// mail lo dice en USD para no mostrar un número de pesos que no coincide con lo real.
+function _montoTextoAviso(usd, ars) {
+  if (usd && ars) return `USD ${fmtMonto(usd)} en dólares y USD ${fmtMonto(ars)} en pesos`;
+  if (usd)        return `USD ${fmtMonto(usd)}`;
+  if (ars)        return `el equivalente a USD ${fmtMonto(ars)} en pesos`;
+  return '';
+}
+
 // Filas sintéticas para el modo prueba — cubren solo-USD, solo-ARS y ambas monedas + un
 // nombre con tilde. Los mails de "prueba" reciben todo; el de "baja" se agrega para
 // verificar que el filtro de Supabase realmente lo saca.
@@ -1851,9 +1862,9 @@ function filasPruebaAviso(perfil) {
   const base = () => ({ Asesor: asesor, Telefono: perfil.wpp || '', Instagram: _instagramAviso(perfil) });
   const dest = (perfil.testMail || '').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
   const casos = [
-    { Nombre: 'Juan', MontoTexto: 'USD ' + fmtMonto(1200) },
-    { Nombre: 'María José', MontoTexto: 'ARS ' + fmtMonto(450000) },
-    { Nombre: 'Carlos', MontoTexto: 'USD ' + fmtMonto(800) + ' y ARS ' + fmtMonto(300000) }
+    { Nombre: 'Juan', MontoTexto: _montoTextoAviso(1200, 0) },
+    { Nombre: 'María José', MontoTexto: _montoTextoAviso(0, 450) },
+    { Nombre: 'Carlos', MontoTexto: _montoTextoAviso(800, 300) }
   ];
   const rows = casos.map((c, i) => {
     const mail = dest.length ? dest[i % dest.length] : 'prueba@ejemplo.com';
@@ -1910,13 +1921,10 @@ function calcularAvisoLiquidez(min, bajasSet, perfil) {
     const mail = stock && stock.mail ? String(stock.mail).trim().toLowerCase() : '';
     if (!mail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { out.excl.sinMail++; continue; }
     if (bajasSet && bajasSet.has(mail)) { out.excl.baja++; continue; }
-    const partes = [];
-    if (okUSD) partes.push('USD ' + fmtMonto(usd));
-    if (okARS) partes.push('ARS ' + fmtMonto(ars));
     out.rows.push({
       Nombre: tcNombre(stock.nombre) || tcNombre(String(cliente).split(/[\s,]+/)[0]) || 'Hola',
       Email: mail,
-      MontoTexto: partes.join(' y '),
+      MontoTexto: _montoTextoAviso(okUSD ? usd : 0, okARS ? ars : 0),
       Asesor: asesor,
       Telefono: perfil.wpp || '',
       Instagram: _instagramAviso(perfil)
