@@ -435,8 +435,21 @@ function visibleRows(){
       const k=TAB_MULT[activeTab];
       return r.m[k] && (r.m[k].actual!==null||r.m[k].p3!==null||r.m[k].p5!==null||r.m[k].p10!==null);
     }
-    return true; // Resumen
+    // Resumen: solo los que ya tienen al menos un múltiplo primario con dato
+    const k=multTitular(r);
+    return !!(k && r.m[k] && r.m[k].actual!==null && r.m[k].p5!==null);
   });
+}
+// tickers que pasan search/sector/cartera pero todavía no tienen múltiplos cargados
+function sinMultiplosCount(){
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase().trim();
+  return allRows.filter(r=>{
+    if(q && !r.ticker.toLowerCase().includes(q) && !r.empresa.toLowerCase().includes(q)) return false;
+    if(activeSector!=='todos' && r.sector!==activeSector) return false;
+    if(soloCartera && !holdersFor(r).length) return false;
+    const k=multTitular(r);
+    return !(k && r.m[k] && r.m[k].actual!==null && r.m[k].p5!==null);
+  }).length;
 }
 
 // ══════════════════════════════════════════
@@ -578,6 +591,10 @@ function render(){
 
   // nota contextual segun la pestaña
   let note=FOOT_BASE;
+  if(activeTab==='Resumen'){
+    const faltan=sinMultiplosCount();
+    if(faltan) note=`⏳ ${faltan} ticker(s) todavía sin múltiplos — el bot los completa en las próximas corridas (la pestaña Técnico ya los muestra). `+FOOT_BASE;
+  }
   if(activeTab==='Técnico'){
     const conMM=rows.filter(r=>r.mm200!==null||r.mm50!==null||r.mm21!==null).length;
     if(rows.length && conMM/rows.length < 0.5)

@@ -117,6 +117,8 @@ def save_cache(cache):
     os.replace(tmp, CACHE_FILE)
 
 
+MAX_FMP_TRIES = 4       # tras estos intentos fallidos, se da por SIN_DATOS y no se reintenta
+
 def _days_since(iso):
     try:
         return (datetime.date.today() - datetime.date.fromisoformat(iso)).days
@@ -124,7 +126,16 @@ def _days_since(iso):
         return 10**6
 
 def is_fresh(entry):
-    return bool(entry) and _days_since(entry.get("fetched", "")) < FRESH_DAYS
+    """No volver a pegarle a FMP si: (a) ya tenemos multiplos buenos y son recientes, o
+    (b) fallo MAX_FMP_TRIES veces (no esta en el free tier) y el ultimo intento es < 30 dias.
+    Un fallo por rate-limit (sin incrementar tries) SIEMPRE se reintenta al dia siguiente."""
+    if not entry:
+        return False
+    if entry.get("fmp_ok"):
+        return _days_since(entry.get("fetched", "")) < FRESH_DAYS
+    if entry.get("fmp_tries", 0) >= MAX_FMP_TRIES:
+        return _days_since(entry.get("fetched", "")) < 30
+    return False
 
 def mm_is_fresh(entry):
     return bool(entry) and entry.get("mm") and _days_since(entry.get("mm_fetched", "")) < MM_FRESH_DAYS
@@ -370,17 +381,24 @@ def main():
             break
         print(f"[FMP {done+1}/{len(pend_fmp)}] {t} ...", end=" ", flush=True)
         res = fetch_fmp(t, budget)
-        if res is None and budget.out():
+        if budget.out():
+            # se acabaron los calls (tope o 429 de FMP) — NO escribo nada para este ticker,
+            # asi manaña se reintenta limpio en vez de quedar marcado como "ya procesado"
+            print("(corte por limite de FMP)")
             break
+        old = cache.get(t) or {}
         if res is None:
             res = {"ticker_usado": t, "empresa": "", "sector": "", "moneda": "",
                    "precio": None, "actual": {}, "series": {}, "no_fmp": True}
-        old = cache.get(t) or {}
+        has_mult = any(res.get("series", {}).get(k) for k in RATIO_FIELDS)
         res["mm"] = old.get("mm", {})              # conservo las medias que ya tenga
         res["mm_fetched"] = old.get("mm_fetched")
         res["fetched"] = today
+        res["fmp_ok"] = has_mult
+        res["fmp_tries"] = old.get("fmp_tries", 0) + 1
         cache[t] = res
-        tag = "no-FMP" if res.get("no_fmp") else (res.get("sector") or "?")
+        tag = ("OK " + (res.get("sector") or "?")) if has_mult else \
+              ("no-FMP" if res.get("no_fmp") else f"sin ratios (intento {res['fmp_tries']}/{MAX_FMP_TRIES})")
         print(f"({res['ticker_usado']}) {tag}")
         done += 1
         if done % 15 == 0:
