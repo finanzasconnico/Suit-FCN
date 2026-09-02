@@ -154,6 +154,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .client-dropdown-foot{padding:8px;border-top:1px solid var(--border);}
 .client-clear-btn{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:7px;color:var(--muted);font-family:var(--font-s);font-size:11px;cursor:pointer;transition:all .15s;}
 .client-clear-btn:hover{border-color:var(--danger);color:var(--danger);}
+.topn-row{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface);}
+.topn-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;}
+.topn-chip{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px 10px;color:var(--text);font-family:var(--font-m);font-size:10.5px;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.topn-chip:hover{border-color:var(--ambar);color:var(--ambar);}
+.topn-chip.active{background:var(--ambar-d);border-color:var(--ambar);color:var(--ambar);font-weight:700;}
+.topn-custom{width:100%;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-family:var(--font-m);font-size:10.5px;outline:none;}
+.topn-custom:focus{border-color:var(--ambar);}
 .dbar-row.clickable{cursor:pointer;border-radius:var(--r);padding:2px 4px;margin-left:-4px;margin-right:-4px;transition:background .12s;}
 .dbar-row.clickable:hover{background:var(--jade-d);}
 
@@ -429,6 +436,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <span class="client-pill-text" id="client-pill-text">Cliente: todos</span>
         </button>
         <div class="client-dropdown" id="client-dropdown">
+          <div class="topn-row">
+            <span class="topn-lbl">Top por capital:</span>
+            <button class="topn-chip" onclick="aplicarTopNClientes(20)">20</button>
+            <button class="topn-chip" onclick="aplicarTopNClientes(50)">50</button>
+            <button class="topn-chip" onclick="aplicarTopNClientes(100)">100</button>
+            <input type="number" id="topn-custom" class="topn-custom" placeholder="Otro…" min="1" onkeydown="if(event.key==='Enter')aplicarTopNClientes(parseInt(this.value)||0)">
+          </div>
           <input type="text" id="client-search-input" placeholder="Buscar cliente por nombre…" oninput="renderClientResults()">
           <div class="client-results" id="client-results"></div>
           <div class="client-dropdown-foot">
@@ -939,6 +953,39 @@ async function clearActiveClientStorage() {
   return new Promise((res, rej) => {
     const tx  = db.transaction(DB_STORE, 'readwrite');
     const req = tx.objectStore(DB_STORE).delete('activeClient');
+    req.onsuccess = () => res();
+    req.onerror   = () => rej();
+  });
+}
+
+// ── TOP N CLIENTES POR CAPITAL — clave separada de 'activeClient' a propósito: las
+// herramientas que todavía no entienden este filtro (no lo escuchan) siguen funcionando
+// exactamente igual que antes, no hay riesgo de romper nada por agregar esto.
+async function saveTopClientsStorage(n, clientes) {
+  const db = await openSharedDB();
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(DB_STORE, 'readwrite');
+    const req = tx.objectStore(DB_STORE).put({ n, clientes, ts: Date.now() }, 'topClientsFilter');
+    req.onsuccess = () => res();
+    req.onerror   = () => rej();
+  });
+}
+async function getTopClientsStorage() {
+  try {
+    const db = await openSharedDB();
+    return new Promise(res => {
+      const tx  = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get('topClientsFilter');
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => res(null);
+    });
+  } catch (e) { return null; }
+}
+async function clearTopClientsStorage() {
+  const db = await openSharedDB();
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(DB_STORE, 'readwrite');
+    const req = tx.objectStore(DB_STORE).delete('topClientsFilter');
     req.onsuccess = () => res();
     req.onerror   = () => rej();
   });
@@ -2333,6 +2380,7 @@ function renderCliente360() {
     const liqAlerta = liq >= V360_LIQ_MIN;
     return { cliente, aum: tenencia.porCliente[cliente] || 0, rf, rv, liq, liqAlerta, total: rf + rv + (liqAlerta ? 1 : 0) };
   });
+  if (topClientesFiltro) clientes = clientes.filter(c => topClientesFiltro.set.has(c.cliente));
   if (v360Search) clientes = clientes.filter(c => c.cliente.toLowerCase().includes(v360Search));
   clientes.sort((a, b) => b.total - a.total || b.aum - a.aum);
   document.getElementById('cliente360-count').textContent = `${clientes.length} cliente(s)`;
@@ -2399,6 +2447,7 @@ function renderRanking() {
     };
   }).filter(Boolean);
 
+  if (topClientesFiltro) filas = filas.filter(f => topClientesFiltro.set.has(f.cliente));
   if (rankingSearch) filas = filas.filter(f => f.cliente.toLowerCase().includes(rankingSearch));
   if (rankingMinTenencia > 0) filas = filas.filter(f => f.tenenciaTotalCliente >= rankingMinTenencia);
   filas.sort((a, b) => b.rentabilidad - a.rentabilidad);
@@ -2659,6 +2708,11 @@ async function refreshDashboardForKey(key) {
 // ══════════════════════════════════════════════════════════════
 let clienteListCache = [];   // [{cliente, aum}], ordenado por AUM desc
 let activeClienteNombre = null;
+// Top N por capital — alternativa a elegir UN cliente puntual: filtra a los N con más AUM.
+// Mutuamente excluyente con activeClienteNombre (elegir uno limpia el otro). Se propaga a las
+// herramientas que lo escuchen ocultando tenedores/clientes fuera del set — no toca AL RESTO
+// de los datos (precios, TIR, etc. siguen iguales).
+let topClientesFiltro = null; // null | { n, set: Set<string> }
 
 async function refreshClienteList() {
   const tenenciaEntry = await getSharedFile(userKey('tenencia'));
@@ -2670,6 +2724,10 @@ async function refreshClienteList() {
 
 async function initClientePicker() {
   activeClienteNombre = await getActiveClientStorage();
+  const topStored = await getTopClientsStorage();
+  if (topStored && topStored.n && topStored.clientes) {
+    topClientesFiltro = { n: topStored.n, set: new Set(topStored.clientes) };
+  }
   await refreshClienteList();
   updateClientPill();
   document.addEventListener('click', e => {
@@ -2682,13 +2740,52 @@ function updateClientPill() {
   const pill = document.getElementById('client-pill-btn');
   const text = document.getElementById('client-pill-text');
   if (!pill || !text) return;
-  if (activeClienteNombre) {
+  if (topClientesFiltro) {
+    pill.classList.add('active');
+    text.textContent = `Top ${topClientesFiltro.n} por capital`;
+  } else if (activeClienteNombre) {
     pill.classList.add('active');
     text.textContent = activeClienteNombre;
   } else {
     pill.classList.remove('active');
     text.textContent = 'Cliente: todos';
   }
+}
+
+// Calcula el set de los N clientes con más AUM a partir de clienteListCache (ya viene
+// ordenado desc) y lo guarda/propaga — mismo mecanismo que activeClient (IndexedDB
+// compartido + BroadcastChannel), pero en una clave separada para no romper ninguna
+// herramienta que todavía no lo escucha.
+async function aplicarTopNClientes(n) {
+  n = parseInt(n) || 0;
+  if (n <= 0) { showToast('Poné un número de clientes válido.'); return; }
+  if (!clienteListCache.length) { showToast('Subí la Tenencia por Ticker en Archivos primero.'); return; }
+  const top = clienteListCache.slice(0, n).map(c => c.cliente);
+  topClientesFiltro = { n, set: new Set(top) };
+  activeClienteNombre = null; // mutuamente excluyente con un cliente puntual
+  await clearActiveClientStorage();
+  await saveTopClientsStorage(n, top);
+  updateClientPill();
+  renderTopNChipsActive();
+  closeClientPicker();
+  if (BC) BC.postMessage({ type: 'client_selected', cliente: null });
+  if (BC) BC.postMessage({ type: 'top_clients_selected', n, clientes: top });
+  renderRanking();
+  renderCliente360();
+  showToast(`🏆 Filtro activo: Top ${n} clientes por capital`);
+}
+async function quitarTopNClientes() {
+  topClientesFiltro = null;
+  await clearTopClientsStorage();
+  updateClientPill();
+  if (BC) BC.postMessage({ type: 'top_clients_selected', n: null, clientes: null });
+  renderRanking();
+  renderCliente360();
+}
+function renderTopNChipsActive() {
+  document.querySelectorAll('.topn-chip').forEach(btn => {
+    btn.classList.toggle('active', !!topClientesFiltro && String(topClientesFiltro.n) === btn.textContent.trim());
+  });
 }
 
 function toggleClientPicker() {
@@ -2698,6 +2795,7 @@ function toggleClientPicker() {
   closeFilesStatusDropdown();
   dd.classList.add('open');
   renderClientResults();
+  renderTopNChipsActive();
   const input = document.getElementById('client-search-input');
   input.value = '';
   setTimeout(() => input.focus(), 30);
@@ -2727,19 +2825,24 @@ function renderClientResults() {
 async function selectActiveClient(cliente) {
   activeClienteNombre = cliente;
   await saveActiveClientStorage(cliente);
+  if (topClientesFiltro) { topClientesFiltro = null; await clearTopClientsStorage(); if (BC) BC.postMessage({ type: 'top_clients_selected', n: null, clientes: null }); } // mutuamente excluyente
   updateClientPill();
   closeClientPicker();
   if (BC) BC.postMessage({ type: 'client_selected', cliente });
+  renderRanking(); renderCliente360();
   showToast(`👤 Cliente activo: ${cliente} — se precarga en Rotador RV y Scanner ONs`);
 }
 
 async function clearActiveClient() {
+  const teniaAlgo = activeClienteNombre || topClientesFiltro;
   activeClienteNombre = null;
   await clearActiveClientStorage();
+  if (topClientesFiltro) { topClientesFiltro = null; await clearTopClientsStorage(); if (BC) BC.postMessage({ type: 'top_clients_selected', n: null, clientes: null }); }
   updateClientPill();
   closeClientPicker();
   if (BC) BC.postMessage({ type: 'client_selected', cliente: null });
-  showToast('Filtro de cliente quitado.');
+  renderRanking(); renderCliente360();
+  if (teniaAlgo) showToast('Filtro de cliente quitado.');
 }
 
 // ── FILES PANEL ──
