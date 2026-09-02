@@ -2597,7 +2597,28 @@ function downloadReport(){
     '<div class="footer">'+
     'Este reporte es generado localmente desde datos de Balanz Capital. No constituye asesoramiento de inversión. '+
     'Los precios y valores son referenciales a la fecha de generación. MEP utilizado: $'+N(mep,2)+
-    '</div></body></html>';
+    '</div>'+
+    // Hoja única continua en vez de A4 paginado — mismo truco que usan herramientas tipo
+    // Notion al exportar a PDF: se mide el alto real del contenido (sin la barra "Vista previa",
+    // que desaparece al imprimir) y se inyecta un @page con ESE alto, así no hay ningún corte de
+    // hoja en todo el reporte. El ancho se deja en 210mm (A4) — el diseño ya está pensado para
+    // ese ancho, esto solo cambia el alto.
+    '<script>(function(){'+
+    'function ajustarAltoPagina(){'+
+    'try{'+
+    'var np=document.querySelector(".no-print");'+
+    'var npH=np?np.offsetHeight:0;'+
+    'var totalPx=document.body.scrollHeight-npH;'+
+    'var mm=Math.ceil(totalPx/96*25.4)+24;'+ // +24mm = margen superior+inferior (12mm cada uno)
+    'var st=document.createElement("style");'+
+    'st.textContent="@page{size:210mm "+mm+"mm;}";'+
+    'document.head.appendChild(st);'+
+    '}catch(e){}'+
+    '}'+
+    'if(document.readyState==="complete")ajustarAltoPagina();'+
+    'else window.addEventListener("load",ajustarAltoPagina);'+
+    '})();</'+'script>'+
+    '</body></html>';
 
   var w=window.open('','_blank');
   w.document.write(html);
