@@ -673,9 +673,29 @@ function parseRealizado(buf){
       // PPP recalculado al final
     }
     else if(tipo==='Orden'&&fechaC){
-      // Operación cerrada (compra+venta con fecha de compra)
       var costUSD=toUSD(precioCompra,mepC,monedaC)*cant;
       var sellUSD=toUSD(precioVenta,mepV,monedaV)*cant;
+      // Licitaciones (suscripción primaria a una emisión nueva) y compras similares vienen con
+      // TipoMovimiento="Orden" y FechaCompra completa — como si fuera un cierre — pero sin
+      // Precio Venta real (nunca se vendió). Sin este chequeo, quedaban en Operaciones Cerradas
+      // como "vendido en $0" = -100%, cuando en realidad la posición sigue viva en cartera. Si
+      // no hay venta real, es una compra: va a posData (costo de compra) igual que "No
+      // Realizado", no a closedTrades.
+      if(sellUSD<=0){
+        if(!ticker||cant<=0)return;
+        var ppuUSD2=toUSD(precioCompra,mepC,monedaC);
+        var gastoUSD2=mepC>0?gastos/mepC:gastos/(S.mep||1300);
+        if(!posData[ticker]){
+          posData[ticker]={ticker,desc,lots:[],totalQty:0,pppUSD:0,totalCostUSD:0,gastos:0};
+        }
+        var pOrden=posData[ticker];
+        pOrden.lots.push({fecha:fechaC,qty:cant,precioUSD:ppuUSD2,loteUSD:ppuUSD2*cant,gastoUSD:gastoUSD2});
+        pOrden.totalQty+=cant;
+        pOrden.totalCostUSD+=ppuUSD2*cant;
+        pOrden.gastos+=gastoUSD2;
+        return;
+      }
+      // Operación cerrada de verdad (compra+venta con fecha de compra y venta real)
       var gastosUSD=mepV>0?gastos/mepV:gastos/(S.mep||1300);
       var pnl=sellUSD-costUSD-gastosUSD;
       closedTrades.push({
@@ -2603,13 +2623,24 @@ function downloadReport(){
     // que desaparece al imprimir) y se inyecta un @page con ESE alto, así no hay ningún corte de
     // hoja en todo el reporte. El ancho se deja en 210mm (A4) — el diseño ya está pensado para
     // ese ancho, esto solo cambia el alto.
+    // OJO acá: la ventana emergente suele ser mucho más ancha que 210mm, así que el texto se
+    // acomoda con MENOS saltos de línea al medir en pantalla que al imprimir (constreñido a
+    // 210mm) — eso hacía que el alto calculado quedara CORTO, y contenido del final (ej.
+    // "Rendimiento real vs. capital aportado") se corriera a una segunda hoja invisible en vez
+    // de desaparecer literalmente, pero el efecto para quien mira solo la primera hoja es el
+    // mismo: contenido que "no está". Por eso se fuerza el mismo ancho de impresión (210mm) ANTES
+    // de medir, y se restaura después para que la vista previa en pantalla siga cómoda.
     '<script>(function(){'+
     'function ajustarAltoPagina(){'+
     'try{'+
+    'var anchoImpresionPx=Math.round(210/25.4*96);'+ // 210mm a 96dpi
+    'var anchoOriginal=document.documentElement.style.width;'+
+    'document.documentElement.style.width=anchoImpresionPx+"px";'+
     'var np=document.querySelector(".no-print");'+
     'var npH=np?np.offsetHeight:0;'+
     'var totalPx=document.body.scrollHeight-npH;'+
     'var mm=Math.ceil(totalPx/96*25.4)+24;'+ // +24mm = margen superior+inferior (12mm cada uno)
+    'document.documentElement.style.width=anchoOriginal;'+
     'var st=document.createElement("style");'+
     'st.textContent="@page{size:210mm "+mm+"mm;}";'+
     'document.head.appendChild(st);'+
