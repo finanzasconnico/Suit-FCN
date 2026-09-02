@@ -59,6 +59,7 @@ FMP_KEY   = os.environ.get("FMP_API_KEY", "").strip()
 FMP_BASE  = "https://financialmodelingprep.com/stable"
 
 FRESH_DAYS      = 6      # no re-consultar FMP si el dato tiene menos de esto
+MM_FRESH_DAYS   = 5      # no re-calcular medias moviles si tienen menos de esto
 MAX_FMP_CALLS   = 230    # tope por corrida para no pasar el limite diario del free tier
 THROTTLE_FMP    = 0.25   # s entre calls a FMP
 THROTTLE_YF     = 0.30   # s entre calls a Yahoo
@@ -116,14 +117,17 @@ def save_cache(cache):
     os.replace(tmp, CACHE_FILE)
 
 
-def is_fresh(entry):
-    if not entry or not entry.get("fetched"):
-        return False
+def _days_since(iso):
     try:
-        d = datetime.date.fromisoformat(entry["fetched"])
+        return (datetime.date.today() - datetime.date.fromisoformat(iso)).days
     except Exception:
-        return False
-    return (datetime.date.today() - d).days < FRESH_DAYS
+        return 10**6
+
+def is_fresh(entry):
+    return bool(entry) and _days_since(entry.get("fetched", "")) < FRESH_DAYS
+
+def mm_is_fresh(entry):
+    return bool(entry) and entry.get("mm") and _days_since(entry.get("mm_fetched", "")) < MM_FRESH_DAYS
 
 
 def clean_mult(x):
@@ -353,34 +357,55 @@ def main():
     only = [a.strip().upper() for a in sys.argv[1:]]
     tickers = only or load_tickers()
     cache = load_cache()
+    today = datetime.date.today().isoformat()
     budget = Budget(MAX_FMP_CALLS if not only else 999)
 
+    # ── FASE 1 · MULTIPLOS (FMP, con tope de calls por el free tier) ──────────
     pend_fmp = [t for t in tickers if not is_fresh(cache.get(t))]
-    print(f"{len(tickers)} tickers · {len(pend_fmp)} a consultar en FMP · tope {budget.left} calls")
-
+    print(f"{len(tickers)} tickers · FASE 1 FMP: {len(pend_fmp)} pendientes · tope {budget.left} calls")
     done = 0
     for t in pend_fmp:
         if budget.out():
-            print(f"  tope de calls alcanzado — sigo mañana ({done} procesados esta corrida)")
+            print(f"  tope de calls alcanzado — el resto sigue mañana ({done} esta corrida)")
             break
-        print(f"[{done+1}] {t} ...", end=" ", flush=True)
+        print(f"[FMP {done+1}/{len(pend_fmp)}] {t} ...", end=" ", flush=True)
         res = fetch_fmp(t, budget)
         if res is None and budget.out():
             break
         if res is None:
             res = {"ticker_usado": t, "empresa": "", "sector": "", "moneda": "",
                    "precio": None, "actual": {}, "series": {}, "no_fmp": True}
-        res["mm"] = fetch_mm(t, res.get("ticker_usado"))
-        res["fetched"] = datetime.date.today().isoformat()
+        old = cache.get(t) or {}
+        res["mm"] = old.get("mm", {})              # conservo las medias que ya tenga
+        res["mm_fetched"] = old.get("mm_fetched")
+        res["fetched"] = today
         cache[t] = res
-        mm_ok = "mm" if res["mm"].get("MM50_sem") else "sin-mm"
         tag = "no-FMP" if res.get("no_fmp") else (res.get("sector") or "?")
-        print(f"({res['ticker_usado']}) {tag} · {mm_ok}")
+        print(f"({res['ticker_usado']}) {tag}")
         done += 1
-        if done % 10 == 0:
+        if done % 15 == 0:
             save_cache(cache)
-
     save_cache(cache)
+
+    # ── FASE 2 · MEDIAS MOVILES (yfinance, gratis, SIN tope) ─────────────────
+    # No depende del budget de FMP: aunque FMP se corte, el Tecnico queda completo.
+    pend_mm = [t for t in tickers if not mm_is_fresh(cache.get(t))]
+    print(f"\nFASE 2 medias moviles (Yahoo): {len(pend_mm)} pendientes")
+    for i, t in enumerate(pend_mm, 1):
+        e = cache.get(t)
+        if not e:
+            e = {"ticker_usado": t, "empresa": "", "sector": "", "moneda": "",
+                 "precio": None, "actual": {}, "series": {}, "no_fmp": True}
+            cache[t] = e
+        mm = fetch_mm(t, e.get("ticker_usado"))
+        if mm:
+            e["mm"] = mm
+            e["mm_fetched"] = today
+        print(f"[MM {i}/{len(pend_mm)}] {t} {'ok' if mm.get('MM50_sem') else 'sin-datos'}")
+        if i % 20 == 0:
+            save_cache(cache)
+    save_cache(cache)
+
     write_xlsx(cache, tickers)
 
 

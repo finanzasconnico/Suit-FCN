@@ -250,9 +250,10 @@ function multiplosDeSector(sector){
 let allRows=[];
 let activeTab='Resumen';
 let activeSector='todos';
-let soloCartera=false;
+let soloCartera=false, _carteraTocado=false;
 let sortState={};   // { tabName: {col, asc} }
 let dataTenencia=[], holdersByTicker={};
+let FOOT_BASE='';
 
 const TABS=['Resumen','PER','P/S','EV/EBITDA','P/FCF','P/B','Técnico'];
 const TAB_MULT={ 'PER':'PE','P/S':'PS','EV/EBITDA':'EVEBITDA','P/FCF':'PFCF','P/B':'PB' };
@@ -347,7 +348,11 @@ async function loadTenencia(){
     dataTenencia=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
     construirHolders();
     const chip=document.getElementById('chip-cartera');
-    if(chip && dataTenencia.length) chip.style.display='';
+    if(chip && dataTenencia.length){
+      chip.style.display='';
+      // por defecto arranca filtrado a lo que realmente tenemos en cartera
+      if(!_carteraTocado){ soloCartera=true; chip.classList.add('active'); }
+    }
     render();
   }catch(e){ console.warn('[Múltiplos] error leyendo tenencia',e); }
 }
@@ -414,6 +419,7 @@ function buildSectorChips(){
 function setSector(s){ activeSector=s; buildSectorChips(); render(); }
 function toggleCartera(){
   soloCartera=!soloCartera;
+  _carteraTocado=true;
   document.getElementById('chip-cartera').classList.toggle('active',soloCartera);
   render();
 }
@@ -569,6 +575,17 @@ function render(){
   tbody.innerHTML=bodyHtml || `<tr><td colspan="12" style="padding:30px;text-align:center;color:var(--muted);">Sin filas para este filtro.</td></tr>`;
 
   document.getElementById('counter').innerHTML=`<strong>${rows.length}</strong> de <strong>${allRows.length}</strong> tickers`;
+
+  // nota contextual segun la pestaña
+  let note=FOOT_BASE;
+  if(activeTab==='Técnico'){
+    const conMM=rows.filter(r=>r.mm200!==null||r.mm50!==null||r.mm21!==null).length;
+    if(rows.length && conMM/rows.length < 0.5)
+      note='⏳ El bot todavía no calculó las medias móviles para la mayoría de los tickers (corre y se completa en la próxima actualización). '+FOOT_BASE;
+    else
+      note='Medias móviles = promedio del precio de cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo Finance). Verde = el precio está por encima de la media; rojo = por debajo.';
+  }
+  const fn=document.getElementById('foot-note'); if(fn) fn.innerHTML=note;
 }
 
 // ══════════════════════════════════════════
@@ -613,9 +630,9 @@ async function loadAndRender(){
   show('empty-state','none'); show('table-wrap','block'); show('toolbar','flex'); show('tabs','flex'); show('foot-note','block');
 
   const semilla=allRows.length && allRows.every(r=>r.fuente==='SEMILLA');
-  document.getElementById('foot-note').innerHTML=
-    (semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot semanal los reemplaza con la cartera completa. ':'')
+  FOOT_BASE=(semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot los reemplaza con la cartera completa en la próxima actualización. ':'')
     +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. Múltiplos mostrados según el sector de cada empresa.';
+  document.getElementById('foot-note').innerHTML=FOOT_BASE;
 
   buildTabs();
   buildSectorChips();
