@@ -158,6 +158,9 @@ tr:hover td{background:rgba(33,38,45,.5);}
     </select>
     <input id="clientName" placeholder="Nombre del cliente" style="background:var(--sf);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:6px 10px;font-size:12px;width:200px;">
     <button class="btn btn-s" onclick="generate()" title="La cartera se actualiza sola apenas cargás algo — usá esto solo para forzar un refresh manual (ej. después de editar el texto del PDF a mano)">🔄 Actualizar</button>
+    <label id="modoAsesorLbl" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;" title="En Operaciones Cerradas, cada ticker aparece agrupado en una sola fila — este modo agrega un desplegable para ver el detalle de cada operación. No se incluye si el reporte es para el cliente.">
+      <input type="checkbox" id="modoAsesorChk" style="accent-color:var(--ac);">Modo asesor (detalle desglosable)
+    </label>
     <button class="btn" onclick="downloadReport()" id="btnReport" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">📄 Descargar Reporte</button>
   </div>
 </div>
@@ -1476,6 +1479,7 @@ async function generate(){
     renderTransferWarning();
     document.getElementById('glosario').style.display='';
     document.getElementById('btnReport').style.display='';
+    document.getElementById('modoAsesorLbl').style.display='flex';
   }catch(err){
     document.getElementById('heroEl').innerHTML=
       '<div style="color:var(--rd);padding:16px;background:rgba(248,81,73,.08);border-radius:8px;font-family:monospace;white-space:pre-wrap;font-size:12px;">'+
@@ -2414,27 +2418,69 @@ function downloadReport(){
   var gpReal=netoAp>0?totalCuenta2-netoAp:null;
   var gpRealPct=gpReal!==null&&netoAp>0?gpReal/netoAp*100:null;
 
-  // ── Operaciones cerradas ──────────────────────────────────────
+  // ── Operaciones cerradas — consolidadas por ticker ─────────────
+  // Antes cada operación cerrada tenía su propia fila — si un cliente rotó el mismo ticker
+  // varias veces, aparecía repetido N veces en vez de mostrar de una el resultado neto. Ahora
+  // se agrupa por ticker (una sola fila, sumando pagado/recibido/resultado); "Modo asesor" agrega
+  // un desplegable con el detalle operación por operación — pensado para uso interno, no para
+  // mandarle al cliente el detalle de cada rotación.
+  var modoAsesor=document.getElementById('modoAsesorChk')?document.getElementById('modoAsesorChk').checked:false;
   var closedTrades=S.closedTrades||[];
+  var closedByTicker={};
+  var closedOrder=[];
+  closedTrades.forEach(function(c){
+    if(!closedByTicker[c.ticker]){closedByTicker[c.ticker]=[];closedOrder.push(c.ticker);}
+    closedByTicker[c.ticker].push(c);
+  });
   var closedRows='';
   var totSellR=0,totCostR=0,totPnlR=0,nUnkR=0;
-  closedTrades.forEach(function(c){
-    totSellR+=c.sellUsd;
-    if(!c.costUnknown){totCostR+=c.cost;totPnlR+=(c.pnl||0);}
-    else nUnkR++;
-    var pnlStr=c.pnl===null?'S/D':(c.pnl>=0?'+':'')+U2(c.pnl);
-    var pctStr=c.pnlPct===null?'—':(c.pnlPct>=0?'+':'')+N(c.pnlPct,1)+'%';
-    var cls=c.pnl===null?'':(c.pnl>=0?'green':'red');
+  closedOrder.forEach(function(ticker,idx){
+    var ops=closedByTicker[ticker];
+    var sellSum=0,costSum=0,pnlSum=0,hasUnknown=false;
+    ops.forEach(function(c){
+      sellSum+=c.sellUsd; totSellR+=c.sellUsd;
+      if(!c.costUnknown){costSum+=c.cost;pnlSum+=(c.pnl||0);totCostR+=c.cost;totPnlR+=(c.pnl||0);}
+      else{hasUnknown=true;nUnkR++;}
+    });
+    var pctSum=costSum>0?pnlSum/costSum*100:null;
+    var cls=pnlSum>=0?'green':'red';
+    var fechasCompra=ops.map(function(o){return o.buyLots.length?o.buyLots[0].fecha:'—';}).filter(function(v,i,a){return a.indexOf(v)===i;});
+    var fechasVenta=ops.map(function(o){return o.sellFecha;}).filter(function(v,i,a){return a.indexOf(v)===i;});
+    var fCompraStr=fechasCompra.length===1?fechasCompra[0]:fechasCompra.length+' fechas';
+    var fVentaStr=fechasVenta.length===1?fechasVenta[0]:fechasVenta.length+' fechas';
+    var rowId='op-det-'+idx;
+    var tglHtml='';
+    if(ops.length>1){
+      tglHtml=modoAsesor
+        ?' <span id="tgl-'+rowId+'" onclick="toggleDetalle(\''+rowId+'\')" style="cursor:pointer;color:#1e40af;font-weight:700;font-size:9px;">▸ '+ops.length+' op.</span>'
+        :' <span style="color:#94a3b8;font-size:9px;">('+ops.length+' op.)</span>';
+    }
     closedRows+='<tr>';
-    closedRows+='<td>'+c.ticker+'</td>';
-    closedRows+='<td class="desc">'+(CAT_DESC&&CAT_DESC[c.ticker]?CAT_DESC[c.ticker]:c.desc)+'</td>';
-    closedRows+='<td class="num">'+(c.buyLots.length?c.buyLots[0].fecha:'—')+'</td>';
-    closedRows+='<td class="num">'+c.sellFecha+'</td>';
-    closedRows+='<td class="num">'+(c.costUnknown?'—':U2(c.cost))+(c.costEstimated?' *':'')+'</td>';
-    closedRows+='<td class="num">'+U2(c.sellUsd)+'</td>';
-    closedRows+='<td class="num '+cls+'">'+pnlStr+'</td>';
-    closedRows+='<td class="num '+cls+'">'+pctStr+'</td>';
+    closedRows+='<td>'+ticker+tglHtml+'</td>';
+    closedRows+='<td class="desc">'+(CAT_DESC&&CAT_DESC[ticker]?CAT_DESC[ticker]:ops[0].desc)+'</td>';
+    closedRows+='<td class="num">'+fCompraStr+'</td>';
+    closedRows+='<td class="num">'+fVentaStr+'</td>';
+    closedRows+='<td class="num">'+(hasUnknown?'—':U2(costSum))+'</td>';
+    closedRows+='<td class="num">'+U2(sellSum)+'</td>';
+    closedRows+='<td class="num '+cls+'">'+(pnlSum>=0?'+':'')+U2(pnlSum)+(hasUnknown?' *':'')+'</td>';
+    closedRows+='<td class="num '+cls+'">'+(pctSum===null?'—':(pctSum>=0?'+':'')+N(pctSum,1)+'%')+'</td>';
     closedRows+='</tr>';
+    if(modoAsesor&&ops.length>1){
+      ops.forEach(function(c){
+        var pnlStr=c.pnl===null?'S/D':(c.pnl>=0?'+':'')+U2(c.pnl);
+        var pctStr=c.pnlPct===null?'—':(c.pnlPct>=0?'+':'')+N(c.pnlPct,1)+'%';
+        var clsD=c.pnl===null?'':(c.pnl>=0?'green':'red');
+        closedRows+='<tr data-grp="'+rowId+'" style="display:none;color:#94a3b8;font-size:9px;">';
+        closedRows+='<td style="padding-left:20px;">↳</td><td class="desc"></td>';
+        closedRows+='<td class="num">'+(c.buyLots.length?c.buyLots[0].fecha:'—')+'</td>';
+        closedRows+='<td class="num">'+c.sellFecha+'</td>';
+        closedRows+='<td class="num">'+(c.costUnknown?'—':U2(c.cost))+(c.costEstimated?' *':'')+'</td>';
+        closedRows+='<td class="num">'+U2(c.sellUsd)+'</td>';
+        closedRows+='<td class="num '+clsD+'">'+pnlStr+'</td>';
+        closedRows+='<td class="num '+clsD+'">'+pctStr+'</td>';
+        closedRows+='</tr>';
+      });
+    }
   });
 
   // ── Tabla de posiciones ───────────────────────────────────────
@@ -2631,6 +2677,19 @@ function downloadReport(){
     // mismo: contenido que "no está". Por eso se fuerza el mismo ancho de impresión (210mm) ANTES
     // de medir, y se restaura después para que la vista previa en pantalla siga cómoda.
     '<script>(function(){'+
+    // Modo asesor: expande/colapsa el detalle de operaciones agrupadas por ticker en
+    // Operaciones Cerradas. Ojo — si esto se abre/cierra DESPUÉS de haber ajustado el alto de
+    // la hoja (@page), hay que recalcularlo, si no el contenido nuevo queda cortado o sobra
+    // espacio vacío.
+    'window.toggleDetalle=function(id){'+
+    'var rows=document.querySelectorAll("tr[data-grp=\'"+id+"\']");'+
+    'if(!rows.length)return;'+
+    'var isOpen=rows[0].style.display!=="none";'+
+    'rows.forEach(function(r){r.style.display=isOpen?"none":"table-row";});'+
+    'var tgl=document.getElementById("tgl-"+id);'+
+    'if(tgl)tgl.textContent=(isOpen?"▸ ":"▾ ")+rows.length+" op.";'+
+    'ajustarAltoPagina();'+
+    '};'+
     'function ajustarAltoPagina(){'+
     'try{'+
     'var anchoImpresionPx=Math.round(210/25.4*96);'+ // 210mm a 96dpi
