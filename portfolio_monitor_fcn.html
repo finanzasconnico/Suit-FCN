@@ -700,14 +700,32 @@ function parseRealizado(buf){
       }
       // Operación cerrada de verdad (compra+venta con fecha de compra y venta real)
       var gastosUSD=mepV>0?gastos/mepV:gastos/(S.mep||1300);
-      var pnl=sellUSD-costUSD-gastosUSD;
+      // Si el Realizado no trae Precio Compra (pasa con posiciones que llegaron por
+      // transferencia y después se vendieron: Balanz no sabe a cuánto las "compraste"), antes
+      // esto quedaba con costo $0 y mostraba una ganancia falsa por casi el 100% de la venta.
+      // Ahora, si hay un precio de transferencia cargado a mano para este ticker, se usa como
+      // costo; si no, se marca costUnknown (igual que ya se hace en el otro camino de
+      // Operaciones Cerradas, el que arma buildClosedTrades desde Movimientos).
+      var costoDesconocidoR=costUSD<=0&&sellUSD>0;
+      var costoEstimadoR=false, costoNoteR='';
+      if(costoDesconocidoR){
+        var ppuManualR=promedioManualPorTicker(ticker);
+        if(ppuManualR>0){
+          costUSD=ppuManualR*cant;
+          costoDesconocidoR=false; costoEstimadoR=true;
+          costoNoteR='Costo desde precio de transferencia cargado a mano';
+        } else {
+          costoNoteR='Sin datos de compra (posiblemente transferencia de títulos). El resultado no es calculable sin el precio de compra.';
+        }
+      }
+      var pnl=costoDesconocidoR?null:sellUSD-costUSD-gastosUSD;
       closedTrades.push({
         ticker,desc,
         sellFecha:fecha,sellCant:cant,sellUsd:sellUSD,
         cost:costUSD,com:gastosUSD,pnl,
-        pnlPct:costUSD>0?pnl/costUSD*100:null,
-        buyLots:[{fecha:fechaC,cant,usd:costUSD,ppu:costUSD/cant}],
-        costUnknown:false,costEstimated:false,costNote:'',
+        pnlPct:(!costoDesconocidoR&&costUSD>0)?pnl/costUSD*100:null,
+        buyLots:[{fecha:fechaC,cant,usd:costUSD,ppu:cant>0?costUSD/cant:0}],
+        costUnknown:costoDesconocidoR,costEstimated:costoEstimadoR,costNote:costoNoteR,
         fromRealizado:true
       });
     }
@@ -964,6 +982,49 @@ function loadManualTransferPrices(){
 }
 function saveManualTransferPrices(map){
   try{localStorage.setItem(MANUAL_TRANSFER_KEY,JSON.stringify(map));}catch(e){}
+}
+// Precio promedio cargado a mano para un ticker (promedia si hay más de una fecha de
+// transferencia) — se usa como costo de compra en cualquier lado que lo necesite y no tenga
+// una fuente mejor: posición actual (G/P) y operaciones cerradas de ese mismo título.
+function promedioManualPorTicker(ticker){
+  var manual=loadManualTransferPrices();
+  var precios=Object.keys(manual).filter(function(k){return manual[k].ticker===ticker&&manual[k].precio>0;}).map(function(k){return manual[k].precio;});
+  if(!precios.length)return null;
+  return precios.reduce(function(a,b){return a+b;},0)/precios.length;
+}
+// Aplica los precios de transferencia cargados a mano como costo de compra de posiciones
+// ABIERTAS que llegaron por transferencia y no tienen otra fuente de costo (Realizado/PosF) —
+// sin esto, esas posiciones usaban el valor de HOY como costo (G/P siempre ~0%, sin sentido).
+// No pisa el costo de posiciones que sí tienen datos reales de Realizado.
+function aplicarPreciosTransferenciaAPosData(posData,movData){
+  if(!movData||!movData.transfers||!movData.transfers.length)return;
+  var manual=loadManualTransferPrices();
+  var porTicker={};
+  movData.transfers.forEach(function(t){
+    var m=manual[t.ticker+'|'+t.fecha];
+    if(!m||!(m.precio>0))return;
+    if(!porTicker[t.ticker])porTicker[t.ticker]={qty:0,costo:0};
+    porTicker[t.ticker].qty+=t.cant;
+    porTicker[t.ticker].costo+=t.cant*m.precio;
+  });
+  Object.keys(porTicker).forEach(function(tk){
+    var info=porTicker[tk];
+    if(info.qty<=0)return;
+    var yaExiste=posData[tk];
+    if(!yaExiste||!(yaExiste.pppUSD>0)){
+      var qty=(yaExiste&&yaExiste.totalQty>0)?yaExiste.totalQty:info.qty;
+      var costo=(yaExiste&&yaExiste.totalCostUSD>0)?yaExiste.totalCostUSD:info.costo;
+      posData[tk]={
+        ticker:tk,
+        desc:(yaExiste&&yaExiste.desc)||'',
+        lots:(yaExiste&&yaExiste.lots)||[],
+        totalQty:qty,
+        totalCostUSD:costo,
+        pppUSD:qty>0?costo/qty:0,
+        gastos:(yaExiste&&yaExiste.gastos)||0,
+      };
+    }
+  });
 }
 
 // ── Modal: pide el precio de transferencia SOLO cuando hace falta ──────────────
@@ -1553,6 +1614,9 @@ async function generate(){
     S.bolData=null;
     // Si hay Realizado, las cauciones van a movData para que renderFlujos las muestre
     if(realizadoData)movData.cauciones=realizadoData.cauciones||[];
+    // Precios de transferencia cargados a mano → costo de compra de las posiciones que
+    // llegaron así y no tienen otra fuente de costo (ver comentario en la función).
+    aplicarPreciosTransferenciaAPosData(posData,movData);
 
     // Posiciones: PDF como fuente principal si está cargado
     var positions=hasPDF?buildPositionsFromPDF(posData,movData,tenData):buildPositions(posData,movData,tenData);
