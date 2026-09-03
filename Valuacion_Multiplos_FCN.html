@@ -633,7 +633,7 @@ async function loadAndRender(){
 
   const semilla=allRows.length && allRows.every(r=>r.fuente==='SEMILLA');
   FOOT_BASE=(semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot los reemplaza con la cartera completa en la próxima actualización. ':'')
-    +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. En "Según sector" cada empresa muestra el múltiplo más relevante para su rubro; con el selector podés fijar uno para toda la lista.';
+    +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. En "Según sector" cada empresa muestra el múltiplo más relevante para su rubro; con el selector podés fijar uno para toda la lista. Ojo: un P/E actual muy por encima de su promedio (ej. >100) casi siempre es una ganancia TTM golpeada por un cargo puntual, no una sobrevaluación real — mirá también P/S y EV/EBITDA.';
   document.getElementById('foot-note').innerHTML=FOOT_BASE;
 
   buildTabs();
