@@ -861,12 +861,29 @@ function parseMovimientos(bufs){
     if(tipo==='Transferencia Títulos'){
       if(!ticker||cant===0)return;
       qty[ticker]=(qty[ticker]||0)+cant;
-      // Solo positivo (entra a la cuenta) — una transferencia de SALIDA (cant<0) no aporta
-      // capital, así que no tiene que sumar acá. La mayoría de las veces Balanz NO informa un
-      // valor en USD acá (es un movimiento de títulos, no de efectivo) — pero por las dudas se
-      // captura Precio/Importe si vinieran cargados en el Excel, antes de recurrir al precio de
-      // mercado actual o pedírselo al asesor a mano (ver estimarCapitalTransferidoUSD).
-      if(cant>0)transfers.push({fecha,ticker,cant,
+      // "Transferencia Interna" = préstamo/movimiento de títulos entre cuentas de Balanz del
+      // mismo cliente, no una transferencia real desde/hacia otro broker — no es capital que
+      // entra o sale de la cartera, así que no debe sumar ni restar en "capital aportado en
+      // títulos" (solo cuentan las "Transferencia Externa").
+      if(desc.toLowerCase().indexOf('interna')>=0)return;
+      // El Excel de Movimientos de Balanz suele traer, para estas filas, columnas ya calculadas
+      // con el tipo de cambio EXACTO de ese movimiento — mucho más confiable que aproximar con
+      // el MEP mensual: "Valor total USD" (con signo) y, si esa faltara, "Precio activo en
+      // dólares" (por unidad). Se usan directo cuando están disponibles, antes de caer en
+      // Precio/Importe crudos, el precio cargado a mano, o el precio de mercado actual.
+      var valorUSDRaw=r['Valor total USD'];
+      if(valorUSDRaw===undefined||valorUSDRaw==='')valorUSDRaw=r['Valor Total USD'];
+      var valorUSDFile=(valorUSDRaw!==undefined&&valorUSDRaw!=='')?pN(valorUSDRaw):null;
+      if(valorUSDFile==null){
+        var precioActivoRaw=r['Precio activo en dolares'];
+        if(precioActivoRaw===undefined||precioActivoRaw==='')precioActivoRaw=r['Precio activo en dólares'];
+        var precioActivoUSD=(precioActivoRaw!==undefined&&precioActivoRaw!=='')?pN(precioActivoRaw):0;
+        if(precioActivoUSD>0)valorUSDFile=precioActivoUSD*cant;
+      }
+      // Se incluyen tanto créditos (cant>0, entró capital) como débitos (cant<0, salió capital) —
+      // un débito resta del capital aportado igual que un retiro en efectivo.
+      transfers.push({fecha,ticker,cant,
+        valorUSDFile:valorUSDFile,
         precioFile:(precio>0?toUSD(precio):null),
         importeFile:(importe>0?toUSD(importe):null)});
     }
@@ -935,21 +952,28 @@ function parseMovimientos(bufs){
   return {qty,deposits,withdrawals,income,rebates,gastos,trades,transfers};
 }
 
-// Estima cuánto capital entró como TÍTULOS (no efectivo). Prioridad para el precio de cada
-// ticker transferido:
-//   1) Precio/Importe si vino cargado en el Excel de Movimientos (raro, pero por las dudas).
-//   2) Precio que el asesor cargó a mano (más exacto: el de la fecha real de la transferencia
-//      — ver modalPrecioTransferencias() más abajo).
-//   3) Precio de mercado ACTUAL (fallback, menos exacto — no es el precio del día de la
-//      transferencia, es lo mejor disponible si no se cargó nada).
+// Estima cuánto capital entró (o salió) como TÍTULOS transferidos (no efectivo), neto por
+// ticker+fecha. Solo cuentan las "Transferencia Externa" (entra/sale capital real de la cartera);
+// las "Transferencia Interna" (préstamos entre cuentas del mismo cliente) se excluyen antes de
+// llegar acá — ver parseMovimientos(). Prioridad para el precio de cada grupo ticker+fecha:
+//   1) Precio cargado a mano por el asesor (el más confiable cuando existe: el asesor lo miró
+//      directo en la Posición Consolidada de esa fecha — ver iniciarDescargaReporte()).
+//   2) "Valor total USD" (o "Precio activo en dólares" × cantidad) que ya trae el propio Excel
+//      de Movimientos — Balanz lo calcula con el tipo de cambio exacto de ese movimiento, más
+//      preciso que aproximar con el MEP mensual.
+//   3) Precio/Importe crudos del Excel (columnas Precio/Importe + Moneda), por si el archivo no
+//      trajera "Valor total USD" (exports viejos).
+//   4) Precio de mercado ACTUAL (último recurso — no es el precio del día de la transferencia,
+//      es lo mejor disponible si no hay ningún otro dato).
 // manualPrices: { "TICKER|fecha": {precio, fecha} } — clave por ticker+fecha, no por cliente,
 // porque el precio de mercado de una fecha es el mismo sin importar a qué cliente le llegó.
 function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
   var grupos={};
   (transfers||[]).forEach(function(t){
     var key=t.ticker+'|'+t.fecha;
-    if(!grupos[key])grupos[key]={ticker:t.ticker,fecha:t.fecha,cant:0,importeFile:0,cantConImporte:0};
+    if(!grupos[key])grupos[key]={ticker:t.ticker,fecha:t.fecha,cant:0,valorUSDFile:0,tieneValorFile:false,importeFile:0,cantConImporte:0,precioFile:0};
     grupos[key].cant+=t.cant;
+    if(t.valorUSDFile!=null){grupos[key].valorUSDFile+=t.valorUSDFile;grupos[key].tieneValorFile=true;}
     if(t.importeFile>0){grupos[key].importeFile+=t.importeFile;grupos[key].cantConImporte+=t.cant;}
     else if(t.precioFile>0&&!grupos[key].precioFile)grupos[key].precioFile=t.precioFile;
   });
@@ -962,6 +986,11 @@ function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
     var manual=manualPrices&&manualPrices[key];
     if(manual&&manual.precio>0){
       usd=manual.precio*g.cant; fuente='manual';
+    } else if(g.tieneValorFile){
+      // Valor ya calculado por Balanz en el propio Excel ("Valor total USD" o "Precio activo en
+      // dólares" × cantidad) — la fuente más confiable, usa el tipo de cambio exacto de cada
+      // movimiento. Se respeta el signo tal cual viene (positivo = entró capital, negativo = salió).
+      usd=g.valorUSDFile; fuente='archivo-directo';
     } else if(g.importeFile>0&&g.cantConImporte>=g.cant){
       usd=g.importeFile; fuente='archivo';
     } else if(g.precioFile>0){
@@ -969,26 +998,39 @@ function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
     } else {
       usd=precioMercado*g.cant; fuente='estimado';
     }
-    // Salvaguarda: un precio de archivo o cargado a mano que resulta muy por encima del valor de
-    // mercado actual por unidad es casi siempre un precio en pesos que no se convirtió (p.ej. la
-    // fila no tenía "Pesos" exacto en la columna Moneda). Si dividiendo por el MEP de esa fecha el
-    // resultado queda en un rango razonable respecto al precio de mercado, se corrige solo en vez
-    // de mostrar un capital aportado absurdo.
-    if((fuente==='archivo'||fuente==='manual')&&precioMercado>0&&g.cant>0){
+    // Salvaguarda (no aplica a 'archivo-directo', que ya viene con conversión propia confiable):
+    // un precio de archivo (Precio/Importe crudo) o cargado a mano que resulta muy por encima del
+    // valor de mercado actual por unidad es casi siempre un precio en pesos que no se convirtió
+    // (p.ej. la fila no tenía "Pesos" exacto en la columna Moneda). Si dividiendo por el MEP de esa
+    // fecha el resultado queda en un rango razonable respecto al precio de mercado, se corrige solo
+    // en vez de mostrar un capital aportado absurdo.
+    if((fuente==='archivo'||fuente==='manual')&&precioMercado>0&&g.cant!==0){
       var precioUnit=usd/g.cant;
-      if(precioUnit>precioMercado*5){
+      if(Math.abs(precioUnit)>precioMercado*5){
         var mepT=mepAt(g.fecha);
         var corregido=precioUnit/mepT;
-        if(corregido>=precioMercado*0.2&&corregido<=precioMercado*5){
+        if(Math.abs(corregido)>=precioMercado*0.2&&Math.abs(corregido)<=precioMercado*5){
           usd=corregido*g.cant;
           fuente=fuente+'-corregido';
         }
       }
     }
     total+=usd;
-    detalle.push({key:key,ticker:g.ticker,fecha:g.fecha,cant:g.cant,usd:usd,fuente:fuente,sinPrecio:usd<=0});
+    detalle.push({key:key,ticker:g.ticker,fecha:g.fecha,cant:g.cant,usd:usd,fuente:fuente,sinPrecio:fuente==='estimado'&&usd===0});
   });
   return {total:total,detalle:detalle};
+}
+// Etiqueta legible para mostrar de dónde salió el "capital aportado en títulos" (puede mezclar
+// fuentes entre distintos tickers transferidos de la misma cartera).
+function resumenFuenteTransferencias(detalle){
+  if(!detalle||!detalle.length)return '';
+  var tieneEstimado=detalle.some(function(d){return d.fuente==='estimado';});
+  var tieneManual=detalle.some(function(d){return d.fuente.indexOf('manual')===0;});
+  var tieneArchivo=detalle.some(function(d){return d.fuente.indexOf('archivo')===0;});
+  if(tieneEstimado)return (tieneArchivo||tieneManual)?'Parcialmente estimado con precio de mercado actual':'Estimado con precio de mercado actual (Movimientos no traía el precio de la transferencia)';
+  if(tieneManual&&tieneArchivo)return 'Datos de Movimientos + precio cargado a mano';
+  if(tieneManual)return 'Precio cargado a mano por el asesor';
+  return 'Datos de Movimientos (precio del día de la transferencia)';
 }
 
 // ── Precios de transferencias cargados a mano (persisten entre reportes, por ticker+fecha) ──
@@ -1008,20 +1050,27 @@ function promedioManualPorTicker(ticker){
   if(!precios.length)return null;
   return precios.reduce(function(a,b){return a+b;},0)/precios.length;
 }
-// Aplica los precios de transferencia cargados a mano como costo de compra de posiciones
-// ABIERTAS que llegaron por transferencia y no tienen otra fuente de costo (Realizado/PosF) —
-// sin esto, esas posiciones usaban el valor de HOY como costo (G/P siempre ~0%, sin sentido).
-// No pisa el costo de posiciones que sí tienen datos reales de Realizado.
+// Aplica el precio de transferencia (cargado a mano, o si no el que ya trae el propio Excel de
+// Movimientos) como costo de compra de posiciones ABIERTAS que llegaron por transferencia y no
+// tienen otra fuente de costo (Realizado/PosF) — sin esto, esas posiciones usaban el valor de HOY
+// como costo (G/P siempre ~0%, sin sentido). No pisa el costo de posiciones que sí tienen datos
+// reales de Realizado. Solo las transferencias de ENTRADA (cant>0) establecen costo de compra.
 function aplicarPreciosTransferenciaAPosData(posData,movData){
   if(!movData||!movData.transfers||!movData.transfers.length)return;
   var manual=loadManualTransferPrices();
   var porTicker={};
   movData.transfers.forEach(function(t){
+    if(!(t.cant>0))return;
     var m=manual[t.ticker+'|'+t.fecha];
-    if(!m||!(m.precio>0))return;
+    var precioUnit=null;
+    if(m&&m.precio>0)precioUnit=m.precio;
+    else if(t.valorUSDFile!=null)precioUnit=t.valorUSDFile/t.cant;
+    else if(t.precioFile>0)precioUnit=t.precioFile;
+    else if(t.importeFile>0)precioUnit=t.importeFile/t.cant;
+    if(!(precioUnit>0))return;
     if(!porTicker[t.ticker])porTicker[t.ticker]={qty:0,costo:0};
     porTicker[t.ticker].qty+=t.cant;
-    porTicker[t.ticker].costo+=t.cant*m.precio;
+    porTicker[t.ticker].costo+=t.cant*precioUnit;
   });
   Object.keys(porTicker).forEach(function(tk){
     var info=porTicker[tk];
@@ -2150,7 +2199,7 @@ function renderFlujos(movData){
     h+='<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">';
     h+='<div><div style="font-size:11px;color:var(--mu);">Total en cuenta hoy</div><div style="font-size:18px;font-weight:700;">'+U(totalCuenta)+'</div><div style="font-size:10px;color:var(--mu);">activos '+U(totalVal2)+(cashVal2>0?' + efectivo '+U(cashVal2):'')+'</div></div>';
     h+='<div><div style="font-size:11px;color:var(--mu);">Capital aportado en efectivo</div><div style="font-size:18px;font-weight:700;">'+U(netoEfectivo)+'</div><div style="font-size:10px;color:var(--mu);">depósitos − retiros</div></div>';
-    if(capitalTitulos>0)h+='<div><div style="font-size:11px;color:var(--mu);">Capital aportado en títulos <span title="Estimado con el precio de mercado ACTUAL de lo transferido — Movimientos no trae el precio del día de la transferencia">(estimado) ⓘ</span></div><div style="font-size:18px;font-weight:700;">'+U(capitalTitulos)+'</div><div style="font-size:10px;color:var(--mu);">'+transferInfo.detalle.length+' ticker(s) transferido(s)</div></div>';
+    if(transferInfo.detalle.length)h+='<div><div style="font-size:11px;color:var(--mu);">Capital aportado en títulos <span title="'+resumenFuenteTransferencias(transferInfo.detalle)+'">ⓘ</span></div><div style="font-size:18px;font-weight:700;">'+U(capitalTitulos)+'</div><div style="font-size:10px;color:var(--mu);">'+transferInfo.detalle.length+' ticker(s) transferido(s), neto de entradas y salidas</div></div>';
     h+='<div><div style="font-size:11px;color:var(--mu);">Capital total aportado</div><div style="font-size:18px;font-weight:700;">'+U(neto)+'</div></div>';
     h+='<div><div style="font-size:11px;color:var(--mu);">G/P vs. capital aportado</div><div style="font-size:22px;font-weight:700;'+gpColor+'">'+(gpVsDepositos>=0?'+':'')+U(gpVsDepositos)+'</div><div style="font-size:11px;'+gpColor+';">'+(neto>0?((gpVsDepositos/neto*100)>=0?'+':'')+N(gpVsDepositos/neto*100,2)+'%':'')+'</div></div>';
     h+='</div></div>';
@@ -2194,7 +2243,7 @@ function renderFlujos(movData){
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px;">';
   h+='<div class="hcard"><div class="hlbl">Depósitos (efectivo)</div><div class="hval cg">'+U(tD)+'</div><div class="hsub">'+d.length+' transferencia(s)</div></div>';
   h+='<div class="hcard"><div class="hlbl">Retiros</div><div class="hval cr">'+U(tW)+'</div><div class="hsub">'+w.length+' retiro(s)</div></div>';
-  if(capitalTitulos>0)h+='<div class="hcard"><div class="hlbl">Títulos transferidos (estimado)</div><div class="hval cg">'+U(capitalTitulos)+'</div><div class="hsub">'+transferInfo.detalle.length+' ticker(s)</div></div>';
+  if(transferInfo.detalle.length)h+='<div class="hcard"><div class="hlbl">Títulos transferidos (neto)</div><div class="hval '+(capitalTitulos>=0?'cg':'cr')+'">'+U(capitalTitulos)+'</div><div class="hsub">'+transferInfo.detalle.length+' ticker(s)</div></div>';
   h+='<div class="hcard"><div class="hlbl">Neto aportado (efectivo + títulos)</div><div class="hval '+(neto>=0?'cg':'cr')+'">'+U(neto)+'</div></div>';
   if(tR>0)h+='<div class="hcard"><div class="hlbl">Rebate Executive (50%)</div><div class="hval cy">'+U(tR,2)+'</div><div class="hsub">'+rb.length+' devolución(es)</div></div>';
   h+='</div>';
@@ -2604,11 +2653,12 @@ function downloadReport(){
   var tRet=mov.withdrawals.reduce(function(s,x){return s+x.usd;},0);
   var tInc2=mov.income.reduce(function(s,x){return s+x.usd;},0);
   var netoApEfectivo=tDep-tRet;
-  // Capital que entró como TÍTULOS (transferencia, no depósito de efectivo) — sin esto, un
-  // cliente que transfirió la mayoría de su cartera mostraba una "ganancia real" disparatada
-  // (ej. +492%) porque el numerador incluía el valor de esos títulos pero el denominador
-  // (capital aportado) no. Estimado con precio de mercado ACTUAL — Movimientos no trae el
-  // precio del día de la transferencia.
+  // Capital que entró (o salió) como TÍTULOS transferidos, no como depósito/retiro de efectivo —
+  // sin esto, un cliente que transfirió la mayoría de su cartera mostraba una "ganancia real"
+  // disparatada (ej. +492%) porque el numerador incluía el valor de esos títulos pero el
+  // denominador (capital aportado) no. Prioriza el valor ya calculado por Balanz en el propio
+  // Excel de Movimientos (tipo de cambio exacto de la fecha); solo cae al precio de mercado
+  // actual como último recurso — ver estimarCapitalTransferidoUSD.
   var transferInfoR=estimarCapitalTransferidoUSD(mov.transfers,pos,loadManualTransferPrices());
   var capitalTitulosR=transferInfoR.total;
   var netoAp=netoApEfectivo+capitalTitulosR;
@@ -2833,8 +2883,8 @@ function downloadReport(){
     '<div class="card"><div class="lbl">Total en cuenta hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos '+(cashVR>0?'+ efectivo '+U2(cashVR):'')+'</div></div>'+
     '<div class="card"><div class="lbl">Depósitos realizados</div><div class="val">'+U2(tDep)+'</div></div>'+
     '<div class="card"><div class="lbl">Retiros realizados</div><div class="val">'+U2(tRet)+'</div></div>'+
-    (capitalTitulosR>0?'<div class="card"><div class="lbl">Capital aportado en títulos</div><div class="val">'+U2(capitalTitulosR)+'</div><div class="sub">Estimado, precio de mercado actual</div></div>':'')+
-    '<div class="card"><div class="lbl">Capital neto aportado</div><div class="val">'+U2(netoAp)+'</div>'+(capitalTitulosR>0?'<div class="sub">Efectivo + títulos transferidos</div>':'')+'</div>'+
+    (transferInfoR.detalle.length?'<div class="card"><div class="lbl">Capital aportado en títulos (neto)</div><div class="val">'+U2(capitalTitulosR)+'</div><div class="sub">'+resumenFuenteTransferencias(transferInfoR.detalle)+'</div></div>':'')+
+    '<div class="card"><div class="lbl">Capital neto aportado</div><div class="val">'+U2(netoAp)+'</div>'+(transferInfoR.detalle.length?'<div class="sub">Efectivo + títulos transferidos</div>':'')+'</div>'+
     '<div class="card"><div class="lbl">Ganancia real total</div>'+
     '<div class="val '+(gpReal>=0?'green':'red')+'">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div>'+
     '<div class="sub">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
@@ -2901,7 +2951,14 @@ function downloadReport(){
     'var np=document.querySelector(".no-print");'+
     'var npH=np?np.offsetHeight:0;'+
     'var totalPx=document.body.scrollHeight-npH;'+
-    'var mm=Math.ceil(totalPx/96*25.4)+24;'+ // +24mm = margen superior+inferior (12mm cada uno)
+    // +24mm = margen superior+inferior (12mm cada uno) +14mm de colchón extra: el motor de
+    // impresión de Chrome mide el texto con métricas ligeramente distintas a las de pantalla
+    // (redondeo de sub-píxel), así que sin colchón un contenido que "justo entra" en la medición
+    // en pantalla puede desbordar por unos pocos px al imprimir de verdad — y como .compact/tr
+    // tienen break-inside:avoid, ese desborde manda TODA la última sección a una segunda hoja
+    // casi vacía en vez de solo recortar unos milímetros. Mejor un pelín de blanco de más al
+    // final de la única hoja que una hoja 2 entera.
+    'var mm=Math.ceil(totalPx/96*25.4)+24+14;'+
     'document.documentElement.style.width=anchoOriginal;'+
     'var st=document.createElement("style");'+
     'st.textContent="@page{size:210mm "+mm+"mm;}";'+
