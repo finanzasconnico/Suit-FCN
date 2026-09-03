@@ -161,7 +161,7 @@ tr:hover td{background:rgba(33,38,45,.5);}
     <label id="modoAsesorLbl" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;" title="En Operaciones Cerradas, cada ticker aparece agrupado en una sola fila — este modo agrega un desplegable para ver el detalle de cada operación. No se incluye si el reporte es para el cliente.">
       <input type="checkbox" id="modoAsesorChk" style="accent-color:var(--ac);">Modo asesor (detalle desglosable)
     </label>
-    <button class="btn" onclick="downloadReport()" id="btnReport" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">📄 Descargar Reporte</button>
+    <button class="btn" onclick="iniciarDescargaReporte()" id="btnReport" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">📄 Descargar Reporte</button>
   </div>
 </div>
 
@@ -844,10 +844,13 @@ function parseMovimientos(bufs){
       if(!ticker||cant===0)return;
       qty[ticker]=(qty[ticker]||0)+cant;
       // Solo positivo (entra a la cuenta) — una transferencia de SALIDA (cant<0) no aporta
-      // capital, así que no tiene que sumar acá. El Excel de Movimientos no trae un valor en
-      // USD para esto (es un movimiento de títulos, no de efectivo) — se estima más abajo con
-      // el precio de mercado actual del ticker.
-      if(cant>0)transfers.push({fecha,ticker,cant});
+      // capital, así que no tiene que sumar acá. La mayoría de las veces Balanz NO informa un
+      // valor en USD acá (es un movimiento de títulos, no de efectivo) — pero por las dudas se
+      // captura Precio/Importe si vinieran cargados en el Excel, antes de recurrir al precio de
+      // mercado actual o pedírselo al asesor a mano (ver estimarCapitalTransferidoUSD).
+      if(cant>0)transfers.push({fecha,ticker,cant,
+        precioFile:(precio>0?toUSD(precio):null),
+        importeFile:(importe>0?toUSD(importe):null)});
     }
     else if(tipo==='Boleto'){
       if(precio===-1)return; // ARS pair row → skip
@@ -914,25 +917,102 @@ function parseMovimientos(bufs){
   return {qty,deposits,withdrawals,income,rebates,gastos,trades,transfers};
 }
 
-// Estima cuánto capital entró como TÍTULOS (no efectivo) — el Excel de Movimientos no trae un
-// valor en USD para "Transferencia Títulos", así que se aproxima con el precio de mercado
-// ACTUAL de cada ticker (no el del día de la transferencia, que no tenemos). Reusa el valor ya
-// calculado en `positions` (getVal ya resuelve PDF/precio en vivo/tenencia con la prioridad
-// correcta) para no reinventar esa lógica acá.
-function estimarCapitalTransferidoUSD(transfers,positions){
-  var byTicker={};
-  (transfers||[]).forEach(function(t){byTicker[t.ticker]=(byTicker[t.ticker]||0)+t.cant;});
+// Estima cuánto capital entró como TÍTULOS (no efectivo). Prioridad para el precio de cada
+// ticker transferido:
+//   1) Precio/Importe si vino cargado en el Excel de Movimientos (raro, pero por las dudas).
+//   2) Precio que el asesor cargó a mano (más exacto: el de la fecha real de la transferencia
+//      — ver modalPrecioTransferencias() más abajo).
+//   3) Precio de mercado ACTUAL (fallback, menos exacto — no es el precio del día de la
+//      transferencia, es lo mejor disponible si no se cargó nada).
+// manualPrices: { "TICKER|fecha": {precio, fecha} } — clave por ticker+fecha, no por cliente,
+// porque el precio de mercado de una fecha es el mismo sin importar a qué cliente le llegó.
+function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
+  var grupos={};
+  (transfers||[]).forEach(function(t){
+    var key=t.ticker+'|'+t.fecha;
+    if(!grupos[key])grupos[key]={ticker:t.ticker,fecha:t.fecha,cant:0,importeFile:0,cantConImporte:0};
+    grupos[key].cant+=t.cant;
+    if(t.importeFile>0){grupos[key].importeFile+=t.importeFile;grupos[key].cantConImporte+=t.cant;}
+    else if(t.precioFile>0&&!grupos[key].precioFile)grupos[key].precioFile=t.precioFile;
+  });
   var total=0,detalle=[];
-  Object.keys(byTicker).forEach(function(tk){
-    var qtyT=byTicker[tk];
-    var pos=positions&&positions[tk];
-    var precioUnit=(pos&&pos.totalQty>0)?(getVal(pos)/pos.totalQty):0;
-    var usd=precioUnit*qtyT;
+  Object.keys(grupos).forEach(function(key){
+    var g=grupos[key];
+    var usd,fuente;
+    var manual=manualPrices&&manualPrices[key];
+    if(manual&&manual.precio>0){
+      usd=manual.precio*g.cant; fuente='manual';
+    } else if(g.importeFile>0&&g.cantConImporte>=g.cant){
+      usd=g.importeFile; fuente='archivo';
+    } else if(g.precioFile>0){
+      usd=g.precioFile*g.cant; fuente='archivo';
+    } else {
+      var pos=positions&&positions[g.ticker];
+      var precioUnit=(pos&&pos.totalQty>0)?(getVal(pos)/pos.totalQty):0;
+      usd=precioUnit*g.cant; fuente='estimado';
+    }
     total+=usd;
-    detalle.push({ticker:tk,cant:qtyT,usd:usd,sinPrecio:precioUnit<=0});
+    detalle.push({key:key,ticker:g.ticker,fecha:g.fecha,cant:g.cant,usd:usd,fuente:fuente,sinPrecio:usd<=0});
   });
   return {total:total,detalle:detalle};
 }
+
+// ── Precios de transferencias cargados a mano (persisten entre reportes, por ticker+fecha) ──
+var MANUAL_TRANSFER_KEY='fcn_transfer_prices_v1';
+function loadManualTransferPrices(){
+  try{return JSON.parse(localStorage.getItem(MANUAL_TRANSFER_KEY)||'{}');}catch(e){return {};}
+}
+function saveManualTransferPrices(map){
+  try{localStorage.setItem(MANUAL_TRANSFER_KEY,JSON.stringify(map));}catch(e){}
+}
+
+// ── Modal: pide el precio de transferencia SOLO cuando hace falta ──────────────
+// Se llama en vez de downloadReport() directamente. Si el Excel ya trae el precio (Precio/
+// Importe cargados) o ya se había cargado a mano antes, no interrumpe con nada — el modal
+// aparece únicamente para los tickers donde de verdad no hay otra fuente que la estimación
+// con el precio de hoy.
+function iniciarDescargaReporte(){
+  if(!S.positions||!Object.keys(S.positions).length){alert('Generá primero el reporte.');return;}
+  var mov=S.movData||emptyMov();
+  var info=estimarCapitalTransferidoUSD(mov.transfers,S.positions,loadManualTransferPrices());
+  var pendientes=info.detalle.filter(function(d){return d.fuente==='estimado'&&d.usd>0;});
+  if(!pendientes.length){downloadReport();return;}
+  renderTransferPriceModal(pendientes);
+  document.getElementById('transferPriceOverlay').style.display='flex';
+}
+function renderTransferPriceModal(pendientes){
+  var box=document.getElementById('transferPriceRows');
+  box.innerHTML=pendientes.map(function(d){
+    return '<div>'+
+      '<div style="font-size:12.5px;color:var(--tx);margin-bottom:5px;"><strong>'+d.ticker+'</strong> · '+fmtQ(d.cant)+' unidades · transferidos el '+d.fecha+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+      '<span style="font-size:11px;color:var(--mu);white-space:nowrap;">Precio en esa fecha (USD):</span>'+
+      '<input type="number" step="0.01" min="0" data-key="'+d.key+'" data-ticker="'+d.ticker+'" data-fecha="'+d.fecha+'" placeholder="Ej: 45.30" '+
+      'style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:6px 10px;font-size:12.5px;">'+
+      '</div></div>';
+  }).join('');
+}
+function cerrarModalTransferencia(){
+  document.getElementById('transferPriceOverlay').style.display='none';
+}
+function aceptarPreciosTransferencia(){
+  var manual=loadManualTransferPrices();
+  var huboAlgunPrecio=false;
+  document.querySelectorAll('#transferPriceRows input[data-key]').forEach(function(inp){
+    var v=parseFloat(inp.value);
+    if(v>0){manual[inp.dataset.key]={precio:v,fecha:inp.dataset.fecha,ticker:inp.dataset.ticker};huboAlgunPrecio=true;}
+  });
+  if(huboAlgunPrecio)saveManualTransferPrices(manual);
+  cerrarModalTransferencia();
+  downloadReport();
+}
+function omitirPreciosTransferencia(){
+  cerrarModalTransferencia();
+  downloadReport();
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('transferPriceOverlay').style.display!=='none')omitirPreciosTransferencia();
+});
 
 // ══════════════════════════════════════════════════════════════
 // BUILD POSITIONS
@@ -1974,7 +2054,7 @@ function renderFlujos(movData){
   // Capital que entró como TÍTULOS (transferencia, no depósito de efectivo) — sin esto, el
   // capital aportado quedaba subestimado y el % de ganancia salía disparatado (ver caso real:
   // un cliente con la mayoría de la cartera transferida mostraba +492% de "ganancia real").
-  var transferInfo=estimarCapitalTransferidoUSD(movData.transfers,S.positions);
+  var transferInfo=estimarCapitalTransferidoUSD(movData.transfers,S.positions,loadManualTransferPrices());
   var capitalTitulos=transferInfo.total;
   var neto=netoEfectivo+capitalTitulos;
   var totalVal2=S.positions?Object.values(S.positions).reduce(function(s,p){return s+(p.valorUSD||0);},0):0;
@@ -2449,7 +2529,7 @@ function downloadReport(){
   // (ej. +492%) porque el numerador incluía el valor de esos títulos pero el denominador
   // (capital aportado) no. Estimado con precio de mercado ACTUAL — Movimientos no trae el
   // precio del día de la transferencia.
-  var transferInfoR=estimarCapitalTransferidoUSD(mov.transfers,pos);
+  var transferInfoR=estimarCapitalTransferidoUSD(mov.transfers,pos,loadManualTransferPrices());
   var capitalTitulosR=transferInfoR.total;
   var netoAp=netoApEfectivo+capitalTitulosR;
   var cashVR=PDF_DATA&&PDF_DATA.cash>0?PDF_DATA.cash:0;
@@ -3117,6 +3197,23 @@ function seleccionarClienteActivoPM(nombre){
     <div style="padding:5px 0;border-bottom:1px solid var(--sf2);"><span style="font-weight:700;color:var(--tx);">Peso</span> <span style="color:var(--mu);font-size:12px;">— porcentaje que representa este activo sobre el total de la cartera</span></div>
     <div style="padding:5px 0;border-bottom:1px solid var(--sf2);"><span style="font-weight:700;color:var(--tx);">MEP</span> <span style="color:var(--mu);font-size:12px;">— tipo de cambio dólar Mercado Electrónico de Pagos (usado para convertir pesos a dólares)</span></div>
     <div style="padding:5px 0;border-bottom:1px solid var(--sf2);"><span style="font-weight:700;color:var(--tx);">FCI</span> <span style="color:var(--mu);font-size:12px;">— Fondo Común de Inversión (fondos administrados por gestoras profesionales)</span></div>
+  </div>
+</div>
+
+<!-- ── MODAL: precio de transferencias de títulos (antes de descargar el reporte) ── -->
+<div id="transferPriceOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:900;align-items:center;justify-content:center;backdrop-filter:blur(4px);"
+  onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true')omitirPreciosTransferencia()">
+  <div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:24px 26px;width:100%;max-width:520px;max-height:82vh;overflow-y:auto;">
+    <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;">📥 Esta cartera recibió títulos por transferencia</div>
+    <div style="font-size:11.5px;color:var(--mu);line-height:1.5;margin-bottom:16px;">
+      El Excel de Movimientos no trae el precio del día de la transferencia — sin eso, el rendimiento se estima con el precio de <strong>hoy</strong>, que puede quedar muy alejado de la realidad.
+      Si lo tenés a mano (Balanz → Posición Consolidada del cliente, a esa fecha), cargalo acá para que el reporte quede exacto. Si no, omitilo y sigue con la estimación de siempre.
+    </div>
+    <div id="transferPriceRows" style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-s" onclick="omitirPreciosTransferencia()">Omitir</button>
+      <button class="btn btn-p" onclick="aceptarPreciosTransferencia()">Aceptar y descargar</button>
+    </div>
   </div>
 </div>
 
