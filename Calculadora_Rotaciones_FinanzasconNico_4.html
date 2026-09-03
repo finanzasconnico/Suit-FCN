@@ -344,6 +344,11 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
           <select id="lic-amort"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
         </div>
       </div>
+      <div class="field">
+        <label>Lámina mínima de suscripción (USD) — opcional</label>
+        <input type="number" step="1" id="lic-lamina-min" placeholder="Ej: 1000">
+        <div style="font-size:10px;color:var(--cream-dim);margin-top:3px;">Si la completás, también se ofrece la licitación a clientes con liquidez USD sin invertir por encima de este monto — no solo a quien tiene bonos para rotar.</div>
+      </div>
 
       <div class="lic-rule-sub">Reglas del filtro (editables)</div>
       <div class="field-row">
@@ -1630,6 +1635,7 @@ function buscarCandidatosLicitacion(){
   var calNotch = num('lic-calnotch',1);
   var diasMin = num('lic-dias-min',90);
   var gananciaOverride = num('lic-ganancia-override',1.5);
+  var laminaMin = num('lic-lamina-min',null); // null = no ofrecer por liquidez, solo por rotación
   var nuevaRank = calificacionRank(nuevaON.calif);
 
   var porCliente = {};
@@ -1664,6 +1670,7 @@ function buscarCandidatosLicitacion(){
 
       if(!porCliente[cliente]) porCliente[cliente] = [];
       porCliente[cliente].push({
+        tipo: 'rotacion',
         tickerActual: pos.ticker, tirActual: retVenta.tir, calif: baseBond.calif,
         tirNueva: retCompra.tir, ventajaPuntos: ventajaPuntos,
         vencimiento: baseBond.fechaVenc, anios: anios,
@@ -1674,7 +1681,22 @@ function buscarCandidatosLicitacion(){
     });
   });
 
-  licitacionResultados = { nuevaON: nuevaON, porCliente: porCliente, huboTickersSinDatos: huboTickersSinDatos };
+  // Además de a quien tiene bonos de tasa baja para rotar, ofrecer la licitación a quien tiene
+  // liquidez USD sin invertir por encima de la lámina mínima — no hace falta vender nada, se
+  // suscribe directo. No aplica la regla de días mínimos/ganancia (eso es solo para no apurar
+  // la venta de algo recién comprado; acá no se vende nada).
+  var huboCandidatosLiquidez = false;
+  if(laminaMin!=null && laminaMin>0){
+    CLIENTE_LIST.forEach(function(cliente){
+      var liq = LIQUIDEZ_POR_CLIENTE[cliente];
+      if(!liq || !(liq.USD>=laminaMin)) return;
+      if(!porCliente[cliente]) porCliente[cliente] = [];
+      porCliente[cliente].push({ tipo:'liquidez', montoUSD: liq.USD });
+      huboCandidatosLiquidez = true;
+    });
+  }
+
+  licitacionResultados = { nuevaON: nuevaON, porCliente: porCliente, huboTickersSinDatos: huboTickersSinDatos, huboCandidatosLiquidez: huboCandidatosLiquidez };
   renderResultadosLicitacion();
 }
 
@@ -1687,14 +1709,27 @@ function renderResultadosLicitacion(){
       + (licitacionResultados.huboTickersSinDatos ? '<div class="rot-comp-empty">⚠️ Algunos tickers en cartera no están en el Monitor — no se pudieron evaluar.</div>' : '');
     return;
   }
-  var totalRot = clientes.reduce(function(s,c){ return s+licitacionResultados.porCliente[c].length; },0);
-  var html = '<div class="lic-summary">'+clientes.length+' cliente(s) · '+totalRot+' rotación(es) sugerida(s)'
+  var todosLosItems = [].concat.apply([], clientes.map(function(c){ return licitacionResultados.porCliente[c]; }));
+  var totalRot = todosLosItems.filter(function(c){ return c.tipo==='rotacion'; }).length;
+  var totalLiq = todosLosItems.filter(function(c){ return c.tipo==='liquidez'; }).length;
+  var resumenPartes = [];
+  if(totalRot) resumenPartes.push(totalRot+' rotación(es) sugerida(s)');
+  if(totalLiq) resumenPartes.push(totalLiq+' con liquidez disponible');
+  var html = '<div class="lic-summary">'+clientes.length+' cliente(s) · '+resumenPartes.join(' · ')
     + (licitacionResultados.huboTickersSinDatos ? ' · <span class="lic-warn-icon">⚠️ algunos tickers en cartera no estaban en el Monitor</span>' : '')
     + '</div>';
-  html += '<div style="overflow-x:auto;"><table class="compare-table"><thead><tr><th>Cliente</th><th>Bono actual</th><th>TIR act.</th><th>TIR nueva</th><th>Ventaja</th><th>Días tenencia</th><th>Ganancia actual</th></tr></thead><tbody>';
+  html += '<div style="overflow-x:auto;"><table class="compare-table"><thead><tr><th>Cliente</th><th>Situación</th><th>TIR act.</th><th>TIR nueva</th><th>Ventaja</th><th>Días tenencia</th><th>Ganancia actual</th></tr></thead><tbody>';
   clientes.forEach(function(cliente){
     var rows = licitacionResultados.porCliente[cliente];
     rows.forEach(function(c, idx){
+      if(c.tipo==='liquidez'){
+        html += '<tr>'+
+          '<td>'+(idx===0?('<b>'+cliente+'</b>'):'')+'</td>'+
+          '<td>💰 Liquidez USD '+fmtNum(c.montoUSD,0)+' sin invertir</td>'+
+          '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'+
+        '</tr>';
+        return;
+      }
       html += '<tr>'+
         '<td>'+(idx===0?('<b>'+cliente+'</b>'):'')+'</td>'+
         '<td>'+c.tickerActual+' <span style="opacity:.6;">'+(c.calif||'—')+'</span></td>'+
@@ -1711,22 +1746,35 @@ function renderResultadosLicitacion(){
   box.innerHTML = html;
 }
 
-// Un solo mensaje POR CLIENTE con todas sus rotaciones sugeridas (no uno por cada bono) — si un
-// cliente tiene varias ONs de tasa baja, se listan todas juntas en el mismo mensaje.
+// Un solo mensaje POR CLIENTE con todas sus rotaciones sugeridas Y su liquidez disponible (no
+// uno por cada bono, ni separado del aviso de liquidez) — si un cliente tiene varias ONs de tasa
+// baja y además plata parada, se listan todas juntas en el mismo mensaje.
 function construirMensajeLicitacionCliente(cliente, candidatos, nuevaON){
+  var rotaciones = candidatos.filter(function(c){ return c.tipo==='rotacion'; });
+  var liquidez = candidatos.filter(function(c){ return c.tipo==='liquidez'; })[0];
   var lineas = [];
   lineas.push('Hola '+(cliente.split(' ')[0]||cliente)+',');
   lineas.push('');
   lineas.push('Te contamos sobre una nueva oportunidad: *'+nuevaON.ticker+'*'+(nuevaON.emisor?' ('+nuevaON.emisor+')':'')+', tasa estimada '+fmtNum(nuevaON.cuponAnual,2)+'%'+(nuevaON.calif?' — calificación '+nuevaON.calif:'')+'.');
+
+  if(rotaciones.length){
+    lineas.push('');
+    lineas.push(rotaciones.length>1 ? 'Vimos que tenés estas posiciones que podrían convenir rotar:' : 'Vimos que tenés una posición que podría convenir rotar:');
+    rotaciones.forEach(function(c){
+      lineas.push('• '+c.tickerActual+' (TIR actual '+fmtNum(c.tirActual,2)+'%) → rotar te dejaría *+'+fmtNum(c.ventajaPuntos,2)+' p.p. más* de retorno a '+fmtDateAR(c.vencimiento)+'.');
+    });
+  }
+  if(liquidez){
+    lineas.push('');
+    lineas.push('Además, tenés *USD '+fmtNum(liquidez.montoUSD,0)+'* de liquidez sin invertir — alcanza para suscribir esta licitación directo, sin vender nada.');
+  }
   lineas.push('');
-  lineas.push(candidatos.length>1 ? 'Vimos que tenés estas posiciones que podrían convenir rotar:' : 'Vimos que tenés una posición que podría convenir rotar:');
-  candidatos.forEach(function(c){
-    lineas.push('• '+c.tickerActual+' (TIR actual '+fmtNum(c.tirActual,2)+'%) → rotar te dejaría *+'+fmtNum(c.ventajaPuntos,2)+' p.p. más* de retorno a '+fmtDateAR(c.vencimiento)+'.');
-  });
+  var pasos = [];
+  if(rotaciones.length) pasos.push('vendés '+(rotaciones.length>1?'esas posiciones':'esa posición'));
+  if(liquidez) pasos.push('usás la liquidez disponible');
+  lineas.push('*Cómo hacerlo:* '+pasos.join(' y/o ')+' y suscribís la licitación de '+nuevaON.ticker+' (se abre por unos días — te aviso los pasos exactos cuando confirmes que te interesa).');
   lineas.push('');
-  lineas.push('*Cómo hacerlo:* vendés '+(candidatos.length>1?'esas posiciones':'esa posición')+' y con lo obtenido suscribís la licitación de '+nuevaON.ticker+' (se abre por unos días — te aviso los pasos exactos cuando confirmes que te interesa).');
-  lineas.push('');
-  lineas.push('Si querés ver el detalle técnico completo de cada rotación (con el monto exacto en USD), pedímelo y te lo mando.');
+  lineas.push(rotaciones.length ? 'Si querés ver el detalle técnico completo de cada rotación (con el monto exacto en USD), pedímelo y te lo mando.' : 'Cualquier duda, avisame.');
   return lineas.join('\n');
 }
 
@@ -1741,8 +1789,11 @@ function abrirBorradoresLicitacion(){
     var tel = stock ? stock.tel : null;
     var mail = stock ? stock.mail : null;
     var msg = construirMensajeLicitacionCliente(cliente, candidatos, nuevaON);
+    var nRot = candidatos.filter(function(c){ return c.tipo==='rotacion'; }).length;
+    var nLiq = candidatos.filter(function(c){ return c.tipo==='liquidez'; }).length;
+    var etiquetaCand = [nRot?nRot+' rotación(es)':null, nLiq?'liquidez disponible':null].filter(Boolean).join(' + ');
     return '<div class="lic-draft-card">'+
-      '<div class="lic-draft-head"><b>'+cliente+'</b> <span style="opacity:.6;">('+candidatos.length+' rotación(es))</span></div>'+
+      '<div class="lic-draft-head"><b>'+cliente+'</b> <span style="opacity:.6;">('+etiquetaCand+')</span></div>'+
       '<textarea class="lic-draft-text" id="lic-draft-'+idx+'">'+msg.replace(/</g,'&lt;')+'</textarea>'+
       '<div class="lic-draft-actions">'+
         (tel ? '<button class="btn btn-outline" style="width:auto;" onclick="enviarWppLicitacion(\''+tel+'\','+idx+')">📱 WhatsApp</button>' : '<span style="font-size:10px;color:var(--cream-dim);">Sin teléfono (Stock)</span>')+
@@ -2317,6 +2368,7 @@ var TENENCIA_POR_TICKER = {}; // { ticker: [{cliente, nominales, tenencia}] } �
 var CLIENTE_LIST = [];
 var clienteActivoNombre = null;
 var TIPO_RENTA_FIJA = {corporativos:true, bonos:true, letras:true};
+var LIQUIDEZ_POR_CLIENTE = {}; // cliente -> {ARS, USD} — liquidez sin invertir (fila Tipo="Efectivo")
 var COMITENTE_POR_CLIENTE = {}; // { cliente (Cuenta) : comitente } — para cruzar con Stock de cuentas
 var stockMap = {}; // comitente -> { tel, nombre, denominacion, mail }
 var wppRotCtx = null;
@@ -2338,18 +2390,36 @@ function parseTenenciaParaClientes(entry){
     var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
     var porCliente = {};
     var comitentePorCliente = {};
+    // Liquidez sin invertir por cliente — mismo criterio que ya usa el aviso de liquidez en FCN
+    // Suite (fila Tipo="Efectivo", moneda por ticker "U$S"/instrumento con "dólar"). Se guarda
+    // aparte de porCliente (que es solo renta fija) para poder ofrecer la licitación también a
+    // quien tiene plata parada, no solo a quien tiene bonos de tasa baja para rotar.
+    var liquidezPorCliente = {};
     rows.forEach(function(r){
       var ticker = String(r['Ticker']||'').trim();
       if(esFilaTotalRot(r, ticker)) return;
       var tipo = String(r['Tipo']||'').trim().toLowerCase();
-      if(!TIPO_RENTA_FIJA[tipo]) return; // esta calculadora es para rotar renta fija
-      var nominales = parseFloat(r['Nominales'])||0;
-      var tenenciaUSD = parseFloat(r['Tenencia'])||0;
-      if(!nominales) return;
       var comitente = String(r['Comitente']||'').trim();
       var cliente = String(r['Cuenta']||comitente||'').trim();
       if(!cliente) return;
       if(topClientesFiltroSet && !topClientesFiltroSet.has(cliente)) return;
+      if(comitente && !comitentePorCliente[cliente]) comitentePorCliente[cliente] = comitente;
+
+      if(tipo==='efectivo'){
+        var valLiq = parseFloat(r['Tenencia'])||0;
+        if(valLiq){
+          var instrumento = String(r['Instrumento']||'').trim();
+          var moneda = /^u\$s$/i.test(ticker) || /d[oó]lar/i.test(instrumento) ? 'USD' : 'ARS';
+          if(!liquidezPorCliente[cliente]) liquidezPorCliente[cliente] = {ARS:0, USD:0};
+          liquidezPorCliente[cliente][moneda] += valLiq;
+        }
+        return;
+      }
+
+      if(!TIPO_RENTA_FIJA[tipo]) return; // esta calculadora es para rotar renta fija
+      var nominales = parseFloat(r['Nominales'])||0;
+      var tenenciaUSD = parseFloat(r['Tenencia'])||0;
+      if(!nominales) return;
       var ppc = parseFloat(r['Prec prom de compra'])||null;
       var dias = parseFloat(r['Días de tenencia']);
       if(isNaN(dias)) dias = null;
@@ -2362,7 +2432,6 @@ function parseTenenciaParaClientes(entry){
       // ticker comprados en momentos/precios distintos.
       if(ppc!=null) pos._ppcNomSum += ppc*nominales;
       if(dias!=null) pos._diasNomSum += dias*nominales;
-      if(comitente && !comitentePorCliente[cliente]) comitentePorCliente[cliente] = comitente;
     });
     var resultado = {};
     var porTicker = {};
@@ -2379,8 +2448,14 @@ function parseTenenciaParaClientes(entry){
     Object.keys(porTicker).forEach(function(tk){ porTicker[tk].sort(function(a,b){ return b.tenencia-a.tenencia; }); });
     TENENCIA_POR_CLIENTE = resultado;
     TENENCIA_POR_TICKER = porTicker;
+    LIQUIDEZ_POR_CLIENTE = liquidezPorCliente;
     COMITENTE_POR_CLIENTE = comitentePorCliente;
-    CLIENTE_LIST = Object.keys(resultado).sort(function(a,b){ return a.localeCompare(b,'es'); });
+    // Unión de clientes con posiciones de renta fija Y clientes con liquidez — antes, alguien
+    // que solo tenía cash (sin bonos) no aparecía en ningún lado de esta calculadora.
+    var todos = {};
+    Object.keys(resultado).forEach(function(c){ todos[c]=true; });
+    Object.keys(liquidezPorCliente).forEach(function(c){ todos[c]=true; });
+    CLIENTE_LIST = Object.keys(todos).sort(function(a,b){ return a.localeCompare(b,'es'); });
   } catch(e){ console.warn('[Rotaciones] error leyendo tenencia', e); }
 }
 
