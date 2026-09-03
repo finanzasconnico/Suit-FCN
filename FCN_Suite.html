@@ -132,16 +132,22 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .fsd-go-btn{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:7px;color:var(--text);font-family:var(--font-s);font-size:11px;cursor:pointer;transition:all .15s;}
 .fsd-go-btn:hover{border-color:var(--jade);color:var(--jade);}
 
-/* ── CLIENTE ACTIVO ── */
+/* ── FOCO DE ANÁLISIS (cliente puntual / top por capital) ──
+   A propósito con acento ámbar SIEMPRE (no solo cuando está activo, a diferencia de como era
+   antes) — es el control que más cambia lo que se ve en toda la Suite, tiene que leerse como
+   "botón importante" de entrada, no como un dato pasivo más al lado de Archivos/Usuario. */
 .client-picker{position:relative;flex-shrink:0;}
-.client-pill{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 10px;cursor:pointer;transition:border-color .2s;font-family:var(--font-s);max-width:200px;}
-.client-pill:hover{border-color:rgba(219,160,60,.5);}
-.client-pill.active{border-color:var(--ambar);background:var(--ambar-d);}
-.client-pill-icon{font-size:12px;flex-shrink:0;}
-.client-pill-text{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.client-pill.active .client-pill-text{color:var(--ambar);}
-.client-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;overflow:hidden;}
+.client-pill{display:flex;align-items:center;gap:7px;background:var(--ambar-d);border:1.5px solid rgba(219,160,60,.55);border-radius:20px;padding:6px 13px 6px 11px;cursor:pointer;transition:all .2s;font-family:var(--font-s);max-width:240px;}
+.client-pill:hover{border-color:var(--ambar);box-shadow:0 0 0 3px rgba(219,160,60,.12);}
+.client-pill.active{border-color:var(--ambar);background:var(--ambar);}
+.client-pill-icon{font-size:13px;flex-shrink:0;}
+.client-pill-text{font-size:12.5px;font-weight:600;color:var(--ambar);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.client-pill.active .client-pill-text{color:#1a1400;}
+.client-pill-caret{font-size:9px;color:var(--ambar);flex-shrink:0;opacity:.75;}
+.client-pill.active .client-pill-caret{color:#1a1400;}
+.client-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;width:330px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 12px 32px rgba(0,0,0,.5);z-index:200;overflow:hidden;}
 .client-dropdown.open{display:block;}
+.client-dropdown-intro{padding:11px 14px 9px;font-size:11px;line-height:1.5;color:var(--muted);border-bottom:1px solid var(--border);}
 .client-dropdown input{width:100%;box-sizing:border-box;background:var(--surface);border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--font-s);font-size:12.5px;padding:11px 14px;}
 .client-dropdown input:focus{outline:none;border-bottom-color:var(--ambar);}
 .client-results{max-height:260px;overflow-y:auto;}
@@ -151,16 +157,23 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .client-result-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .client-result-aum{font-family:var(--font-m);font-size:10px;color:var(--muted);flex-shrink:0;}
 .client-results-empty{padding:16px 14px;font-size:11.5px;color:var(--muted);text-align:center;}
+.client-dropdown-sep{padding:9px 14px 5px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--border);}
 .client-dropdown-foot{padding:8px;border-top:1px solid var(--border);}
 .client-clear-btn{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--r);padding:7px;color:var(--muted);font-family:var(--font-s);font-size:11px;cursor:pointer;transition:all .15s;}
 .client-clear-btn:hover{border-color:var(--danger);color:var(--danger);}
-.topn-row{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface);}
+.topn-row{display:flex;align-items:center;gap:6px;padding:9px 14px;background:var(--surface);flex-wrap:wrap;}
 .topn-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;flex-shrink:0;}
 .topn-chip{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px 10px;color:var(--text);font-family:var(--font-m);font-size:10.5px;cursor:pointer;transition:all .15s;flex-shrink:0;}
 .topn-chip:hover{border-color:var(--ambar);color:var(--ambar);}
 .topn-chip.active{background:var(--ambar-d);border-color:var(--ambar);color:var(--ambar);font-weight:700;}
-.topn-custom{width:100%;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-family:var(--font-m);font-size:10.5px;outline:none;}
+/* Fila propia para el número a medida — antes compartía fila con los 4 chips dentro de un
+   dropdown angosto y quedaba recortado (overflow:hidden del dropdown), casi imposible de usar. */
+.topn-custom-row{display:flex;align-items:center;gap:6px;padding:0 14px 9px;border-bottom:1px solid var(--border);background:var(--surface);}
+.topn-custom-lbl{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.topn-custom{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px 8px;color:var(--text);font-family:var(--font-m);font-size:11px;outline:none;}
 .topn-custom:focus{border-color:var(--ambar);}
+.topn-custom-go{flex-shrink:0;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:4px 10px;color:var(--text);font-family:var(--font-s);font-size:10.5px;cursor:pointer;transition:all .15s;}
+.topn-custom-go:hover{border-color:var(--ambar);color:var(--ambar);}
 .dbar-row.clickable{cursor:pointer;border-radius:var(--r);padding:2px 4px;margin-left:-4px;margin-right:-4px;transition:background .12s;}
 .dbar-row.clickable:hover{background:var(--jade-d);}
 
@@ -413,6 +426,38 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <span class="brand-tag">Suite</span>
     </div>
     <div class="topbar-sep"></div>
+    <!-- Foco de análisis (cliente puntual / top por capital) — a propósito ACÁ, pegado al logo y
+         antes de las pestañas de herramientas, no escondido en la esquina derecha junto a Archivos
+         y Usuario: es el control que más cambia lo que se ve en TODA la Suite, tiene que notarse
+         primero. -->
+    <div class="client-picker" id="client-picker">
+      <button class="client-pill" id="client-pill-btn" onclick="toggleClientPicker()" title="Enfocar toda la Suite en un cliente puntual o en tus clientes con más capital — para un análisis más personalizado en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.">
+        <span class="client-pill-icon">🎯</span>
+        <span class="client-pill-text" id="client-pill-text">Ver: todos los clientes</span>
+        <span class="client-pill-caret">▾</span>
+      </button>
+      <div class="client-dropdown" id="client-dropdown">
+        <div class="client-dropdown-intro">Enfocá la Suite en un cliente o en tus clientes con más capital — se aplica en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.</div>
+        <div class="topn-row">
+          <span class="topn-lbl">Top por capital:</span>
+          <button class="topn-chip" onclick="aplicarTopNClientes(20)">20</button>
+          <button class="topn-chip" onclick="aplicarTopNClientes(50)">50</button>
+          <button class="topn-chip" onclick="aplicarTopNClientes(60)">60</button>
+          <button class="topn-chip" onclick="aplicarTopNClientes(100)">100</button>
+        </div>
+        <div class="topn-custom-row">
+          <span class="topn-custom-lbl">o un número a medida:</span>
+          <input type="number" id="topn-custom" class="topn-custom" placeholder="Ej: 30" min="1" onkeydown="if(event.key==='Enter')aplicarTopNClientes(parseInt(this.value)||0)">
+          <button class="topn-custom-go" onclick="aplicarTopNClientes(parseInt(document.getElementById('topn-custom').value)||0)">Aplicar</button>
+        </div>
+        <div class="client-dropdown-sep">o elegí un cliente puntual</div>
+        <input type="text" id="client-search-input" placeholder="Buscar cliente por nombre…" oninput="renderClientResults()">
+        <div class="client-results" id="client-results"></div>
+        <div class="client-dropdown-foot">
+          <button class="client-clear-btn" onclick="clearActiveClient()">✕ Quitar filtro de cliente</button>
+        </div>
+      </div>
+    </div>
     <div class="topbar-tools" id="topbar-tools"></div>
     <button class="topbar-scroll-hint" id="topbar-scroll-hint" onclick="document.getElementById('topbar-tools').scrollBy({left:160,behavior:'smooth'})" title="Más herramientas →">›</button>
     <div class="topbar-right">
@@ -427,27 +472,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <div class="fsd-list" id="files-status-list"></div>
           <div class="fsd-foot">
             <button class="fsd-go-btn" onclick="closeFilesStatusDropdown();showFiles();">🗂 Ir a Archivos →</button>
-          </div>
-        </div>
-      </div>
-      <div class="client-picker" id="client-picker">
-        <button class="client-pill" id="client-pill-btn" onclick="toggleClientPicker()" title="Elegir cliente activo — precarga su cartera en Rotador RV y Scanner ONs">
-          <span class="client-pill-icon">👤</span>
-          <span class="client-pill-text" id="client-pill-text">Cliente: todos</span>
-        </button>
-        <div class="client-dropdown" id="client-dropdown">
-          <div class="topn-row">
-            <span class="topn-lbl">Top por capital:</span>
-            <button class="topn-chip" onclick="aplicarTopNClientes(20)">20</button>
-            <button class="topn-chip" onclick="aplicarTopNClientes(50)">50</button>
-            <button class="topn-chip" onclick="aplicarTopNClientes(60)">60</button>
-            <button class="topn-chip" onclick="aplicarTopNClientes(100)">100</button>
-            <input type="number" id="topn-custom" class="topn-custom" placeholder="Otro…" min="1" onkeydown="if(event.key==='Enter')aplicarTopNClientes(parseInt(this.value)||0)">
-          </div>
-          <input type="text" id="client-search-input" placeholder="Buscar cliente por nombre…" oninput="renderClientResults()">
-          <div class="client-results" id="client-results"></div>
-          <div class="client-dropdown-foot">
-            <button class="client-clear-btn" onclick="clearActiveClient()">✕ Quitar filtro de cliente</button>
           </div>
         </div>
       </div>
@@ -2755,10 +2779,10 @@ function updateClientPill() {
     text.textContent = `Top ${topClientesFiltro.n} por capital`;
   } else if (activeClienteNombre) {
     pill.classList.add('active');
-    text.textContent = activeClienteNombre;
+    text.textContent = `Viendo: ${activeClienteNombre}`;
   } else {
     pill.classList.remove('active');
-    text.textContent = 'Cliente: todos';
+    text.textContent = 'Ver: todos los clientes';
   }
 }
 
@@ -2840,7 +2864,7 @@ async function selectActiveClient(cliente) {
   closeClientPicker();
   if (BC) BC.postMessage({ type: 'client_selected', cliente });
   renderRanking(); renderCliente360();
-  showToast(`👤 Cliente activo: ${cliente} — se precarga en Rotador RV y Scanner ONs`);
+  showToast(`🎯 Viendo: ${cliente} — aplicado en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado`);
 }
 
 async function clearActiveClient() {
