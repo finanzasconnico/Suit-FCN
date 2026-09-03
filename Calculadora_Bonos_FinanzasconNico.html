@@ -222,6 +222,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
           <label>Tenencia Nominal:</label>
           <input type="number" id="in-tenencia" value="100" step="1" oninput="renderAll()">
         </div>
+        <div id="ten-cliente-note" style="display:none;font-size:10px;color:var(--gold);margin-top:-6px;margin-bottom:4px;"></div>
         <div class="holding-grid" id="holding-grid"></div>
       </div>
 
@@ -254,6 +255,11 @@ var currentBond = null;  // the bond currently loaded into the form (normalized)
 var amortOverrides = {}; // dateISO -> pct override (manual edits to the schedule)
 var inputMode = 'precio'; // 'precio' | 'tir'
 var MONTH_ABR = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+// Cliente activo del Suite + su Tenencia por Ticker — para autocompletar "Tenencia Nominal" con
+// lo que ese cliente REALMENTE tiene del bono elegido, en vez de arrancar siempre en un genérico
+// 100 (ver bloque "SHARED FILES AUTO-LOAD" más abajo, que los carga/actualiza).
+var clienteActivo = null;
+var tenenciaByTicker = {}; // TICKER -> [{cliente, nominales}]
 
 // ═══════════════════════════════════════════════════════
 // INIT
@@ -569,7 +575,30 @@ function seleccionarBono(ticker){
   if(refParts.length){ refBox.style.display='block'; refBox.innerHTML='📊 Últimos datos del Monitor — '+refParts.join(' · '); }
   else { refBox.style.display='none'; }
 
+  aplicarTenenciaCliente(b.ticker);
   onCondChange();
+}
+
+// Autocompleta "Tenencia Nominal" con lo que el cliente activo del Suite REALMENTE tiene de este
+// bono (en vez del genérico 100 de siempre) — para mostrar en el momento la valuación de SU
+// posición real, no un escenario de ejemplo. Si no hay cliente activo, o no tiene este bono, no
+// toca nada (el campo se queda como esté). Ver bloque "SHARED FILES AUTO-LOAD" al final del
+// archivo, que carga/actualiza clienteActivo y tenenciaByTicker.
+function aplicarTenenciaCliente(ticker){
+  var note = document.getElementById('ten-cliente-note');
+  if(!clienteActivo){ note.style.display='none'; return false; }
+  var arr = tenenciaByTicker[String(ticker||'').toUpperCase()];
+  var match = arr && arr.find(function(h){ return h.cliente === clienteActivo; });
+  if(!match || !(match.nominales>0)){
+    note.style.display='block';
+    note.textContent = '🎯 '+clienteActivo+' no tiene '+ticker+' en cartera actualmente.';
+    return false;
+  }
+  document.getElementById('in-tenencia').value = match.nominales;
+  note.style.display='block';
+  note.textContent = '🎯 Precargado con la posición real de '+clienteActivo+' ('+fmtNum(match.nominales,0)+' nominales)';
+  renderAll();
+  return true;
 }
 
 function cargarManual(){
@@ -986,10 +1015,56 @@ function editarAmort(iso, val){
     if (mon) cargarExcel(fakeInput(mon));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
+
+  // ── Cliente activo + Tenencia por Ticker (para autocompletar Tenencia Nominal) ──
+  // Nunca se publica a data/ (tiene datos de clientes) — mismo criterio de privacidad que ya usan
+  // Panorama de Mercado y Precios Objetivo con este archivo.
+  function construirTenenciaByTicker(rows) {
+    const byTicker = {};
+    rows.forEach(row => {
+      const tk = String(row['Ticker'] || '').trim().toUpperCase();
+      if (!tk) return;
+      if (!byTicker[tk]) byTicker[tk] = [];
+      byTicker[tk].push({
+        cliente: row['Cuenta'] || row['Comitente'] || '',
+        nominales: parseFloat(row['Nominales']) || 0,
+      });
+    });
+    return byTicker;
+  }
+  async function loadTenenciaCliente() {
+    const [ten, activeClient] = await Promise.all([getShared('tenencia'), getShared('activeClient')]);
+    if (activeClient && activeClient.cliente) clienteActivo = activeClient.cliente;
+    if (ten && ten.data) {
+      try {
+        const wb = XLSX.read(ten.data, { type: 'array' });
+        const sn = wb.SheetNames.find(s => s.toLowerCase().includes('export')) || wb.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
+        tenenciaByTicker = construirTenenciaByTicker(rows);
+      } catch (e) { console.warn('[Calculadora de Bonos] error leyendo tenencia', e); }
+    }
+    // Si ya había un bono cargado cuando esto termina de resolver, re-aplicar con el dato fresco.
+    const tkActual = document.getElementById('b-ticker').value;
+    if (tkActual) aplicarTenenciaCliente(tkActual);
+  }
+  window.addEventListener('DOMContentLoaded', loadTenenciaCliente);
+
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = async e => {
-      if (!e.data || e.data.type !== 'file_updated') return;
+      if (!e.data) return;
+      if (e.data.type === 'client_selected') {
+        clienteActivo = e.data.cliente || null;
+        const tkActual = document.getElementById('b-ticker').value;
+        if (tkActual) aplicarTenenciaCliente(tkActual);
+        return;
+      }
+      if (e.data.type !== 'file_updated') return;
       const raw = e.data.rawKey || e.data.key;
+      if (raw === 'tenencia') {
+        await new Promise(r => setTimeout(r, 1500));
+        loadTenenciaCliente();
+        return;
+      }
       if (raw !== 'monitor') return;
       await new Promise(r => setTimeout(r, 1500));
       let entry = await getShared('monitor');

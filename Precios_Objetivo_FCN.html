@@ -91,6 +91,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .td-ticker.tk-click{cursor:pointer;}
 .td-ticker.tk-click:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
 .tk-badge{font-family:var(--font-m);font-size:9px;color:var(--ambar);margin-left:5px;}
+.foco-cliente{color:var(--ambar);font-weight:600;}
 .holders-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:center;justify-content:center;}
 .holders-overlay.open{display:flex;}
 .holders-modal{background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:100%;max-width:460px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
@@ -237,8 +238,22 @@ if (BC) {
     if (e.data?.type === 'file_updated' && e.data?.rawKey === 'tenencia') {
       setTimeout(() => loadTenencia(), 300);
     }
+    if (e.data?.type === 'client_selected') {
+      clienteActivo = e.data.cliente || null;
+      render();
+    }
+    if (e.data?.type === 'top_clients_selected') {
+      topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
+      render();
+    }
   };
 }
+// Cliente/Top N ya elegidos en el Suite antes de que se abriera esta pestaña.
+(async () => {
+  const [activeClient, topF] = await Promise.all([getSharedFile('activeClient'), getSharedFile('topClientsFilter')]);
+  if (activeClient?.cliente) clienteActivo = activeClient.cliente;
+  if (topF?.clientes?.length) topClientesFiltroSet = new Set(topF.clientes);
+})();
 
 // ══════════════════════════════════════════
 //  ESTADO
@@ -249,6 +264,11 @@ let sortAsc    = false;
 let activeFilter = 'todos';
 let dataTenencia    = [];
 let holdersByTicker = {};
+// Foco de cliente/Top N del Suite (mismo mecanismo que Panorama de Mercado) — filtra la tabla a
+// solo los tickers que ese cliente (o esos clientes) tienen en cartera, para priorizar
+// oportunidades (mayor upside/downside) en la gente que más capital tiene o en un cliente puntual.
+let clienteActivo = null;
+let topClientesFiltroSet = null;
 
 // ══════════════════════════════════════════
 //  TENENCIA POR TICKER — solo para saber qué clientes tienen cada activo.
@@ -433,6 +453,11 @@ function filtered(rows) {
   const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
   return rows.filter(r => {
     if (q && !r.ticker.toLowerCase().includes(q) && !r.empresa.toLowerCase().includes(q)) return false;
+    if (clienteActivo || topClientesFiltroSet) {
+      const holders = holdersFor(r);
+      if (clienteActivo && !holders.some(h => h.cliente === clienteActivo)) return false;
+      if (topClientesFiltroSet && !holders.some(h => topClientesFiltroSet.has(h.cliente))) return false;
+    }
     if (activeFilter === 'con_target') return r.estado === 'OK' && r.target !== null;
     if (activeFilter === 'sin_target') return r.estado === 'OK_SIN_TARGET';
     if (activeFilter === 'no_enc')     return r.estado === 'NO_ENCONTRADO';
@@ -459,8 +484,13 @@ function render() {
   const total   = allRows.length;
   const conT    = allRows.filter(r => r.target !== null).length;
   const noEnc   = allRows.filter(r => r.estado === 'NO_ENCONTRADO').length;
+  const focoHtml = clienteActivo
+    ? ` · <span class="foco-cliente">🎯 filtrado a ${clienteActivo}</span>`
+    : topClientesFiltroSet
+      ? ` · <span class="foco-cliente">🎯 filtrado a tus top ${topClientesFiltroSet.size} clientes</span>`
+      : '';
   document.getElementById('counter').innerHTML =
-    `<strong>${total}</strong> tickers · <strong>${conT}</strong> con precio objetivo · <strong>${noEnc}</strong> no encontrados`;
+    `<strong>${total}</strong> tickers · <strong>${conT}</strong> con precio objetivo · <strong>${noEnc}</strong> no encontrados${focoHtml}`;
 
   tbody.innerHTML = sorted.map(r => {
     const isMuted = r.estado === 'NO_ENCONTRADO';
