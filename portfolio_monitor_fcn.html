@@ -807,7 +807,7 @@ function parseBoletos(buf){
   return {gastos,totalUSD};
 }
 
-function emptyMov(){return {qty:{},deposits:[],withdrawals:[],income:[],rebates:[],gastos:[],trades:[]};}
+function emptyMov(){return {qty:{},deposits:[],withdrawals:[],income:[],rebates:[],gastos:[],trades:[],transfers:[]};}
 function parseMovimientos(bufs){
   var allRows=[];
   bufs.forEach(function(buf){
@@ -825,7 +825,7 @@ function parseMovimientos(bufs){
   });
 
   var qty={};
-  var deposits=[],withdrawals=[],income=[],rebates=[],gastos=[],trades=[];
+  var deposits=[],withdrawals=[],income=[],rebates=[],gastos=[],trades=[],transfers=[];
 
   allRows.forEach(function(r){
     var fecha=dt(r['Concertacion']||'');
@@ -843,6 +843,11 @@ function parseMovimientos(bufs){
     if(tipo==='Transferencia Títulos'){
       if(!ticker||cant===0)return;
       qty[ticker]=(qty[ticker]||0)+cant;
+      // Solo positivo (entra a la cuenta) — una transferencia de SALIDA (cant<0) no aporta
+      // capital, así que no tiene que sumar acá. El Excel de Movimientos no trae un valor en
+      // USD para esto (es un movimiento de títulos, no de efectivo) — se estima más abajo con
+      // el precio de mercado actual del ticker.
+      if(cant>0)transfers.push({fecha,ticker,cant});
     }
     else if(tipo==='Boleto'){
       if(precio===-1)return; // ARS pair row → skip
@@ -906,7 +911,27 @@ function parseMovimientos(bufs){
    'TTM26','T13F6','T30J6','TZX26'].forEach(function(t){qty[t]=0;});
   // TX26 y AL29 siguen activos (no zerear)
 
-  return {qty,deposits,withdrawals,income,rebates,gastos,trades};
+  return {qty,deposits,withdrawals,income,rebates,gastos,trades,transfers};
+}
+
+// Estima cuánto capital entró como TÍTULOS (no efectivo) — el Excel de Movimientos no trae un
+// valor en USD para "Transferencia Títulos", así que se aproxima con el precio de mercado
+// ACTUAL de cada ticker (no el del día de la transferencia, que no tenemos). Reusa el valor ya
+// calculado en `positions` (getVal ya resuelve PDF/precio en vivo/tenencia con la prioridad
+// correcta) para no reinventar esa lógica acá.
+function estimarCapitalTransferidoUSD(transfers,positions){
+  var byTicker={};
+  (transfers||[]).forEach(function(t){byTicker[t.ticker]=(byTicker[t.ticker]||0)+t.cant;});
+  var total=0,detalle=[];
+  Object.keys(byTicker).forEach(function(tk){
+    var qtyT=byTicker[tk];
+    var pos=positions&&positions[tk];
+    var precioUnit=(pos&&pos.totalQty>0)?(getVal(pos)/pos.totalQty):0;
+    var usd=precioUnit*qtyT;
+    total+=usd;
+    detalle.push({ticker:tk,cant:qtyT,usd:usd,sinPrecio:precioUnit<=0});
+  });
+  return {total:total,detalle:detalle};
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1945,7 +1970,13 @@ function renderFlujos(movData){
   var tD=d.reduce(function(s,x){return s+x.usd;},0);
   var tW=w.reduce(function(s,x){return s+x.usd;},0);
   var tR=rb.reduce(function(s,x){return s+x.usd;},0);
-  var neto=tD-tW;
+  var netoEfectivo=tD-tW;
+  // Capital que entró como TÍTULOS (transferencia, no depósito de efectivo) — sin esto, el
+  // capital aportado quedaba subestimado y el % de ganancia salía disparatado (ver caso real:
+  // un cliente con la mayoría de la cartera transferida mostraba +492% de "ganancia real").
+  var transferInfo=estimarCapitalTransferidoUSD(movData.transfers,S.positions);
+  var capitalTitulos=transferInfo.total;
+  var neto=netoEfectivo+capitalTitulos;
   var totalVal2=S.positions?Object.values(S.positions).reduce(function(s,p){return s+(p.valorUSD||0);},0):0;
   var cashVal2=PDF_DATA&&PDF_DATA.cash>0?PDF_DATA.cash:0;
   var totalCuenta=totalVal2+cashVal2;
@@ -1958,8 +1989,10 @@ function renderFlujos(movData){
     h+='<div style="font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Rendimiento vs. capital aportado</div>';
     h+='<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">';
     h+='<div><div style="font-size:11px;color:var(--mu);">Total en cuenta hoy</div><div style="font-size:18px;font-weight:700;">'+U(totalCuenta)+'</div><div style="font-size:10px;color:var(--mu);">activos '+U(totalVal2)+(cashVal2>0?' + efectivo '+U(cashVal2):'')+'</div></div>';
-    h+='<div><div style="font-size:11px;color:var(--mu);">Capital neto aportado</div><div style="font-size:18px;font-weight:700;">'+U(neto)+'</div><div style="font-size:10px;color:var(--mu);">depósitos − retiros</div></div>';
-    h+='<div><div style="font-size:11px;color:var(--mu);">G/P vs. depósitos</div><div style="font-size:22px;font-weight:700;'+gpColor+'">'+(gpVsDepositos>=0?'+':'')+U(gpVsDepositos)+'</div><div style="font-size:11px;'+gpColor+';">'+(neto>0?((gpVsDepositos/neto*100)>=0?'+':'')+N(gpVsDepositos/neto*100,2)+'%':'')+'</div></div>';
+    h+='<div><div style="font-size:11px;color:var(--mu);">Capital aportado en efectivo</div><div style="font-size:18px;font-weight:700;">'+U(netoEfectivo)+'</div><div style="font-size:10px;color:var(--mu);">depósitos − retiros</div></div>';
+    if(capitalTitulos>0)h+='<div><div style="font-size:11px;color:var(--mu);">Capital aportado en títulos <span title="Estimado con el precio de mercado ACTUAL de lo transferido — Movimientos no trae el precio del día de la transferencia">(estimado) ⓘ</span></div><div style="font-size:18px;font-weight:700;">'+U(capitalTitulos)+'</div><div style="font-size:10px;color:var(--mu);">'+transferInfo.detalle.length+' ticker(s) transferido(s)</div></div>';
+    h+='<div><div style="font-size:11px;color:var(--mu);">Capital total aportado</div><div style="font-size:18px;font-weight:700;">'+U(neto)+'</div></div>';
+    h+='<div><div style="font-size:11px;color:var(--mu);">G/P vs. capital aportado</div><div style="font-size:22px;font-weight:700;'+gpColor+'">'+(gpVsDepositos>=0?'+':'')+U(gpVsDepositos)+'</div><div style="font-size:11px;'+gpColor+';">'+(neto>0?((gpVsDepositos/neto*100)>=0?'+':'')+N(gpVsDepositos/neto*100,2)+'%':'')+'</div></div>';
     h+='</div></div>';
   }
   // ── Desglose: ¿de dónde viene la ganancia? ──
@@ -1999,9 +2032,10 @@ function renderFlujos(movData){
     }
   }
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px;">';
-  h+='<div class="hcard"><div class="hlbl">Depósitos</div><div class="hval cg">'+U(tD)+'</div><div class="hsub">'+d.length+' transferencia(s)</div></div>';
+  h+='<div class="hcard"><div class="hlbl">Depósitos (efectivo)</div><div class="hval cg">'+U(tD)+'</div><div class="hsub">'+d.length+' transferencia(s)</div></div>';
   h+='<div class="hcard"><div class="hlbl">Retiros</div><div class="hval cr">'+U(tW)+'</div><div class="hsub">'+w.length+' retiro(s)</div></div>';
-  h+='<div class="hcard"><div class="hlbl">Neto aportado</div><div class="hval '+(neto>=0?'cg':'cr')+'">'+U(neto)+'</div></div>';
+  if(capitalTitulos>0)h+='<div class="hcard"><div class="hlbl">Títulos transferidos (estimado)</div><div class="hval cg">'+U(capitalTitulos)+'</div><div class="hsub">'+transferInfo.detalle.length+' ticker(s)</div></div>';
+  h+='<div class="hcard"><div class="hlbl">Neto aportado (efectivo + títulos)</div><div class="hval '+(neto>=0?'cg':'cr')+'">'+U(neto)+'</div></div>';
   if(tR>0)h+='<div class="hcard"><div class="hlbl">Rebate Executive (50%)</div><div class="hval cy">'+U(tR,2)+'</div><div class="hsub">'+rb.length+' devolución(es)</div></div>';
   h+='</div>';
   function tbl(list,label,cls){
@@ -2409,7 +2443,15 @@ function downloadReport(){
   var tDep=mov.deposits.reduce(function(s,x){return s+x.usd;},0);
   var tRet=mov.withdrawals.reduce(function(s,x){return s+x.usd;},0);
   var tInc2=mov.income.reduce(function(s,x){return s+x.usd;},0);
-  var netoAp=tDep-tRet;
+  var netoApEfectivo=tDep-tRet;
+  // Capital que entró como TÍTULOS (transferencia, no depósito de efectivo) — sin esto, un
+  // cliente que transfirió la mayoría de su cartera mostraba una "ganancia real" disparatada
+  // (ej. +492%) porque el numerador incluía el valor de esos títulos pero el denominador
+  // (capital aportado) no. Estimado con precio de mercado ACTUAL — Movimientos no trae el
+  // precio del día de la transferencia.
+  var transferInfoR=estimarCapitalTransferidoUSD(mov.transfers,pos);
+  var capitalTitulosR=transferInfoR.total;
+  var netoAp=netoApEfectivo+capitalTitulosR;
   var cashVR=PDF_DATA&&PDF_DATA.cash>0?PDF_DATA.cash:0;
   // posVal (arriba) ya excluye cash — mismo criterio que renderFlujos() en la vista en vivo
   // (totalVal2+cashVal2). Antes esto sumaba totalVal (que YA incluye cash) + cashVR de nuevo,
@@ -2631,7 +2673,8 @@ function downloadReport(){
     '<div class="card"><div class="lbl">Total en cuenta hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos '+(cashVR>0?'+ efectivo '+U2(cashVR):'')+'</div></div>'+
     '<div class="card"><div class="lbl">Depósitos realizados</div><div class="val">'+U2(tDep)+'</div></div>'+
     '<div class="card"><div class="lbl">Retiros realizados</div><div class="val">'+U2(tRet)+'</div></div>'+
-    '<div class="card"><div class="lbl">Capital neto aportado</div><div class="val">'+U2(netoAp)+'</div></div>'+
+    (capitalTitulosR>0?'<div class="card"><div class="lbl">Capital aportado en títulos</div><div class="val">'+U2(capitalTitulosR)+'</div><div class="sub">Estimado, precio de mercado actual</div></div>':'')+
+    '<div class="card"><div class="lbl">Capital neto aportado</div><div class="val">'+U2(netoAp)+'</div>'+(capitalTitulosR>0?'<div class="sub">Efectivo + títulos transferidos</div>':'')+'</div>'+
     '<div class="card"><div class="lbl">Ganancia real total</div>'+
     '<div class="val '+(gpReal>=0?'green':'red')+'">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div>'+
     '<div class="sub">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
