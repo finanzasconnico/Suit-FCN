@@ -1884,7 +1884,7 @@ function renderHero(positions,movData,tenData){
   h+='<div class="hcard">';
   h+='<div class="hlbl">Ganancia / Pérdida</div>';
   h+='<div class="hval '+(hasCost?gc(gp):'')+'">'+( hasCost?U(gp):NA)+'</div>';
-  h+='<div class="hsub">'+(hasCost?pct(gpPct,2)+' sobre el capital invertido':NAsub)+'</div></div>';
+  h+='<div class="hsub">'+(hasCost?pct(gpPct,2)+' · no realizada, solo posición actual':NAsub)+'</div></div>';
   // Tarjeta 4: Renta cobrada
   h+='<div class="hcard">';
   h+='<div class="hlbl">Renta cobrada</div>';
@@ -1895,7 +1895,7 @@ function renderHero(positions,movData,tenData){
   h+='<div class="hcard">';
   h+='<div class="hlbl">Rendimiento total</div>';
   h+='<div class="hval '+(hasCost?gc(rentTotal):'')+'">'+( hasCost?(rentTotal>=0?'+':'')+U(rentTotal):NA)+'</div>';
-  h+='<div class="hsub">'+(hasCost?pct(rentPctTotal,2)+' · G/P + renta'+gastosLabel2:NAsub)+'</div></div>';
+  h+='<div class="hsub">'+(hasCost?pct(rentPctTotal,2)+' (no realizado) · G/P + renta'+gastosLabel2:NAsub)+'</div></div>';
   document.getElementById('heroEl').innerHTML=h;
 }
 
@@ -2894,11 +2894,13 @@ function downloadReport(){
 
     '<section class="compact"><h2>Resumen</h2><div class="cards">'+
     '<div class="card"><div class="lbl">Valor de cartera</div><div class="val">'+U2(totalVal)+'</div><div class="sub">Al tipo de cambio MEP</div></div>'+
-    '<div class="card"><div class="lbl">Capital invertido</div><div class="val">'+U2(totalCost)+'</div></div>'+
-    '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'% s/ capital</div></div>'+
+    '<div class="card"><div class="lbl">Capital invertido</div><div class="val">'+U2(totalCost)+'</div><div class="sub">Costo de compra de lo que tenés HOY</div></div>'+
+    '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'% · no realizada, solo posición actual</div></div>'+
     '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
-    '<div class="card"><div class="lbl">Rendimiento total</div><div class="val '+(rendTotal>=0?'green':'red')+'">'+(rendTotal>=0?'+':'')+N(rendTotal,2)+'%</div><div class="sub">Ganancia + renta / capital</div></div>'+
-    '</div></section>'+
+    '<div class="card"><div class="lbl">Rendimiento total</div><div class="val '+(rendTotal>=0?'green':'red')+'">'+(rendTotal>=0?'+':'')+N(rendTotal,2)+'%</div><div class="sub">No realizado · no es el rendimiento total de la cuenta</div></div>'+
+    '</div>'+
+    '<div style="margin-top:8px;font-size:9px;color:#94a3b8;line-height:1.5;">Estos 5 números son sobre la POSICIÓN ACTUAL únicamente — no incluyen operaciones ya vendidas ni depósitos/retiros/transferencias de la cuenta. Si vendiste algo con ganancia y reinvertiste ese dinero en otro activo, "Capital invertido" sube por esa ganancia reinvertida (ya no es solo lo que depositaste). Para el rendimiento REAL de toda la cuenta, mirá <strong>"Rendimiento real vs. capital aportado"</strong> más abajo.</div>'+
+    '</section>'+
 
     '<section class="compact"><h2>Composición y Ganancia / Pérdida por instrumento</h2>'+
     '<div class="charts-row">'+
