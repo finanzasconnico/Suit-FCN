@@ -150,8 +150,8 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
     <div class="section-title">Filtros</div>
 
     <div class="field">
-      <div class="field-label">Ticker</div>
-      <input type="text" id="f-ticker" placeholder="Buscar ticker..." oninput="render()">
+      <div class="field-label">Ticker o cliente</div>
+      <input type="text" id="f-ticker" placeholder="Buscar ticker o cliente..." oninput="render()">
     </div>
 
     <div class="field">
@@ -616,7 +616,14 @@ function render(){
   const tipoMap = {corporativo:chkCorp, soberano:chkSob, provincial:chkProv, bopreal:chkBop, dollarlinked:chkSob};
 
   let puntosPre = puntosBase().filter(p=>{
-    if (fTicker && !p.ticker.toLowerCase().includes(fTicker)) return false;
+    // El buscador matchea por ticker O por nombre de cliente tenedor — así sirve tanto para
+    // "quiero ver este bono" como para "quiero ver la cartera de este cliente en el mapa"
+    // (mismo cuadro de texto que además se autocompleta desde el selector de cliente del Suite).
+    if (fTicker) {
+      const matchTicker = p.ticker.toLowerCase().includes(fTicker);
+      const matchCliente = p.holders.some(h => String(h.cliente||'').toLowerCase().includes(fTicker));
+      if (!matchTicker && !matchCliente) return false;
+    }
     if (fCalif && p.calificacion !== fCalif) return false;
     if (!isNaN(durMin) && p.duration < durMin) return false;
     if (!isNaN(durMax) && p.duration > durMax) return false;
@@ -909,8 +916,26 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     if (mon) await cargarMonitor(fakeInput(mon));
     const topF = await getShared('topClientsFilter');
     if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
+    const activeClient = await getShared('activeClient');
     const ten = await getShared('tenencia');
     if (ten) await cargarTenencia(fakeInput(ten));
+    if (activeClient && activeClient.cliente) waitForDataAndApplyClient(activeClient.cliente);
+  }
+  // ── Cliente activo del Suite (mismo mecanismo que Scanner ONs / Rotador RV / Calculadora de
+  // Rotaciones): autocompleta el buscador de "Ticker o cliente" con el nombre del cliente
+  // seleccionado en el pill de arriba — reusa el filtro por-holder que ya existe, no hace falta
+  // ningún mecanismo nuevo.
+  function applyClientFilter(cliente) {
+    const inp = document.getElementById('f-ticker');
+    if (!inp) return;
+    inp.value = cliente || '';
+    render();
+  }
+  function waitForDataAndApplyClient(cliente, tries) {
+    tries = tries || 0;
+    if (dataTenencia.length) { applyClientFilter(cliente); return; }
+    if (tries > 20) { applyClientFilter(cliente); return; } // ~10s de espera máx, después aplica igual
+    setTimeout(() => waitForDataAndApplyClient(cliente, tries + 1), 500);
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (typeof BroadcastChannel !== 'undefined') {
@@ -919,6 +944,10 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
       if (e.data.type === 'top_clients_selected') {
         topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
         if (dataTenencia.length) { construirHolders(); render(); }
+        return;
+      }
+      if (e.data.type === 'client_selected') {
+        applyClientFilter(e.data.cliente);
         return;
       }
       if (e.data.type !== 'file_updated') return;
