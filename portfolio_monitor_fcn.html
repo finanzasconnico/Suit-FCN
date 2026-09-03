@@ -2238,7 +2238,10 @@ function renderFlujos(movData){
   var neto=netoEfectivo+capitalTitulos;
   var totalVal2=S.positions?Object.values(S.positions).reduce(function(s,p){return s+(p.valorUSD||0);},0):0;
   var cashVal2=PDF_DATA&&PDF_DATA.cash>0?PDF_DATA.cash:0;
-  var totalCuenta=totalVal2+cashVal2;
+  // Prioriza el total DECLARADO POR BALANZ en el PDF (más exacto — es lo que el cliente ve en su
+  // cuenta) sobre volver a sumar nuestras posiciones parseadas una por una, que puede diferir un
+  // poco por categorización/redondeo (ver Reconciliación en el tab Debug).
+  var totalCuenta=PDF_DATA&&PDF_DATA.pdfTotal>0?PDF_DATA.pdfTotal:totalVal2+cashVal2;
   var gpVsDepositos=neto>0?totalCuenta-neto:null;
   var h='';
   // Resumen vs. capital aportado
@@ -2713,10 +2716,14 @@ function downloadReport(){
   var capitalTitulosR=transferInfoR.total;
   var netoAp=netoApEfectivo+capitalTitulosR;
   var cashVR=PDF_DATA&&PDF_DATA.cash>0?PDF_DATA.cash:0;
-  // posVal (arriba) ya excluye cash — mismo criterio que renderFlujos() en la vista en vivo
-  // (totalVal2+cashVal2). Antes esto sumaba totalVal (que YA incluye cash) + cashVR de nuevo,
-  // duplicando el efectivo e inflando "Total en cuenta hoy" y el G/P vs. depósitos.
-  var totalCuenta2=posVal+cashVR;
+  // Reusa totalVal (arriba) en vez de volver a sumar posVal+cash acá — totalVal ya prioriza el
+  // TOTAL DECLARADO POR BALANZ en el PDF (PDF_DATA.pdfTotal) cuando está disponible, que es el
+  // número oficial (el que el cliente ve en su cuenta) y puede diferir un poco de la suma de
+  // nuestras posiciones parseadas una por una (diferencias de categorización, redondeo, etc. —
+  // ver panel de Reconciliación en el tab Debug). Antes esto SIEMPRE recalculaba desde posVal+cash,
+  // ignorando el total oficial, y "Valor de cartera hoy" del reporte no coincidía con lo que se ve
+  // en la app.
+  var totalCuenta2=totalVal;
   var gpReal=netoAp>0?totalCuenta2-netoAp:null;
   var gpRealPct=gpReal!==null&&netoAp>0?gpReal/netoAp*100:null;
 
@@ -2858,6 +2865,17 @@ function downloadReport(){
     '.card .val{font-size:16px;font-weight:700;color:#0f172a;}'+
     '.card .sub{font-size:9px;color:#94a3b8;margin-top:2px;}'+
     '.green{color:#16a34a;}.red{color:#dc2626;}'+
+    // Variantes de color para las tarjetas del Resumen — misma semántica que ya usa el resto del
+    // reporte (verde=ganancia, rojo=pérdida/salida, ámbar=renta), solo aplicada también al FONDO
+    // de la tarjeta (no solo al número) para que el cliente capte de un vistazo si le está yendo
+    // bien sin tener que leer cada cifra. Azul = neutral/informativo (aportado, valor de cartera —
+    // no es "bueno" ni "malo" en sí, es el punto de partida).
+    '.card.c-blue{background:#eff6ff;border-color:#bfdbfe;}.card.c-blue .lbl{color:#3b82f6;}.card.c-blue .val{color:#1e40af;}'+
+    '.card.c-green{background:#f0fdf4;border-color:#bbf7d0;}.card.c-green .lbl{color:#16a34a;}.card.c-green .val{color:#15803d;}'+
+    '.card.c-red{background:#fef2f2;border-color:#fecaca;}.card.c-red .lbl{color:#dc2626;}.card.c-red .val{color:#b91c1c;}'+
+    '.card.c-amber{background:#fffbeb;border-color:#fde68a;}.card.c-amber .lbl{color:#d97706;}.card.c-amber .val{color:#b45309;}'+
+    '.card.hero{flex:1.3;}'+ // la tarjeta de Ganancia/Pérdida total, un poco más ancha — es LA cifra
+    '.card.hero .val{font-size:22px;}'+
     '.charts-row{display:flex;gap:24px;align-items:flex-start;}'+
     '.chart-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;flex:1;}'+
     '.chart-box h3{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;}'+
@@ -2900,16 +2918,16 @@ function downloadReport(){
     // de posiciones, aparte para no mezclar los dos conceptos.
     (gpReal!==null&&netoAp>0?
     '<section class="compact"><h2>Resumen</h2><div class="cards">'+
-    '<div class="card"><div class="lbl">Capital aportado</div><div class="val">'+U2(netoAp)+'</div><div class="sub">'+(transferInfoR.detalle.length?'Efectivo + títulos transferidos':'Depósitos − retiros')+'</div></div>'+
-    '<div class="card"><div class="lbl">Valor de cartera hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos'+(cashVR>0?' + efectivo '+U2(cashVR):'')+'</div></div>'+
-    '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
-    '<div class="card"><div class="lbl">Ganancia / Pérdida total</div><div class="val '+(gpReal>=0?'green':'red')+'" style="font-size:20px;">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div><div class="sub" style="font-size:11px;">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
+    '<div class="card c-blue"><div class="lbl">Capital aportado</div><div class="val">'+U2(netoAp)+'</div><div class="sub">'+(transferInfoR.detalle.length?'Efectivo + títulos transferidos':'Depósitos − retiros')+'</div></div>'+
+    '<div class="card c-blue"><div class="lbl">Valor de cartera hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos'+(cashVR>0?' + efectivo '+U2(cashVR):'')+'</div></div>'+
+    '<div class="card c-amber"><div class="lbl">Renta cobrada</div><div class="val">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
+    '<div class="card hero '+(gpReal>=0?'c-green':'c-red')+'"><div class="lbl">Ganancia / Pérdida total</div><div class="val">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div><div class="sub" style="font-size:11px;">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
     '</div>'+
     (tDep>0||tRet>0||transferInfoR.detalle.length?
     '<div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:9px;color:#94a3b8;">'+
-    '<span>Depósitos: <strong style="color:#475569;">'+U2(tDep)+'</strong></span>'+
-    (tRet>0?'<span>Retiros: <strong style="color:#475569;">'+U2(tRet)+'</strong></span>':'')+
-    (transferInfoR.detalle.length?'<span>Títulos transferidos (neto): <strong style="color:#475569;">'+U2(capitalTitulosR)+'</strong></span>':'')+
+    '<span>Depósitos: <strong style="color:#15803d;">'+U2(tDep)+'</strong></span>'+
+    (tRet>0?'<span>Retiros: <strong style="color:#b91c1c;">'+U2(tRet)+'</strong></span>':'')+
+    (transferInfoR.detalle.length?'<span>Títulos transferidos (neto): <strong style="color:'+(capitalTitulosR>=0?'#15803d':'#b91c1c')+';">'+U2(capitalTitulosR)+'</strong></span>':'')+
     '</div>':'')+
     '<div style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">'+
     '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:10px;">¿De dónde viene esa ganancia?</div>'+
@@ -2922,10 +2940,10 @@ function downloadReport(){
     // Sin Movimientos cargado no hay forma de saber depósitos/retiros reales — se muestra el
     // mejor dato disponible (posición actual), aclarando que falta info para el número real.
     '<section class="compact"><h2>Resumen</h2><div class="cards">'+
-    '<div class="card"><div class="lbl">Valor de cartera</div><div class="val">'+U2(totalVal)+'</div><div class="sub">Al tipo de cambio MEP</div></div>'+
-    '<div class="card"><div class="lbl">Capital invertido (posición actual)</div><div class="val">'+U2(totalCost)+'</div></div>'+
-    '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'%</div></div>'+
-    '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
+    '<div class="card c-blue"><div class="lbl">Valor de cartera</div><div class="val">'+U2(totalVal)+'</div><div class="sub">Al tipo de cambio MEP</div></div>'+
+    '<div class="card c-blue"><div class="lbl">Capital invertido (posición actual)</div><div class="val">'+U2(totalCost)+'</div></div>'+
+    '<div class="card hero '+(gp>=0?'c-green':'c-red')+'"><div class="lbl">Ganancia / Pérdida</div><div class="val">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'%</div></div>'+
+    '<div class="card c-amber"><div class="lbl">Renta cobrada</div><div class="val">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
     '</div>'+
     '<div style="margin-top:8px;font-size:9px;color:#94a3b8;">Cargá Movimientos para ver el rendimiento real desde que empezó a invertir (incluye depósitos, retiros y operaciones ya cerradas).</div>'+
     '</section>'
@@ -3036,14 +3054,18 @@ function downloadReport(){
     'var np=document.querySelector(".no-print");'+
     'var npH=np?np.offsetHeight:0;'+
     'var totalPx=document.body.scrollHeight-npH;'+
-    // +24mm = margen superior+inferior (12mm cada uno) +14mm de colchón extra: el motor de
-    // impresión de Chrome mide el texto con métricas ligeramente distintas a las de pantalla
-    // (redondeo de sub-píxel), así que sin colchón un contenido que "justo entra" en la medición
-    // en pantalla puede desbordar por unos pocos px al imprimir de verdad — y como .compact/tr
-    // tienen break-inside:avoid, ese desborde manda TODA la última sección a una segunda hoja
-    // casi vacía en vez de solo recortar unos milímetros. Mejor un pelín de blanco de más al
-    // final de la única hoja que una hoja 2 entera.
-    'var mm=Math.ceil(totalPx/96*25.4)+24+14;'+
+    // +24mm = margen superior+inferior (12mm cada uno). +50mm fijos +3% del alto = colchón: el
+    // motor de impresión de Chrome mide el texto con métricas distintas a las de pantalla (fuentes
+    // rasterizadas distinto, redondeo de sub-píxel, y sobre todo la vista en pantalla en una
+    // ventana popup ancha ajusta el texto con MENOS saltos de línea que al imprimir constreñido a
+    // 210mm — cuanto más texto tiene el reporte, más puede crecer ese desfasaje). Un colchón chico
+    // (14mm) ya volvió a fallar una vez que el reporte creció (se agregó contenido nuevo al
+    // Resumen); este es varias veces más grande a propósito. Como .compact/tr tienen
+    // break-inside:avoid, CUALQUIER desborde manda TODA la última sección a una segunda hoja casi
+    // vacía en vez de solo recortar unos milímetros — es mucho mejor pecar de un colchón de blanco
+    // de más al final de la única hoja (invisible, nadie llega a scrollear hasta ahí) que arriesgar
+    // una hoja 2.
+    'var mm=Math.ceil(totalPx/96*25.4)+24+50+Math.ceil(totalPx/96*25.4*0.03);'+
     'document.documentElement.style.width=anchoOriginal;'+
     'var st=document.createElement("style");'+
     'st.textContent="@page{size:210mm "+mm+"mm;}";'+
@@ -3102,14 +3124,23 @@ function renderDebug(){
     // Comparación de subtotales por categoría (Balanz PDF vs nuestro parse)
     var catTotals=pd.catTotals||{};
     if(Object.keys(catTotals).length>0){
-      var ourByCat={};
-      Object.values(pd.positions||{}).forEach(function(p){ourByCat[p.cat]=(ourByCat[p.cat]||0)+p.valorUSD;});
+      // "Préstamos - Alquiler" (POA, típicamente el GD30 en repo) se aísla ANTES de armar
+      // ourByCat: el header "Préstamos - Alquiler" del PDF no está en CAT_MAP (solo reconoce
+      // Acciones/Bonos/Cedears/Corporativos/Fondos), así que POA hereda la categoría de lo que
+      // venga antes en el PDF (normalmente "Fondos") — eso inflaba esa fila Y hacía que la fila
+      // "Préstamos" se comparara contra el total de Bonos Soberanos entero (150mil) en vez de
+      // contra el valor real de POA (16mil), mostrando una diferencia sin sentido de +133mil.
+      var ourByCat={},poaVal=0;
+      Object.entries(pd.positions||{}).forEach(function(e){
+        var t=e[0],p=e[1];
+        if(t==='POA'){poaVal+=p.valorUSD;return;}
+        ourByCat[p.cat]=(ourByCat[p.cat]||0)+p.valorUSD;
+      });
       h+='<div style="font-size:11px;margin:6px 0;padding:6px;background:var(--bg2);border-radius:6px;">';
       h+='<b style="color:var(--tx)">Subtotales por categoría (Balanz PDF vs nuestro parse)</b><br>';
       h+='<table style="font-size:11px;width:100%;border-collapse:collapse;margin-top:4px;">';
       h+='<thead><tr><th style="text-align:left;padding:2px 6px">Categoría (PDF)</th><th style="text-align:right;padding:2px 6px">Balanz</th><th style="text-align:right;padding:2px 6px">Nuestro</th><th style="text-align:right;padding:2px 6px">Diferencia</th></tr></thead><tbody>';
-      // "Bonos" del PDF = nuestros Bonos Soberanos + Bonos ARS
-      // "Préstamos - Alquiler" del PDF = incluido en nuestros Bonos Soberanos (POA)
+      // "Bonos" del PDF = nuestros Bonos Soberanos + Bonos ARS (sin POA, ya aislado arriba)
       Object.entries(catTotals).forEach(function(e){
         var pdfCat=e[0],pdfVal=e[1];
         var pdfCatL=pdfCat.toLowerCase();
@@ -3122,7 +3153,7 @@ function renderDebug(){
         else if(pdfCatL.startsWith('cedear')){ourVal=ourByCat['Cedears']||0;ourLabel='Cedears';}
         else if(pdfCatL.startsWith('corporativo')){ourVal=ourByCat['Corporativos']||0;ourLabel='Corporativos';}
         else if(pdfCatL.startsWith('fond')||pdfCatL==='fci'){ourVal=ourByCat['Fondos']||0;ourLabel='Fondos';}
-        else if(pdfCatL.startsWith('pr')){ourVal=ourByCat['Bonos Soberanos']||0;ourLabel='(en Bonos Sov.)';}
+        else if(pdfCatL.startsWith('pr')){ourVal=poaVal;ourLabel='POA (préstamo/alquiler)';}
         var diff=ourVal-pdfVal;
         var col=Math.abs(diff)<5?'var(--gr)':Math.abs(diff)<100?'var(--ye)':'var(--rd)';
         h+='<tr><td style="padding:2px 6px">'+pdfCat+'</td>';
