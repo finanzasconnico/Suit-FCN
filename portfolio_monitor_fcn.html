@@ -195,17 +195,18 @@ tr:hover td{background:rgba(33,38,45,.5);}
       <span class="step-num" id="realStepNum">2</span>
       <div><div class="step-title">📊 Realizado</div><div class="step-req opt">Para ver Ganancia / Pérdida</div></div>
     </div>
-    <div class="step-desc">Sin esto no se puede calcular cuánto ganaste o perdiste — falta el costo de compra.
+    <div class="step-desc">Sin esto no se puede calcular cuánto ganaste o perdiste — falta el costo de compra. Si el cliente tiene más de una cuenta/comitente (ej. por una transferencia de títulos entre cuentas), subí el Realizado de <strong>cada una</strong> — se suman para ver el total de la persona, no solo de una cuenta.
       <span style="color:var(--ac);cursor:pointer;" onclick="event.stopPropagation();document.getElementById('realTip').classList.toggle('hidden')">¿Cómo obtenerlo? ▾</span>
     </div>
     <div id="realTip" class="hidden" style="margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px 12px;font-size:10px;line-height:1.6;color:var(--tx);text-align:left;">
       <strong>En Balanz app o web:</strong><br>
       1. Evolución → Resultados → <strong>Realizado</strong><br>
       2. Fecha desde: <strong>01/01/2020</strong> · Fecha hasta: <strong>hoy</strong><br>
-      3. Exportar Excel (ícono de descarga)
+      3. Exportar Excel (ícono de descarga)<br>
+      <strong>Si el cliente tiene varias cuentas: repetí esto en cada una y subí todos los Excel juntos (Ctrl+clic al elegir los archivos).</strong>
     </div>
     <div class="us" id="stReal" style="margin-top:auto;">Sin cargar</div>
-    <input type="file" id="fReal" accept=".xlsx,.xls" onchange="loadFile(this,'real')">
+    <input type="file" id="fReal" accept=".xlsx,.xls" multiple onchange="loadFile(this,'real')">
   </div>
 
   <div class="step-card ubox" id="bMov" onclick="document.getElementById('fMov').click()">
@@ -579,14 +580,19 @@ function autoGenerate(){
 function loadFile(inp,type){
   var files=Array.from(inp.files);if(!files.length)return;
   if(type==='real'){
-    var r=new FileReader();
-    r.onload=function(e){
-      S.realBuf=new Uint8Array(e.target.result);
-      document.getElementById('stReal').textContent='✓ '+files[0].name;
-      document.getElementById('bReal').classList.add('ok');
-      autoGenerate();
-    };
-    r.readAsArrayBuffer(files[0]);
+    // Varios archivos = varias cuentas/comitentes del mismo cliente (ej. transfirió títulos
+    // entre cuentas) — se suman todos para el total de la PERSONA, no solo de una cuenta.
+    S.realBufs=[];var doneR=0;
+    files.forEach(function(f){
+      var r=new FileReader();
+      r.onload=function(e){S.realBufs.push(new Uint8Array(e.target.result));
+        if(++doneR===files.length){
+          document.getElementById('stReal').textContent='✓ '+(files.length>1?files.length+' archivos (cuentas)':files[0].name);
+          document.getElementById('bReal').classList.add('ok');
+          autoGenerate();
+        }};
+      r.readAsArrayBuffer(f);
+    });
   } else if(type==='ten'){
     var r=new FileReader();
     r.onload=function(e){
@@ -670,10 +676,17 @@ function parsePosicionMulti(bufs){
 // ══════════════════════════════════════════════════════════════
 // PARSER: REALIZADO (reemplaza PosF + Boletos)
 // ══════════════════════════════════════════════════════════════
-function parseRealizado(buf){
-  var wb=XLSX.read(buf,{type:'array',cellDates:true});
-  var ws=wb.Sheets[wb.SheetNames[0]];
-  var rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+// bufs: un solo ArrayBuffer/Uint8Array, o un array de varios (cliente con más de una cuenta/
+// comitente — ej. por una transferencia de títulos entre cuentas propias). Se suman las filas de
+// todos los archivos antes de procesar, para ver el total de la PERSONA y no solo de una cuenta.
+function parseRealizado(bufs){
+  var lista=Array.isArray(bufs)?bufs:[bufs];
+  var rows=[];
+  lista.forEach(function(buf){
+    var wb=XLSX.read(buf,{type:'array',cellDates:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    rows=rows.concat(XLSX.utils.sheet_to_json(ws,{defval:''}));
+  });
   if(!rows.length)return null;
 
   var posData={};      // ticker → {lots, totalQty, pppUSD, …} — equivale a PosF
@@ -1411,7 +1424,7 @@ function onClientSelect(){
   document.getElementById('bMov').classList.remove('ok');
   document.getElementById('bReal').classList.remove('ok');
   document.getElementById('stReal').textContent='Sin cargar';
-  S.movBufs=[]; S.realBuf=null;
+  S.movBufs=[]; S.realBufs=[];
   autoGenerate();
 }
 
@@ -1605,7 +1618,7 @@ function nuevoCliente(){
   if(!confirm('¿Borrar el PDF, Realizado, Movimientos y todo lo calculado de la cartera actual? (La Tenencia compartida no se toca — vas a poder elegir otro cliente del desplegable sin volver a subirla)'))return;
 
   clearPDF();
-  S.realBuf=null;
+  S.realBufs=[];
   document.getElementById('fReal').value='';
   document.getElementById('stReal').textContent='Sin cargar';
   document.getElementById('bReal').classList.remove('ok');
@@ -1712,8 +1725,10 @@ async function generate(){
       else if(!hasPDF){alert('Seleccioná un cliente de la lista.');return;}
     }
 
-    // Realizado: archivo unificado que reemplaza PosF + Boletos (opcional)
-    var realizadoData=S.realBuf?parseRealizado(S.realBuf):null;
+    // Realizado: archivo unificado que reemplaza PosF + Boletos (opcional). Puede ser más de un
+    // archivo (varias cuentas/comitentes de la misma persona, ej. por una transferencia de
+    // títulos entre cuentas) — parseRealizado() los suma a todos.
+    var realizadoData=(S.realBufs&&S.realBufs.length)?parseRealizado(S.realBufs):null;
     S.realizadoData=realizadoData;
 
     // Costo de compra (PPP) y lotes: viene de Realizado — Posición Final/Boletos por
