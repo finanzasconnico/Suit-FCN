@@ -3067,18 +3067,20 @@ function downloadReport(){
     'var np=document.querySelector(".no-print");'+
     'var npH=np?np.offsetHeight:0;'+
     'var totalPx=document.body.scrollHeight-npH;'+
-    // +24mm = margen superior+inferior (12mm cada uno). +50mm fijos +3% del alto = colchón: el
-    // motor de impresión de Chrome mide el texto con métricas distintas a las de pantalla (fuentes
-    // rasterizadas distinto, redondeo de sub-píxel, y sobre todo la vista en pantalla en una
-    // ventana popup ancha ajusta el texto con MENOS saltos de línea que al imprimir constreñido a
-    // 210mm — cuanto más texto tiene el reporte, más puede crecer ese desfasaje). Un colchón chico
-    // (14mm) ya volvió a fallar una vez que el reporte creció (se agregó contenido nuevo al
-    // Resumen); este es varias veces más grande a propósito. Como .compact/tr tienen
-    // break-inside:avoid, CUALQUIER desborde manda TODA la última sección a una segunda hoja casi
-    // vacía en vez de solo recortar unos milímetros — es mucho mejor pecar de un colchón de blanco
-    // de más al final de la única hoja (invisible, nadie llega a scrollear hasta ahí) que arriesgar
-    // una hoja 2.
-    'var mm=Math.ceil(totalPx/96*25.4)+24+50+Math.ceil(totalPx/96*25.4*0.03);'+
+    // +24mm = margen superior+inferior (12mm cada uno). El colchón EXTRA escala con el contenido
+    // (6% del alto, con un piso de 20mm) en vez de ser un número fijo grande — un colchón fijo
+    // (probado antes: 14mm, después 50mm) queda perfecto para el tamaño de reporte con el que se
+    // ajustó, pero se ve horrible para el otro extremo: en un cliente con pocas posiciones un
+    // colchón fijo de 50mm es un montón de blanco visible al final; en un cliente con mucho
+    // contenido 14mm no alcanza y salta a una segunda hoja. La causa del desfasaje (el motor de
+    // impresión mide el texto con métricas distintas a las de pantalla — más saltos de línea al
+    // imprimir angosto que en la ventana popup ancha) crece más o menos proporcional a cuánto
+    // texto tiene el reporte, así que el colchón también debería. El piso de 20mm cubre el margen
+    // de error mínimo incluso en un reporte cortito. Como .compact/tr tienen break-inside:avoid,
+    // CUALQUIER desborde manda TODA la última sección a una segunda hoja casi vacía — mejor un
+    // poco de blanco de más (proporcional, no exagerado) que arriesgar una hoja 2.
+    'var extraMm=Math.max(20,Math.ceil(totalPx/96*25.4*0.06));'+
+    'var mm=Math.ceil(totalPx/96*25.4)+24+extraMm;'+
     'document.documentElement.style.width=anchoOriginal;'+
     'var st=document.createElement("style");'+
     'st.textContent="@page{size:210mm "+mm+"mm;}";'+
