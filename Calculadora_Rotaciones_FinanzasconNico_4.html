@@ -235,6 +235,22 @@ details.cond-details summary:hover{color:#fff;}
 .wpp-rot-btn-send:hover{filter:brightness(1.08);}
 .wpp-rot-btn-send svg{width:13px;height:13px;fill:#08381f;}
 
+/* ── LICITACIÓN / OPORTUNIDAD MASIVA ── */
+.lic-toggle-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.lic-rule-sub{font-size:11px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;padding-top:14px;border-top:1px solid var(--border);}
+.lic-summary{font-size:12px;color:var(--cream-dim);margin-bottom:10px;}
+.lic-warn-icon{color:#e5a93a;}
+.lic-drafts-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:20px;}
+.lic-drafts-overlay.open{display:flex;}
+.lic-drafts-modal{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:620px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.lic-drafts-body{padding:16px 20px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.lic-draft-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.lic-draft-head{font-size:12.5px;margin-bottom:8px;}
+.lic-draft-text{width:100%;min-height:150px;padding:10px 11px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:11.5px;line-height:1.55;resize:vertical;outline:none;box-sizing:border-box;}
+.lic-draft-text:focus{border-color:var(--balanz);}
+.lic-draft-actions{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;}
+.lic-draft-actions .btn{padding:6px 12px;font-size:10.5px;width:auto;}
+
 .samemoney-box{background:rgba(255,255,255,.03);border-left:3px solid var(--series-rotar);border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;font-size:12px;line-height:1.65;color:var(--cream);margin-bottom:18px;}
 .samemoney-box b{color:#fff;}
 
@@ -287,6 +303,61 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <div class="upload-name">Monitor de Individuos</div>
       <div class="upload-hint">Subilo una vez — se guarda en este navegador. Después solo escribís ticker, nominales y precio: el resto se completa solo.</div>
       <div class="upload-status" id="status-excel"></div>
+    </div>
+  </div>
+
+  <!-- ── LICITACIÓN / OPORTUNIDAD MASIVA ──────────────────────────────────
+       Barre la Tenencia de TODOS los clientes (no uno a la vez) buscando a quién le
+       conviene rotar hacia una ON nueva que todavía no está en el Monitor (recién
+       licita). Reusa el MISMO motor de cálculo que la comparación individual de acá
+       arriba (getScheduleForLeg/tirDesdePrecio/retornoAHorizonteAnios) — no es una
+       fórmula nueva, es la misma aplicada a muchos clientes a la vez. Para el número
+       exacto en USD de un caso puntual, seguí usando el comparador de arriba con ese
+       cliente — esto es para EL TRIAGE (¿a quién le conviene, aunque sea de forma
+       aproximada?), no para el mensaje final con el monto exacto. -->
+  <div class="leg-card advisor-only" id="lic-panel" style="margin-bottom:18px;">
+    <div class="lic-toggle-head" onclick="toggleLicitacionPanel()">
+      <div>
+        <div class="leg-title">🎯 Licitación / oportunidad masiva</div>
+        <div class="leg-sub">Cargá una ON nueva y encontrá a qué clientes les conviene rotar — mensajes en lote</div>
+      </div>
+      <span id="lic-toggle-arrow" style="font-size:16px;color:var(--cream-dim);">▾</span>
+    </div>
+    <div id="lic-body" style="display:none;margin-top:16px;">
+      <div class="field-row">
+        <div class="field"><label>Ticker / nombre provisorio</label><input type="text" id="lic-ticker" placeholder="Ej: TECPETROL 2032" style="text-transform:uppercase;"></div>
+        <div class="field"><label>Emisor</label><input type="text" id="lic-emisor" placeholder="Tecpetrol"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Tasa / cupón anual (%)</label><input type="number" step="0.01" id="lic-tasa" placeholder="7.25"></div>
+        <div class="field"><label>Precio de licitación (1,00 = a la par)</label><input type="number" step="0.0001" id="lic-precio" value="1" title="Misma escala que el resto de la calculadora: 1,00 = a la par, NO 100. Una licitación nueva casi siempre sale a la par (1,00) salvo que se indique lo contrario."></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Vencimiento</label><input type="date" id="lic-venc"></div>
+        <div class="field"><label>Calificación</label><input type="text" id="lic-calif" placeholder="AAA" style="text-transform:uppercase;"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Pagos por año</label>
+          <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option></select>
+        </div>
+        <div class="field"><label>Amortización</label>
+          <select id="lic-amort"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
+        </div>
+      </div>
+
+      <div class="lic-rule-sub">Reglas del filtro (editables)</div>
+      <div class="field-row">
+        <div class="field"><label>Ventaja mínima de TIR para sugerir (p.p.)</label><input type="number" step="0.1" id="lic-ventaja-min" value="0.5"></div>
+        <div class="field"><label>Notches de calificación tolerados</label><input type="number" step="1" id="lic-calnotch" value="1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Días mínimos de tenencia</label><input type="number" step="1" id="lic-dias-min" value="90"></div>
+        <div class="field"><label>… salvo que ya ganó (USD, %)</label><input type="number" step="0.1" id="lic-ganancia-override" value="1.5"></div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;" onclick="buscarCandidatosLicitacion()">🔍 Buscar candidatos</button>
+
+      <div id="lic-resultados" style="margin-top:16px;"></div>
     </div>
   </div>
 
@@ -1439,6 +1510,265 @@ function leerFiltrosComparablesRotacion(){
   var num = function(id,def){ var v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?def:v; };
   return { durTol: num('rc-durtol',1.5), calNotches: num('rc-calnotch',1), tirMax: num('rc-tirmax',20) };
 }
+
+// ══════════════════════════════════════════════════════════════
+// LICITACIÓN / OPORTUNIDAD MASIVA
+// Barre TENENCIA_POR_CLIENTE buscando, para cada cliente y cada posición de renta fija que
+// tiene, si conviene rotar hacia la ON nueva que se está por licitar (todavía no está en el
+// Monitor). Reusa exactamente el mismo motor que el comparador individual de arriba
+// (getScheduleForLeg / tirDesdePrecio / retornoAHorizonteAnios) — la única diferencia es que la
+// "ventaja" acá se mide en PUNTOS PORCENTUALES de retorno a horizonte (normalizado, no depende
+// de cuánto nominal tenga cada cliente), no en dólares exactos — para eso (el mensaje final con
+// el monto preciso) mejor abrir el comparador de arriba con ese cliente puntual.
+// ══════════════════════════════════════════════════════════════
+var licitacionResultados = null; // {nuevaON, porCliente:{nombre:[candidato,...]}}
+
+function toggleLicitacionPanel(){
+  var body = document.getElementById('lic-body');
+  var arrow = document.getElementById('lic-toggle-arrow');
+  var open = body.style.display!=='none';
+  body.style.display = open?'none':'';
+  arrow.textContent = open?'▾':'▴';
+}
+
+// Arma el bono "compra" (la ON nueva) a partir del formulario cargado a mano — no está en
+// BOND_DB/FLUJO_DB todavía porque recién licita. nominales=100 es un valor neutro (per-100
+// nominal, la convención que ya usa todo el archivo) — sirve para calcular TIR/duration/retorno
+// en términos porcentuales, no representa la tenencia real de nadie.
+function leerNuevaON(){
+  var ticker = document.getElementById('lic-ticker').value.trim().toUpperCase();
+  var emisor = document.getElementById('lic-emisor').value.trim();
+  var tasa = parseFloat(document.getElementById('lic-tasa').value);
+  var precio = parseFloat(document.getElementById('lic-precio').value);
+  var fechaVenc = parseISO(document.getElementById('lic-venc').value);
+  var calif = document.getElementById('lic-calif').value.trim();
+  var freq = parseInt(document.getElementById('lic-freq').value)||2;
+  var amortType = document.getElementById('lic-amort').value;
+  if(!ticker||isNaN(tasa)||isNaN(precio)||!fechaVenc) return null;
+  var fechaEmision = new Date(); // la ON recién licita — hoy es su emisión
+  return {
+    ticker:ticker, emisor:emisor||ticker,
+    tir:tasa, duration:null,
+    cuponAnual:tasa, freq:freq,
+    fechaEmision:fechaEmision, fechaVenc:fechaVenc,
+    amortType:amortType, amortStart:fechaEmision,
+    ley:'', calif:calif,
+    precio:precio, nominales:100
+  };
+}
+
+// Arma un objeto "bond" (mismo shape que readBond()) para un ticker que YA está en la base
+// (BOND_DB/FLUJO_DB) — mismo criterio exacto que usa seleccionarBono() para precargar la pata de
+// venta/compra del comparador individual, solo que acá arma el objeto directo en vez de llenar
+// inputs del formulario.
+function bondDesdeUniverso(ticker){
+  var b = BOND_DB[ticker];
+  var real = FLUJO_DB[ticker];
+  if(!b && !real) return null;
+  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  var tir = null;
+  if(real && real.tirEfectiva!=null) tir = real.tirEfectiva;
+  else if(b) tir = tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
+  var precio = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
+  var cuponAnual = (real && real.cuponAnual!=null) ? real.cuponAnual : (b?b.cuponAnual:null);
+  var freq, fechaVencStr, ley, calif, fechaEmisionStr, amortType;
+  if(real){
+    freq = real.freq || 2;
+    fechaVencStr = real.fechaVenc;
+    ley = real.ley; calif = real.calif;
+    fechaEmisionStr = (real.schedule100&&real.schedule100.length) ? real.fechaEmision : null;
+    amortType = !/cuota|amortiz/i.test(real.amortDesc||'') ? 'bullet' : 'amortizable';
+  } else {
+    var meses = parseMesesCupon(b.mesCupon);
+    freq = meses.length>0?meses.length:2;
+    fechaVencStr = b.vencimiento;
+    ley = b.ley; calif = b.calif;
+    fechaEmisionStr = null;
+    amortType = !((b.amortizacion||'').toLowerCase().includes('amortiz')) ? 'bullet' : 'amortizable';
+  }
+  var fechaVenc = parseISO(fechaVencStr);
+  if(!fechaVenc || cuponAnual==null || precio==null || isNaN(precio)) return null;
+  var fechaEmision = fechaEmisionStr ? parseISO(fechaEmisionStr) : null;
+  if(!fechaEmision){
+    var est = new Date(fechaVenc.getTime()); est.setFullYear(est.getFullYear()-5);
+    fechaEmision = est;
+  }
+  return {
+    ticker:ticker, emisor:(real?real.emisor:(b?b.emisor:''))||'',
+    tir:tir, duration:null,
+    cuponAnual:cuponAnual, freq:freq,
+    fechaEmision:fechaEmision, fechaVenc:fechaVenc,
+    amortType:amortType, amortStart:fechaEmision,
+    ley:ley||'', calif:calif||'',
+    precio:precio, nominales:100
+  };
+}
+
+// % de retorno a un horizonte (en años), sobre lo invertido — no en dólares, para poder
+// comparar dos bonos con precios/nominales distintos en igualdad de condiciones (por cada $100
+// invertidos hoy en cada uno). Muta bond.tir (recalculado del precio, igual que hace renderAll()).
+function pctRetornoAHorizonte(bond, hoy, comisionPct, anios){
+  var sched = getScheduleForLeg(bond, hoy);
+  if(!sched.length) return null;
+  var monto = bond.nominales*bond.precio;
+  bond.tir = tirDesdePrecio(sched, monto, hoy, bond.tir);
+  if(bond.tir==null || isNaN(bond.tir)) return null;
+  var r = retornoAHorizonteAnios(sched, bond.tir/100, hoy, comisionPct, anios);
+  return { tir: bond.tir, pct: monto>0 ? (r.valorHorizonte-monto)/monto*100 : null };
+}
+
+function buscarCandidatosLicitacion(){
+  var box = document.getElementById('lic-resultados');
+  var nuevaON = leerNuevaON();
+  if(!nuevaON){ box.innerHTML = '<div class="rot-comp-empty">Completá ticker, tasa, precio y vencimiento de la nueva ON.</div>'; licitacionResultados=null; return; }
+  if(!CLIENTE_LIST.length){ box.innerHTML = '<div class="rot-comp-empty">Subí la Tenencia por Ticker en el Suite (pestaña Archivos) primero.</div>'; licitacionResultados=null; return; }
+
+  var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+  var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
+  var num = function(id,def){ var v=parseFloat(document.getElementById(id).value); return isNaN(v)?def:v; };
+  var ventajaMin = num('lic-ventaja-min',0.5);
+  var calNotch = num('lic-calnotch',1);
+  var diasMin = num('lic-dias-min',90);
+  var gananciaOverride = num('lic-ganancia-override',1.5);
+  var nuevaRank = calificacionRank(nuevaON.calif);
+
+  var porCliente = {};
+  var bondCache = {}; // ticker del cliente -> bond base (se calcula 1 sola vez aunque varios clientes tengan el mismo ticker)
+  var huboTickersSinDatos = false;
+
+  CLIENTE_LIST.forEach(function(cliente){
+    (TENENCIA_POR_CLIENTE[cliente]||[]).forEach(function(pos){
+      if(pos.ticker===nuevaON.ticker) return; // ya lo tiene — no aplica "rotar a lo mismo"
+      if(!bondCache.hasOwnProperty(pos.ticker)) bondCache[pos.ticker] = bondDesdeUniverso(pos.ticker);
+      var baseBond = bondCache[pos.ticker];
+      if(!baseBond){ huboTickersSinDatos = true; return; }
+
+      var baseRank = calificacionRank(baseBond.calif);
+      if(baseRank!=null && nuevaRank!=null && Math.abs(nuevaRank-baseRank)>calNotch) return;
+
+      var anios = yearFrac(hoy, baseBond.fechaVenc);
+      if(!(anios>0)) return; // ya venció o vence hoy
+
+      var ventaBond = Object.assign({}, baseBond, {nominales:100});
+      var compraBond = Object.assign({}, nuevaON, {nominales:100});
+      var retVenta = pctRetornoAHorizonte(ventaBond, hoy, comisionPct, anios);
+      var retCompra = pctRetornoAHorizonte(compraBond, hoy, comisionPct, anios);
+      if(!retVenta || !retCompra) return;
+      var ventajaPuntos = retCompra.pct - retVenta.pct;
+      if(ventajaPuntos < ventajaMin) return;
+
+      var cumpleDias = pos.dias!=null && pos.dias>=diasMin;
+      var gananciaPct = (pos.ppc>0 && baseBond.precio>0) ? (baseBond.precio-pos.ppc)/pos.ppc*100 : null;
+      var cumpleOverride = gananciaPct!=null && gananciaPct>=gananciaOverride;
+      if(!cumpleDias && !cumpleOverride) return; // ni pasó el mínimo de días ni ya ganó lo suficiente
+
+      if(!porCliente[cliente]) porCliente[cliente] = [];
+      porCliente[cliente].push({
+        tickerActual: pos.ticker, tirActual: retVenta.tir, calif: baseBond.calif,
+        tirNueva: retCompra.tir, ventajaPuntos: ventajaPuntos,
+        vencimiento: baseBond.fechaVenc, anios: anios,
+        dias: pos.dias, gananciaPct: gananciaPct,
+        cumpleDias: cumpleDias, cumpleOverride: cumpleOverride,
+        nominales: pos.nominales
+      });
+    });
+  });
+
+  licitacionResultados = { nuevaON: nuevaON, porCliente: porCliente, huboTickersSinDatos: huboTickersSinDatos };
+  renderResultadosLicitacion();
+}
+
+function renderResultadosLicitacion(){
+  var box = document.getElementById('lic-resultados');
+  if(!licitacionResultados){ box.innerHTML=''; return; }
+  var clientes = Object.keys(licitacionResultados.porCliente).sort(function(a,b){ return a.localeCompare(b,'es'); });
+  if(!clientes.length){
+    box.innerHTML = '<div class="rot-comp-empty">No encontré candidatos con estos filtros — probá bajar la ventaja mínima de TIR o ampliar los notches de calificación tolerados.</div>'
+      + (licitacionResultados.huboTickersSinDatos ? '<div class="rot-comp-empty">⚠️ Algunos tickers en cartera no están en el Monitor — no se pudieron evaluar.</div>' : '');
+    return;
+  }
+  var totalRot = clientes.reduce(function(s,c){ return s+licitacionResultados.porCliente[c].length; },0);
+  var html = '<div class="lic-summary">'+clientes.length+' cliente(s) · '+totalRot+' rotación(es) sugerida(s)'
+    + (licitacionResultados.huboTickersSinDatos ? ' · <span class="lic-warn-icon">⚠️ algunos tickers en cartera no estaban en el Monitor</span>' : '')
+    + '</div>';
+  html += '<div style="overflow-x:auto;"><table class="compare-table"><thead><tr><th>Cliente</th><th>Bono actual</th><th>TIR act.</th><th>TIR nueva</th><th>Ventaja</th><th>Días tenencia</th><th>Ganancia actual</th></tr></thead><tbody>';
+  clientes.forEach(function(cliente){
+    var rows = licitacionResultados.porCliente[cliente];
+    rows.forEach(function(c, idx){
+      html += '<tr>'+
+        '<td>'+(idx===0?('<b>'+cliente+'</b>'):'')+'</td>'+
+        '<td>'+c.tickerActual+' <span style="opacity:.6;">'+(c.calif||'—')+'</span></td>'+
+        '<td>'+fmtNum(c.tirActual,2)+'%</td>'+
+        '<td>'+fmtNum(c.tirNueva,2)+'%</td>'+
+        '<td class="mejor">+'+fmtNum(c.ventajaPuntos,2)+' p.p.</td>'+
+        '<td>'+(c.dias!=null?Math.round(c.dias)+' d':'—')+(c.cumpleDias?'':' <span class="lic-warn-icon" title="No llega al mínimo de días — pasó por la excepción de ganancia">⚠️</span>')+'</td>'+
+        '<td>'+(c.gananciaPct!=null?(c.gananciaPct>=0?'+':'')+fmtNum(c.gananciaPct,1)+'%':'—')+(c.cumpleOverride&&!c.cumpleDias?' <span title="Entra por la excepción de ganancia">✓</span>':'')+'</td>'+
+      '</tr>';
+    });
+  });
+  html += '</tbody></table></div>';
+  html += '<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="abrirBorradoresLicitacion()">✉ Generar borradores ('+clientes.length+' cliente(s))</button>';
+  box.innerHTML = html;
+}
+
+// Un solo mensaje POR CLIENTE con todas sus rotaciones sugeridas (no uno por cada bono) — si un
+// cliente tiene varias ONs de tasa baja, se listan todas juntas en el mismo mensaje.
+function construirMensajeLicitacionCliente(cliente, candidatos, nuevaON){
+  var lineas = [];
+  lineas.push('Hola '+(cliente.split(' ')[0]||cliente)+',');
+  lineas.push('');
+  lineas.push('Te contamos sobre una nueva oportunidad: *'+nuevaON.ticker+'*'+(nuevaON.emisor?' ('+nuevaON.emisor+')':'')+', tasa estimada '+fmtNum(nuevaON.cuponAnual,2)+'%'+(nuevaON.calif?' — calificación '+nuevaON.calif:'')+'.');
+  lineas.push('');
+  lineas.push(candidatos.length>1 ? 'Vimos que tenés estas posiciones que podrían convenir rotar:' : 'Vimos que tenés una posición que podría convenir rotar:');
+  candidatos.forEach(function(c){
+    lineas.push('• '+c.tickerActual+' (TIR actual '+fmtNum(c.tirActual,2)+'%) → rotar te dejaría *+'+fmtNum(c.ventajaPuntos,2)+' p.p. más* de retorno a '+fmtDateAR(c.vencimiento)+'.');
+  });
+  lineas.push('');
+  lineas.push('*Cómo hacerlo:* vendés '+(candidatos.length>1?'esas posiciones':'esa posición')+' y con lo obtenido suscribís la licitación de '+nuevaON.ticker+' (se abre por unos días — te aviso los pasos exactos cuando confirmes que te interesa).');
+  lineas.push('');
+  lineas.push('Si querés ver el detalle técnico completo de cada rotación (con el monto exacto en USD), pedímelo y te lo mando.');
+  return lineas.join('\n');
+}
+
+function abrirBorradoresLicitacion(){
+  if(!licitacionResultados) return;
+  var clientes = Object.keys(licitacionResultados.porCliente).sort(function(a,b){ return a.localeCompare(b,'es'); });
+  var nuevaON = licitacionResultados.nuevaON;
+  var html = clientes.map(function(cliente, idx){
+    var candidatos = licitacionResultados.porCliente[cliente];
+    var comitente = COMITENTE_POR_CLIENTE[cliente];
+    var stock = comitente ? stockMap[comitente] : null;
+    var tel = stock ? stock.tel : null;
+    var mail = stock ? stock.mail : null;
+    var msg = construirMensajeLicitacionCliente(cliente, candidatos, nuevaON);
+    return '<div class="lic-draft-card">'+
+      '<div class="lic-draft-head"><b>'+cliente+'</b> <span style="opacity:.6;">('+candidatos.length+' rotación(es))</span></div>'+
+      '<textarea class="lic-draft-text" id="lic-draft-'+idx+'">'+msg.replace(/</g,'&lt;')+'</textarea>'+
+      '<div class="lic-draft-actions">'+
+        (tel ? '<button class="btn btn-outline" style="width:auto;" onclick="enviarWppLicitacion(\''+tel+'\','+idx+')">📱 WhatsApp</button>' : '<span style="font-size:10px;color:var(--cream-dim);">Sin teléfono (Stock)</span>')+
+        (mail ? '<button class="btn btn-outline" style="width:auto;" onclick="enviarMailLicitacion(\''+mail.replace(/'/g,"\\'")+'\','+idx+',\''+nuevaON.ticker.replace(/'/g,"\\'")+'\')">✉ Mail</button>' : '<span style="font-size:10px;color:var(--cream-dim);">Sin mail (Stock)</span>')+
+        '<button class="btn btn-outline" style="width:auto;" onclick="copiarBorradorLicitacion('+idx+')">📋 Copiar</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('lic-drafts-list').innerHTML = html || '<div class="rot-comp-empty">No hay candidatos.</div>';
+  document.getElementById('lic-drafts-overlay').classList.add('open');
+}
+function cerrarBorradoresLicitacion(){ document.getElementById('lic-drafts-overlay').classList.remove('open'); }
+function enviarWppLicitacion(tel, idx){
+  var texto = document.getElementById('lic-draft-'+idx).value;
+  window.open('https://wa.me/'+tel.replace(/\D/g,'')+'?text='+encodeURIComponent(texto), '_blank');
+}
+function enviarMailLicitacion(mail, idx, tickerNuevo){
+  var texto = document.getElementById('lic-draft-'+idx).value;
+  window.location.href = 'mailto:'+mail+'?subject='+encodeURIComponent('Oportunidad: '+tickerNuevo)+'&body='+encodeURIComponent(texto);
+}
+function copiarBorradorLicitacion(idx){
+  var el = document.getElementById('lic-draft-'+idx);
+  el.select();
+  try{ document.execCommand('copy'); mostrarToastPanorama('Copiado ✓'); }catch(e){}
+}
+
 function renderComparablesRotacion(venta){
   var wrap = document.getElementById('rot-comp-wrap');
   var list = document.getElementById('rot-comp-list');
@@ -2612,6 +2942,20 @@ async function descargarReportePDF(){
         </button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ── MODAL BORRADORES MASIVOS — LICITACIÓN ── -->
+<div class="lic-drafts-overlay" id="lic-drafts-overlay" onclick="if(event.target===this) cerrarBorradoresLicitacion()">
+  <div class="lic-drafts-modal">
+    <div class="wpp-rot-head">
+      <div>
+        <div class="wpp-rot-title">✉ Borradores por cliente</div>
+        <div class="wpp-rot-sub">Un mensaje por cliente con todas sus rotaciones sugeridas — editable antes de enviar</div>
+      </div>
+      <button class="wpp-rot-close" onclick="cerrarBorradoresLicitacion()">✕</button>
+    </div>
+    <div class="lic-drafts-body" id="lic-drafts-list"></div>
   </div>
 </div>
 </body>
