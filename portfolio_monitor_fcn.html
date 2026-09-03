@@ -336,7 +336,27 @@ var MEP_FB={
   '2026-01':1495,'2026-02':1500,'2026-03':1416,'2026-04':1430,
   '2026-05':1490,'2026-06':1530,'2026-07':1510,'2026-08':1521,
 };
-function mepAt(d){var ym=String(d||'').slice(0,7);return MEP_FB[ym]||S.mep;}
+// MEP_HIST: {fecha:'YYYY-MM-DD' -> mep} con el histórico DIARIO real, cargado desde ArgentinaDatos
+// (fetchMepHistorico, más abajo). Mientras no esté disponible (todavía no cargó, o falló el
+// fetch), mepAt() cae a MEP_FB (promedio mensual hardcodeado) y por último a S.mep (MEP de hoy).
+var MEP_HIST=null;
+function mepAt(d){
+  var ds=String(d||'');
+  if(MEP_HIST&&ds){
+    if(MEP_HIST[ds])return MEP_HIST[ds];
+    // Fin de semana/feriado sin cotización propia: usar el día hábil más cercano hacia atrás
+    // (hasta 10 días corridos, cubre feriados largos) en vez de caer directo al promedio mensual.
+    var base=new Date(ds+'T00:00:00');
+    if(!isNaN(base.getTime())){
+      for(var i=1;i<=10;i++){
+        var prevStr=new Date(base.getTime()-i*86400000).toISOString().slice(0,10);
+        if(MEP_HIST[prevStr])return MEP_HIST[prevStr];
+      }
+    }
+  }
+  var ym=ds.slice(0,7);
+  return MEP_FB[ym]||S.mep;
+}
 
 async function fetchTimeout(url,ms){
   var ctrl=new AbortController(),id=setTimeout(function(){ctrl.abort();},ms);
@@ -351,6 +371,33 @@ async function fetchMep(){
   document.getElementById('mepEl').textContent='$'+N(S.mep,2);
   document.getElementById('cblEl').textContent='$'+N(S.cable,2);
   // mepSrc se actualiza en fetchLivePrices para incluir ambos estados
+}
+
+// Histórico DIARIO real del MEP (dólar bolsa), vía ArgentinaDatos — necesario para convertir a
+// USD el precio en pesos de una "Transferencia Títulos" con el tipo de cambio de la fecha EXACTA
+// de esa transferencia, en vez de aproximar con el promedio mensual de MEP_FB. Se pide UNA sola
+// vez por sesión (el resultado se cachea en MEP_HIST) — es una serie completa desde 2018, ~280KB,
+// liviano para traer una vez. Si el fetch falla (sin internet, API caída), mepAt() sigue
+// funcionando con MEP_FB como venía haciendo antes de este cambio.
+var MEP_HIST_PROMISE=null;
+async function fetchMepHistorico(){
+  if(MEP_HIST)return MEP_HIST;
+  if(MEP_HIST_PROMISE)return MEP_HIST_PROMISE;
+  MEP_HIST_PROMISE=(async function(){
+    var map={};
+    try{
+      var r=await fetchTimeout('https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa',12000);
+      if(r&&r.ok){
+        var arr=await r.json();
+        (arr||[]).forEach(function(x){
+          if(x&&x.fecha&&x.venta>0&&x.compra>0)map[x.fecha]=(x.compra+x.venta)/2;
+        });
+      }
+    }catch(e){}
+    MEP_HIST=map; // objeto vacío si falló — mepAt() lo trata igual que "no disponible"
+    return map;
+  })();
+  return MEP_HIST_PROMISE;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -866,26 +913,18 @@ function parseMovimientos(bufs){
       // entra o sale de la cartera, así que no debe sumar ni restar en "capital aportado en
       // títulos" (solo cuentan las "Transferencia Externa").
       if(desc.toLowerCase().indexOf('interna')>=0)return;
-      // El Excel de Movimientos de Balanz suele traer, para estas filas, columnas ya calculadas
-      // con el tipo de cambio EXACTO de ese movimiento — mucho más confiable que aproximar con
-      // el MEP mensual: "Valor total USD" (con signo) y, si esa faltara, "Precio activo en
-      // dólares" (por unidad). Se usan directo cuando están disponibles, antes de caer en
-      // Precio/Importe crudos, el precio cargado a mano, o el precio de mercado actual.
-      var valorUSDRaw=r['Valor total USD'];
-      if(valorUSDRaw===undefined||valorUSDRaw==='')valorUSDRaw=r['Valor Total USD'];
-      var valorUSDFile=(valorUSDRaw!==undefined&&valorUSDRaw!=='')?pN(valorUSDRaw):null;
-      if(valorUSDFile==null){
-        var precioActivoRaw=r['Precio activo en dolares'];
-        if(precioActivoRaw===undefined||precioActivoRaw==='')precioActivoRaw=r['Precio activo en dólares'];
-        var precioActivoUSD=(precioActivoRaw!==undefined&&precioActivoRaw!=='')?pN(precioActivoRaw):0;
-        if(precioActivoUSD>0)valorUSDFile=precioActivoUSD*cant;
-      }
+      // El Excel de Movimientos de Balanz NUNCA trae el valor en USD de estas filas — la columna
+      // Precio siempre viene en PESOS (la columna Moneda no sirve para detectarlo acá, suele venir
+      // vacía). Se convierte con el MEP de la fecha EXACTA de la transferencia (mepAt — histórico
+      // diario real vía API cuando está disponible, si no el promedio mensual de MEP_FB). Importe
+      // casi nunca viene cargado para este tipo de fila, pero por las dudas se usa como respaldo
+      // si Precio faltara (también en pesos).
+      var valorUSDFile=null;
+      if(precio>0)valorUSDFile=(precio/mep)*cant;
+      else if(importe>0)valorUSDFile=(importe/mep)*(cant<0?-1:1);
       // Se incluyen tanto créditos (cant>0, entró capital) como débitos (cant<0, salió capital) —
       // un débito resta del capital aportado igual que un retiro en efectivo.
-      transfers.push({fecha,ticker,cant,
-        valorUSDFile:valorUSDFile,
-        precioFile:(precio>0?toUSD(precio):null),
-        importeFile:(importe>0?toUSD(importe):null)});
+      transfers.push({fecha,ticker,cant,valorUSDFile:valorUSDFile});
     }
     else if(tipo==='Boleto'){
       if(precio===-1)return; // ARS pair row → skip
@@ -955,27 +994,24 @@ function parseMovimientos(bufs){
 // Estima cuánto capital entró (o salió) como TÍTULOS transferidos (no efectivo), neto por
 // ticker+fecha. Solo cuentan las "Transferencia Externa" (entra/sale capital real de la cartera);
 // las "Transferencia Interna" (préstamos entre cuentas del mismo cliente) se excluyen antes de
-// llegar acá — ver parseMovimientos(). Prioridad para el precio de cada grupo ticker+fecha:
-//   1) Precio cargado a mano por el asesor (el más confiable cuando existe: el asesor lo miró
-//      directo en la Posición Consolidada de esa fecha — ver iniciarDescargaReporte()).
-//   2) "Valor total USD" (o "Precio activo en dólares" × cantidad) que ya trae el propio Excel
-//      de Movimientos — Balanz lo calcula con el tipo de cambio exacto de ese movimiento, más
-//      preciso que aproximar con el MEP mensual.
-//   3) Precio/Importe crudos del Excel (columnas Precio/Importe + Moneda), por si el archivo no
-//      trajera "Valor total USD" (exports viejos).
-//   4) Precio de mercado ACTUAL (último recurso — no es el precio del día de la transferencia,
-//      es lo mejor disponible si no hay ningún otro dato).
+// llegar acá — ver parseMovimientos(). Prioridad para el valor de cada grupo ticker+fecha:
+//   1) Precio cargado a mano por el asesor (por si el calculado automático no convenciera para
+//      un caso puntual — ver iniciarDescargaReporte()).
+//   2) Precio en pesos del Excel de Movimientos ÷ MEP de la fecha exacta de la transferencia
+//      (calculado en parseMovimientos con mepAt — histórico diario real vía API cuando está
+//      disponible). Esta es la fuente normal, no algo "raro" — Balanz nunca informa el valor en
+//      USD de estas filas directo, así que el monitor lo calcula solo.
+//   3) Precio de mercado ACTUAL (último recurso — solo si la fila no tenía ni Precio ni Importe;
+//      no es el precio del día de la transferencia, es lo mejor disponible si no hay nada más).
 // manualPrices: { "TICKER|fecha": {precio, fecha} } — clave por ticker+fecha, no por cliente,
 // porque el precio de mercado de una fecha es el mismo sin importar a qué cliente le llegó.
 function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
   var grupos={};
   (transfers||[]).forEach(function(t){
     var key=t.ticker+'|'+t.fecha;
-    if(!grupos[key])grupos[key]={ticker:t.ticker,fecha:t.fecha,cant:0,valorUSDFile:0,tieneValorFile:false,importeFile:0,cantConImporte:0,precioFile:0};
+    if(!grupos[key])grupos[key]={ticker:t.ticker,fecha:t.fecha,cant:0,valorUSDFile:0,tieneValorFile:false};
     grupos[key].cant+=t.cant;
     if(t.valorUSDFile!=null){grupos[key].valorUSDFile+=t.valorUSDFile;grupos[key].tieneValorFile=true;}
-    if(t.importeFile>0){grupos[key].importeFile+=t.importeFile;grupos[key].cantConImporte+=t.cant;}
-    else if(t.precioFile>0&&!grupos[key].precioFile)grupos[key].precioFile=t.precioFile;
   });
   var total=0,detalle=[];
   Object.keys(grupos).forEach(function(key){
@@ -987,33 +1023,9 @@ function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
     if(manual&&manual.precio>0){
       usd=manual.precio*g.cant; fuente='manual';
     } else if(g.tieneValorFile){
-      // Valor ya calculado por Balanz en el propio Excel ("Valor total USD" o "Precio activo en
-      // dólares" × cantidad) — la fuente más confiable, usa el tipo de cambio exacto de cada
-      // movimiento. Se respeta el signo tal cual viene (positivo = entró capital, negativo = salió).
-      usd=g.valorUSDFile; fuente='archivo-directo';
-    } else if(g.importeFile>0&&g.cantConImporte>=g.cant){
-      usd=g.importeFile; fuente='archivo';
-    } else if(g.precioFile>0){
-      usd=g.precioFile*g.cant; fuente='archivo';
+      usd=g.valorUSDFile; fuente='calculado'; // precio en pesos del Excel ÷ MEP de esa fecha
     } else {
       usd=precioMercado*g.cant; fuente='estimado';
-    }
-    // Salvaguarda (no aplica a 'archivo-directo', que ya viene con conversión propia confiable):
-    // un precio de archivo (Precio/Importe crudo) o cargado a mano que resulta muy por encima del
-    // valor de mercado actual por unidad es casi siempre un precio en pesos que no se convirtió
-    // (p.ej. la fila no tenía "Pesos" exacto en la columna Moneda). Si dividiendo por el MEP de esa
-    // fecha el resultado queda en un rango razonable respecto al precio de mercado, se corrige solo
-    // en vez de mostrar un capital aportado absurdo.
-    if((fuente==='archivo'||fuente==='manual')&&precioMercado>0&&g.cant!==0){
-      var precioUnit=usd/g.cant;
-      if(Math.abs(precioUnit)>precioMercado*5){
-        var mepT=mepAt(g.fecha);
-        var corregido=precioUnit/mepT;
-        if(Math.abs(corregido)>=precioMercado*0.2&&Math.abs(corregido)<=precioMercado*5){
-          usd=corregido*g.cant;
-          fuente=fuente+'-corregido';
-        }
-      }
     }
     total+=usd;
     detalle.push({key:key,ticker:g.ticker,fecha:g.fecha,cant:g.cant,usd:usd,fuente:fuente,sinPrecio:fuente==='estimado'&&usd===0});
@@ -1025,12 +1037,12 @@ function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
 function resumenFuenteTransferencias(detalle){
   if(!detalle||!detalle.length)return '';
   var tieneEstimado=detalle.some(function(d){return d.fuente==='estimado';});
-  var tieneManual=detalle.some(function(d){return d.fuente.indexOf('manual')===0;});
-  var tieneArchivo=detalle.some(function(d){return d.fuente.indexOf('archivo')===0;});
-  if(tieneEstimado)return (tieneArchivo||tieneManual)?'Parcialmente estimado con precio de mercado actual':'Estimado con precio de mercado actual (Movimientos no traía el precio de la transferencia)';
-  if(tieneManual&&tieneArchivo)return 'Datos de Movimientos + precio cargado a mano';
+  var tieneManual=detalle.some(function(d){return d.fuente==='manual';});
+  var tieneCalculado=detalle.some(function(d){return d.fuente==='calculado';});
+  if(tieneEstimado)return (tieneCalculado||tieneManual)?'Parcialmente estimado con precio de mercado actual':'Estimado con precio de mercado actual (sin Precio ni Importe en Movimientos)';
+  if(tieneManual&&tieneCalculado)return 'Precio en pesos del Excel ÷ MEP de esa fecha + precio cargado a mano';
   if(tieneManual)return 'Precio cargado a mano por el asesor';
-  return 'Datos de Movimientos (precio del día de la transferencia)';
+  return 'Precio en pesos del Excel ÷ MEP de esa fecha';
 }
 
 // ── Precios de transferencias cargados a mano (persisten entre reportes, por ticker+fecha) ──
@@ -1065,8 +1077,6 @@ function aplicarPreciosTransferenciaAPosData(posData,movData){
     var precioUnit=null;
     if(m&&m.precio>0)precioUnit=m.precio;
     else if(t.valorUSDFile!=null)precioUnit=t.valorUSDFile/t.cant;
-    else if(t.precioFile>0)precioUnit=t.precioFile;
-    else if(t.importeFile>0)precioUnit=t.importeFile/t.cant;
     if(!(precioUnit>0))return;
     if(!porTicker[t.ticker])porTicker[t.ticker]={qty:0,costo:0};
     porTicker[t.ticker].qty+=t.cant;
@@ -1637,7 +1647,7 @@ async function generate(){
   document.getElementById('heroEl').innerHTML=
     '<div style="color:var(--mu);padding:20px;">Procesando archivos...</div>';
   try{
-    await Promise.all([fetchMep(), fetchLivePrices()]);
+    await Promise.all([fetchMep(), fetchLivePrices(), fetchMepHistorico()]);
 
     // Re-parsear PDF con MEP actualizado
     if(hasPDF){
@@ -2742,13 +2752,18 @@ function downloadReport(){
   Object.values(pos).forEach(function(p){var c=p.cat||'Otros';if(!grouped[c])grouped[c]=[];grouped[c].push(p);});
   catOrder.forEach(function(cat){
     if(!grouped[cat])return;
-    posRows+='<tr class="cat-row"><td colspan="7">'+cat+'</td></tr>';
+    posRows+='<tr class="cat-row"><td colspan="8">'+cat+'</td></tr>';
     grouped[cat].sort(function(a,b){return getVal(b)-getVal(a);}).forEach(function(p){
       var v=getVal(p),cost=p.totalCostUSD||0,gp2=v-cost,pct2=cost>0?gp2/cost*100:0;
       var gpcls=gp2>=0?'green':'red';
       posRows+='<tr><td>'+p.ticker+'</td><td class="desc">'+(CAT_DESC[p.ticker]||p.desc||p.ticker)+'</td>';
       posRows+='<td class="num">'+(p.totalQty>=1000?N(p.totalQty,0):N(p.totalQty,2))+'</td>';
-      posRows+='<td class="num">'+(p.pppUSD>0?U2(p.pppUSD):'—')+'</td>';
+      // P. Compra necesita decimales: para bonos/ONs el precio suele estar cerca de 1,00-1,10 por
+      // unidad — redondeando a entero (como hacía U2 acá) todos esos precios distintos colapsaban
+      // en "USD 1", perdiendo la info. Misma lógica que ya usa la vista en vivo (más decimales
+      // cuanto más chico es el precio).
+      posRows+='<td class="num">'+(p.pppUSD>0?UP(p.pppUSD):'—')+'</td>';
+      posRows+='<td class="num">'+(cost>0?U2(cost):'—')+'</td>';
       posRows+='<td class="num">'+U2(v)+'</td>';
       posRows+='<td class="num '+gpcls+'">'+(gp2>=0?'+':'')+U2(gp2)+'</td>';
       posRows+='<td class="num '+gpcls+'">'+(pct2>=0?'+':'')+N(pct2,1)+'%</td></tr>';
@@ -2759,6 +2774,9 @@ function downloadReport(){
   function U2(v){return 'USD '+N(Math.round(v),0);}
   function N2(v,d){return v.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
   function N(v,d){return (v||0).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+  // Precio por unidad con decimales (a diferencia de U2, que redondea a entero) — 4 decimales
+  // si el precio es chico (<5, típico de bonos/ONs cerca de la par), si no 2.
+  function UP(v){return 'USD '+N(v,v<5?4:2);}
 
   var legendHTML=donutData.map(function(d){
     var pct2=totalVal>0?d.value/totalVal*100:0;
@@ -2863,9 +2881,10 @@ function downloadReport(){
 
     '<section><h2>Detalle de posiciones</h2>'+
     '<table><thead><tr><th>Ticker</th><th>Instrumento</th><th class="num">Cantidad</th>'+
-    '<th class="num">P. Compra</th><th class="num">Valor actual</th>'+
+    '<th class="num">P. Compra</th><th class="num">Valor compra</th><th class="num">Valor actual</th>'+
     '<th class="num">G/P</th><th class="num">%</th></tr></thead><tbody>'+posRows+
     '<tr class="tot-r"><td colspan="4"><strong>TOTAL</strong></td>'+
+    '<td class="num"><strong>'+U2(totalCost)+'</strong></td>'+
     '<td class="num"><strong>'+U2(totalVal)+'</strong></td>'+
     '<td class="num '+(gp>=0?'green':'red')+'"><strong>'+(gp>=0?'+':'')+U2(gp)+'</strong></td>'+
     '<td class="num '+(gp>=0?'green':'red')+'"><strong>'+(gpPct>=0?'+':'')+N(gpPct,1)+'%</strong></td></tr>'+
@@ -3185,6 +3204,27 @@ function renderDebug(){
       h+='<div style="margin:8px 0;font-size:12px;"><b>Tipos encontrados:</b> ';
       h+=Object.keys(tiposUniq).map(function(t){return '<code>'+t+'</code> ('+tiposUniq[t]+')';}).join(' · ');
       h+='</div>';
+      // Variantes de "Transferencia Títulos" — el cálculo de capital aportado en títulos solo
+      // reconoce "Interna" (excluida, préstamo) vs. cualquier otra cosa (tratada como "Externa",
+      // capital real). Esto muestra qué texto de Descripción trae CADA transferencia realmente
+      // cargada, para poder confirmar a ojo que no hay una tercera variante (ej. por fallecimiento,
+      // cambio de titularidad) que debería tratarse distinto y hoy se está contando como Externa.
+      var transfRows=allMovRows.filter(function(r){return (r['Tipo']||'').trim()==='Transferencia Títulos';});
+      if(transfRows.length){
+        var descPatterns={};
+        transfRows.forEach(function(r){
+          var d=(r['Descripcion']||r['Descripción']||'').trim();
+          var esInterna=d.toLowerCase().indexOf('interna')>=0;
+          // Se agrupa por el prefijo antes de la primera "/" (el resto suele ser el detalle del
+          // instrumento, distinto en cada fila) para no listar 30 variantes casi idénticas.
+          var prefijo=(d.split('/')[0]||d).trim()||'(vacío)';
+          var k=prefijo+(esInterna?'  →  EXCLUIDA (interna)':'  →  cuenta como capital');
+          descPatterns[k]=(descPatterns[k]||0)+1;
+        });
+        h+='<div style="margin:8px 0;font-size:12px;"><b>Variantes de "Transferencia Títulos" ('+transfRows.length+' filas):</b><br>';
+        h+=Object.keys(descPatterns).map(function(k){return '<code>'+k+'</code> ('+descPatterns[k]+')';}).join('<br>');
+        h+='</div>';
+      }
       // Columnas disponibles
       if(allMovRows.length>0){
         h+='<div style="margin:4px 0 8px;font-size:11px;color:var(--mu);"><b>Columnas:</b> '+Object.keys(allMovRows[0]).join(', ')+'</div>';
