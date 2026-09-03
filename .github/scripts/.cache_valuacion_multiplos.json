@@ -1,0 +1,1699 @@
+{
+ "HSAT": {
+  "ticker_usado": "HSAT.BA",
+  "empresa": "Holdsat S.A.",
+  "sector": "",
+  "moneda": "ARS",
+  "precio": 120.5,
+  "actual": {
+   "PE": null,
+   "PS": null,
+   "PB": null,
+   "EVEBITDA": null,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 125.81,
+   "MM50_sem": 132.93,
+   "MM200_sem": null
+  },
+  "fetched": "2026-09-03"
+ },
+ "IRSA": {
+  "ticker_usado": "IRSA.BA",
+  "empresa": "IRSA Inversiones y Representaciones Sociedad An\u00f3nima",
+  "sector": "Real Estate",
+  "moneda": "ARS",
+  "precio": 2395.0,
+  "actual": {
+   "PE": 5.11,
+   "PS": 3.88,
+   "PB": 0.95,
+   "EVEBITDA": 11.42,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    null,
+    null,
+    0.75,
+    0.16
+   ],
+   "PS": [
+    null,
+    1.57,
+    0.5,
+    0.18
+   ],
+   "EVEBITDA": [
+    null,
+    null,
+    11.27,
+    0.48
+   ],
+   "PFCF": [
+    null,
+    5.17,
+    1.26,
+    0.46
+   ],
+   "PB": [
+    null,
+    0.48,
+    0.17,
+    0.13
+   ]
+  },
+  "mm": {
+   "MM21_sem": 2306.19,
+   "MM50_sem": 2244.04,
+   "MM200_sem": 1226.81
+  },
+  "fetched": "2026-09-03"
+ },
+ "GE": {
+  "ticker_usado": "GE",
+  "empresa": "GE Aerospace",
+  "sector": "Industrials",
+  "moneda": "USD",
+  "precio": 333.48,
+  "actual": {
+   "PE": 39.37,
+   "PS": 6.83,
+   "PB": 19.62,
+   "EVEBITDA": 30.69,
+   "PFCF": 47.63
+  },
+  "series": {
+   "PE": [
+    38.54,
+    27.93,
+    11.4,
+    182.79,
+    null
+   ],
+   "PS": [
+    7.32,
+    4.73,
+    3.06,
+    2.11,
+    null
+   ],
+   "EVEBITDA": [
+    28.48,
+    19.28,
+    8.96,
+    17.74,
+    null
+   ],
+   "PFCF": [
+    46.18,
+    49.78,
+    24.98,
+    11.69,
+    null
+   ],
+   "PB": [
+    17.96,
+    9.47,
+    3.94,
+    1.82,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 334.67,
+   "MM50_sem": 317.47,
+   "MM200_sem": 185.87
+  },
+  "fetched": "2026-09-03"
+ },
+ "ECOG": {
+  "ticker_usado": "ECOG.BA",
+  "empresa": "Ecogas Inversiones S.A.",
+  "sector": "Utilities",
+  "moneda": "ARS",
+  "precio": 2877.5,
+  "actual": {
+   "PE": 8.99,
+   "PS": 0.91,
+   "PB": 1.27,
+   "EVEBITDA": 2.79,
+   "PFCF": 8.55
+  },
+  "series": {
+   "PE": [
+    8.99,
+    null
+   ],
+   "PS": [
+    1.14,
+    10.06
+   ],
+   "EVEBITDA": [
+    3.89,
+    46.21
+   ],
+   "PFCF": [
+    9.57,
+    70.96
+   ],
+   "PB": [
+    1.87,
+    23.72
+   ]
+  },
+  "mm": {
+   "MM21_sem": 3020.95,
+   "MM50_sem": 2976.11,
+   "MM200_sem": null
+  },
+  "fetched": "2026-09-03"
+ },
+ "COME": {
+  "ticker_usado": "COME.BA",
+  "empresa": "Sociedad Comercial del Plata S.A.",
+  "sector": "Industrials",
+  "moneda": "ARS",
+  "precio": 40.98,
+  "actual": {
+   "PE": null,
+   "PS": 0.43,
+   "PB": 0.45,
+   "EVEBITDA": 13.75,
+   "PFCF": 19.93
+  },
+  "series": {
+   "PE": [
+    null,
+    9.79,
+    null,
+    2.91
+   ],
+   "PS": [
+    0.65,
+    1.15,
+    0.43,
+    0.21
+   ],
+   "EVEBITDA": [
+    null,
+    8.55,
+    null,
+    1.26
+   ],
+   "PFCF": [
+    29.72,
+    null,
+    6.19,
+    3.04
+   ],
+   "PB": [
+    0.79,
+    1.42,
+    0.57,
+    0.26
+   ]
+  },
+  "mm": {
+   "MM21_sem": 43.78,
+   "MM50_sem": 48.75,
+   "MM200_sem": 51.43
+  },
+  "fetched": "2026-09-03"
+ },
+ "BHIP": {
+  "ticker_usado": "BHIP.BA",
+  "empresa": "Banco Hipotecario S.A.",
+  "sector": "Financial Services",
+  "moneda": "ARS",
+  "precio": 317.0,
+  "actual": {
+   "PE": 30.61,
+   "PS": 0.92,
+   "PB": 29.14,
+   "EVEBITDA": null,
+   "PFCF": 2.99
+  },
+  "series": {
+   "PE": [
+    30.61,
+    7.25,
+    1.06,
+    1.46,
+    null
+   ],
+   "PS": [
+    1.64,
+    0.79,
+    0.16,
+    0.13,
+    null
+   ],
+   "EVEBITDA": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PFCF": [
+    4.84,
+    3.23,
+    0.91,
+    0.3,
+    null
+   ],
+   "PB": [
+    1.34,
+    1.22,
+    0.28,
+    0.18,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 328.75,
+   "MM50_sem": 364.95,
+   "MM200_sem": 245.3
+  },
+  "fetched": "2026-09-03"
+ },
+ "AGRO": {
+  "ticker_usado": "AGRO",
+  "empresa": "Adecoagro S.A.",
+  "sector": "Consumer Defensive",
+  "moneda": "USD",
+  "precio": 11.6,
+  "actual": {
+   "PE": 30.53,
+   "PS": 1.01,
+   "PB": 0.96,
+   "EVEBITDA": 9.14,
+   "PFCF": 39.65
+  },
+  "series": {
+   "PE": [
+    null,
+    10.04,
+    4.77,
+    7.3,
+    null
+   ],
+   "PS": [
+    0.77,
+    0.61,
+    0.83,
+    0.59,
+    null
+   ],
+   "EVEBITDA": [
+    7.09,
+    4.45,
+    3.1,
+    4.04,
+    null
+   ],
+   "PFCF": [
+    25.98,
+    14.26,
+    5.63,
+    5.65,
+    null
+   ],
+   "PB": [
+    0.66,
+    0.68,
+    0.88,
+    0.7,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 11.15,
+   "MM50_sem": 9.94,
+   "MM200_sem": 9.5
+  },
+  "fetched": "2026-09-03"
+ },
+ "BYMA": {
+  "ticker_usado": "BYMA.BA",
+  "empresa": "Bolsas y Mercados Argentinos S.A.",
+  "sector": "Financial Services",
+  "moneda": "ARS",
+  "precio": 264.5,
+  "actual": {
+   "PE": 13.59,
+   "PS": 6.97,
+   "PB": 3.02,
+   "EVEBITDA": 2.15,
+   "PFCF": 8.58
+  },
+  "series": {
+   "PE": [
+    13.31,
+    null,
+    3.08,
+    88.52
+   ],
+   "PS": [
+    8.93,
+    9.81,
+    6.24,
+    4.46
+   ],
+   "EVEBITDA": [
+    6.08,
+    43.46,
+    null,
+    null
+   ],
+   "PFCF": [
+    9.77,
+    null,
+    2.34,
+    null
+   ],
+   "PB": [
+    3.51,
+    2.62,
+    1.14,
+    0.87
+   ]
+  },
+  "mm": {
+   "MM21_sem": 293.49,
+   "MM50_sem": 290.62,
+   "MM200_sem": 160.73
+  },
+  "fetched": "2026-09-03"
+ },
+ "MORI": {
+  "ticker_usado": "MORI.BA",
+  "empresa": "Morixe Hermanos S.A.C.I.",
+  "sector": "Consumer Defensive",
+  "moneda": "ARS",
+  "precio": 22.5,
+  "actual": {
+   "PE": 91.3,
+   "PS": 0.38,
+   "PB": 0.7,
+   "EVEBITDA": 21.26,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    91.3,
+    23.54,
+    15.54,
+    null
+   ],
+   "PS": [
+    0.77,
+    0.77,
+    0.2,
+    0.13
+   ],
+   "EVEBITDA": [
+    21.26,
+    6.41,
+    3.15,
+    7.41
+   ],
+   "PFCF": [
+    null,
+    4.26,
+    null,
+    null
+   ],
+   "PB": [
+    1.42,
+    2.02,
+    0.6,
+    0.47
+   ]
+  },
+  "mm": {
+   "MM21_sem": 26.18,
+   "MM50_sem": 31.57,
+   "MM200_sem": 25.77
+  },
+  "fetched": "2026-09-03"
+ },
+ "SEMI": {
+  "ticker_usado": "SEMI",
+  "empresa": "Columbia Select Technology ETF",
+  "sector": "",
+  "moneda": "USD",
+  "precio": 38.0344,
+  "actual": {
+   "PE": 33.54,
+   "PS": null,
+   "PB": null,
+   "EVEBITDA": null,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 37.59,
+   "MM50_sem": 33.43,
+   "MM200_sem": 24.57
+  },
+  "fetched": "2026-09-03"
+ },
+ "BOLT": {
+  "ticker_usado": "BOLT",
+  "empresa": "Bolt Biotherapeutics, Inc.",
+  "sector": "Healthcare",
+  "moneda": "USD",
+  "precio": 3.895,
+  "actual": {
+   "PE": null,
+   "PS": 1.6,
+   "PB": 0.59,
+   "EVEBITDA": null,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PS": [
+    1.45,
+    2.93,
+    5.76,
+    9.3,
+    null
+   ],
+   "EVEBITDA": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PFCF": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PB": [
+    0.42,
+    0.39,
+    0.4,
+    0.31,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 4.31,
+   "MM50_sem": 4.84,
+   "MM200_sem": 14.93
+  },
+  "fetched": "2026-09-03"
+ },
+ "TRAN": {
+  "ticker_usado": "TRAN.BA",
+  "empresa": "Compa\u00f1\u00eda de Transporte de Energ\u00eda El\u00e9ctrica en Alta Tensi\u00f3n Transener S.A.",
+  "sector": "Utilities",
+  "moneda": "ARS",
+  "precio": 3102.5,
+  "actual": {
+   "PE": 5.83,
+   "PS": 2.08,
+   "PB": 1.2,
+   "EVEBITDA": 3.45,
+   "PFCF": 10.9
+  },
+  "series": {
+   "PE": [
+    6.71,
+    10.0,
+    27.0,
+    12.26
+   ],
+   "PS": [
+    2.28,
+    2.06,
+    1.36,
+    0.66
+   ],
+   "EVEBITDA": [
+    3.55,
+    4.16,
+    5.63,
+    1.9
+   ],
+   "PFCF": [
+    10.31,
+    7.95,
+    48.49,
+    31.75
+   ],
+   "PB": [
+    1.51,
+    1.13,
+    0.7,
+    0.27
+   ]
+  },
+  "mm": {
+   "MM21_sem": 3164.23,
+   "MM50_sem": 3021.39,
+   "MM200_sem": 1486.64
+  },
+  "fetched": "2026-09-03"
+ },
+ "DOME": {
+  "ticker_usado": "DOME.BA",
+  "empresa": "DOMEC Compa\u00f1\u00eda de Artefactos Dom\u00e9sticos S.A.I.C.y F.",
+  "sector": "Consumer Cyclical",
+  "moneda": "ARS",
+  "precio": 64.0,
+  "actual": {
+   "PE": null,
+   "PS": 0.56,
+   "PB": 1.5,
+   "EVEBITDA": null,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PS": [
+    0.55,
+    0.37,
+    0.33,
+    0.16,
+    null
+   ],
+   "EVEBITDA": [
+    null,
+    null,
+    54.04,
+    null,
+    null
+   ],
+   "PFCF": [
+    null,
+    134.95,
+    null,
+    61.07,
+    null
+   ],
+   "PB": [
+    1.46,
+    0.96,
+    0.59,
+    0.29,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 63.59,
+   "MM50_sem": 69.88,
+   "MM200_sem": 54.85
+  },
+  "fetched": "2026-09-03"
+ },
+ "GGAL": {
+  "ticker_usado": "GGAL",
+  "empresa": "Grupo Financiero Galicia S.A.",
+  "sector": "Financial Services",
+  "moneda": "USD",
+  "precio": 44.63,
+  "actual": {
+   "PE": 127.51,
+   "PS": null,
+   "PB": 11.79,
+   "EVEBITDA": null,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 46.84,
+   "MM50_sem": 45.97,
+   "MM200_sem": 33.34
+  },
+  "fetched": "2026-09-03"
+ },
+ "VALO": {
+  "ticker_usado": "VALO.BA",
+  "empresa": "Banco de Valores S.A.",
+  "sector": "Financial Services",
+  "moneda": "ARS",
+  "precio": 557.5,
+  "actual": {
+   "PE": 11.1,
+   "PS": 2.35,
+   "PB": 1.56,
+   "EVEBITDA": 2.98,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    11.07,
+    13.29,
+    9.62,
+    10.26
+   ],
+   "PS": [
+    1.62,
+    0.56,
+    0.2,
+    0.24
+   ],
+   "EVEBITDA": [
+    2.98,
+    null,
+    null,
+    null
+   ],
+   "PFCF": [
+    null,
+    1.14,
+    0.3,
+    0.45
+   ],
+   "PB": [
+    1.7,
+    1.53,
+    1.26,
+    0.83
+   ]
+  },
+  "mm": {
+   "MM21_sem": 632.38,
+   "MM50_sem": 554.36,
+   "MM200_sem": 308.65
+  },
+  "fetched": "2026-09-03"
+ },
+ "BKNG": {
+  "ticker_usado": "BKNG",
+  "empresa": "Booking Holdings Inc.",
+  "sector": "Consumer Cyclical",
+  "moneda": "USD",
+  "precio": 195.13,
+  "actual": {
+   "PE": 21.68,
+   "PS": 5.19,
+   "PB": null,
+   "EVEBITDA": 14.76,
+   "PFCF": 16.13
+  },
+  "series": {
+   "PE": [
+    31.27,
+    27.14,
+    26.76,
+    26.42,
+    null
+   ],
+   "PS": [
+    6.28,
+    6.72,
+    5.37,
+    4.73,
+    null
+   ],
+   "EVEBITDA": [
+    18.56,
+    17.19,
+    16.68,
+    16.58,
+    null
+   ],
+   "PFCF": [
+    18.59,
+    20.22,
+    16.4,
+    13.06,
+    null
+   ],
+   "PB": [
+    null,
+    null,
+    null,
+    29.04,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 182.06,
+   "MM50_sem": 188.76,
+   "MM200_sem": 158.47
+  },
+  "fetched": "2026-09-03"
+ },
+ "INVJ": {
+  "ticker_usado": "INVJ.BA",
+  "empresa": "Inversora Juramento S.A.",
+  "sector": "Consumer Defensive",
+  "moneda": "ARS",
+  "precio": 424.0,
+  "actual": {
+   "PE": null,
+   "PS": 1.48,
+   "PB": 0.77,
+   "EVEBITDA": 83.7,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    null,
+    10.29,
+    null
+   ],
+   "PS": [
+    1.48,
+    0.24,
+    0.6
+   ],
+   "EVEBITDA": [
+    6.87,
+    1.65,
+    null
+   ],
+   "PFCF": [
+    null,
+    4.56,
+    null
+   ],
+   "PB": [
+    1.28,
+    0.18,
+    0.36
+   ]
+  },
+  "mm": {
+   "MM21_sem": 436.67,
+   "MM50_sem": 468.88,
+   "MM200_sem": 339.68
+  },
+  "fetched": "2026-09-03"
+ },
+ "EDN": {
+  "ticker_usado": "EDN",
+  "empresa": "Empresa Distribuidora y Comercializadora Norte Sociedad An\u00f3nima",
+  "sector": "Utilities",
+  "moneda": "USD",
+  "precio": 24.46,
+  "actual": {
+   "PE": 7.28,
+   "PS": null,
+   "PB": 0.59,
+   "EVEBITDA": 0.83,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 24.94,
+   "MM50_sem": 26.45,
+   "MM200_sem": 21.6
+  },
+  "fetched": "2026-09-03"
+ },
+ "BIOX": {
+  "ticker_usado": "BIOX",
+  "empresa": "Bioceres Crop Solutions Corp.",
+  "sector": "Basic Materials",
+  "moneda": "USD",
+  "precio": 0.4192,
+  "actual": {
+   "PE": null,
+   "PS": 0.1,
+   "PB": 0.39,
+   "EVEBITDA": null,
+   "PFCF": 0.76
+  },
+  "series": {
+   "PE": [
+    null,
+    158.71,
+    43.97,
+    null
+   ],
+   "PS": [
+    0.94,
+    1.46,
+    1.97,
+    1.78
+   ],
+   "EVEBITDA": [
+    null,
+    16.02,
+    17.33,
+    18.89
+   ],
+   "PFCF": [
+    8.85,
+    35.84,
+    null,
+    null
+   ],
+   "PB": [
+    1.19,
+    2.15,
+    2.76,
+    4.59
+   ]
+  },
+  "mm": {
+   "MM21_sem": 0.41,
+   "MM50_sem": 0.84,
+   "MM200_sem": 7.35
+  },
+  "fetched": "2026-09-03"
+ },
+ "ALUA": {
+  "ticker_usado": "ALUA.BA",
+  "empresa": "Aluar Aluminio Argentino S.A.I.C.",
+  "sector": "Basic Materials",
+  "moneda": "ARS",
+  "precio": 847.5,
+  "actual": {
+   "PE": null,
+   "PS": 1.2,
+   "PB": 1.15,
+   "EVEBITDA": 10.04,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    null,
+    17.08,
+    4.05,
+    3.46
+   ],
+   "PS": [
+    1.3,
+    1.69,
+    0.86,
+    0.59
+   ],
+   "EVEBITDA": [
+    13.08,
+    7.75,
+    3.41,
+    1.71
+   ],
+   "PFCF": [
+    null,
+    28.81,
+    11.64,
+    4.96
+   ],
+   "PB": [
+    1.32,
+    1.89,
+    1.06,
+    0.88
+   ]
+  },
+  "mm": {
+   "MM21_sem": 950.98,
+   "MM50_sem": 940.0,
+   "MM200_sem": 755.03
+  },
+  "fetched": "2026-09-03"
+ },
+ "TXAR": {
+  "ticker_usado": "TX",
+  "empresa": "Ternium S.A.",
+  "sector": "Basic Materials",
+  "moneda": "USD",
+  "precio": 57.98,
+  "actual": {
+   "PE": 16.11,
+   "PS": 4.78,
+   "PB": 0.93,
+   "EVEBITDA": 8.46,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    175.49,
+    null,
+    99.44,
+    27.79,
+    null
+   ],
+   "PS": [
+    4.78,
+    2.96,
+    3.82,
+    2.99,
+    null
+   ],
+   "EVEBITDA": [
+    45.85,
+    31.74,
+    32.21,
+    14.64,
+    null
+   ],
+   "PFCF": [
+    null,
+    null,
+    64.61,
+    22.61,
+    null
+   ],
+   "PB": [
+    6.25,
+    4.36,
+    5.41,
+    4.15,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 47.64,
+   "MM50_sem": 41.9,
+   "MM200_sem": 33.75
+  },
+  "fetched": "2026-09-03"
+ },
+ "ORLY": {
+  "ticker_usado": "ORLY",
+  "empresa": "O'Reilly Automotive, Inc.",
+  "sector": "Consumer Cyclical",
+  "moneda": "USD",
+  "precio": 87.38,
+  "actual": {
+   "PE": 27.74,
+   "PS": 3.81,
+   "PB": null,
+   "EVEBITDA": 19.11,
+   "PFCF": 44.37
+  },
+  "series": {
+   "PE": [
+    29.97,
+    29.0,
+    23.3,
+    24.18
+   ],
+   "PS": [
+    4.28,
+    4.14,
+    3.46,
+    3.65
+   ],
+   "EVEBITDA": [
+    21.16,
+    20.65,
+    17.21,
+    17.79
+   ],
+   "PFCF": [
+    47.74,
+    34.16,
+    26.96,
+    20.32
+   ],
+   "PB": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 90.01,
+   "MM50_sem": 93.47,
+   "MM200_sem": 77.95
+  },
+  "fetched": "2026-09-03"
+ },
+ "TELFY": {
+  "ticker_usado": "TELFY",
+  "empresa": "Telef\u00f3nica, S.A.",
+  "sector": "Communication Services",
+  "moneda": "USD",
+  "precio": 4.25,
+  "actual": {
+   "PE": null,
+   "PS": 0.66,
+   "PB": 1.4,
+   "EVEBITDA": 9.28,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 4.22,
+   "MM50_sem": 4.19,
+   "MM200_sem": 3.9
+  },
+  "fetched": "2026-09-03"
+ },
+ "SAMI": {
+  "ticker_usado": "SAMI.BA",
+  "empresa": "S.A. San Miguel A.G.I.C.I. y F.",
+  "sector": "Consumer Defensive",
+  "moneda": "ARS",
+  "precio": 468.0,
+  "actual": {
+   "PE": null,
+   "PS": 4.77,
+   "PB": 13.77,
+   "EVEBITDA": 18.87,
+   "PFCF": 59.81
+  },
+  "series": {
+   "PE": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PS": [
+    7.85,
+    18.56,
+    23.66,
+    7.47,
+    null
+   ],
+   "EVEBITDA": [
+    79.4,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PFCF": [
+    93.17,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PB": [
+    13.7,
+    28.64,
+    44.42,
+    9.2,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 505.29,
+   "MM50_sem": 570.73,
+   "MM200_sem": 648.0
+  },
+  "fetched": "2026-09-03"
+ },
+ "NOW": {
+  "ticker_usado": "NOW",
+  "empresa": "ServiceNow, Inc.",
+  "sector": "Technology",
+  "moneda": "USD",
+  "precio": 145.59,
+  "actual": {
+   "PE": 90.99,
+   "PS": 10.22,
+   "PB": 12.03,
+   "EVEBITDA": 50.1,
+   "PFCF": 33.21
+  },
+  "series": {
+   "PE": [
+    88.34,
+    155.59,
+    79.97,
+    null,
+    null
+   ],
+   "PS": [
+    11.63,
+    20.19,
+    15.43,
+    10.26,
+    null
+   ],
+   "EVEBITDA": [
+    50.66,
+    95.35,
+    104.84,
+    95.34,
+    null
+   ],
+   "PFCF": [
+    34.07,
+    65.69,
+    51.25,
+    34.22,
+    null
+   ],
+   "PB": [
+    11.91,
+    23.07,
+    18.15,
+    14.78,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 109.22,
+   "MM50_sem": 128.64,
+   "MM200_sem": 142.58
+  },
+  "fetched": "2026-09-03"
+ },
+ "TGNO4": {
+  "ticker_usado": "TGNO4.BA",
+  "empresa": "Transportadora de Gas del Norte S.A.",
+  "sector": "Energy",
+  "moneda": "ARS",
+  "precio": 3185.0,
+  "actual": {
+   "PE": 7.17,
+   "PS": 2.32,
+   "PB": 1.08,
+   "EVEBITDA": 3.29,
+   "PFCF": 3.94
+  },
+  "series": {
+   "PE": [
+    9.08,
+    32.77,
+    5.43,
+    null
+   ],
+   "PS": [
+    3.31,
+    3.18,
+    3.35,
+    1.06
+   ],
+   "EVEBITDA": [
+    4.75,
+    12.63,
+    2.79,
+    5.71
+   ],
+   "PFCF": [
+    5.59,
+    null,
+    null,
+    4.95
+   ],
+   "PB": [
+    1.95,
+    1.47,
+    0.82,
+    0.18
+   ]
+  },
+  "mm": {
+   "MM21_sem": 3739.9,
+   "MM50_sem": 3813.29,
+   "MM200_sem": 2250.54
+  },
+  "fetched": "2026-09-03"
+ },
+ "NVDA": {
+  "ticker_usado": "NVDA",
+  "empresa": "NVIDIA Corporation",
+  "sector": "Technology",
+  "moneda": "USD",
+  "precio": 228.45,
+  "actual": {
+   "PE": 28.92,
+   "PS": 18.21,
+   "PB": 24.09,
+   "EVEBITDA": 26.75,
+   "PFCF": 57.06
+  },
+  "series": {
+   "PE": [
+    37.49,
+    43.54,
+    54.68,
+    118.86,
+    null
+   ],
+   "PS": [
+    20.84,
+    24.32,
+    26.71,
+    19.25,
+    null
+   ],
+   "EVEBITDA": [
+    31.14,
+    36.86,
+    45.84,
+    88.18,
+    null
+   ],
+   "PFCF": [
+    46.55,
+    52.15,
+    60.22,
+    136.34,
+    null
+   ],
+   "PB": [
+    28.61,
+    40.0,
+    37.86,
+    23.49,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 210.15,
+   "MM50_sem": 194.58,
+   "MM200_sem": 113.71
+  },
+  "fetched": "2026-09-03"
+ },
+ "LEDE": {
+  "ticker_usado": "LEDE.BA",
+  "empresa": "Ledesma Sociedad An\u00f3nima Agr\u00edcola Industrial",
+  "sector": "Industrials",
+  "moneda": "ARS",
+  "precio": 877.5,
+  "actual": {
+   "PE": null,
+   "PS": 0.37,
+   "PB": 0.69,
+   "EVEBITDA": 16.75,
+   "PFCF": 13.06
+  },
+  "series": {
+   "PE": [
+    null,
+    null,
+    8.83,
+    2.45,
+    null
+   ],
+   "PS": [
+    0.32,
+    0.41,
+    0.47,
+    0.19,
+    null
+   ],
+   "EVEBITDA": [
+    8.01,
+    34.43,
+    2.65,
+    1.65,
+    null
+   ],
+   "PFCF": [
+    11.1,
+    null,
+    6.45,
+    1.96,
+    null
+   ],
+   "PB": [
+    0.59,
+    0.8,
+    1.04,
+    0.4,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 771.05,
+   "MM50_sem": 847.47,
+   "MM200_sem": 808.13
+  },
+  "fetched": "2026-09-03"
+ },
+ "AMZN": {
+  "ticker_usado": "AMZN",
+  "empresa": "Amazon.com, Inc.",
+  "sector": "Consumer Cyclical",
+  "moneda": "USD",
+  "precio": 258.9,
+  "actual": {
+   "PE": 20.85,
+   "PS": 3.6,
+   "PB": 5.06,
+   "EVEBITDA": 17.04,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    31.29,
+    40.08,
+    49.57,
+    null
+   ],
+   "PS": [
+    3.39,
+    3.72,
+    2.62,
+    1.72
+   ],
+   "EVEBITDA": [
+    15.1,
+    19.6,
+    17.56,
+    25.24
+   ],
+   "PFCF": [
+    null,
+    72.23,
+    46.81,
+    null
+   ],
+   "PB": [
+    5.91,
+    8.3,
+    7.47,
+    6.04
+   ]
+  },
+  "mm": {
+   "MM21_sem": 256.11,
+   "MM50_sem": 237.17,
+   "MM200_sem": 183.28
+  },
+  "fetched": "2026-09-03"
+ },
+ "CEPU": {
+  "ticker_usado": "CEPU",
+  "empresa": "Central Puerto S.A.",
+  "sector": "Utilities",
+  "moneda": "USD",
+  "precio": 14.03,
+  "actual": {
+   "PE": 6.5,
+   "PS": null,
+   "PB": 1.07,
+   "EVEBITDA": 1.24,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 14.48,
+   "MM50_sem": 14.6,
+   "MM200_sem": 10.16
+  },
+  "fetched": "2026-09-03"
+ },
+ "CRES": {
+  "ticker_usado": "CRESY",
+  "empresa": "Cresud Sociedad An\u00f3nima, Comercial, Inmobiliaria, Financiera y Agropecuaria",
+  "sector": "Industrials",
+  "moneda": "USD",
+  "precio": 11.84,
+  "actual": {
+   "PE": 6.17,
+   "PS": null,
+   "PB": 0.97,
+   "EVEBITDA": 15.89,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 11.18,
+   "MM50_sem": 11.25,
+   "MM200_sem": 8.43
+  },
+  "fetched": "2026-09-03"
+ },
+ "SHOP": {
+  "ticker_usado": "SHOP",
+  "empresa": "Shopify Inc.",
+  "sector": "Technology",
+  "moneda": "USD",
+  "precio": 145.88,
+  "actual": {
+   "PE": 98.57,
+   "PS": 14.27,
+   "PB": 14.83,
+   "EVEBITDA": 74.22,
+   "PFCF": 94.32
+  },
+  "series": {
+   "PE": [
+    166.51,
+    70.05,
+    null,
+    null,
+    null
+   ],
+   "PS": [
+    17.74,
+    15.93,
+    13.58,
+    8.39,
+    null
+   ],
+   "EVEBITDA": [
+    106.28,
+    105.43,
+    null,
+    null,
+    null
+   ],
+   "PFCF": [
+    102.13,
+    88.56,
+    105.93,
+    null,
+    null
+   ],
+   "PB": [
+    15.21,
+    12.24,
+    10.57,
+    5.7,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 124.33,
+   "MM50_sem": 135.35,
+   "MM200_sem": 91.96
+  },
+  "fetched": "2026-09-03"
+ },
+ "BB": {
+  "ticker_usado": "BB",
+  "empresa": "BlackBerry Limited",
+  "sector": "Technology",
+  "moneda": "USD",
+  "precio": 7.7,
+  "actual": {
+   "PE": 77.0,
+   "PS": 7.78,
+   "PB": 6.01,
+   "EVEBITDA": 46.56,
+   "PFCF": 110.61
+  },
+  "series": {
+   "PE": [
+    37.98,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PS": [
+    3.68,
+    5.04,
+    2.16,
+    4.56,
+    null
+   ],
+   "EVEBITDA": [
+    21.09,
+    44.8,
+    18.26,
+    null,
+    null
+   ],
+   "PFCF": [
+    49.53,
+    null,
+    null,
+    null,
+    null
+   ],
+   "PB": [
+    2.71,
+    3.74,
+    2.11,
+    2.8,
+    null
+   ]
+  },
+  "mm": {
+   "MM21_sem": 8.26,
+   "MM50_sem": 5.76,
+   "MM200_sem": 4.22
+  },
+  "fetched": "2026-09-03"
+ },
+ "LOMA": {
+  "ticker_usado": "LOMA",
+  "empresa": "Loma Negra Compa\u00f1\u00eda Industrial Argentina Sociedad An\u00f3nima",
+  "sector": "Basic Materials",
+  "moneda": "USD",
+  "precio": 10.14,
+  "actual": {
+   "PE": 40.56,
+   "PS": null,
+   "PB": 1.36,
+   "EVEBITDA": 1.61,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 11.01,
+   "MM50_sem": 10.9,
+   "MM200_sem": 8.71
+  },
+  "fetched": "2026-09-03"
+ },
+ "PATA": {
+  "ticker_usado": "PATA.BA",
+  "empresa": "Sociedad An\u00f3nima Importadora y Exportadora de la Patagonia",
+  "sector": "Consumer Cyclical",
+  "moneda": "ARS",
+  "precio": 1250.0,
+  "actual": {
+   "PE": null,
+   "PS": 0.25,
+   "PB": 0.86,
+   "EVEBITDA": 25.38,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [
+    null,
+    10.78,
+    3.91,
+    2.59
+   ],
+   "PS": [
+    0.23,
+    0.31,
+    null,
+    null
+   ],
+   "EVEBITDA": [
+    7.41,
+    3.57,
+    1.62,
+    2.15
+   ],
+   "PFCF": [
+    null,
+    11.91,
+    1.29,
+    null
+   ],
+   "PB": [
+    1.03,
+    1.44,
+    0.35,
+    0.24
+   ]
+  },
+  "mm": {
+   "MM21_sem": 1274.52,
+   "MM50_sem": 1308.84,
+   "MM200_sem": 984.6
+  },
+  "fetched": "2026-09-03"
+ },
+ "IVV": {
+  "ticker_usado": "IVV",
+  "empresa": "iShares Core S&P 500 ETF",
+  "sector": "",
+  "moneda": "USD",
+  "precio": 777.13,
+  "actual": {
+   "PE": 26.06,
+   "PS": null,
+   "PB": 1.8,
+   "EVEBITDA": null,
+   "PFCF": null
+  },
+  "series": {
+   "PE": [],
+   "PS": [],
+   "EVEBITDA": [],
+   "PFCF": [],
+   "PB": []
+  },
+  "mm": {
+   "MM21_sem": 748.47,
+   "MM50_sem": 705.29,
+   "MM200_sem": 549.21
+  },
+  "fetched": "2026-09-03"
+ }
+}
