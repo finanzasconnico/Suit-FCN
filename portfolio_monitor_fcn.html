@@ -158,6 +158,7 @@ tr:hover td{background:rgba(33,38,45,.5);}
     </select>
     <input id="clientName" placeholder="Nombre del cliente" style="background:var(--sf);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:6px 10px;font-size:12px;width:200px;">
     <button class="btn btn-s" onclick="generate()" title="La cartera se actualiza sola apenas cargás algo — usá esto solo para forzar un refresh manual (ej. después de editar el texto del PDF a mano)">🔄 Actualizar</button>
+    <button class="btn" onclick="nuevoCliente()" title="Borra el PDF, Realizado y Movimientos cargados, y todo lo calculado de la cartera actual, para analizar otro cliente sin recargar la página. No toca la Tenencia compartida (podés elegir otro cliente del desplegable sin volver a subirla)." style="background:var(--sf);border:1px solid var(--bd);color:var(--tx);">🗑 Nuevo cliente</button>
     <label id="modoAsesorLbl" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;" title="En Operaciones Cerradas, cada ticker aparece agrupado en una sola fila — este modo agrega un desplegable para ver el detalle de cada operación. No se incluye si el reporte es para el cliente.">
       <input type="checkbox" id="modoAsesorChk" style="accent-color:var(--ac);">Modo asesor (detalle desglosable)
     </label>
@@ -1592,6 +1593,45 @@ function clearPDF(){
   document.getElementById('pdfDropLabel').childNodes[0].textContent='📎 Subir PDF';
   PDF_DATA=null; document.getElementById('pdfStatus').textContent='';
   document.getElementById('bPdfStep').classList.remove('ok');
+}
+// Borra el PDF/Realizado/Movimientos cargados y todo lo calculado de la cartera actual, para
+// analizar otro cliente sin recargar la página entera (antes había que hacer eso, o el nombre y
+// los datos del cliente anterior se quedaban pegados). NO toca S.tenBuf/tenRows/tenClients — la
+// Tenencia es un Excel MULTI-cliente compartido (se auto-carga por IndexedDB, ver más abajo), así
+// que conviene dejarla y solo permitir elegir otro cliente del desplegable, no forzar a
+// resubirla. Tampoco toca MEP/precios en vivo (S.mep, S.cable, LIVE_PRICES) ni los precios de
+// transferencia cargados a mano (localStorage) — son datos de referencia, no de un cliente puntual.
+function nuevoCliente(){
+  if(!confirm('¿Borrar el PDF, Realizado, Movimientos y todo lo calculado de la cartera actual? (La Tenencia compartida no se toca — vas a poder elegir otro cliente del desplegable sin volver a subirla)'))return;
+
+  clearPDF();
+  S.realBuf=null;
+  document.getElementById('fReal').value='';
+  document.getElementById('stReal').textContent='Sin cargar';
+  document.getElementById('bReal').classList.remove('ok');
+  S.movBufs=[];
+  document.getElementById('fMov').value='';
+  document.getElementById('stMov').textContent='Sin cargar';
+  document.getElementById('bMov').classList.remove('ok');
+
+  S.positions={}; S.movData=null; S.posData=null;
+  S.closedTrades=null; S.hasPosData=false; S.bolData=null; S.realizadoData=null;
+  S.manualCosts={};
+  S.catFilter='all'; S.activeTab='posicion';
+  S.periodFrom=null; S.periodTo=null;
+  S.comitente='';
+
+  var clientNameEl=document.getElementById('clientName');
+  if(clientNameEl)clientNameEl.value='';
+  var sel=document.getElementById('clientSelect');
+  if(sel)sel.value='';
+
+  var modoAsesorChk=document.getElementById('modoAsesorChk');
+  if(modoAsesorChk)modoAsesorChk.checked=false;
+
+  document.getElementById('btnReport').style.display='none';
+  document.getElementById('out').style.display='none';
+  document.getElementById('subEl').textContent='Cargá los archivos para ver la cartera';
 }
 async function onPdfFile(input){
   var file=input.files&&input.files[0];
