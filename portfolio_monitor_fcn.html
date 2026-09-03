@@ -2892,15 +2892,44 @@ function downloadReport(){
     '<div class="mitem"><div class="mlbl">Posiciones</div><div class="mval">'+Object.keys(pos).length+'</div></div>'+
     '</div></div>'+
 
+    // ── RESUMEN (lo primero que ve el cliente) ──────────────────
+    // A propósito usa el CAPITAL APORTADO real (depósitos + títulos transferidos − retiros) y no
+    // el "capital invertido" de la posición actual — es el número que el cliente entiende de
+    // entrada: "esto puse, esto tengo ahora, esto gané". El detalle de la posición actual (que sí
+    // puede diferir si hubo rotaciones con ganancia reinvertida) va más abajo, después del Detalle
+    // de posiciones, aparte para no mezclar los dos conceptos.
+    (gpReal!==null&&netoAp>0?
+    '<section class="compact"><h2>Resumen</h2><div class="cards">'+
+    '<div class="card"><div class="lbl">Capital aportado</div><div class="val">'+U2(netoAp)+'</div><div class="sub">'+(transferInfoR.detalle.length?'Efectivo + títulos transferidos':'Depósitos − retiros')+'</div></div>'+
+    '<div class="card"><div class="lbl">Valor de cartera hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos'+(cashVR>0?' + efectivo '+U2(cashVR):'')+'</div></div>'+
+    '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
+    '<div class="card"><div class="lbl">Ganancia / Pérdida total</div><div class="val '+(gpReal>=0?'green':'red')+'" style="font-size:20px;">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div><div class="sub" style="font-size:11px;">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
+    '</div>'+
+    (tDep>0||tRet>0||transferInfoR.detalle.length?
+    '<div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:9px;color:#94a3b8;">'+
+    '<span>Depósitos: <strong style="color:#475569;">'+U2(tDep)+'</strong></span>'+
+    (tRet>0?'<span>Retiros: <strong style="color:#475569;">'+U2(tRet)+'</strong></span>':'')+
+    (transferInfoR.detalle.length?'<span>Títulos transferidos (neto): <strong style="color:#475569;">'+U2(capitalTitulosR)+'</strong></span>':'')+
+    '</div>':'')+
+    '<div style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">'+
+    '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:10px;">¿De dónde viene esa ganancia?</div>'+
+    (S.hasPosData&&totalCost>0?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e2e8f0;font-size:10px;"><span>Posición actual (activos en cartera)</span><span class="'+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</span></div>':'')+
+    (closedTrades.length?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e2e8f0;font-size:10px;"><span>Operaciones ya cerradas</span><span class="'+(totPnlR>=0?'green':'red')+'">'+(totPnlR>=0?'+':'')+U2(totPnlR)+(nUnkR>0?' ('+nUnkR+' sin costo de compra)':'')+'</span></div>':'')+
+    (tInc2>0?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e2e8f0;font-size:10px;"><span>Cupones y dividendos cobrados</span><span style="color:#f59e0b;">+'+U2(tInc2)+'</span></div>':'')+
+    '</div>'+
+    '</section>'
+    :
+    // Sin Movimientos cargado no hay forma de saber depósitos/retiros reales — se muestra el
+    // mejor dato disponible (posición actual), aclarando que falta info para el número real.
     '<section class="compact"><h2>Resumen</h2><div class="cards">'+
     '<div class="card"><div class="lbl">Valor de cartera</div><div class="val">'+U2(totalVal)+'</div><div class="sub">Al tipo de cambio MEP</div></div>'+
-    '<div class="card"><div class="lbl">Capital invertido</div><div class="val">'+U2(totalCost)+'</div><div class="sub">Costo de compra de lo que tenés HOY</div></div>'+
-    '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'% · no realizada, solo posición actual</div></div>'+
+    '<div class="card"><div class="lbl">Capital invertido (posición actual)</div><div class="val">'+U2(totalCost)+'</div></div>'+
+    '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'%</div></div>'+
     '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
-    '<div class="card"><div class="lbl">Rendimiento total</div><div class="val '+(rendTotal>=0?'green':'red')+'">'+(rendTotal>=0?'+':'')+N(rendTotal,2)+'%</div><div class="sub">No realizado · no es el rendimiento total de la cuenta</div></div>'+
     '</div>'+
-    '<div style="margin-top:8px;font-size:9px;color:#94a3b8;line-height:1.5;">Estos 5 números son sobre la POSICIÓN ACTUAL únicamente — no incluyen operaciones ya vendidas ni depósitos/retiros/transferencias de la cuenta. Si vendiste algo con ganancia y reinvertiste ese dinero en otro activo, "Capital invertido" sube por esa ganancia reinvertida (ya no es solo lo que depositaste). Para el rendimiento REAL de toda la cuenta, mirá <strong>"Rendimiento real vs. capital aportado"</strong> más abajo.</div>'+
-    '</section>'+
+    '<div style="margin-top:8px;font-size:9px;color:#94a3b8;">Cargá Movimientos para ver el rendimiento real desde que empezó a invertir (incluye depósitos, retiros y operaciones ya cerradas).</div>'+
+    '</section>'
+    )+
 
     '<section class="compact"><h2>Composición y Ganancia / Pérdida por instrumento</h2>'+
     '<div class="charts-row">'+
@@ -2930,32 +2959,27 @@ function downloadReport(){
     '<td class="num"><strong>'+U2(totalVal)+'</strong></td>'+
     '<td class="num '+(gp>=0?'green':'red')+'"><strong>'+(gp>=0?'+':'')+U2(gp)+'</strong></td>'+
     '<td class="num '+(gp>=0?'green':'red')+'"><strong>'+(gpPct>=0?'+':'')+N(gpPct,1)+'%</strong></td></tr>'+
-    '</tbody></table></section>'+
+    '</tbody></table>'+
+    // Comprado vs. valor de hoy de SOLO lo que está en cartera ahora mismo — a propósito separado
+    // del "Resumen" de arriba (que usa capital aportado real), porque si hubo rotaciones con
+    // ganancia reinvertida este número de "capital invertido" puede ser mayor a lo que realmente
+    // se depositó (ver nota en el Resumen).
+    '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed #e2e8f0;">'+
+    '<div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Posición actual: comprado vs. valor de hoy</div>'+
+    '<div class="cards">'+
+    '<div class="card"><div class="lbl">Capital invertido (posición actual)</div><div class="val">'+U2(totalCost)+'</div><div class="sub">Costo de compra de lo que tenés HOY</div></div>'+
+    '<div class="card"><div class="lbl">Valor actual</div><div class="val">'+U2(totalVal)+'</div></div>'+
+    '<div class="card"><div class="lbl">Ganancia / Pérdida (no realizada)</div><div class="val '+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'% · solo posiciones abiertas</div></div>'+
+    '</div></div>'+
+    '</section>'+
 
     '<section class="compact"><h2>Ranking de rendimiento positivo (top 10)</h2>'+
     '<table><thead><tr><th>#</th><th>Ticker</th><th>Instrumento</th>'+
     '<th class="num">Valor actual</th><th class="num">G/P USD</th><th class="num">G/P %</th></tr></thead>'+
     '<tbody>'+topTableRows+'</tbody></table></section>'+
 
-    // ── RENDIMIENTO REAL VS. DEPÓSITOS ──
-    (gpReal!==null&&netoAp>0?
-    '<section class="compact"><h2>Rendimiento real vs. capital aportado</h2>'+
-    '<div class="cards">'+
-    '<div class="card"><div class="lbl">Total en cuenta hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos '+(cashVR>0?'+ efectivo '+U2(cashVR):'')+'</div></div>'+
-    '<div class="card"><div class="lbl">Depósitos realizados</div><div class="val">'+U2(tDep)+'</div></div>'+
-    '<div class="card"><div class="lbl">Retiros realizados</div><div class="val">'+U2(tRet)+'</div></div>'+
-    (transferInfoR.detalle.length?'<div class="card"><div class="lbl">Capital aportado en títulos (neto)</div><div class="val">'+U2(capitalTitulosR)+'</div><div class="sub">'+resumenFuenteTransferencias(transferInfoR.detalle)+'</div></div>':'')+
-    '<div class="card"><div class="lbl">Capital neto aportado</div><div class="val">'+U2(netoAp)+'</div>'+(transferInfoR.detalle.length?'<div class="sub">Efectivo + títulos transferidos</div>':'')+'</div>'+
-    '<div class="card"><div class="lbl">Ganancia real total</div>'+
-    '<div class="val '+(gpReal>=0?'green':'red')+'">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div>'+
-    '<div class="sub">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
-    '</div>'+
-    '<div style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">'+
-    '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:10px;">¿De dónde viene esa ganancia?</div>'+
-    (S.hasPosData&&totalCost>0?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e2e8f0;font-size:10px;"><span>Posición actual (activos en cartera)</span><span class="'+(gp>=0?'green':'red')+'">'+(gp>=0?'+':'')+U2(gp)+'</span></div>':'')+
-    (closedTrades.length?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e2e8f0;font-size:10px;"><span>Operaciones ya cerradas</span><span class="'+(totPnlR>=0?'green':'red')+'">'+(totPnlR>=0?'+':'')+U2(totPnlR)+(nUnkR>0?' ('+nUnkR+' sin costo de compra)':'')+'</span></div>':'')+
-    (tInc2>0?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e2e8f0;font-size:10px;"><span>Cupones y dividendos cobrados</span><span style="color:#f59e0b;">+'+U2(tInc2)+'</span></div>':'')+
-    '</div></section>':'') +
+    // (La sección "Rendimiento real vs. capital aportado" se movió al Resumen, al principio del
+    // reporte — ver arriba, justo después de la portada.)
 
     // ── OPERACIONES CERRADAS ──
     (closedRows?
@@ -2986,7 +3010,7 @@ function downloadReport(){
     // OJO acá: la ventana emergente suele ser mucho más ancha que 210mm, así que el texto se
     // acomoda con MENOS saltos de línea al medir en pantalla que al imprimir (constreñido a
     // 210mm) — eso hacía que el alto calculado quedara CORTO, y contenido del final (ej.
-    // "Rendimiento real vs. capital aportado") se corriera a una segunda hoja invisible en vez
+    // "Operaciones cerradas") se corriera a una segunda hoja invisible en vez
     // de desaparecer literalmente, pero el efecto para quien mira solo la primera hoja es el
     // mismo: contenido que "no está". Por eso se fuerza el mismo ancho de impresión (210mm) ANTES
     // de medir, y se restaura después para que la vista previa en pantalla siga cómoda.
