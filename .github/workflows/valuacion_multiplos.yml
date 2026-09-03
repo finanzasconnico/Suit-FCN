@@ -1,18 +1,13 @@
 name: Actualizar Valuacion por Multiplos
 
-# Corre 1 vez por dia (05:30 UTC = 02:30 ART) y tambien a mano desde la pestaña "Actions"
-# (boton "Run workflow"). Es diario -y no semanal- porque el free tier de FMP topea en 250
-# requests/dia: con ~319 tickers el primer barrido tarda ~3 corridas. El script cachea el
-# avance en .github/scripts/.cache_valuacion_multiplos.json (se commitea) y retoma solo. Una
-# vez completo, cada corrida diaria solo refresca lo que tenga mas de 6 dias.
-#
-# Con un key de FMP pago se puede bajar la frecuencia (cron semanal) y subir MAX_FMP_CALLS
-# dentro del script.
-#
-# Requiere el secret FMP_API_KEY (Settings -> Secrets and variables -> Actions).
+# Corre 1 vez por semana (lunes 06:30 UTC = 03:30 ART) y a mano desde la pestaña
+# "Actions" (boton "Run workflow"). Fuente unica: Yahoo Finance via yfinance —
+# gratis, sin API key, sin limite diario. El script cachea el avance en
+# .github/scripts/.cache_valuacion_multiplos.json (se commitea) y solo refresca
+# los tickers con mas de 6 dias.
 on:
   schedule:
-    - cron: '30 5 * * *'
+    - cron: '30 6 * * 1'
   workflow_dispatch: {}
 
 permissions:
@@ -35,11 +30,9 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependencias
-        run: pip install requests yfinance pandas openpyxl --upgrade
+        run: pip install yfinance pandas openpyxl --upgrade
 
       - name: Generar valuacion_multiplos.xlsx
-        env:
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
         run: python .github/scripts/valuacion_multiplos.py
 
       - name: Commitear y pushear si cambio

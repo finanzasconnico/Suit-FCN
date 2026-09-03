@@ -157,7 +157,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     <div class="empty-sub">
       Subí <code>valuacion_multiplos.xlsx</code> desde
       <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;"><strong>FCN Suite → Archivos</strong></a>,
-      o esperá a que lo genere el bot semanal (GitHub Actions).
+      o esperá a que lo genere el bot semanal (GitHub Actions, datos de Yahoo Finance).
     </div>
   </div>
 
@@ -236,7 +236,7 @@ const MULT = {
 };
 const MULT_ORDER = ['PE','PS','EVEBITDA','PFCF','PB'];
 
-// Strings de sector tal como los devuelve FMP (estilo Yahoo/GICS).
+// Strings de sector tal como los devuelve Yahoo Finance (estilo GICS).
 const SECTOR_MULTIPLOS = {
   'Financial Services':      ['PB','PE'],
   'Technology':              ['PS','EVEBITDA','PFCF','PE'],
@@ -585,7 +585,7 @@ function render(){
     note='Medias móviles = promedio del cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo). Verde: precio por encima de la media · rojo: por debajo.'
       + (faltan>0?` — ${faltan} todavía sin calcular.`:'');
   }else if(faltan>0){
-    note=`⏳ ${faltan} de ${rows.length} todavía sin múltiplos — el bot de FMP los completa en las próximas corridas diarias. `+FOOT_BASE;
+    note=`⏳ ${faltan} de ${rows.length} sin múltiplos (ETFs, o papeles 100% argentinos sin ADR, que ninguna fuente gratis tiene). `+FOOT_BASE;
   }
   const fn=document.getElementById('foot-note'); if(fn) fn.innerHTML=note;
 }
