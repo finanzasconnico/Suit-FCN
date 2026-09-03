@@ -1848,19 +1848,46 @@ function renderHero(positions,movData,tenData){
   var rentTotal=hasCost?(gp+tI-gastosNeto):null;
   var rentPctTotal=hasCost&&totalCost>0?rentTotal/totalCost*100:null;
 
+  // ── Capital aportado real (depósitos + títulos transferidos − retiros) — mismo criterio que
+  // el reporte descargable: esto es lo primero que tiene que ver el asesor, no el costo de la
+  // posición actual (que puede ser MUY distinto si hubo rotaciones con ganancia reinvertida —
+  // ver conversación sobre Fernando Cura: -2% "no realizado" vs +16,77% real).
+  var tD=movData.deposits.reduce(function(s,x){return s+x.usd;},0);
+  var tW=movData.withdrawals.reduce(function(s,x){return s+x.usd;},0);
+  var transferInfo=estimarCapitalTransferidoUSD(movData.transfers,positions,loadManualTransferPrices());
+  var netoAp=(tD-tW)+transferInfo.total;
+  var hasAporte=netoAp>0;
+  var gpReal=hasAporte?totalVal-netoAp:null;
+  var gpRealPct=hasAporte?gpReal/netoAp*100:null;
+
   var NA='<span style="color:var(--tx2);font-size:0.9em;">—</span>';
   var NAsub='Cargá Realizado (Paso 2) para ver G/P';
+  var NAsubMov='Cargá Movimientos (Paso 3) para ver el capital aportado real';
 
   var h='';
-  // Tarjeta 1: Valor total (destacada)
+  // ── Principal: lo mismo que ve el cliente en el reporte ──────────────────────
   h+='<div class="hcard hl">';
-  h+='<div class="hlbl">Valor de la cartera</div>';
+  h+='<div class="hlbl">Capital aportado</div>';
+  h+='<div class="hval ca">'+(hasAporte?U(netoAp):NA)+'</div>';
+  h+='<div class="hsub">'+(hasAporte?(transferInfo.detalle.length?'Efectivo + títulos transferidos':'Depósitos − retiros'):NAsubMov)+'</div></div>';
+
+  h+='<div class="hcard hl">';
+  h+='<div class="hlbl">Valor de cartera hoy</div>';
   h+='<div class="hval cw">'+U(totalVal)+'</div>';
-  // Subtítulo valor: activos + efectivo si hay
   var cashVal=PDF_DATA&&PDF_DATA.cash>0?PDF_DATA.cash:0;
-  var cashSub=cashVal>0?' <span style="color:var(--mu);font-size:10px;">+ efectivo '+U(cashVal)+'</span>':'';
-  h+='<div class="hsub">Activos al precio de mercado</div></div>';
-  // Tarjeta liquidez: efectivo detallado
+  h+='<div class="hsub">Activos'+(cashVal>0?' + efectivo '+U(cashVal):'')+'</div></div>';
+
+  h+='<div class="hcard">';
+  h+='<div class="hlbl">Renta cobrada</div>';
+  h+='<div class="hval" style="color:#f59e0b;">'+U(tI)+'</div>';
+  h+='<div class="hsub">Cupones de bonos y dividendos de acciones</div></div>';
+
+  h+='<div class="hcard hl">';
+  h+='<div class="hlbl">Ganancia / Pérdida total</div>';
+  h+='<div class="hval '+(hasAporte?gc(gpReal):'')+'" style="font-size:23px;">'+(hasAporte?(gpReal>=0?'+':'')+U(gpReal):NA)+'</div>';
+  h+='<div class="hsub">'+(hasAporte?pct(gpRealPct,2)+' sobre lo aportado':NAsubMov)+'</div></div>';
+
+  // ── Secundario: posición actual (referencia del asesor, comprado vs. valor de hoy) ─────────
   if(cashVal>0){
     var pd2=PDF_DATA||{};
     var cashPesos=pd2.cashARS||0; // ARS en USD
@@ -1875,27 +1902,14 @@ function renderHero(positions,movData,tenData){
     if(cashCable>0)liqLines.push('Cable '+U(cashCable));
     h+='<div class="hsub">'+liqLines.join(' · ')+'</div></div>';
   }
-  // Tarjeta 2: Capital invertido
   h+='<div class="hcard">';
-  h+='<div class="hlbl">Capital invertido</div>';
+  h+='<div class="hlbl">Capital invertido (posición actual)</div>';
   h+='<div class="hval ca">'+(hasCost?U(totalCost):NA)+'</div>';
   h+='<div class="hsub">'+(hasCost?'Costo de compra de los activos actuales':NAsub)+'</div></div>';
-  // Tarjeta 3: Ganancia o pérdida sobre activos
   h+='<div class="hcard">';
-  h+='<div class="hlbl">Ganancia / Pérdida</div>';
+  h+='<div class="hlbl">G/P posición actual</div>';
   h+='<div class="hval '+(hasCost?gc(gp):'')+'">'+( hasCost?U(gp):NA)+'</div>';
   h+='<div class="hsub">'+(hasCost?pct(gpPct,2)+' · no realizada, solo posición actual':NAsub)+'</div></div>';
-  // Tarjeta 4: Renta cobrada
-  h+='<div class="hcard">';
-  h+='<div class="hlbl">Renta cobrada</div>';
-  h+='<div class="hval cg">'+U(tI)+'</div>';
-  h+='<div class="hsub">Cupones de bonos y dividendos de acciones</div></div>';
-  // Tarjeta 5: Rendimiento total
-  var gastosLabel2=tG>0?' − gastos '+U(gastosNeto):'';
-  h+='<div class="hcard">';
-  h+='<div class="hlbl">Rendimiento total</div>';
-  h+='<div class="hval '+(hasCost?gc(rentTotal):'')+'">'+( hasCost?(rentTotal>=0?'+':'')+U(rentTotal):NA)+'</div>';
-  h+='<div class="hsub">'+(hasCost?pct(rentPctTotal,2)+' (no realizado) · G/P + renta'+gastosLabel2:NAsub)+'</div></div>';
   document.getElementById('heroEl').innerHTML=h;
 }
 
@@ -2873,7 +2887,6 @@ function downloadReport(){
     '.card.c-blue{background:#eff6ff;border-color:#bfdbfe;}.card.c-blue .lbl{color:#3b82f6;}.card.c-blue .val{color:#1e40af;}'+
     '.card.c-green{background:#f0fdf4;border-color:#bbf7d0;}.card.c-green .lbl{color:#16a34a;}.card.c-green .val{color:#15803d;}'+
     '.card.c-red{background:#fef2f2;border-color:#fecaca;}.card.c-red .lbl{color:#dc2626;}.card.c-red .val{color:#b91c1c;}'+
-    '.card.c-amber{background:#fffbeb;border-color:#fde68a;}.card.c-amber .lbl{color:#d97706;}.card.c-amber .val{color:#b45309;}'+
     '.card.hero{flex:1.3;}'+ // la tarjeta de Ganancia/Pérdida total, un poco más ancha — es LA cifra
     '.card.hero .val{font-size:22px;}'+
     '.charts-row{display:flex;gap:24px;align-items:flex-start;}'+
@@ -2920,7 +2933,7 @@ function downloadReport(){
     '<section class="compact"><h2>Resumen</h2><div class="cards">'+
     '<div class="card c-blue"><div class="lbl">Capital aportado</div><div class="val">'+U2(netoAp)+'</div><div class="sub">'+(transferInfoR.detalle.length?'Efectivo + títulos transferidos':'Depósitos − retiros')+'</div></div>'+
     '<div class="card c-blue"><div class="lbl">Valor de cartera hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos'+(cashVR>0?' + efectivo '+U2(cashVR):'')+'</div></div>'+
-    '<div class="card c-amber"><div class="lbl">Renta cobrada</div><div class="val">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
+    '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
     '<div class="card hero '+(gpReal>=0?'c-green':'c-red')+'"><div class="lbl">Ganancia / Pérdida total</div><div class="val">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div><div class="sub" style="font-size:11px;">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
     '</div>'+
     (tDep>0||tRet>0||transferInfoR.detalle.length?
@@ -2943,7 +2956,7 @@ function downloadReport(){
     '<div class="card c-blue"><div class="lbl">Valor de cartera</div><div class="val">'+U2(totalVal)+'</div><div class="sub">Al tipo de cambio MEP</div></div>'+
     '<div class="card c-blue"><div class="lbl">Capital invertido (posición actual)</div><div class="val">'+U2(totalCost)+'</div></div>'+
     '<div class="card hero '+(gp>=0?'c-green':'c-red')+'"><div class="lbl">Ganancia / Pérdida</div><div class="val">'+(gp>=0?'+':'')+U2(gp)+'</div><div class="sub">'+(gpPct>=0?'+':'')+N(gpPct,2)+'%</div></div>'+
-    '<div class="card c-amber"><div class="lbl">Renta cobrada</div><div class="val">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
+    '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
     '</div>'+
     '<div style="margin-top:8px;font-size:9px;color:#94a3b8;">Cargá Movimientos para ver el rendimiento real desde que empezó a invertir (incluye depósitos, retiros y operaciones ya cerradas).</div>'+
     '</section>'
