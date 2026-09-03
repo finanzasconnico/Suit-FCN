@@ -855,7 +855,7 @@ function parseMovimientos(bufs){
     var moneda=(r['Moneda']||'').trim();
     var importe=pN(r['Importe'])||0;
     var mep=mepAt(fecha);
-    var isARS=moneda==='Pesos';
+    var isARS=/peso/i.test(moneda)||moneda==='$'; // tolerante a mayúsculas/variantes (antes exigía 'Pesos' exacto)
     function toUSD(a){return isARS?a/mep:a;}
 
     if(tipo==='Transferencia Títulos'){
@@ -957,6 +957,8 @@ function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
   Object.keys(grupos).forEach(function(key){
     var g=grupos[key];
     var usd,fuente;
+    var pos=positions&&positions[g.ticker];
+    var precioMercado=(pos&&pos.totalQty>0)?(getVal(pos)/pos.totalQty):0;
     var manual=manualPrices&&manualPrices[key];
     if(manual&&manual.precio>0){
       usd=manual.precio*g.cant; fuente='manual';
@@ -965,9 +967,23 @@ function estimarCapitalTransferidoUSD(transfers,positions,manualPrices){
     } else if(g.precioFile>0){
       usd=g.precioFile*g.cant; fuente='archivo';
     } else {
-      var pos=positions&&positions[g.ticker];
-      var precioUnit=(pos&&pos.totalQty>0)?(getVal(pos)/pos.totalQty):0;
-      usd=precioUnit*g.cant; fuente='estimado';
+      usd=precioMercado*g.cant; fuente='estimado';
+    }
+    // Salvaguarda: un precio de archivo o cargado a mano que resulta muy por encima del valor de
+    // mercado actual por unidad es casi siempre un precio en pesos que no se convirtió (p.ej. la
+    // fila no tenía "Pesos" exacto en la columna Moneda). Si dividiendo por el MEP de esa fecha el
+    // resultado queda en un rango razonable respecto al precio de mercado, se corrige solo en vez
+    // de mostrar un capital aportado absurdo.
+    if((fuente==='archivo'||fuente==='manual')&&precioMercado>0&&g.cant>0){
+      var precioUnit=usd/g.cant;
+      if(precioUnit>precioMercado*5){
+        var mepT=mepAt(g.fecha);
+        var corregido=precioUnit/mepT;
+        if(corregido>=precioMercado*0.2&&corregido<=precioMercado*5){
+          usd=corregido*g.cant;
+          fuente=fuente+'-corregido';
+        }
+      }
     }
     total+=usd;
     detalle.push({key:key,ticker:g.ticker,fecha:g.fecha,cant:g.cant,usd:usd,fuente:fuente,sinPrecio:usd<=0});
