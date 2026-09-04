@@ -250,6 +250,15 @@ details.cond-details summary:hover{color:#fff;}
 .lic-draft-text:focus{border-color:var(--balanz);}
 .lic-draft-actions{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;}
 .lic-draft-actions .btn{padding:6px 12px;font-size:10.5px;width:auto;}
+.lic-nueva-on-card{background:rgba(219,160,60,.06);border:1px solid rgba(219,160,60,.3);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;}
+.lic-nueva-on-tk{font-family:'Spectral',serif;font-size:15px;color:#fff;margin-bottom:8px;}
+.lic-nueva-on-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.lic-nueva-on-chips .chip{font-size:10.5px;}
+.lic-disp-filtros{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.lic-disp-filtros .field{margin-bottom:0;min-width:160px;flex:1;}
+.lic-cliente-row td{padding:9px 10px;border-bottom:1px solid var(--border);}
+.lic-cliente-row:hover td{background:rgba(255,255,255,.03);}
+.lic-sub-row td{padding:6px 10px 6px 4px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--cream-dim);background:rgba(255,255,255,.015);}
 
 .samemoney-box{background:rgba(255,255,255,.03);border-left:3px solid var(--series-rotar);border-radius:0 var(--radius) var(--radius) 0;padding:12px 16px;font-size:12px;line-height:1.65;color:var(--cream);margin-bottom:18px;}
 .samemoney-box b{color:#fff;}
@@ -338,7 +347,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       </div>
       <div class="field-row">
         <div class="field"><label>Pagos por año</label>
-          <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option></select>
+          <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option><option value="12">12 (mensual)</option></select>
         </div>
         <div class="field"><label>Amortización</label>
           <select id="lic-amort"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
@@ -353,7 +362,10 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <div class="lic-rule-sub">Reglas del filtro (editables)</div>
       <div class="field-row">
         <div class="field"><label>Ventaja mínima de TIR para sugerir (p.p.)</label><input type="number" step="0.1" id="lic-ventaja-min" value="0.5"></div>
-        <div class="field"><label>Notches de calificación tolerados</label><input type="number" step="1" id="lic-calnotch" value="1"></div>
+        <div class="field">
+          <label>Notches de calificación tolerados <span style="cursor:help;opacity:.7;" title="Cuánto puede diferir la calificación del bono nuevo respecto al que el cliente ya tiene, medido en 'escalones' de la escala AAA · AA+ · AA · AA- · A+ · A · A- · BBB+ · BBB · ... Con 1 (el default), si el cliente tiene un bono AA+ se le puede ofrecer algo entre AAA y AA — un escalón para arriba o para abajo. Con 0 solo se ofrece exactamente la misma calificación. Subilo si querés ser más permisivo.">ⓘ</span></label>
+          <input type="number" step="1" id="lic-calnotch" value="1">
+        </div>
       </div>
       <div class="field-row">
         <div class="field"><label>Días mínimos de tenencia</label><input type="number" step="1" id="lic-dias-min" value="90"></div>
@@ -1638,6 +1650,15 @@ function buscarCandidatosLicitacion(){
   var laminaMin = num('lic-lamina-min',null); // null = no ofrecer por liquidez, solo por rotación
   var nuevaRank = calificacionRank(nuevaON.calif);
 
+  // TIR real de la ON nueva a su propio vencimiento — se calcula una sola vez, limpia, para
+  // mostrar en un cartel aparte (pedido explícito: "a veces es difícil calcular la TIR" a ojo).
+  var aniosNueva = yearFrac(hoy, nuevaON.fechaVenc);
+  var nuevaONInfo = aniosNueva>0 ? pctRetornoAHorizonte(Object.assign({}, nuevaON, {nominales:100}), hoy, comisionPct, aniosNueva) : null;
+  nuevaON.tirSolved = nuevaONInfo ? nuevaONInfo.tir : nuevaON.tir;
+
+  licitacionExcluidos = {}; // nueva búsqueda: se limpian las exclusiones manuales de la corrida anterior
+  licDispVentajaMax = null; licDispDiasMin = null; // y los filtros de pantalla de la corrida anterior
+
   var porCliente = {};
   var bondCache = {}; // ticker del cliente -> bond base (se calcula 1 sola vez aunque varios clientes tengan el mismo ticker)
   var huboTickersSinDatos = false;
@@ -1700,46 +1721,182 @@ function buscarCandidatosLicitacion(){
   renderResultadosLicitacion();
 }
 
+// Exclusiones manuales ("✕ Quitar") — clave "cliente||tickerActual" (o "cliente||liquidez") —
+// se limpian en cada nueva búsqueda (ver buscarCandidatosLicitacion).
+var licitacionExcluidos = {};
+function claveCandidatoLic(cliente, c){ return cliente+'||'+(c.tipo==='liquidez'?'liquidez':c.tickerActual); }
+
+// Filtros de PANTALLA — estado propio en JS (NO se lee del DOM): renderResultadosLicitacion()
+// regenera el HTML de esos inputs en cada llamada (incluida la que dispara el propio oninput de
+// estos campos), así que si se leyera el valor directo del DOM se perdía apenas se volvía a
+// renderizar — el campo se veía "vaciarse solo" al tipear. Guardando el valor acá y
+// reinyectándolo como value="" al regenerar el HTML, se mantiene estable.
+var licDispVentajaMax = null;
+var licDispDiasMin = null;
+function onFiltroDisplayLicitacionChange(){
+  var vMax = parseFloat(document.getElementById('lic-disp-ventaja-max').value);
+  var dMin = parseFloat(document.getElementById('lic-disp-dias-min').value);
+  licDispVentajaMax = isNaN(vMax) ? null : vMax;
+  licDispDiasMin = isNaN(dMin) ? null : dMin;
+  renderResultadosLicitacion();
+}
+
+// Aplica las exclusiones manuales + los filtros de PANTALLA (ventaja máx, días mín — además de
+// los que ya se usaron para la búsqueda) sobre licitacionResultados.porCliente, sin tener que
+// volver a buscar. Devuelve el mismo shape {cliente:[candidatos]} pero ya filtrado — tanto la
+// tabla como "Generar borradores" usan ESTO, nunca el resultado crudo, para que lo que se ve sea
+// exactamente lo que se manda.
+function candidatosVisiblesLicitacion(){
+  if(!licitacionResultados) return {};
+  var ventajaMax = licDispVentajaMax;
+  var diasMinDisplay = licDispDiasMin;
+  var out = {};
+  Object.keys(licitacionResultados.porCliente).forEach(function(cliente){
+    var filtrados = licitacionResultados.porCliente[cliente].filter(function(c){
+      if(licitacionExcluidos[claveCandidatoLic(cliente,c)]) return false;
+      if(c.tipo==='rotacion'){
+        if(ventajaMax!=null && c.ventajaPuntos>ventajaMax) return false;
+        if(diasMinDisplay!=null && (c.dias==null || c.dias<diasMinDisplay)) return false;
+      }
+      return true;
+    });
+    if(filtrados.length) out[cliente] = filtrados;
+  });
+  return out;
+}
+
+function quitarCandidatoLicitacion(cliente, tickerActual){
+  var items = licitacionResultados.porCliente[cliente]||[];
+  var c = items.filter(function(x){ return x.tipo==='rotacion' && x.tickerActual===tickerActual; })[0];
+  if(c) licitacionExcluidos[claveCandidatoLic(cliente,c)] = true;
+  renderResultadosLicitacion();
+}
+function quitarLiquidezLicitacion(cliente){
+  licitacionExcluidos[cliente+'||liquidez'] = true;
+  renderResultadosLicitacion();
+}
+function quitarClienteLicitacion(cliente){
+  (licitacionResultados.porCliente[cliente]||[]).forEach(function(c){ licitacionExcluidos[claveCandidatoLic(cliente,c)] = true; });
+  renderResultadosLicitacion();
+}
+
+function toggleLicCliente(idx){
+  var row = document.querySelectorAll('.lic-sub-row[data-grp="'+idx+'"]');
+  var open = row.length && row[0].style.display!=='none';
+  row.forEach(function(r){ r.style.display = open?'none':'table-row'; });
+  var arrow = document.getElementById('lic-arrow-'+idx);
+  if(arrow) arrow.textContent = open?'▸':'▾';
+}
+
+// "Ver detalle exacto": precarga el comparador individual de arriba con este cliente (nominal
+// real, no el normalizado de 100 que usa el triage) y la ON nueva, para chequear el número
+// exacto en USD antes de mandar algo — respuesta directa a "¿está chequeada la data? ¿cómo la
+// puedo chequear?".
+function verDetalleLicitacion(cliente, tickerActual){
+  if(!licitacionResultados) return;
+  var nuevaON = licitacionResultados.nuevaON;
+  seleccionarClienteActivo(cliente);
+  seleccionarBono('venta', tickerActual);
+  var pos = (TENENCIA_POR_CLIENTE[cliente]||[]).filter(function(p){ return p.ticker===tickerActual; })[0];
+  if(pos && pos.nominales) document.getElementById('v-nominales').value = Math.round(pos.nominales);
+
+  cargarManual('compra'); // la ON nueva no está en BOND_DB — se carga a mano, mismo mecanismo que ya existe
+  document.getElementById('c-ticker').value = nuevaON.ticker;
+  document.getElementById('c-emisor').value = nuevaON.emisor||'';
+  document.getElementById('c-cupon').value = nuevaON.cuponAnual;
+  document.getElementById('c-freq').value = String(nuevaON.freq);
+  document.getElementById('c-emision').value = isoDate(nuevaON.fechaEmision);
+  document.getElementById('c-venc').value = isoDate(nuevaON.fechaVenc);
+  setAmortType('compra', nuevaON.amortType); // ya llama a onCondChange('compra') internamente
+  document.getElementById('c-calif').value = nuevaON.calif||'';
+  document.getElementById('c-precio').value = nuevaON.precio;
+  onCondChange('venta'); onCondChange('compra');
+
+  var grid = document.querySelector('.legs-grid');
+  if(grid) grid.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 function renderResultadosLicitacion(){
   var box = document.getElementById('lic-resultados');
   if(!licitacionResultados){ box.innerHTML=''; return; }
-  var clientes = Object.keys(licitacionResultados.porCliente).sort(function(a,b){ return a.localeCompare(b,'es'); });
+  var nuevaON = licitacionResultados.nuevaON;
+
+  // Cartel de la ON nueva — la tasa/TIR ya calculada, para no tener que estimarla a ojo.
+  var html = '<div class="lic-nueva-on-card">'+
+    '<div class="lic-nueva-on-tk">'+nuevaON.ticker+(nuevaON.emisor?' <span style="opacity:.65;font-weight:400;">· '+nuevaON.emisor+'</span>':'')+'</div>'+
+    '<div class="lic-nueva-on-chips">'+
+      '<span class="chip">Cupón <b>'+fmtNum(nuevaON.cuponAnual,2)+'%</b></span>'+
+      '<span class="chip">TIR calculada <b>'+fmtNum(nuevaON.tirSolved,2)+'%</b></span>'+
+      '<span class="chip">Vence <b>'+fmtDateAR(nuevaON.fechaVenc)+'</b></span>'+
+      '<span class="chip">Precio <b>'+fmtNum(nuevaON.precio,4)+'</b></span>'+
+      (nuevaON.calif?'<span class="chip">'+nuevaON.calif+'</span>':'')+
+    '</div></div>';
+
+  // Filtros de PANTALLA — no vuelven a buscar, solo recortan/reordenan lo ya calculado.
+  html += '<div class="lic-disp-filtros">'+
+    // onchange (no oninput): estos campos viven DENTRO del contenedor que se reescribe entero en
+    // cada render — con oninput, cada tecla dispara un re-render que destruye y recrea el input,
+    // y se pierde el foco a mitad de escribir un número de 2+ dígitos.
+    '<div class="field"><label>Ventaja máxima a mostrar (p.p.)</label><input type="number" step="0.1" id="lic-disp-ventaja-max" placeholder="Sin tope" value="'+(licDispVentajaMax!=null?licDispVentajaMax:'')+'" onchange="onFiltroDisplayLicitacionChange()"></div>'+
+    '<div class="field"><label>Días mínimos a mostrar</label><input type="number" step="1" id="lic-disp-dias-min" placeholder="Sin mínimo" value="'+(licDispDiasMin!=null?licDispDiasMin:'')+'" onchange="onFiltroDisplayLicitacionChange()"></div>'+
+  '</div>';
+
+  var porClienteVisible = candidatosVisiblesLicitacion();
+  var clientes = Object.keys(porClienteVisible).sort(function(a,b){ return a.localeCompare(b,'es'); });
   if(!clientes.length){
-    box.innerHTML = '<div class="rot-comp-empty">No encontré candidatos con estos filtros — probá bajar la ventaja mínima de TIR o ampliar los notches de calificación tolerados.</div>'
+    html += '<div class="rot-comp-empty">No hay candidatos para mostrar con estos filtros/exclusiones — probá bajar la ventaja mínima de búsqueda, ampliar los notches de calificación, o revisar qué sacaste con "✕ Quitar".</div>'
       + (licitacionResultados.huboTickersSinDatos ? '<div class="rot-comp-empty">⚠️ Algunos tickers en cartera no están en el Monitor — no se pudieron evaluar.</div>' : '');
+    box.innerHTML = html;
     return;
   }
-  var todosLosItems = [].concat.apply([], clientes.map(function(c){ return licitacionResultados.porCliente[c]; }));
+  var todosLosItems = [].concat.apply([], clientes.map(function(c){ return porClienteVisible[c]; }));
   var totalRot = todosLosItems.filter(function(c){ return c.tipo==='rotacion'; }).length;
   var totalLiq = todosLosItems.filter(function(c){ return c.tipo==='liquidez'; }).length;
   var resumenPartes = [];
   if(totalRot) resumenPartes.push(totalRot+' rotación(es) sugerida(s)');
   if(totalLiq) resumenPartes.push(totalLiq+' con liquidez disponible');
-  var html = '<div class="lic-summary">'+clientes.length+' cliente(s) · '+resumenPartes.join(' · ')
+  html += '<div class="lic-summary">'+clientes.length+' cliente(s) · '+resumenPartes.join(' · ')
     + (licitacionResultados.huboTickersSinDatos ? ' · <span class="lic-warn-icon">⚠️ algunos tickers en cartera no estaban en el Monitor</span>' : '')
     + '</div>';
-  html += '<div style="overflow-x:auto;"><table class="compare-table"><thead><tr><th>Cliente</th><th>Situación</th><th>TIR act.</th><th>TIR nueva</th><th>Ventaja</th><th>Días tenencia</th><th>Ganancia actual</th></tr></thead><tbody>';
-  clientes.forEach(function(cliente){
-    var rows = licitacionResultados.porCliente[cliente];
-    rows.forEach(function(c, idx){
-      if(c.tipo==='liquidez'){
-        html += '<tr>'+
-          '<td>'+(idx===0?('<b>'+cliente+'</b>'):'')+'</td>'+
-          '<td>💰 Liquidez USD '+fmtNum(c.montoUSD,0)+' sin invertir</td>'+
-          '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'+
-        '</tr>';
-        return;
-      }
-      html += '<tr>'+
-        '<td>'+(idx===0?('<b>'+cliente+'</b>'):'')+'</td>'+
-        '<td>'+c.tickerActual+' <span style="opacity:.6;">'+(c.calif||'—')+'</span></td>'+
-        '<td>'+fmtNum(c.tirActual,2)+'%</td>'+
-        '<td>'+fmtNum(c.tirNueva,2)+'%</td>'+
+
+  // Una fila por CLIENTE (colapsada) — clic para desplegar el detalle de sus ONs/liquidez. Antes
+  // era una fila por cada bono, y con muchos clientes quedaba una lista interminable.
+  html += '<div style="overflow-x:auto;"><table class="compare-table"><tbody>';
+  clientes.forEach(function(cliente, idx){
+    var rows = porClienteVisible[cliente];
+    var rot = rows.filter(function(c){ return c.tipo==='rotacion'; });
+    var mejorVentaja = rot.length ? Math.max.apply(null, rot.map(function(c){ return c.ventajaPuntos; })) : null;
+    var liq = rows.filter(function(c){ return c.tipo==='liquidez'; })[0];
+    var resumenCliente = [];
+    if(rot.length) resumenCliente.push(rot.length+' ON'+(rot.length>1?'s':'')+' para rotar');
+    if(liq) resumenCliente.push('💰 liquidez USD '+fmtNum(liq.montoUSD,0));
+    html += '<tr class="lic-cliente-row" onclick="toggleLicCliente('+idx+')" style="cursor:pointer;">'+
+      '<td style="width:18px;"><span id="lic-arrow-'+idx+'">▸</span></td>'+
+      '<td><b>'+cliente+'</b></td>'+
+      '<td>'+resumenCliente.join(' · ')+'</td>'+
+      '<td class="mejor">'+(mejorVentaja!=null?'+'+fmtNum(mejorVentaja,2)+' p.p. mejor':'—')+'</td>'+
+      '<td style="text-align:right;"><button class="btn btn-outline" style="width:auto;padding:4px 10px;font-size:10px;" onclick="event.stopPropagation();quitarClienteLicitacion(\''+cliente.replace(/'/g,"\\'")+'\')">✕ Quitar cliente</button></td>'+
+    '</tr>';
+    rot.forEach(function(c){
+      html += '<tr class="lic-sub-row" data-grp="'+idx+'" style="display:none;font-size:11px;">'+
+        '<td></td>'+
+        '<td colspan="2">'+c.tickerActual+' <span style="opacity:.6;">'+(c.calif||'—')+'</span> · TIR '+fmtNum(c.tirActual,2)+'% → '+fmtNum(c.tirNueva,2)+'%'+
+          ' · '+(c.dias!=null?Math.round(c.dias)+' d':'—')+(c.cumpleDias?'':' <span class="lic-warn-icon" title="No llega al mínimo de días — pasó por la excepción de ganancia">⚠️</span>')+
+          ' · gan. '+(c.gananciaPct!=null?(c.gananciaPct>=0?'+':'')+fmtNum(c.gananciaPct,1)+'%':'—')+(c.cumpleOverride&&!c.cumpleDias?' <span title="Entra por la excepción de ganancia">✓</span>':'')+
+        '</td>'+
         '<td class="mejor">+'+fmtNum(c.ventajaPuntos,2)+' p.p.</td>'+
-        '<td>'+(c.dias!=null?Math.round(c.dias)+' d':'—')+(c.cumpleDias?'':' <span class="lic-warn-icon" title="No llega al mínimo de días — pasó por la excepción de ganancia">⚠️</span>')+'</td>'+
-        '<td>'+(c.gananciaPct!=null?(c.gananciaPct>=0?'+':'')+fmtNum(c.gananciaPct,1)+'%':'—')+(c.cumpleOverride&&!c.cumpleDias?' <span title="Entra por la excepción de ganancia">✓</span>':'')+'</td>'+
+        '<td style="text-align:right;white-space:nowrap;">'+
+          '<button class="btn btn-outline" style="width:auto;padding:3px 8px;font-size:10px;" onclick="verDetalleLicitacion(\''+cliente.replace(/'/g,"\\'")+'\',\''+c.tickerActual+'\')">🔍 Ver detalle</button> '+
+          '<button class="btn btn-outline" style="width:auto;padding:3px 8px;font-size:10px;" onclick="quitarCandidatoLicitacion(\''+cliente.replace(/'/g,"\\'")+'\',\''+c.tickerActual+'\')">✕</button>'+
+        '</td>'+
       '</tr>';
     });
+    if(liq){
+      html += '<tr class="lic-sub-row" data-grp="'+idx+'" style="display:none;font-size:11px;">'+
+        '<td></td><td colspan="2">💰 Liquidez USD '+fmtNum(liq.montoUSD,0)+' sin invertir</td><td>—</td>'+
+        '<td style="text-align:right;"><button class="btn btn-outline" style="width:auto;padding:3px 8px;font-size:10px;" onclick="quitarLiquidezLicitacion(\''+cliente.replace(/'/g,"\\'")+'\')">✕</button></td>'+
+      '</tr>';
+    }
   });
   html += '</tbody></table></div>';
   html += '<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="abrirBorradoresLicitacion()">✉ Generar borradores ('+clientes.length+' cliente(s))</button>';
@@ -1780,10 +1937,13 @@ function construirMensajeLicitacionCliente(cliente, candidatos, nuevaON){
 
 function abrirBorradoresLicitacion(){
   if(!licitacionResultados) return;
-  var clientes = Object.keys(licitacionResultados.porCliente).sort(function(a,b){ return a.localeCompare(b,'es'); });
+  // Misma lista que se ve en la tabla (respeta filtros de pantalla + "✕ Quitar") — lo que no se
+  // ve, no se manda.
+  var porClienteVisible = candidatosVisiblesLicitacion();
+  var clientes = Object.keys(porClienteVisible).sort(function(a,b){ return a.localeCompare(b,'es'); });
   var nuevaON = licitacionResultados.nuevaON;
   var html = clientes.map(function(cliente, idx){
-    var candidatos = licitacionResultados.porCliente[cliente];
+    var candidatos = porClienteVisible[cliente];
     var comitente = COMITENTE_POR_CLIENTE[cliente];
     var stock = comitente ? stockMap[comitente] : null;
     var tel = stock ? stock.tel : null;
