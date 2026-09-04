@@ -59,9 +59,19 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Agrupar las ~2000 filas crudas por stem de 4 chars -> { mep, cable, pesos }
+  // Agrupar las ~2000 filas crudas por stem de 4 chars -> { mep, cable, pesos, _liq }
   // Cada símbolo trae 2 filas (settlementType 1 y 2): se suma el volumen y se
   // toma el precio de referencia de la fila con tradeHour más reciente.
+  //
+  // _liq = LIQUIDEZ DEL INSTRUMENTO, agregada across TODAS las puntas (pesos,
+  // MEP, cable, 48hs) — no solo la punta que se termine usando para el precio.
+  // Caso real que motivó esto (IRCPO, 2026-09-04): la punta en pesos operó
+  // >350.000 nominales / 500+ órdenes, la punta USD (IRCPY) CERO — es un ON que
+  // ese día operó casi todo en pesos (muy común en el mercado local). Si la
+  // liquidez solo mirara la punta USD/cable, este bono aparecía "sin operar
+  // hoy" siendo mentira — justo el caso que la alerta de liquidez tiene que
+  // detectar bien. El precio del guard de escala SIGUE viniendo solo de la
+  // punta USD/cable (eso no cambia acá, sigue por `leg.ccy`/`leg.operoHoy`).
   // ─────────────────────────────────────────────────────────────────────────
   function agrupar(rows) {
     var bySym = {};
@@ -90,6 +100,7 @@
         best = arr.filter(function (x) { return x.settlementType === '2'; })[0] || arr[0];
       }
       var px = num(best.closingPrice) || num(best.trade) || num(best.previousClosingPrice);
+      var operoHoySym = !!bestHour;
       var leg = {
         precio: px || null,
         prev: num(best.previousClosingPrice) || null,
@@ -98,16 +109,26 @@
         vwap: num(best.vwap) || null,
         vol: volN,
         nOrdenes: ordN,
-        operoHoy: !!bestHour,
+        operoHoy: operoHoySym,
         ultimaOp: bestHour || null,
         ccy: best.denominationCcy || null,
         maturityDate: best.maturityDate || null,
         d2m: num(best.daysToMaturity) || null,
         sym: sym
       };
-      var o = out[stem] || (out[stem] = {});
+      var o = out[stem] || (out[stem] = { _liq: { operoHoy: false, ultimaOp: null, vol: 0, nOrdenes: 0 } });
+
+      // Liquidez agregada del instrumento — suma esta punta sin importar cuál sea.
+      o._liq.vol += volN;
+      o._liq.nOrdenes += ordN;
+      if (operoHoySym) {
+        o._liq.operoHoy = true;
+        if (!o._liq.ultimaOp || bestHour > o._liq.ultimaOp) o._liq.ultimaOp = bestHour;
+      }
+
       // D e Y caen ambos en 'mep' (C y Z en 'cable'): nos quedamos con la que
-      // operó / la de más volumen.
+      // operó / la de más volumen — esto es solo para elegir el PRECIO de esa
+      // punta, la liquidez ya quedó sumada arriba independientemente.
       var prev = o[legKey];
       if (!prev ||
           (leg.operoHoy && !prev.operoHoy) ||
@@ -226,14 +247,19 @@
       ? precio / (monitorPrecio * 100) : null;
     var sospechoso = ratio != null && Math.abs(ratio - 1) > RATIO_TOL;
 
+    // Liquidez: la del INSTRUMENTO (todas las puntas), no solo la de la punta de precio —
+    // ver comentario en agrupar(). `stale` sí sigue siendo sobre la punta de precio en sí
+    // (para el guard de escala de abajo): un bono puede estar muy líquido en pesos y aun
+    // así tener la cotización USD/cable specífica desactualizada.
+    var liq = s._liq || { operoHoy: false, ultimaOp: null, vol: 0, nOrdenes: 0 };
     var base = {
       stem: stem,
       moneda: want,                     // 'mep' | 'cable'
       bid: leg.bid, ask: leg.ask, vwap: leg.vwap, prev: leg.prev,
-      volumen: leg.vol, nOrdenes: leg.nOrdenes,
-      operoHoy: leg.operoHoy, ultimaOp: leg.ultimaOp,
-      minDesdeUltimaOp: leg.operoHoy ? minutosDesde(leg.ultimaOp) : null,
-      stale: !leg.operoHoy,
+      volumen: liq.vol, nOrdenes: liq.nOrdenes,
+      operoHoy: liq.operoHoy, ultimaOp: liq.ultimaOp,
+      minDesdeUltimaOp: liq.operoHoy ? minutosDesde(liq.ultimaOp) : null,
+      stale: !leg.operoHoy,              // sobre la punta de PRECIO específica, no la liquidez agregada
       ratioVsMonitor: ratio,
       sospechoso: sospechoso,
       usadoLegAlternativa: usadoAlt,
