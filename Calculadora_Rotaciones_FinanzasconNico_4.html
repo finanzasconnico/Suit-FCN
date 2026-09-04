@@ -7,7 +7,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="fcn-byma.js"></script>
 <style>
+.byma-estado{font:400 12.5px/1.5 'Hanken Grotesk',sans-serif;color:var(--cream-dim);margin:-6px 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.byma-estado b{color:var(--cream);font-weight:600}
+.byma-estado .byma-ref{background:none;border:1px solid var(--border);color:var(--cream-dim);border-radius:4px;padding:2px 8px;cursor:pointer;font:inherit}
+.byma-estado .byma-ref:hover{color:var(--cream);border-color:var(--cream-dim)}
+.chip.byma-chip{background:rgba(28,140,95,.16);border:1px solid rgba(28,140,95,.5);color:#8fe0bd}
+.chip.byma-chip.stale{background:rgba(201,133,0,.14);border-color:rgba(201,133,0,.5);color:#e6c07a}
+.chip.byma-chip.off{background:rgba(208,59,59,.14);border-color:rgba(208,59,59,.45);color:#e79b9b}
 :root{--navy:#081917;--navy-mid:#0E2622;--navy-light:#122B27;--cream:#EAF1EE;--cream-dim:#6C817C;--border:rgba(255,255,255,0.1);--radius:6px;--balanz:#1C8C5F;
 --series-mantener:#3B82C4;--series-rotar:#D9A03C;--good:#0ca30c;--critical:#d03b3b;--yellow:#c98500;}
 /* Nota de diseño: mantener/rotar usan azul y ámbar — colores de "identidad" neutros,
@@ -113,6 +121,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .rot-comp-row .rc-tir{color:var(--good);font-weight:600;width:56px;text-align:right;flex-shrink:0;}
 .rot-comp-row .rc-dur{color:var(--cream-dim);width:48px;text-align:right;flex-shrink:0;}
 .rot-comp-row .rc-calif{width:44px;text-align:right;color:var(--cream-dim);flex-shrink:0;}
+.rot-comp-row .rc-liq{width:20px;text-align:center;flex-shrink:0;font-size:12px;cursor:help;}
 
 #cliente-picker-wrap .chip-row:empty{margin:0;}
 #cliente-activo-label{font-size:10.5px;color:var(--cream-dim);margin-top:8px;}
@@ -315,6 +324,8 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
     </div>
   </div>
 
+  <div class="byma-estado advisor-only" id="byma-estado" style="display:none;"></div>
+
   <!-- ── LICITACIÓN / OPORTUNIDAD MASIVA ──────────────────────────────────
        Barre la Tenencia de TODOS los clientes (no uno a la vez) buscando a quién le
        conviene rotar hacia una ON nueva que todavía no está en el Monitor (recién
@@ -346,11 +357,22 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="field"><label>Calificación</label><input type="text" id="lic-calif" placeholder="AAA" style="text-transform:uppercase;"></div>
       </div>
       <div class="field-row">
+        <div class="field"><label>Fecha de la licitación <span style="color:var(--cream-dim);">— último día para entrar</span></label><input type="date" id="lic-fecha-lic" title="Las licitaciones suelen ser un solo día. Va en el mail como la única fecha para suscribir. Obligatorio para generar el envío masivo."></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Pagos por año</label>
           <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option><option value="12">12 (mensual)</option></select>
         </div>
         <div class="field"><label>Amortización</label>
-          <select id="lic-amort"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
+          <select id="lic-amort" onchange="licOnAmortTypeChange()"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
+        </div>
+      </div>
+      <div class="field" id="lic-amort-custom-wrap" style="display:none;">
+        <label>Cronograma de amortización <span style="color:var(--cream-dim);">— opcional, solo para el cálculo (no va en el mail). Si no cargás fechas, se reparte en partes iguales entre todos los pagos.</span></label>
+        <div id="lic-amort-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
+          <button type="button" class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 10px;" onclick="licAmortAgregarFila()">+ Agregar fecha</button>
+          <span id="lic-amort-suma" style="font-size:10px;color:var(--cream-dim);"></span>
         </div>
       </div>
       <div class="field">
@@ -1119,10 +1141,8 @@ function seleccionarBono(pata, ticker){
   document.getElementById(p+'-emisor').value = (real ? real.emisor : (b?b.emisor:'')) || '';
 
   var tipoPrecio = document.getElementById('p-precio-tipo').value;
-  var tir = null;
-  if(real && real.tirEfectiva!=null) tir = real.tirEfectiva;
-  else if(b) tir = tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
-  var precio = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
+  var tir = tirEfectivo(ticker, tipoPrecio);
+  var precio = precioEfectivo(ticker, tipoPrecio);
   document.getElementById(p+'-tir').value = tir!=null ? tir : '';
   document.getElementById(p+'-precio').value = precio!=null ? precio : '';
 
@@ -1394,7 +1414,8 @@ function renderChips(p, bond){
     '<span class="chip">Vence <b>'+fmtDateAR(bond.fechaVenc)+'</b></span>'+
     '<span class="chip">'+(bond.amortType==='bullet'?'Bullet':'Amortizable')+'</span>'+
     flujoTag+
-    (bond.calif ? '<span class="chip">'+bond.calif+'</span>' : '');
+    (bond.calif ? '<span class="chip">'+bond.calif+'</span>' : '')+
+    bymaChipHTML(bond.ticker, bond.precio);
 
   // Días de tenencia + rentabilidad ya obtenida — solo en la pata de VENTA, y solo si hay un
   // cliente activo con una posición real de este ticker en su Tenencia (precio de compra real
@@ -1467,10 +1488,7 @@ function calificacionRank(calif){
 }
 var lastVentaParaComparables = null;
 function tirEfectivaBond(b){
-  var real = FLUJO_DB[b.ticker];
-  if(real && real.tirEfectiva!=null) return real.tirEfectiva;
-  var tipo = document.getElementById('p-precio-tipo').value;
-  return tipo==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
+  return tirEfectivo(b.ticker, document.getElementById('p-precio-tipo').value);
 }
 function durationBond(b){
   var real = FLUJO_DB[b.ticker];
@@ -1548,10 +1566,13 @@ function toggleLicitacionPanel(){
   arrow.textContent = open?'▾':'▴';
 }
 
-// Arma el bono "compra" (la ON nueva) a partir del formulario cargado a mano — no está en
-// BOND_DB/FLUJO_DB todavía porque recién licita. nominales=100 es un valor neutro (per-100
-// nominal, la convención que ya usa todo el archivo) — sirve para calcular TIR/duration/retorno
-// en términos porcentuales, no representa la tenencia real de nadie.
+// Arma el bono "compra" (la ON nueva) a partir del formulario cargado a mano — recién licita,
+// no viene en el Excel del Monitor. nominales=100 es un valor neutro (per-100 nominal, la
+// convención que ya usa todo el archivo) — sirve para calcular TIR/duration/retorno en
+// términos porcentuales, no representa la tenencia real de nadie.
+// (buscarCandidatosLicitacion() además la registra en BOND_DB/FLUJO_DB — ver
+// _licRegistrarEnUniverso — para poder cargarla en "Bono a vender/comprar" como cualquier
+// ticker del Monitor, sin volver a tipear los datos.)
 function leerNuevaON(){
   var ticker = document.getElementById('lic-ticker').value.trim().toUpperCase();
   var emisor = document.getElementById('lic-emisor').value.trim();
@@ -1561,6 +1582,7 @@ function leerNuevaON(){
   var calif = document.getElementById('lic-calif').value.trim();
   var freq = parseInt(document.getElementById('lic-freq').value)||2;
   var amortType = document.getElementById('lic-amort').value;
+  var fechaLicitacion = parseISO(document.getElementById('lic-fecha-lic').value); // puede ser null (no bloquea la búsqueda, sí el mail)
   if(!ticker||isNaN(tasa)||isNaN(precio)||!fechaVenc) return null;
   var fechaEmision = new Date(); // la ON recién licita — hoy es su emisión
   return {
@@ -1568,10 +1590,134 @@ function leerNuevaON(){
     tir:tasa, duration:null,
     cuponAnual:tasa, freq:freq,
     fechaEmision:fechaEmision, fechaVenc:fechaVenc,
+    fechaLicitacion:fechaLicitacion,
     amortType:amortType, amortStart:fechaEmision,
     ley:'', calif:calif,
     precio:precio, nominales:100
   };
+}
+
+// ── Cronograma de amortización personalizado (opcional) — solo afecta el cálculo interno
+// (TIR/duration/retorno de la licitación en el comparador), NUNCA el texto del mail. Filas
+// {fecha, pct}; si se dejan vacías, buildSchedule()/​_licBuildSchedule100() reparten la
+// amortización en partes iguales entre todos los pagos, como ya hacía el motor. ──
+var licAmortRows = [];
+function licOnAmortTypeChange(){
+  var esAmort = document.getElementById('lic-amort').value === 'amortizable';
+  document.getElementById('lic-amort-custom-wrap').style.display = esAmort ? '' : 'none';
+  if(esAmort && !licAmortRows.length) renderLicAmortRows();
+}
+function licAmortAgregarFila(){ licAmortRows.push({fecha:'', pct:''}); renderLicAmortRows(); }
+function licAmortQuitarFila(i){ licAmortRows.splice(i,1); renderLicAmortRows(); }
+function licAmortEditar(i, campo, val){ if(licAmortRows[i]){ licAmortRows[i][campo] = val; actualizarSumaLicAmort(); } }
+function renderLicAmortRows(){
+  var wrap = document.getElementById('lic-amort-rows');
+  if(!wrap) return;
+  wrap.innerHTML = licAmortRows.map(function(r, i){
+    return '<div style="display:flex;gap:6px;align-items:center;">'
+      + '<input type="date" value="'+(r.fecha||'')+'" oninput="licAmortEditar('+i+",'fecha',this.value)\" style=\"flex:1;\">"
+      + '<input type="number" step="0.01" placeholder="% amortizado" value="'+(r.pct||'')+'" oninput="licAmortEditar('+i+",'pct',this.value)\" style=\"width:130px;\">"
+      + '<button type="button" class="btn btn-outline" style="width:auto;padding:4px 9px;" onclick="licAmortQuitarFila('+i+')">✕</button>'
+      + '</div>';
+  }).join('');
+  actualizarSumaLicAmort();
+}
+function actualizarSumaLicAmort(){
+  var el = document.getElementById('lic-amort-suma');
+  if(!el) return;
+  if(!licAmortRows.length){ el.textContent = ''; return; }
+  var suma = licAmortRows.reduce(function(s, r){ var p = parseFloat(r.pct); return s + (isNaN(p) ? 0 : p); }, 0);
+  var ok = Math.abs(suma - 100) <= 0.05;
+  el.innerHTML = 'Suma: ' + fmtNum(suma, 2) + '%' + (ok ? ' ✓' : ' <span style="color:#e57373;">⚠ debería sumar 100%</span>');
+}
+// Filas completas (fecha + % numérico) — las incompletas se ignoran en vez de romper el cálculo.
+function leerLicAmortRows(){
+  if(document.getElementById('lic-amort').value !== 'amortizable') return null;
+  var rows = licAmortRows
+    .map(function(r){ return { fecha: r.fecha, pct: parseFloat(r.pct) }; })
+    .filter(function(r){ return r.fecha && !isNaN(r.pct); });
+  return rows.length ? rows : null;
+}
+
+// Arma el cronograma per-100 (mismo shape que un FLUJO_DB[ticker].schedule100 real) para la ON
+// de la licitación. Sin filas de amortRows: reparte en partes iguales entre TODOS los pagos
+// desde la emisión — mismo criterio que buildSchedule() (el que ya usa el resto del comparador
+// para bonos "a mano"). Con amortRows: cada fila se "engancha" a la fecha de pago calculada más
+// cercana (tolerancia 10 días, para que una fecha tipeada a mano no se pierda en silencio si no
+// coincide al día exacto) — las que no matchean ninguna fecha se devuelven en `sinMatch`.
+function _licBuildSchedule100(nuevaON, amortRows){
+  var dates = buildCouponDates(nuevaON.fechaEmision, nuevaON.fechaVenc, nuevaON.freq);
+  var n = dates.length;
+  var customMap = null, sinMatch = [];
+  if(amortRows && amortRows.length){
+    customMap = {};
+    amortRows.forEach(function(r){
+      var d = parseISO(r.fecha);
+      if(!d){ sinMatch.push(r.fecha); return; }
+      var mejor = null, mejorDif = Infinity;
+      dates.forEach(function(dd){ var dif = Math.abs(dd.getTime() - d.getTime()); if(dif < mejorDif){ mejorDif = dif; mejor = dd; } });
+      if(mejor && mejorDif <= 10 * 86400000){
+        var key = isoDate(mejor);
+        customMap[key] = (customMap[key] || 0) + r.pct;
+      } else {
+        sinMatch.push(r.fecha);
+      }
+    });
+  }
+  var amortStart = nuevaON.fechaEmision;
+  var idxAmort = [];
+  if(nuevaON.amortType === 'amortizable' && !customMap){
+    dates.forEach(function(d, i){ if(d.getTime() >= amortStart.getTime()) idxAmort.push(i); });
+  }
+  var defaultPct = idxAmort.length > 0 ? 100 / idxAmort.length : 0;
+  var vnResidual = 100, schedule = [];
+  dates.forEach(function(d, i){
+    var isLast = (i === n - 1);
+    var pct;
+    if(nuevaON.amortType === 'bullet'){ pct = isLast ? 100 : 0; }
+    else if(customMap){ pct = customMap[isoDate(d)] || 0; }
+    else if(idxAmort.indexOf(i) >= 0){ pct = defaultPct; }
+    else { pct = 0; }
+    var vnStart = vnResidual;
+    var cupon = vnStart * (nuevaON.cuponAnual / 100) / nuevaON.freq;
+    vnResidual = Math.max(0, vnResidual - pct);
+    schedule.push({ date: isoDate(d), cupon: cupon, amort: pct, total: cupon + pct });
+  });
+  return { schedule100: schedule, sinMatch: sinMatch };
+}
+
+// Registra la ON de la licitación en BOND_DB/FLUJO_DB, exactamente como si fuera una fila más
+// del Monitor — para poder cargarla en "Bono a vender/comprar" (autocompletado, comparables,
+// "Cliente activo") sin volver a tipear ticker/emisor/tasa/vencimiento/etc a mano. Se llama
+// cada vez que se corre "🔍 Buscar candidatos", así que si se edita algo del formulario y se
+// vuelve a buscar, la ficha registrada queda al día. Pedido de Nico (04/09): "que la pueda
+// cargar y ver como cualquiera que cargo en comprar".
+function _licRegistrarEnUniverso(nuevaON, amortRows){
+  if(!nuevaON || !nuevaON.ticker) return;
+  var built = _licBuildSchedule100(nuevaON, amortRows);
+  var tirBase = nuevaON.tirSolved != null ? nuevaON.tirSolved : nuevaON.tir;
+  FLUJO_DB[nuevaON.ticker] = {
+    ticker: nuevaON.ticker, emisor: nuevaON.emisor || '', sector: '', calif: nuevaON.calif || '',
+    monedaCobro: 'USD', tipoTasa: 'Fija',
+    cuponAnual: nuevaON.cuponAnual, freq: nuevaON.freq, freqTexto: '',
+    amortDesc: nuevaON.amortType === 'amortizable' ? 'Amortizable' : 'Bullet',
+    ley: '', fechaEmision: isoDate(nuevaON.fechaEmision), fechaVenc: isoDate(nuevaON.fechaVenc),
+    nominalesMin: null, nominalBase: 100,
+    tirEfectiva: tirBase, duration: null,
+    schedule100: built.schedule100
+  };
+  BOND_DB[nuevaON.ticker] = {
+    ticker: nuevaON.ticker, emisor: nuevaON.emisor || '', categoria: 'ON',
+    cuponAnual: nuevaON.cuponAnual, mesCupon: '',
+    vencimiento: isoDate(nuevaON.fechaVenc),
+    amortizacion: nuevaON.amortType === 'amortizable' ? 'Amortizable' : 'Bullet',
+    moneda: 'U$S', ley: '', calif: nuevaON.calif || '', laminaMin: null, duration: null,
+    tirMep: tirBase, tirCable: tirBase,
+    precioMep: nuevaON.precio, precioCable: nuevaON.precio
+  };
+  if(built.sinMatch.length){
+    mostrarToastPanorama('⚠ ' + built.sinMatch.length + ' fecha(s) de amortización no coincidieron con ningún pago (revisá el cronograma) — se ignoraron.');
+  }
 }
 
 // Arma un objeto "bond" (mismo shape que readBond()) para un ticker que YA está en la base
@@ -1583,10 +1729,8 @@ function bondDesdeUniverso(ticker){
   var real = FLUJO_DB[ticker];
   if(!b && !real) return null;
   var tipoPrecio = document.getElementById('p-precio-tipo').value;
-  var tir = null;
-  if(real && real.tirEfectiva!=null) tir = real.tirEfectiva;
-  else if(b) tir = tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
-  var precio = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
+  var tir = tirEfectivo(ticker, tipoPrecio);
+  var precio = precioEfectivo(ticker, tipoPrecio);
   var cuponAnual = (real && real.cuponAnual!=null) ? real.cuponAnual : (b?b.cuponAnual:null);
   var freq, fechaVencStr, ley, calif, fechaEmisionStr, amortType;
   if(real){
@@ -1638,7 +1782,6 @@ function buscarCandidatosLicitacion(){
   var box = document.getElementById('lic-resultados');
   var nuevaON = leerNuevaON();
   if(!nuevaON){ box.innerHTML = '<div class="rot-comp-empty">Completá ticker, tasa, precio y vencimiento de la nueva ON.</div>'; licitacionResultados=null; return; }
-  if(!CLIENTE_LIST.length){ box.innerHTML = '<div class="rot-comp-empty">Subí la Tenencia por Ticker en el Suite (pestaña Archivos) primero.</div>'; licitacionResultados=null; return; }
 
   var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
   var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
@@ -1655,6 +1798,12 @@ function buscarCandidatosLicitacion(){
   var aniosNueva = yearFrac(hoy, nuevaON.fechaVenc);
   var nuevaONInfo = aniosNueva>0 ? pctRetornoAHorizonte(Object.assign({}, nuevaON, {nominales:100}), hoy, comisionPct, aniosNueva) : null;
   nuevaON.tirSolved = nuevaONInfo ? nuevaONInfo.tir : nuevaON.tir;
+
+  // La registra en BOND_DB/FLUJO_DB ANTES del corte por "sin Tenencia" — así queda cargable en
+  // "Bono a vender/comprar" aunque todavía no hayas subido la Tenencia (ver _licRegistrarEnUniverso).
+  _licRegistrarEnUniverso(nuevaON, leerLicAmortRows());
+
+  if(!CLIENTE_LIST.length){ box.innerHTML = '<div class="rot-comp-empty">Subí la Tenencia por Ticker en el Suite (pestaña Archivos) primero. (La ON ya quedó cargada — la podés usar en "Bono a vender/comprar" de arriba.)</div>'; licitacionResultados=null; return; }
 
   licitacionExcluidos = {}; // nueva búsqueda: se limpian las exclusiones manuales de la corrida anterior
   licDispVentajaMax = null; licDispDiasMin = null; // y los filtros de pantalla de la corrida anterior
@@ -1830,6 +1979,9 @@ function renderResultadosLicitacion(){
       '<span class="chip">Vence <b>'+fmtDateAR(nuevaON.fechaVenc)+'</b></span>'+
       '<span class="chip">Precio <b>'+fmtNum(nuevaON.precio,4)+'</b></span>'+
       (nuevaON.calif?'<span class="chip">'+nuevaON.calif+'</span>':'')+
+      (nuevaON.fechaLicitacion
+        ? '<span class="chip">Se licita <b>'+fmtDateAR(nuevaON.fechaLicitacion)+'</b></span>'
+        : '<span class="chip" style="background:rgba(229,115,115,.18);color:#e57373;">⚠ falta la fecha de licitación (obligatoria para el mail)</span>')+
     '</div></div>';
 
   // Filtros de PANTALLA — no vuelven a buscar, solo recortan/reordenan lo ya calculado.
@@ -1899,18 +2051,31 @@ function renderResultadosLicitacion(){
     }
   });
   html += '</tbody></table></div>';
-  html += '<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="abrirBorradoresLicitacion()">✉ Generar borradores ('+clientes.length+' cliente(s))</button>';
+  html += '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">'
+    + '<button class="btn btn-outline" style="flex:1;min-width:180px;" onclick="abrirBorradoresLicitacion()">✉ Borradores 1×1 (WhatsApp / mail)</button>'
+    + '<button class="btn btn-primary" style="flex:1;min-width:180px;" onclick="abrirMailMasivoLicitacion()">📧 Envío masivo por mail (Word + CSV)</button>'
+    + '</div>';
   box.innerHTML = html;
 }
 
 // Un solo mensaje POR CLIENTE con todas sus rotaciones sugeridas Y su liquidez disponible (no
 // uno por cada bono, ni separado del aviso de liquidez) — si un cliente tiene varias ONs de tasa
 // baja y además plata parada, se listan todas juntas en el mismo mensaje.
+// Saludo: SOLO la columna "Nombre" del Stock (Balanz la da como primer nombre). Si viene vacía,
+// se saluda sin nombre — nunca el apellido / la denominación / el nombre de la cuenta (antes
+// hacía cliente.split(' ')[0] = el apellido, y quedaba "Hola PEREZ,"). Devuelve " Juan" o "".
+function _nomSaludoLic(cliente){
+  var comitente = COMITENTE_POR_CLIENTE[cliente];
+  var stock = comitente ? stockMap[comitente] : null;
+  var n = stock && stock.nombre ? String(stock.nombre).trim() : '';
+  return n ? ' ' + n : '';
+}
+
 function construirMensajeLicitacionCliente(cliente, candidatos, nuevaON){
   var rotaciones = candidatos.filter(function(c){ return c.tipo==='rotacion'; });
   var liquidez = candidatos.filter(function(c){ return c.tipo==='liquidez'; })[0];
   var lineas = [];
-  lineas.push('Hola '+(cliente.split(' ')[0]||cliente)+',');
+  lineas.push('Hola'+_nomSaludoLic(cliente)+',');
   lineas.push('');
   lineas.push('Te contamos sobre una nueva oportunidad: *'+nuevaON.ticker+'*'+(nuevaON.emisor?' ('+nuevaON.emisor+')':'')+', tasa estimada '+fmtNum(nuevaON.cuponAnual,2)+'%'+(nuevaON.calif?' — calificación '+nuevaON.calif:'')+'.');
 
@@ -1980,6 +2145,364 @@ function copiarBorradorLicitacion(idx){
   try{ document.execCommand('copy'); mostrarToastPanorama('Copiado ✓'); }catch(e){}
 }
 
+// ══════════════════════════════════════════════════════════════
+// ENVÍO MASIVO POR MAIL — Word (combinación de correspondencia) + CSV
+// Mismo patrón EXACTO que el "Aviso mensual de liquidez" de FCN_Suite.html
+// (_toCSV / _docxPersonalizado / mini-zip STORED / plantilla con @@placeholders@@).
+// Diferencias con el de liquidez:
+//   · el bloque por-cliente («Detalle») es multi-línea (varias ONs a rotar + liquidez) —
+//     verificado con merge real vía Word COM que los \n del campo se renderizan como saltos
+//     de línea sin romper el parseo de registros (los registros van con \r\n, los saltos
+//     internos con \n solo).
+//   · los datos de la ON (ticker/tasa/TIR/vto/calif) se personalizan en el .docx al
+//     descargar (son iguales para toda la campaña), igual que @@ASESOR@@.
+//   · el flyer/informe NO se adjunta (mailto/merge no adjuntan) — el mail invita a pedirlo.
+// El perfil del asesor (firma/WhatsApp/Instagram) se COMPARTE con el Aviso de liquidez:
+// mismo localStorage, mismo origen. Si está vacío, se bloquea y se manda a configurarlo allá.
+// ══════════════════════════════════════════════════════════════
+var LIC_MAIL_PLANTILLA_URL = 'plantillas-mail/plantilla-licitacion.docx';
+var LIC_MAIL_PERFIL_KEY = 'fcn_aviso_liq_perfil';
+var LIC_MAIL_IG_DEFAULT = 'https://www.instagram.com/balanzcapital';
+var LIC_MAIL_SUPA_URL = 'https://wixbbcziostbtqfmphcc.supabase.co';
+var LIC_MAIL_SUPA_KEY = 'sb_publishable_olGxTFFfHuoZ-wzxQbq5_Q_1JfYE2yw';
+var LIC_MAIL_COLS = ['Saludo', 'Email', 'Detalle']; // Saludo = "Hola Juan," o "Hola," (nunca "Hola ,")
+var LIC_MAIL_NUMS_KEY = 'fcn_lic_mail_tir';    // opt-in: mostrar los números de cada rotación (tasa actual + ventaja)
+var LIC_MAIL_FICHA_KEY = 'fcn_lic_mail_ficha'; // opt-in: ficha técnica de la emisión (no recomendado)
+var _licBajasSet = null, _licBajasError = false;
+
+function _licMostrarNums(){ try { return localStorage.getItem(LIC_MAIL_NUMS_KEY) === '1'; } catch(e){ return false; } }
+function _licFicha(){ try { return localStorage.getItem(LIC_MAIL_FICHA_KEY) === '1'; } catch(e){ return false; } }
+function _licToggleOpt(which, on){
+  try { localStorage.setItem(which === 'nums' ? LIC_MAIL_NUMS_KEY : LIC_MAIL_FICHA_KEY, on ? '1' : '0'); } catch(e){}
+}
+function _licFichaTxt(on){
+  var amort = on.amortType === 'bullet' ? 'bullet (todo el capital al vencimiento)' : 'amortizable (devuelve capital en cuotas)';
+  var freqMap = { 1: 'pago anual', 2: 'pago semestral', 4: 'pago trimestral', 12: 'pago mensual' };
+  return amort + ', ' + (freqMap[on.freq] || (on.freq + ' pagos por año'));
+}
+// "el martes 9 de septiembre" — la fecha en el mail se escribe humana, no 09/09/2026 (más urgente).
+function _licFechaLarga(d){
+  if(!d || isNaN(d.getTime())) return '';
+  var dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  var meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  var s = 'el ' + dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
+  if(d.getFullYear() !== new Date().getFullYear()) s += ' de ' + d.getFullYear();
+  return s;
+}
+
+function getLicPerfil(){
+  var s = {};
+  try { s = JSON.parse(localStorage.getItem(LIC_MAIL_PERFIL_KEY) || '{}'); } catch(e){}
+  return {
+    firma: (s.firma || '').trim(),
+    wpp: (s.wpp || '').trim(),
+    instagram: (s.instagram || '').trim(),
+    testMail: (s.testMail || '').trim(),
+    testBajaMail: (s.testBajaMail || '').trim()
+  };
+}
+function _licIg(perfil){ return perfil.instagram || LIC_MAIL_IG_DEFAULT; }
+function _licNombreON(on){
+  return (on.emisor && on.emisor !== on.ticker) ? (on.ticker + ' (' + on.emisor + ')') : on.ticker;
+}
+
+async function _licFetchBajas(){
+  try {
+    var r = await fetch(LIC_MAIL_SUPA_URL + '/rest/v1/bajas_emails?select=email', { headers: { apikey: LIC_MAIL_SUPA_KEY } });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    return new Set((data || []).map(function(x){ return String(x.email || '').trim().toLowerCase(); }).filter(Boolean));
+  } catch(e){ console.warn('[Licitación mail] no se pudo leer bajas:', e); return null; }
+}
+
+// El bloque POR CLIENTE. Mismo criterio que construirMensajeLicitacionCliente pero en tono
+// mail (sin *asteriscos* de WhatsApp) y sin la intro de la ON (ya va fija en la plantilla).
+// Líneas separadas por \n — el merge las convierte en saltos de línea dentro del párrafo.
+// mostrarNums (opt-in): agrega la tasa actual del bono + el "+X puntos de retorno" exacto —
+// off por defecto (cualitativo: "conviene rotarla") porque casi siempre la tasa del bono a
+// rotar es más baja que la nueva, pero no siempre, y mostrar dos tasas que parecen
+// contradecirse confunde al cliente (la ventaja viene de duration/precio, no de la tasa
+// nominal); además un número chico en USD no aporta y multiplica consultas por poca plata.
+function _licDetalleCliente(candidatos, nuevaON, mostrarNums){
+  var rot = candidatos.filter(function(c){ return c.tipo === 'rotacion'; });
+  var liq = candidatos.filter(function(c){ return c.tipo === 'liquidez'; })[0];
+  var L = [];
+  if(rot.length){
+    L.push(rot.length > 1
+      ? 'Tenés estas posiciones que, a igual plazo y con una calificación parecida, hoy te rinden menos que esta emisión:'
+      : 'Tenés una posición que, a igual plazo y con una calificación parecida, hoy te rinde menos que esta emisión:');
+    rot.forEach(function(c){
+      if(mostrarNums){
+        var tirTxt = c.tirActual != null ? ' (hoy te rinde ~' + fmtNum(c.tirActual, 1) + '% anual)' : '';
+        L.push('• ' + c.tickerActual + tirTxt + ' — rotándola sumás alrededor de +'
+          + fmtNum(c.ventajaPuntos, 1) + ' puntos de retorno hasta su vencimiento (' + fmtDateAR(c.vencimiento) + '). Conviene rotarla.');
+      } else {
+        L.push('• ' + c.tickerActual + ' — hoy te rinde menos que esta emisión de acá a su vencimiento (' + fmtDateAR(c.vencimiento) + '). Conviene rotarla.');
+      }
+    });
+  }
+  if(liq){
+    var base = 'tenés USD ' + fmtNum(liq.montoUSD, 0) + ' sin invertir en la cuenta — entran directo a esta licitación, sin vender nada.';
+    if(rot.length) L.push('• Y además, ' + base);
+    else L.push('T' + base.slice(1));
+  }
+  return L.join('\n');
+}
+
+// { rows:[{Nombre,Email,Detalle}], excl:{sinMail,baja} } — a partir de candidatosVisiblesLicitacion()
+function _licMailRows(){
+  var vis = candidatosVisiblesLicitacion();
+  var nuevaON = licitacionResultados.nuevaON;
+  var out = { rows: [], excl: { sinMail: 0, baja: 0 } };
+  Object.keys(vis).sort(function(a, b){ return a.localeCompare(b, 'es'); }).forEach(function(cliente){
+    var comitente = COMITENTE_POR_CLIENTE[cliente];
+    var stock = comitente ? stockMap[comitente] : null;
+    var mail = (stock && stock.mail ? String(stock.mail) : '')
+      .split(/[\s,;]+/).map(function(x){ return x.trim().toLowerCase(); })
+      .filter(function(x){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); })[0] || '';
+    if(!mail){ out.excl.sinMail++; return; }
+    if(_licBajasSet && _licBajasSet.has(mail)){ out.excl.baja++; return; }
+    var nombre = stock && stock.nombre ? String(stock.nombre).trim() : '';
+    out.rows.push({
+      Saludo: nombre ? 'Hola ' + nombre + ',' : 'Hola,',
+      Email: mail,
+      Detalle: _licDetalleCliente(vis[cliente], nuevaON, _licMostrarNums())
+    });
+  });
+  return out;
+}
+
+// Filas sintéticas para el modo prueba — cubren rotación múltiple + liquidez, solo liquidez,
+// y una sola rotación. Más N filas que deberían filtrarse por baja.
+function _licFilasPrueba(perfil, nuevaON){
+  var dest = (perfil.testMail || '').split(/[\s,;]+/).map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean);
+  if(!dest.length) return [];
+  var v = nuevaON.fechaVenc, nums = _licMostrarNums();
+  var ej = [
+    _licDetalleCliente([
+      { tipo: 'rotacion', tickerActual: 'AL30', tirActual: 9.2, ventajaPuntos: 1.8, vencimiento: v },
+      { tipo: 'rotacion', tickerActual: 'GD35', tirActual: 8.1, ventajaPuntos: 1.4, vencimiento: v },
+      { tipo: 'liquidez', montoUSD: 5000 }
+    ], nuevaON, nums),
+    _licDetalleCliente([{ tipo: 'liquidez', montoUSD: 12000 }], nuevaON, nums),
+    _licDetalleCliente([{ tipo: 'rotacion', tickerActual: 'AE38', tirActual: 10.1, ventajaPuntos: 0.9, vencimiento: v }], nuevaON, nums)
+  ];
+  var nombres = ['Juan', 'María José', 'Carlos'];
+  var rows = ej.map(function(d, i){ return { Saludo: 'Hola ' + nombres[i] + ',', Email: dest[i % dest.length], Detalle: d }; });
+  (perfil.testBajaMail || '').split(/[\s,;]+/).map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean).forEach(function(m, i){
+    rows.push({
+      Saludo: 'Hola ' + (['Pedro', 'Ana', 'Sofía', 'Diego'][i] || 'Baja' + (i + 1)) + ',',
+      Email: m, Detalle: _licDetalleCliente([{ tipo: 'liquidez', montoUSD: 9999 }], nuevaON, nums)
+    });
+  });
+  return rows;
+}
+
+// CSV UTF-8 con BOM, todos los campos entre comillas, registros con \r\n (los \n internos de
+// Detalle quedan como LF solo — Word los toma como salto de línea, no como fin de registro).
+function _licToCSV(rows){
+  var esc = function(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var lines = [LIC_MAIL_COLS.map(esc).join(',')];
+  rows.forEach(function(r){ lines.push(LIC_MAIL_COLS.map(function(c){ return esc(r[c]); }).join(',')); });
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
+
+// ── mini-zip: leer/reescribir un .docx con entradas sin comprimir (STORED) ──
+// Calcado de FCN_Suite.html (_crc32/_zipRead/_zipWrite). La plantilla se genera STORED a
+// propósito para no depender de una librería de deflate en el navegador.
+var _licCrcTab = (function(){ var t = new Uint32Array(256); for(var n = 0; n < 256; n++){ var c = n; for(var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; } return t; })();
+function _licCrc32(u8){ var c = 0xFFFFFFFF; for(var i = 0; i < u8.length; i++) c = _licCrcTab[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function _licZipRead(ab){
+  var dv = new DataView(ab), u8 = new Uint8Array(ab);
+  var eo = u8.length - 22;
+  while(eo >= 0 && dv.getUint32(eo, true) !== 0x06054b50) eo--;
+  if(eo < 0) throw new Error('ZIP inválido (EOCD)');
+  var n = dv.getUint16(eo + 10, true);
+  var off = dv.getUint32(eo + 16, true);
+  var files = {}, order = [];
+  for(var i = 0; i < n; i++){
+    var fnLen = dv.getUint16(off + 28, true), exLen = dv.getUint16(off + 30, true), cmLen = dv.getUint16(off + 32, true);
+    var lho = dv.getUint32(off + 42, true);
+    var name = new TextDecoder().decode(u8.subarray(off + 46, off + 46 + fnLen));
+    var lfn = dv.getUint16(lho + 26, true), lex = dv.getUint16(lho + 28, true), size = dv.getUint32(lho + 18, true);
+    var start = lho + 30 + lfn + lex;
+    files[name] = u8.slice(start, start + size);
+    order.push(name);
+    off += 46 + fnLen + exLen + cmLen;
+  }
+  return { files: files, order: order };
+}
+function _licZipWrite(files, order){
+  var enc = new TextEncoder(), parts = [], central = []; var offset = 0;
+  for(var oi = 0; oi < order.length; oi++){
+    var name = order[oi], data = files[name], nameB = enc.encode(name), crc = _licCrc32(data);
+    var lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, nameB.length, true);
+    parts.push(new Uint8Array(lh.buffer), nameB, data);
+    var ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, nameB.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30 + nameB.length + data.length;
+  }
+  var cdSize = 0; for(var ci = 0; ci < central.length; ci++) cdSize += central[ci].length;
+  var eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(8, order.length, true); eocd.setUint16(10, order.length, true);
+  eocd.setUint32(12, cdSize, true); eocd.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [new Uint8Array(eocd.buffer)]),
+    { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+var _licXmlEsc = function(s){ return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+
+async function _licDocxPersonalizado(perfil, nuevaON){
+  var r = await fetch(LIC_MAIL_PLANTILLA_URL, { cache: 'no-store' });
+  if(!r.ok) throw new Error('No se pudo bajar la plantilla base (' + r.status + ')');
+  var z = _licZipRead(await r.arrayBuffer());
+  var dec = new TextDecoder(), enc = new TextEncoder();
+  var doc = dec.decode(z.files['word/document.xml']);
+  var repl = {
+    '@@ON_NOMBRE@@': _licNombreON(nuevaON),
+    '@@ON_TICKER@@': nuevaON.ticker,
+    '@@ON_TASA@@': fmtNum(nuevaON.cuponAnual, 2) + '%',
+    '@@ON_VENC@@': fmtDateAR(nuevaON.fechaVenc),
+    '@@ON_CALIF_TXT@@': nuevaON.calif ? (' · calificación ' + nuevaON.calif) : '',
+    '@@ON_FICHA_TXT@@': _licFicha() ? (' · ' + _licFichaTxt(nuevaON)) : '',
+    '@@ON_FECHA_LIC@@': _licFechaLarga(nuevaON.fechaLicitacion),
+    '@@WHATSAPP@@': perfil.wpp || '',
+    '@@ASESOR@@': perfil.firma || ''
+  };
+  Object.keys(repl).forEach(function(k){ doc = doc.split(k).join(_licXmlEsc(repl[k])); });
+  z.files['word/document.xml'] = enc.encode(doc);
+  var rels = dec.decode(z.files['word/_rels/document.xml.rels']);
+  rels = rels.split('@@INSTAGRAM_URL@@').join(_licXmlEsc(_licIg(perfil)));
+  z.files['word/_rels/document.xml.rels'] = enc.encode(rels);
+  return _licZipWrite(z.files, z.order);
+}
+function _licDescargar(blob, nombre){
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+}
+function _licSlug(ticker){
+  return (String(ticker || 'ON').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toUpperCase()) || 'ON';
+}
+
+async function abrirMailMasivoLicitacion(){
+  if(!licitacionResultados) return;
+  document.getElementById('lic-mail-test').checked = false;
+  document.getElementById('lic-mail-tir').checked = _licMostrarNums();
+  document.getElementById('lic-mail-ficha').checked = _licFicha();
+  _licMailMostrarPaso('form');
+  document.getElementById('lic-mail-overlay').classList.add('open');
+  document.getElementById('lic-mail-preview').textContent = 'Verificando lista de bajas…';
+  document.getElementById('lic-mail-gen').disabled = true;
+  _licBajasSet = await _licFetchBajas();
+  _licBajasError = _licBajasSet === null;
+  renderMailMasivoPreview();
+}
+function cerrarMailMasivoLicitacion(){ document.getElementById('lic-mail-overlay').classList.remove('open'); }
+function _licMailMostrarPaso(p){
+  document.getElementById('lic-mail-form').style.display = p === 'form' ? '' : 'none';
+  document.getElementById('lic-mail-done').style.display = p === 'done' ? '' : 'none';
+}
+function copiarAsuntoMailLic(btn){
+  var el = document.getElementById('lic-mail-asunto');
+  el.select();
+  var done = function(){ var t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(function(){ btn.textContent = t; }, 1400); };
+  if(navigator.clipboard) navigator.clipboard.writeText(el.value).then(done).catch(function(){ try{ document.execCommand('copy'); done(); }catch(e){} });
+  else { try{ document.execCommand('copy'); done(); }catch(e){} }
+}
+
+function renderMailMasivoPreview(){
+  var el = document.getElementById('lic-mail-preview');
+  var btn = document.getElementById('lic-mail-gen');
+  if(!el || !licitacionResultados) return;
+  var perfil = getLicPerfil();
+  var prueba = document.getElementById('lic-mail-test').checked;
+  var html, canGen;
+  if(prueba){
+    var dest = (perfil.testMail || '').split(/[\s,;]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    var nBaja = (perfil.testBajaMail || '').split(/[\s,;]+/).map(function(x){ return x.trim(); }).filter(Boolean).length;
+    html = '🧪 Archivo de <b>prueba</b>: ' + (3 + nBaja) + ' filas de ejemplo (no son tus clientes).';
+    html += dest.length
+      ? '<br>Los 3 casos van a: <b>' + dest.join(', ') + '</b>.'
+      : '<br><span style="color:#e57373;">⚠ Cargá al menos un mail de prueba en "Tu perfil" del Aviso de liquidez (Suite).</span>';
+    canGen = dest.length > 0;
+  } else {
+    var res = _licMailRows();
+    var n = res.rows.length;
+    html = '<span style="font-size:20px;font-weight:700;">' + n + '</span> cliente' + (n === 1 ? '' : 's') + ' con mail ' + (n === 1 ? 'va' : 'van') + ' a recibir la licitación.';
+    var exc = [];
+    if(res.excl.baja) exc.push(res.excl.baja + ' dado/s de baja');
+    if(res.excl.sinMail) exc.push(res.excl.sinMail + ' sin mail en el Stock');
+    if(exc.length) html += '<br>Excluidos: ' + exc.join(' · ') + '.';
+    canGen = n > 0;
+  }
+  var faltan = [];
+  if(!perfil.firma) faltan.push('tu <b>nombre y apellido</b>');
+  if(!perfil.wpp) faltan.push('tu <b>WhatsApp</b>');
+  if(faltan.length){
+    html += '<br><span style="color:#e57373;">⚠ Configurá ' + faltan.join(' y ') + ' en la Suite → Inicio → <b>✉ Notificar a todos por mail</b> → "Tu perfil" (se comparte con esta herramienta).</span>';
+    canGen = false;
+  }
+  if(!licitacionResultados.nuevaON.fechaLicitacion){
+    html += '<br><span style="color:#e57373;">⚠ Cargá la <b>fecha de la licitación</b> en el panel de arriba — el mail la necesita como la única fecha para entrar.</span>';
+    canGen = false;
+  }
+  if(_licBajasError) html += '<br><span style="color:#e57373;">⚠ No se pudo verificar la lista de bajas — revisá tu conexión antes de generar.</span>';
+  el.innerHTML = html;
+  if(btn){ btn.disabled = !canGen; btn.textContent = prueba ? '⬇ Descargar Word + CSV de prueba' : '⬇ Descargar Word + CSV'; }
+}
+
+async function generarMailMasivoLicitacion(){
+  if(!licitacionResultados) return;
+  var perfil = getLicPerfil();
+  if(!perfil.firma || !perfil.wpp){ mostrarToastPanorama('Configurá tu nombre y WhatsApp en el Aviso de liquidez de la Suite.'); return; }
+  var prueba = document.getElementById('lic-mail-test').checked;
+  var nuevaON = licitacionResultados.nuevaON;
+  if(!nuevaON.fechaLicitacion){ mostrarToastPanorama('Cargá la fecha de la licitación en el panel antes de generar el mail.'); return; }
+  var rows, filtradas = 0;
+  if(prueba){
+    rows = _licFilasPrueba(perfil, nuevaON);
+    if(_licBajasSet) rows = rows.filter(function(r){
+      if(_licBajasSet.has(String(r.Email).trim().toLowerCase())){ filtradas++; return false; }
+      return true;
+    });
+    if(!rows.length){ mostrarToastPanorama('Cargá al menos un mail de prueba en tu perfil.'); return; }
+  } else {
+    if(_licBajasError && !confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi generás igual, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Generar de todos modos?')) return;
+    var res = _licMailRows();
+    if(!res.rows.length){ mostrarToastPanorama('Ningún cliente visible tiene mail en el Stock.'); return; }
+    rows = res.rows;
+  }
+  var btn = document.getElementById('lic-mail-gen');
+  btn.disabled = true; btn.textContent = 'Armando el Word…';
+  var slug = _licSlug(nuevaON.ticker), suf = prueba ? '-PRUEBA' : '';
+  try {
+    var docx = await _licDocxPersonalizado(perfil, nuevaON);
+    _licDescargar(docx, 'Licitacion-' + slug + suf + '.docx');
+    _licDescargar(new Blob([_licToCSV(rows)], { type: 'text/csv;charset=utf-8' }), 'licitacion-' + slug + suf + '.csv');
+  } catch(e){
+    console.error('[Licitación mail]', e);
+    btn.disabled = false; btn.textContent = prueba ? '⬇ Descargar Word + CSV de prueba' : '⬇ Descargar Word + CSV';
+    mostrarToastPanorama('No se pudo armar el Word: ' + e.message);
+    return;
+  }
+  var n = rows.length;
+  document.getElementById('lic-mail-asunto').value = 'Oportunidad ' + String(nuevaON.ticker || '').trim() + ' — se licita ' + _licFechaLarga(nuevaON.fechaLicitacion);
+  document.getElementById('lic-mail-done-files').innerHTML = 'Se descargaron <b>Licitacion-' + slug + suf + '.docx</b> y <b>licitacion-' + slug + suf + '.csv</b> a tu carpeta de Descargas.';
+  document.getElementById('lic-mail-done-n').textContent = prueba
+    ? ('Word + CSV de prueba listos (' + n + ' fila' + (n === 1 ? '' : 's') + (filtradas ? ', ' + filtradas + ' filtrada' + (filtradas === 1 ? '' : 's') + ' por baja' : '') + ')')
+    : ('Word + CSV descargados — ' + n + ' cliente' + (n === 1 ? '' : 's'));
+  _licMailMostrarPaso('done');
+}
+
 function renderComparablesRotacion(venta){
   var wrap = document.getElementById('rot-comp-wrap');
   var list = document.getElementById('rot-comp-list');
@@ -2003,8 +2526,25 @@ function renderComparablesRotacion(venta){
       '<span class="rc-tir">'+fmtNum(c.tir,2)+'%</span>'+
       '<span class="rc-dur">'+(c.duration!=null?fmtNum(c.duration,1)+'a':'—')+'</span>'+
       '<span class="rc-calif">'+(c.calif||'—')+'</span>'+
+      liqBadgeMini(c.ticker)+
     '</div>';
   }).join('');
+}
+
+// Badge chico de liquidez (🟢/🟡/🔴/⚪) para la lista "Alternativas para rotar" — pedido
+// explícito de Nico: no sugerir un candidato con buena TIR en papel pero sin volumen real
+// sin que se note de un vistazo, antes de hacer clic para cargarlo.
+function liqBadgeMini(ticker){
+  if(!BYMA_STORE || !BYMA_STORE.ready) return '';
+  var v = VIVO_BY_TICKER[ticker];
+  var m = v ? (v.mep || v.cable) : null;
+  if(!m){
+    var b = BOND_DB[ticker];
+    m = FCNByma.matchTicker(ticker, b ? b.moneda : '', null);
+  }
+  if(!m) return '<span class="rc-liq" title="Sin dato de liquidez en BYMA (vencido, o BYMA lo nombra distinto)">⚪</span>';
+  var lq = FCNByma.liquidez(m);
+  return '<span class="rc-liq" title="'+lq.label+' (BYMA '+(BYMA_STORE.asOfText||'')+')">'+lq.emoji+'</span>';
 }
 
 function onHorizonSlide(){
@@ -2060,7 +2600,8 @@ function renderVerdict(venta, compra, atH, difCash, ventajaHoy, hoy){
     var tel = telParaCliente(clienteActivoNombre);
     var svgWpp = '<svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>';
     if(tel){
-      wppBtnHtml = '<div class="verdict-wpp-wrap"><button class="verdict-wpp-btn" onclick="abrirWppRotacion()">'+svgWpp+'Enviarle a '+clienteActivoNombre.split(' ')[0]+'</button></div>';
+      var _nomBtn = _nomSaludoLic(clienteActivoNombre).trim();
+      wppBtnHtml = '<div class="verdict-wpp-wrap"><button class="verdict-wpp-btn" onclick="abrirWppRotacion()">'+svgWpp+(_nomBtn ? 'Enviarle a '+_nomBtn : 'Enviar por WhatsApp')+'</button></div>';
     } else {
       wppBtnHtml = '<div class="verdict-wpp-wrap"><button class="verdict-wpp-btn sin-stock" onclick="alertaSinStock()">'+svgWpp+'Enviar por WhatsApp</button></div>';
     }
@@ -2689,12 +3230,8 @@ function limpiarClienteActivo(){
 // TIR "actual" de un ticker fuera de una rotación puntual — mismo orden de prioridad que usa
 // seleccionarBono() al autocompletar (cronograma real > MEP/Cable según el tipo elegido).
 function tirActualDeTicker(ticker){
-  var real = FLUJO_DB[ticker];
-  if(real && real.tirEfectiva!=null) return real.tirEfectiva;
-  var b = BOND_DB[ticker];
-  if(!b) return null;
-  var tipoPrecio = document.getElementById('p-precio-tipo').value;
-  var tir = tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep) : (b.tirMep!=null?b.tirMep:b.tirCable);
+  if(!BOND_DB[ticker] && !FLUJO_DB[ticker]) return null;
+  var tir = tirEfectivo(ticker, document.getElementById('p-precio-tipo').value);
   return tir!=null ? tir : null;
 }
 
@@ -2739,12 +3276,210 @@ function autofillClienteBono(ticker, nominales, tenenciaUSD){
 }
 
 // ═══════════════════════════════════════════════════════
+// PRECIOS EN VIVO (BYMA) — módulo fcn-byma.js
+// El Monitor aporta las características que casi no cambian (cupón, frecuencia,
+// amortización, vencimiento, ley, calificación, cronograma real de flujos). BYMA
+// aporta precio y volumen del día. La TIR se recalcula acá con el mismo motor de
+// siempre (tirDesdePrecio sobre el cronograma). Si BYMA falla, todo cae al precio
+// del Monitor y la herramienta funciona igual.
+//
+// OJO (ver memoria): el Monitor nombra las ONs con sufijo 'O' y usa la columna
+// Dólar (MEP/Cable) para la moneda; en BYMA el sufijo 'O' es la punta EN PESOS.
+// FCNByma.matchTicker() ya hace el mapeo O→D / O→C y los guards de escala.
+// ═══════════════════════════════════════════════════════
+var VIVO_BY_TICKER = {};   // ticker -> {precioMep, precioCable, tirMep, tirCable, mep, cable, ts}
+var BYMA_STORE = null;
+
+function scheduleParaTIRViva(ticker, hoy){
+  // cronograma real del Monitor si existe; si no, la aproximación de buildSchedule
+  // a partir de los campos de BOND_DB (misma lógica que bondDesdeUniverso).
+  var real = FLUJO_DB[ticker];
+  if(real && real.schedule100 && real.schedule100.length){
+    return real.schedule100.map(function(cf){
+      return {date:parseISO(cf.date), cupon:cf.cupon, amort:cf.amort, total:cf.total};
+    }).filter(function(cf){ return cf.date && cf.date.getTime()>hoy.getTime(); });
+  }
+  var b = BOND_DB[ticker];
+  if(!b || b.cuponAnual==null) return null;
+  var vencD = parseISO(b.vencimiento);
+  if(!vencD) return null;
+  var meses = parseMesesCupon(b.mesCupon);
+  var freq = meses.length>0 ? meses.length : 2;
+  var est = new Date(vencD.getTime()); est.setFullYear(est.getFullYear()-5);
+  var amortType = ((b.amortizacion||'').toLowerCase().indexOf('amortiz')>=0) ? 'amortizable' : 'bullet';
+  var sched = buildSchedule({
+    freq:freq, fechaEmision:est, fechaVenc:vencD,
+    amortType:amortType, amortStart:est, cuponAnual:b.cuponAnual
+  });
+  return sched.filter(function(cf){ return cf.date.getTime()>hoy.getTime(); });
+}
+
+function aplicarVivo(store){
+  BYMA_STORE = store;
+  VIVO_BY_TICKER = {};
+  if(!store || !store.ready){ renderEstadoBYMA(); return; }
+
+  var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+  var tickers = {};
+  Object.keys(BOND_DB).forEach(function(tk){ tickers[tk]=1; });
+  Object.keys(FLUJO_DB).forEach(function(tk){ tickers[tk]=1; });
+
+  var conPrecio=0, operaron=0, totalON=0, sospechosos=[];
+  Object.keys(tickers).forEach(function(tk){
+    var b = BOND_DB[tk];
+    if(b && b.categoria && b.categoria!=='ON') return;   // soberanos: fase 2
+    totalON++;
+    var monMep   = b && b.precioMep!=null ? b.precioMep : (b && b.precioCable!=null ? b.precioCable : null);
+    var monCable = b && b.precioCable!=null ? b.precioCable : (b && b.precioMep!=null ? b.precioMep : null);
+    var mMep   = FCNByma.matchTicker(tk, 'MEP',   monMep);
+    var mCable = FCNByma.matchTicker(tk, 'Cable', monCable);
+    if(!mMep && !mCable) return;
+
+    var v = { mep:mMep, cable:mCable, ts:store.ts,
+              precioMep:null, precioCable:null, tirMep:null, tirCable:null };
+    // BYMA da el precio "por 100" (104.20); el Monitor y todo el motor de TIR de este
+    // archivo lo manejan como fracción decimal (1.0420) — ver incidente de escala en
+    // memoria project-byma-ons-vivo. Convertir ACÁ, una sola vez, evita repetir el
+    // /100 (o peor, olvidarlo) en cada lugar que consume VIVO_BY_TICKER.
+    if(mMep && mMep.moneda==='mep' && mMep.precio>0)       v.precioMep   = mMep.precio/100;
+    if(mCable && mCable.moneda==='cable' && mCable.precio>0) v.precioCable = mCable.precio/100;
+
+    if(v.precioMep!=null || v.precioCable!=null){
+      var sched = scheduleParaTIRViva(tk, hoy);
+      if(sched && sched.length){
+        var seedM = b && b.tirMep!=null ? b.tirMep : (b && b.tirCable!=null ? b.tirCable : 10);
+        var seedC = b && b.tirCable!=null ? b.tirCable : (b && b.tirMep!=null ? b.tirMep : 10);
+        if(v.precioMep!=null)   v.tirMep   = tirDesdePrecio(sched, 100*v.precioMep,   hoy, seedM);
+        if(v.precioCable!=null) v.tirCable = tirDesdePrecio(sched, 100*v.precioCable, hoy, seedC);
+      }
+      conPrecio++;
+    }
+    if((mMep&&mMep.operoHoy)||(mCable&&mCable.operoHoy)) operaron++;
+    if((mMep&&mMep.sospechoso)||(mCable&&mCable.sospechoso)) sospechosos.push(tk);
+    VIVO_BY_TICKER[tk] = v;
+  });
+
+  window._bymaStats = { conPrecio:conPrecio, operaron:operaron, total:totalON, sospechosos:sospechosos };
+  renderEstadoBYMA();
+
+  // refrescar lo que esté a la vista
+  if(typeof lastCtx !== 'undefined' && lastCtx) { try{ renderAll(); }catch(e){} }
+  ['venta','compra'].forEach(function(pata){
+    var tk = document.getElementById((pata==='venta'?'v':'c')+'-ticker').value;
+    if(tk && VIVO_BY_TICKER[tk.toUpperCase()]) reAplicarPrecioVivo(pata, tk.toUpperCase());
+  });
+  if(typeof renderClienteTickerChips === 'function') { try{ renderClienteTickerChips(); }catch(e){} }
+}
+
+// Si el usuario NO tocó el precio a mano (sigue igual al del Monitor o vacío),
+// lo actualiza al vivo cuando llega BYMA. Si ya lo editó, no lo pisa.
+function reAplicarPrecioVivo(pata, ticker){
+  var p = pata==='venta' ? 'v' : 'c';
+  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  var el = document.getElementById(p+'-precio');
+  var actual = parseFloat(el.value);
+  var b = BOND_DB[ticker];
+  var monitorPx = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
+  var vivoPx = precioEfectivo(ticker, tipoPrecio);
+  if(vivoPx==null) return;
+  var sinTocar = !(actual>0) || (monitorPx!=null && Math.abs(actual-monitorPx) < 1e-6);
+  if(sinTocar && Math.abs((actual||0)-vivoPx) > 1e-6){
+    el.value = vivoPx;
+    onCondChange(pata);
+  }
+}
+
+function precioEfectivo(ticker, tipoPrecio){
+  var v = VIVO_BY_TICKER[ticker];
+  if(v){
+    if(tipoPrecio==='cable' && v.precioCable!=null) return v.precioCable;
+    if(tipoPrecio!=='cable' && v.precioMep!=null)   return v.precioMep;
+  }
+  var b = BOND_DB[ticker];
+  if(!b) return null;
+  return tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep)
+                              : (b.precioMep!=null?b.precioMep:b.precioCable);
+}
+function tirEfectivo(ticker, tipoPrecio){
+  var v = VIVO_BY_TICKER[ticker];
+  if(v){
+    if(tipoPrecio==='cable' && v.tirCable!=null) return v.tirCable;
+    if(tipoPrecio!=='cable' && v.tirMep!=null)   return v.tirMep;
+  }
+  var real = FLUJO_DB[ticker];
+  if(real && real.tirEfectiva!=null) return real.tirEfectiva;
+  var b = BOND_DB[ticker];
+  if(!b) return null;
+  return tipoPrecio==='cable' ? (b.tirCable!=null?b.tirCable:b.tirMep)
+                              : (b.tirMep!=null?b.tirMep:b.tirCable);
+}
+
+// chip "⚡ BYMA" para renderChips(): estado de liquidez + si el precio cargado es el del vivo
+function bymaChipHTML(ticker, precioCargado){
+  var v = VIVO_BY_TICKER[ticker];
+  if(!v) return BYMA_STORE && BYMA_STORE.ready
+    ? '<span class="chip byma-chip off" title="Este ticker no matcheó contra BYMA (vencido, o BYMA lo nombra distinto) — precio del Monitor.">⚡ sin dato BYMA</span>' : '';
+  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  var m = tipoPrecio==='cable' ? (v.cable||v.mep) : (v.mep||v.cable);
+  if(!m) return '';
+  var lq = FCNByma.liquidez(m);
+  var cls = lq.nivel==='sin-op' ? 'off' : (lq.nivel==='ok' ? '' : 'stale');
+  var pxVivo = tipoPrecio==='cable' ? v.precioCable : v.precioMep;   // decimal (1.0420), misma convención que el Monitor
+  var usandoVivo = pxVivo!=null && precioCargado!=null && Math.abs(precioCargado-pxVivo) < 5e-3;
+  var txt = '⚡ BYMA ' + (BYMA_STORE?BYMA_STORE.asOfText:'') +
+            (pxVivo!=null ? ' · ' + fmtNum(pxVivo*100,2) + (usandoVivo?'':' (Monitor cargado)') : '') +
+            ' · ' + lq.emoji + ' ' + lq.label +
+            (m.sospechoso ? ' · ⚠ movió '+fmtNum((m.ratioVsMonitor-1)*100,1)+'% vs Monitor' : '');
+  return '<span class="chip byma-chip '+cls+'" title="Precio y volumen del día desde la API pública de BYMA. La TIR se recalcula con el cronograma.">'+txt+'</span>';
+}
+
+function renderEstadoBYMA(){
+  var el = document.getElementById('byma-estado');
+  if(!el) return;
+  var s = BYMA_STORE;
+  if(!s){ el.style.display='none'; return; }
+  el.style.display='';
+  if(!s.ready){
+    el.innerHTML = '<span>⚡ BYMA no disponible ahora — usando precios del Monitor.</span>' +
+                   '<button class="byma-ref" onclick="refrescarBYMA()">↻ reintentar</button>';
+    return;
+  }
+  var st = window._bymaStats || {};
+  el.innerHTML =
+    '<span>⚡ <b>Precios en vivo · BYMA ' + s.asOfText + '</b>' + (s.stale ? ' (última copia — sin conexión)' : '') + '</span>' +
+    '<span>' + (st.conPrecio||0) + '/' + (st.total||0) + ' ONs con precio</span>' +
+    '<span>· ' + (st.operaron||0) + ' operaron hoy</span>' +
+    (st.sospechosos && st.sospechosos.length ? '<span title="'+st.sospechosos.join(', ')+'">· ⚠ ' + st.sospechosos.length + ' movieron >8% vs Monitor</span>' : '') +
+    '<button class="byma-ref" onclick="refrescarBYMA()">↻ actualizar</button>';
+}
+
+function iniciarBYMA(){
+  if(typeof FCNByma === 'undefined') return;
+  FCNByma.getONs().then(aplicarVivo).catch(function(e){ console.warn('[BYMA]', e); });
+  try{
+    if(typeof BroadcastChannel !== 'undefined'){
+      new BroadcastChannel('fcn_shared').addEventListener('message', function(ev){
+        if(ev && ev.data && ev.data.type==='byma_updated'){
+          FCNByma.getONs().then(aplicarVivo);
+        }
+      });
+    }
+  }catch(e){}
+}
+function refrescarBYMA(){
+  var el = document.getElementById('byma-estado');
+  if(el) el.querySelector('.byma-ref') && (el.querySelector('.byma-ref').textContent = '↻ …');
+  FCNByma.refresh().then(aplicarVivo);
+}
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('p-hoy').value = isoDate(new Date());
   loadDBFromStorage();
   loadFlujoDBFromStorage();
+  iniciarBYMA();
 });
 
 // ═══════════════════════════════════════════════════════
@@ -3191,6 +3926,60 @@ async function descargarReportePDF(){
       <button class="wpp-rot-close" onclick="cerrarBorradoresLicitacion()">✕</button>
     </div>
     <div class="lic-drafts-body" id="lic-drafts-list"></div>
+  </div>
+</div>
+
+<!-- ── MODAL ENVÍO MASIVO POR MAIL (Word + CSV) — LICITACIÓN ── -->
+<div class="lic-drafts-overlay" id="lic-mail-overlay" onclick="if(event.target===this) cerrarMailMasivoLicitacion()">
+  <div class="lic-drafts-modal">
+    <div class="wpp-rot-head">
+      <div>
+        <div class="wpp-rot-title">📧 Envío masivo por mail</div>
+        <div class="wpp-rot-sub">Un mail por cliente, combinando Word + CSV desde tu Outlook — mismo flujo que el Aviso de liquidez</div>
+      </div>
+      <button class="wpp-rot-close" onclick="cerrarMailMasivoLicitacion()">✕</button>
+    </div>
+    <div class="lic-drafts-body">
+      <div id="lic-mail-form">
+        <label style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="lic-mail-test" onchange="renderMailMasivoPreview()"> Modo prueba (filas de ejemplo a tu casilla, no a clientes)
+        </label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="lic-mail-tir" onchange="_licToggleOpt('nums',this.checked);renderMailMasivoPreview()" style="margin-top:2px;"> Mostrar los números de cada rotación (tasa actual y puntos de ventaja)
+        </label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="lic-mail-ficha" onchange="_licToggleOpt('ficha',this.checked)" style="margin-top:2px;"> <span>Incluir ficha técnica de la emisión (estructura, frecuencia de pago) — <span style="color:var(--cream-dim);">no recomendado, agrega tecnicismo</span></span>
+        </label>
+        <div id="lic-mail-preview" class="rot-comp-empty">…</div>
+        <button class="btn btn-primary" id="lic-mail-gen" style="width:100%;margin-top:12px;" onclick="generarMailMasivoLicitacion()">⬇ Descargar Word + CSV</button>
+        <div style="font-size:10px;color:var(--cream-dim);margin-top:8px;line-height:1.5;">
+          El mail sale de tu Outlook, uno por cliente (nunca en copia). Los datos de la ON y tu firma ya van dentro del Word;
+          el CSV lleva solo el saludo, el mail y el detalle por cliente. El flyer/informe de la ON <b>no se adjunta</b> — el mail invita a pedírtelo.
+        </div>
+      </div>
+      <div id="lic-mail-done" style="display:none;">
+        <div class="lic-nueva-on-card" style="margin-bottom:12px;">
+          <div style="font-weight:700;" id="lic-mail-done-n">—</div>
+          <div style="font-size:11px;color:var(--cream-dim);margin-top:4px;" id="lic-mail-done-files">—</div>
+        </div>
+        <div class="field">
+          <label>Asunto del mail (copialo y pegalo en el paso de Word)</label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="lic-mail-asunto" readonly style="flex:1;">
+            <button class="btn btn-outline" style="width:auto;white-space:nowrap;" onclick="copiarAsuntoMailLic(this)">Copiar</button>
+          </div>
+        </div>
+        <ol style="font-size:12px;line-height:1.75;padding-left:18px;margin-top:12px;">
+          <li>Abrí <b>Outlook clásico</b> y esperá a que diga «Conectado a: Microsoft Exchange». Dejalo abierto.</li>
+          <li>Abrí el <b>.docx</b> descargado → pestaña <b>Correspondencia</b>.</li>
+          <li><b>Seleccionar destinatarios</b> → <b>Usar una lista existente</b> → elegí el <b>.csv</b> de Descargas (si pregunta la codificación, <b>Unicode UTF-8</b>).</li>
+          <li><b>Vista previa de resultados</b> → revisá 2 o 3 que estén bien.</li>
+          <li><b>Finalizar y combinar</b> → <b>Enviar mensajes de correo electrónico</b>: Para <code>Email</code> · Asunto: el de arriba · Formato <b>HTML</b> · Enviar <b>Todos</b> (o «Desde 1 Hasta 3» para probar).</li>
+        </ol>
+        <p style="font-size:11px;color:var(--cream-dim);margin-top:4px;">Instructivo completo: <b>plantillas-mail/INSTRUCCIONES-licitacion.md</b> en el repo.</p>
+        <button class="btn btn-outline" style="width:100%;margin-top:6px;" onclick="cerrarMailMasivoLicitacion()">Cerrar</button>
+      </div>
+    </div>
   </div>
 </div>
 </body>

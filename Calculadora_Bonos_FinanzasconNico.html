@@ -6,7 +6,12 @@
 <title>Calculadora de Bonos — FinanzasconNico</title>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="fcn-byma.js"></script>
 <style>
+.byma-estado{font:400 11.5px/1.5 'Hanken Grotesk',sans-serif;color:var(--cream-dim);margin:8px 0 0;}
+.byma-estado b{color:var(--cream);font-weight:600}
+.byma-estado .byma-ref{background:none;border:1px solid var(--border);color:inherit;border-radius:4px;padding:1px 7px;cursor:pointer;font:inherit;margin-left:4px}
+.byma-estado .byma-ref:hover{color:var(--cream)}
 :root{--navy:#081917;--navy-mid:#0E2622;--navy-light:#122B27;--gold:#DBA03C;--gold-dim:#B8862F;--cream:#EAF1EE;--cream-dim:#6C817C;--border:rgba(255,255,255,0.1);--radius:4px;--balanz:#1C8C5F;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;font-size:13px;}
@@ -112,6 +117,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
         <div class="upload-hint">.xlsm de Balanz — hojas Corporativos + Soberanos</div>
         <div class="upload-status" id="status-excel"></div>
       </div>
+      <div class="byma-estado" id="byma-estado" style="display:none;"></div>
     </div>
 
     <div>
@@ -262,6 +268,62 @@ var clienteActivo = null;
 var tenenciaByTicker = {}; // TICKER -> [{cliente, nominales}]
 
 // ═══════════════════════════════════════════════════════
+// PRECIO EN VIVO (BYMA) — fcn-byma.js
+// Este archivo, a diferencia de Rotaciones, ya usa el precio "por 100 VN" tal cual
+// (campo "Precio (c/100 VN)"), la MISMA convención que devuelve la API de BYMA — acá
+// NO hay que dividir por 100 (ver memoria project-byma-ons-vivo: cada herramienta de la
+// Suite tiene su propia convención de precio, hay que chequearla antes de enchufar nada).
+// El precio_ref de Soberanos que ya traía este archivo del Excel sí está en fracción
+// decimal (arrastra una inconsistencia previa, no introducida acá) — por eso se lo pasa
+// tal cual a matchTicker() como monitorPrecio (esa función SÍ espera la fracción decimal
+// para su guard de escala), pero nunca se usa esa fracción para cargar el campo de precio.
+// ═══════════════════════════════════════════════════════
+var BYMA_STORE = null;
+function iniciarBYMA(){
+  if(typeof FCNByma === 'undefined') return;
+  FCNByma.getONs().then(onBYMA).catch(function(e){ console.warn('[BYMA]', e); });
+  try{
+    if(typeof BroadcastChannel !== 'undefined'){
+      new BroadcastChannel('fcn_shared').addEventListener('message', function(ev){
+        if(ev && ev.data && ev.data.type==='byma_updated') FCNByma.getONs().then(onBYMA);
+      });
+    }
+  }catch(e){}
+}
+function onBYMA(store){
+  BYMA_STORE = store;
+  renderEstadoBYMA();
+  // OJO: no re-disparamos seleccionarBono() acá — esa función resetea el formulario entero
+  // (fecha de emisión estimada, tipo de amortización, etc.), así que reaplicar el precio vivo
+  // sobre un ticker ya cargado podría pisarle al asesor ediciones manuales en curso. Si BYMA
+  // todavía no había cargado cuando se eligió el ticker, alcanza con volver a elegirlo (rápido,
+  // un clic en el autocompletar) o esperar a la próxima selección — que ya viene con precio vivo.
+}
+function refrescarBYMA(){ FCNByma.refresh().then(onBYMA); }
+function renderEstadoBYMA(){
+  var el = document.getElementById('byma-estado');
+  if(!el || !BYMA_STORE) return;
+  el.style.display='';
+  if(!BYMA_STORE.ready){
+    el.innerHTML = '⚡ BYMA no disponible — precio de referencia del Monitor. <button class="byma-ref" onclick="refrescarBYMA()">↻</button>';
+    return;
+  }
+  el.innerHTML = '⚡ Precios en vivo BYMA <b>' + BYMA_STORE.asOfText + '</b><button class="byma-ref" onclick="refrescarBYMA()">↻</button>';
+}
+// Devuelve el match de BYMA para un ticker del Monitor, o null si no hay datos / no matcheó.
+function bymaInfoPara(ticker, monedaTxt, precioRefDecimal){
+  if(typeof FCNByma==='undefined' || !FCNByma.ready()) return null;
+  return FCNByma.matchTicker(ticker, monedaTxt, precioRefDecimal||null);
+}
+function bymaBadgeTexto(vivo){
+  if(!vivo) return '⚡ BYMA: sin dato para este ticker (vencido, o BYMA lo nombra distinto)';
+  var lq = FCNByma.liquidez(vivo);
+  var txt = '⚡ BYMA ' + (BYMA_STORE?BYMA_STORE.asOfText:'') + ' · ' + lq.emoji + ' ' + lq.label;
+  if(vivo.sospechoso) txt += ' · ⚠ movió ' + ((vivo.ratioVsMonitor-1)*100).toFixed(1) + '% vs Monitor';
+  return txt;
+}
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function(){
@@ -269,6 +331,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('l-hoy').value = isoDate(today);
   onPlazoChange();
   loadDBFromStorage();
+  iniciarBYMA();
 });
 
 function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -560,9 +623,16 @@ function seleccionarBono(ticker){
   if(b.precio_ref) refParts.push('Precio ref.: <strong>'+b.precio_ref.toFixed(2)+'</strong>');
   if(b.dur_ref) refParts.push('Duration ref.: <strong>'+b.dur_ref.toFixed(2)+'</strong>');
 
-  // Precargar Precio (o TIR si no hay precio) con el último dato del Monitor,
-  // para no tener que tipearlo a mano cada vez que se elige un ticker.
-  if(b.precio_ref){
+  // Precargar Precio (o TIR si no hay precio) — preferimos el precio EN VIVO de BYMA
+  // cuando está disponible y pasa los guards de escala/liquidez; si no, caemos al último
+  // dato del Monitor (comportamiento de siempre).
+  var vivo = bymaInfoPara(b.ticker, b.moneda, b.precio_ref);
+  var precioVivo = (vivo && vivo.precio>0) ? vivo.precio : null;   // ya "por 100 VN", misma unidad que in-precio
+  if(precioVivo!=null){
+    setInputMode('precio');
+    document.getElementById('in-precio').value = precioVivo.toFixed(2);
+    refParts.push('<em>(precio EN VIVO de BYMA cargado abajo — se puede ajustar)</em>');
+  } else if(b.precio_ref){
     setInputMode('precio');
     document.getElementById('in-precio').value = b.precio_ref.toFixed(2);
     if(refParts.length) refParts.push('<em>(precio precargado abajo — se puede ajustar)</em>');
@@ -571,6 +641,7 @@ function seleccionarBono(ticker){
     document.getElementById('in-tir').value = b.tir_ref.toFixed(2);
     if(refParts.length) refParts.push('<em>(TIR precargada abajo — se puede ajustar)</em>');
   }
+  if(BYMA_STORE && BYMA_STORE.ready) refParts.push(bymaBadgeTexto(vivo));
 
   if(refParts.length){ refBox.style.display='block'; refBox.innerHTML='📊 Últimos datos del Monitor — '+refParts.join(' · '); }
   else { refBox.style.display='none'; }

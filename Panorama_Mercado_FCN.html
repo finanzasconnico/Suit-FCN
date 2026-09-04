@@ -9,7 +9,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
+<script src="fcn-byma.js"></script>
 <style>
+.byma-estado{font:400 10.5px/1.4 'Hanken Grotesk',sans-serif;color:var(--muted,#8AA39D);margin-top:4px;}
+.byma-estado b{color:var(--text,#EAF1EE);font-weight:600}
+.byma-estado .byma-ref{background:none;border:1px solid var(--border);color:inherit;border-radius:4px;padding:0 6px;cursor:pointer;font:inherit;margin-left:4px}
+.byma-estado .byma-ref:hover{color:var(--text,#EAF1EE)}
 :root {
   --petroleo-700: #0F3A34;
   --petroleo-900: #07211D;
@@ -137,6 +142,7 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
     <div>
       <div class="topbar-title">finanzasconnico · <span>Panorama de Mercado</span></div>
       <div class="topbar-subtitle">TIR vs. Duration de todo el universo de bonos/ONs · curva de referencia y clic para ver tenedores</div>
+      <div class="byma-estado" id="byma-estado" style="display:none;"></div>
     </div>
   </div>
   <div style="display:flex;gap:8px;">
@@ -309,6 +315,54 @@ let topClientesFiltroSet = null;
 let chart = null;
 let umbral = 50; // bps
 
+// ═══════════════════════════════════════════════════════
+// LIQUIDEZ EN VIVO (BYMA) — fcn-byma.js
+// Igual que en Scanner de Carteras: acá no hay motor de TIR-desde-precio, así que el
+// aporte de BYMA es la alerta de liquidez (tooltip del gráfico + modal de detalle),
+// no un precio ni una TIR recalculada.
+// ═══════════════════════════════════════════════════════
+let BYMA_STORE = null;
+function iniciarBYMA(){
+  if(typeof FCNByma === 'undefined') return;
+  FCNByma.getONs().then(onBYMA).catch(e=>console.warn('[BYMA]', e));
+  try{
+    if(typeof BroadcastChannel !== 'undefined'){
+      new BroadcastChannel('fcn_shared').addEventListener('message', ev=>{
+        if(ev && ev.data && ev.data.type==='byma_updated') FCNByma.getONs().then(onBYMA);
+      });
+    }
+  }catch(e){}
+}
+function onBYMA(store){
+  BYMA_STORE = store;
+  renderEstadoBYMA();
+  // el tooltip y el modal leen BYMA_STORE en el momento del hover/clic — no hace falta
+  // re-renderizar el gráfico entero acá.
+}
+function refrescarBYMA(){ FCNByma.refresh().then(onBYMA); }
+function renderEstadoBYMA(){
+  const el = document.getElementById('byma-estado');
+  if(!el || !BYMA_STORE) return;
+  el.style.display='';
+  el.innerHTML = BYMA_STORE.ready
+    ? `⚡ Liquidez BYMA <b>${BYMA_STORE.asOfText}</b><button class="byma-ref" onclick="refrescarBYMA()">↻</button>`
+    : `⚡ BYMA no disponible <button class="byma-ref" onclick="refrescarBYMA()">↻</button>`;
+}
+// texto corto para el tooltip del chart
+function liqTexto(ticker, dolarTxt){
+  if(!BYMA_STORE || !BYMA_STORE.ready) return null;
+  const m = FCNByma.matchTicker(ticker, dolarTxt||'', null);
+  if(!m) return '⚪ sin dato BYMA';
+  const lq = FCNByma.liquidez(m);
+  return lq.emoji + ' ' + lq.label;
+}
+// badge HTML para el modal
+function liqBadgeHTML(ticker, dolarTxt){
+  const txt = liqTexto(ticker, dolarTxt);
+  if(!txt) return '';
+  return `<span class="badge">${txt}</span>`;
+}
+
 // Bonos en default (o con datos rotos) dan una TIR "matemáticamente correcta"
 // pero sin sentido económico (cientos o miles de %) porque la fórmula asume
 // que se van a cobrar cupones que en realidad no se van a pagar. Un solo
@@ -316,6 +370,7 @@ let umbral = 50; // bps
 // por eso se ocultan por defecto (con opción de volver a mostrarlos).
 const TIR_EXTREMO = 0.60; // 60% anual en USD — ya por encima de esto es prácticamente siempre default/dato roto
 document.addEventListener('DOMContentLoaded', ()=>{ const el=document.getElementById('extremo-threshold-lbl'); if(el) el.textContent = Math.round(TIR_EXTREMO*100); });
+document.addEventListener('DOMContentLoaded', iniciarBYMA);
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -756,19 +811,22 @@ function renderChart(puntos, curve){
               if (item.datasetIndex !== 0) return `Curva: ${item.parsed.y.toFixed(2)}%`;
               const p = _puntosActuales[item.dataIndex];
               const diffTxt = p.diff!=null ? (p.diff*100>=0?'+':'') + (p.diff*100).toFixed(2)+'% vs curva' : '';
+              const liq = liqTexto(p.ticker, p.dolar);
               if (p.esExtremo) {
                 return [
                   `${p.emisor}`,
                   `⚠ TIR: ${(p.tir*100).toFixed(0)}% — extrema, probable default (fuera de escala)`,
                   `Duration: ${p.duration.toFixed(2)}a`,
-                  p.enCartera ? `👤 ${p.holders.length} cliente(s) posicionado(s)` : '— sin clientes'
+                  p.enCartera ? `👤 ${p.holders.length} cliente(s) posicionado(s)` : '— sin clientes',
+                  liq
                 ].filter(Boolean);
               }
               return [
                 `${p.emisor}`,
                 `TIR: ${(p.tir*100).toFixed(2)}%  ·  Duration: ${p.duration.toFixed(2)}a`,
                 diffTxt,
-                p.enCartera ? `👤 ${p.holders.length} cliente(s) posicionado(s)` : '— sin clientes'
+                p.enCartera ? `👤 ${p.holders.length} cliente(s) posicionado(s)` : '— sin clientes',
+                liq
               ].filter(Boolean);
             }
           }
@@ -826,6 +884,7 @@ function openModal(p){
     ${p.calificacion ? `<span class="badge">${p.calificacion}</span>` : ''}
     ${p.dolar ? `<span class="badge">${p.dolar}</span>` : ''}
     ${p.esExtremo ? `<span class="badge" style="color:var(--danger);border-color:var(--danger);">⚠ TIR extrema — posible default</span>` : ''}
+    ${liqBadgeHTML(p.ticker, p.dolar)}
   `;
   document.getElementById('m-tir').textContent = (p.tir*100).toFixed(p.esExtremo?0:2)+'%';
   document.getElementById('m-tir').style.color = p.esExtremo ? 'var(--danger)' : '';

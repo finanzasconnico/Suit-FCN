@@ -47,9 +47,15 @@ Movimientos_test.xlsx
 # asesor, sin datos de clientes). El Suite la baja, le mete los datos del asesor y la descarga
 # personalizada. El .csv de datos y las copias .docx/.docm de cada asesor no se versionan.
 !plantillas-mail/plantilla-aviso.docx
+# Excepción: plantilla base del envío masivo de "Licitación / oportunidad masiva"
+# (Calculadora de Rotaciones). Misma lógica: @@placeholders@@ del asesor + campos de
+# combinación «Nombre»/«Detalle», sin datos de clientes. La Suite la personaliza y descarga.
+!plantillas-mail/plantilla-licitacion.docx
 plantillas-mail/_*
 plantillas-mail/aviso-liquidez*.csv
 plantillas-mail/Aviso-liquidez*
+plantillas-mail/licitacion*.csv
+plantillas-mail/Licitacion-*
 plantillas-mail/*.docm
 plantillas-mail/*.vba
 

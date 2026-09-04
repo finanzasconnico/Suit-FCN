@@ -6,7 +6,13 @@
 <title>Scanner de Carteras — FinanzasconNico</title>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="fcn-byma.js"></script>
 <style>
+.byma-estado{font:400 11.5px/1.5 'Hanken Grotesk',sans-serif;color:var(--ink-muted,#93a8a2);margin:8px 0 0;}
+.byma-estado b{color:var(--crema,#F7F3EA);font-weight:600}
+.byma-estado .byma-ref{background:none;border:1px solid var(--border);color:inherit;border-radius:4px;padding:1px 7px;cursor:pointer;font:inherit;margin-left:4px}
+.byma-estado .byma-ref:hover{color:var(--crema,#F7F3EA)}
+.liq-badge{display:inline-block;font-size:10px;cursor:help;margin-left:2px}
 :root {
   --petroleo-700: #0F3A34;
   --petroleo-900: #07211D;
@@ -332,6 +338,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
         <div class="upload-hint">Comitente → Teléfono · hoja Export</div>
         <div class="upload-status" id="status-stock"></div>
       </div>
+      <div class="byma-estado" id="byma-estado" style="display:none;"></div>
     </div>
     <div class="divider"></div>
     <div>
@@ -932,7 +939,7 @@ function enriquecerConStock() {
     const entry=stockMap[String(d.comitente).trim()];
     if(entry){
       d.tel=entry.tel;
-      d.nombreStock=entry.nombre||entry.denominacion||null;
+      d.nombreStock=entry.nombre||null;
       d.mail=entry.mail||null;
     }
   });
@@ -1225,7 +1232,7 @@ function renderHoy() {
       : c.tieneVtoProximo
         ? `Vencimiento próximo · Tenencia $${formatNum(c.tenenciaTotal)}`
         : `${c.posiciones.length} posición${c.posiciones.length>1?'es':''} · ${Math.round(c.diasSinContacto)} días en cartera`;
-    const wppCtxData = { cliente: c.cliente, ticker: c.posiciones[0]?.ticker||'', tir: c.tirMinima, tirBaja: c.bajasCount>0, tirAlta: false, tel: c.posiciones[0]?.tel||null, nombre: c.posiciones[0]?.nombreStock||c.cliente, comitente: c.posiciones[0]?.comitente||'' };
+    const wppCtxData = { cliente: c.cliente, ticker: c.posiciones[0]?.ticker||'', tir: c.tirMinima, tirBaja: c.bajasCount>0, tirAlta: false, tel: c.posiciones[0]?.tel||null, nombre: c.posiciones[0]?.nombreStock||'', comitente: c.posiciones[0]?.comitente||'' };
     const wppBtnHtml = `<button class="wpp-btn" onclick='abrirWpp(${JSON.stringify(wppCtxData).replace(/'/g,"&#39;")})'>
       <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.859L.057 23.571a.75.75 0 00.903.882l5.842-1.53A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.726 9.726 0 01-4.95-1.348l-.355-.211-3.667.961.977-3.573-.231-.368A9.712 9.712 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
       WPP
@@ -1347,7 +1354,7 @@ function filaONAgrupada(g) {
   const lamCell=g.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(g.laminaMin)}</span>`:'—';
   const tkEsc=g.ticker.replace(/'/g,"\\'");
   return `<tr class="tk-click" onclick="abrirHoldersON('${tkEsc}')" title="Ver qué clientes lo tienen">
-    <td class="td-ticker">${g.ticker} ${tipoBadge(g.tipo)}</td>
+    <td class="td-ticker">${g.ticker} ${tipoBadge(g.tipo)} ${liqBadgeInline(g.ticker)}</td>
     <td class="td-instrumento" title="${g.instrumento}">${g.instrumento}</td>
     <td>${tirCell}</td>
     <td style="font-family:var(--font-mono)">${cuponPct}</td>
@@ -1466,7 +1473,7 @@ function renderAlternativasRotacion(ticker) {
   }
   const rows = candidatos.map(c => `
     <tr class="rot-alt-row" onclick="irARotarAlternativa('${ticker.replace(/'/g,"\\'")}','${c.ticker.replace(/'/g,"\\'")}')" title="Ver rotación ${ticker} → ${c.ticker}">
-      <td class="td-ticker">${c.ticker}</td>
+      <td class="td-ticker">${c.ticker} ${liqBadgeInline(c.ticker)}</td>
       <td title="${c.instrumento||c.emisor||''}">${c.instrumento||c.emisor||'—'}</td>
       <td>${(c.tir*100).toFixed(2)}%</td>
       <td>${c.duration!=null?c.duration.toFixed(1)+'y':'—'}</td>
@@ -1576,7 +1583,7 @@ function abrirCarteraCliente(cn) {
     document.getElementById('cc-sub').textContent = `${asesor} · ${items.length} posición(es) · Tenencia total $${formatNum(tenTotal)}`;
     const rows = items.slice().sort((a, b) => b.tenencia - a.tenencia).map(d => `
       <tr>
-        <td>${d.ticker}</td>
+        <td>${d.ticker} ${liqBadgeInline(d.ticker)}</td>
         <td style="font-family:var(--font-sans);">${d.instrumento || '—'}</td>
         <td>${d.tir !== null ? (d.tir * 100).toFixed(2) + '%' : '—'}</td>
         <td>${formatVto(d.vencimiento)}</td>
@@ -1672,7 +1679,7 @@ function filaON(d, highlightBaja=false, showAsesor=false) {
   const durCell=d.duration!==null?`<span style="font-family:var(--font-mono)">${d.duration.toFixed(1)}y</span>`:'—';
   const lamCell=d.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(d.laminaMin)}</span>`:'—';
   return `<tr class="${rowClass}">
-    <td class="td-ticker">${d.ticker} ${tipoBadge(d.tipo)}</td>
+    <td class="td-ticker">${d.ticker} ${tipoBadge(d.tipo)} ${liqBadgeInline(d.ticker)}</td>
     <td class="td-instrumento" title="${d.instrumento}">${d.instrumento}</td>
     <td class="td-cliente">${d.cliente}</td>
     ${showAsesor?`<td style="font-size:10px;color:var(--ink-muted)">${d.asesor}</td>`:''}
@@ -1708,7 +1715,7 @@ function filaTop(d) {
   const durCellTop=d.duration!==null?`<span style="font-family:var(--font-mono)">${d.duration.toFixed(1)}y</span>`:'—';
   const lamCellTop=d.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(d.laminaMin)}</span>`:'—';
   return `<tr class="highlight-high">
-    <td class="td-ticker">${d.ticker} ${tipoBadge(d.tipo)}</td>
+    <td class="td-ticker">${d.ticker} ${tipoBadge(d.tipo)} ${liqBadgeInline(d.ticker)}</td>
     <td class="td-instrumento" title="${d.instrumento}">${d.instrumento}</td>
     <td class="td-cliente">${d.cliente}</td>
     <td>${tirCell}</td>
@@ -1736,7 +1743,7 @@ function filaONConCobrado(d) {
   const durStr=d.duration!==null?d.duration.toFixed(1)+'y':'—';
   const lamStr=d.laminaMin!==null?formatNum(d.laminaMin):'—';
   return `<tr class="${rowClass}">
-    <td class="td-ticker">${d.ticker}</td><td class="td-instrumento">${d.instrumento}</td>
+    <td class="td-ticker">${d.ticker} ${liqBadgeInline(d.ticker)}</td><td class="td-instrumento">${d.instrumento}</td>
     <td>${tirCell}</td>
     <td style="font-family:var(--font-mono)">${cuponPct}</td>
     <td style="font-family:var(--font-mono)">${durStr}</td>
@@ -1765,6 +1772,56 @@ function tipoBadge(tipo) {
   if(tipo==='bopreal') return`<span class="badge-bop">BOP</span>`;
   if(tipo==='dollarlinked') return`<span class="badge-bop">$-LNK</span>`;
   return`<span class="badge-sov">SOB</span>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// LIQUIDEZ EN VIVO (BYMA) — fcn-byma.js
+// A diferencia de la Calculadora de Rotaciones, este archivo no recalcula TIR desde el
+// precio (no tiene el motor de cronograma) — la TIR sigue siendo la del Monitor. Lo que
+// SÍ aportamos acá es la alerta de liquidez: cruzar cada ticker contra BYMA para marcar
+// si operó hoy o no antes de sugerirlo como alternativa de rotación. "No proponerle a un
+// cliente rotar a un bono sin volumen real" — pedido explícito, tan importante como el
+// precio en sí.
+// ═══════════════════════════════════════════════════════
+var BYMA_STORE = null;
+function iniciarBYMA(){
+  if(typeof FCNByma === 'undefined') return;
+  FCNByma.getONs().then(onBYMA).catch(function(e){ console.warn('[BYMA]', e); });
+  try{
+    if(typeof BroadcastChannel !== 'undefined'){
+      new BroadcastChannel('fcn_shared').addEventListener('message', function(ev){
+        if(ev && ev.data && ev.data.type==='byma_updated') FCNByma.getONs().then(onBYMA);
+      });
+    }
+  }catch(e){}
+}
+function onBYMA(store){
+  BYMA_STORE = store;
+  renderEstadoBYMA();
+  if(typeof datosFusionados!=='undefined' && datosFusionados.length>0) renderTablas();
+  if(typeof tickerModalActual!=='undefined' && tickerModalActual) renderAlternativasRotacion(tickerModalActual);
+}
+function refrescarBYMA(){ FCNByma.refresh().then(onBYMA); }
+function renderEstadoBYMA(){
+  var el = document.getElementById('byma-estado');
+  if(!el || !BYMA_STORE) return;
+  el.style.display='';
+  if(!BYMA_STORE.ready){
+    el.innerHTML = '⚡ BYMA no disponible — TIR del Monitor, sin alerta de liquidez. <button class="byma-ref" onclick="refrescarBYMA()">↻</button>';
+    return;
+  }
+  el.innerHTML = '⚡ Liquidez BYMA <b>' + BYMA_STORE.asOfText + '</b><button class="byma-ref" onclick="refrescarBYMA()">↻</button>';
+}
+// Badge chico para insertar al lado de un ticker (no agrega columnas — cada tabla de este
+// archivo tiene su propio layout de <th>/<td>, agregar columna a todas es innecesariamente
+// invasivo para el valor que aporta). dolarCol viene de dataMonitor[ticker].dolar.
+function liqBadgeInline(ticker){
+  if(!BYMA_STORE || !BYMA_STORE.ready) return '';
+  var info = dataMonitor[ticker];
+  var m = FCNByma.matchTicker(ticker, info?info.dolar:'', null);
+  if(!m) return '<span class="liq-badge" title="No matcheó contra BYMA (vencido, o BYMA lo nombra distinto)">⚪</span>';
+  var lq = FCNByma.liquidez(m);
+  return '<span class="liq-badge" title="'+lq.label+' (BYMA '+(BYMA_STORE.asOfText||'')+')">'+lq.emoji+'</span>';
 }
 function formatNum(n) { if(!n&&n!==0) return'—'; return new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n); }
 function formatVto(v) {
@@ -1838,11 +1895,16 @@ function sortTable(tabla,col) {
 
 let wppCtx = null;
 
+// Saludo: SOLO la columna "Nombre" del Stock (Balanz la da como primer nombre). Si viene vacía,
+// se saluda sin nombre — nunca el apellido / la denominación / el nombre de cuenta, que quedaban
+// como "Hola PEREZ,". Devuelve " Juan" (con espacio) o "" para intercalar tras "Hola".
+function _nomSaludo(n){ n = String(n == null ? '' : n).trim(); return n ? ' ' + n : ''; }
+
 const WPP_TEMPLATES = {
-  buenas:      ctx => `¡Hola ${ctx.nombre||ctx.cliente}! 🎉\n\nQuería contarte que tu ON *${ctx.ticker}* está rindiendo bien. La TIR actual es de *${ctx.tir||''}* anual en dólares.\n\nSi querés conversarlo o revisar la cartera completa, avisame. ¡Saludos! 👋`,
-  atencion:    ctx => `Hola ${ctx.nombre||ctx.cliente}, te escribo para que estés al tanto de una situación en tu cartera.\n\nTu posición en *${ctx.ticker}* tiene una TIR de *${ctx.tir||''}*, que está por debajo del umbral que definimos. Conviene que hablemos para evaluar opciones. ¿Cuándo tenés unos minutos? 📞`,
-  vencimiento: ctx => `Hola ${ctx.nombre||ctx.cliente}, te aviso que tu ON *${ctx.ticker}* tiene el vencimiento próximo.\n\nEs un buen momento para definir qué hacemos con esos fondos cuando se liberen. ¿Hablamos esta semana? 📅`,
-  seguimiento: ctx => `Hola ${ctx.nombre||ctx.cliente}! 👋\n\nPasaba a saludarte y contarte que estuve revisando tu cartera. Todo en orden con tus posiciones en ONs.\n\nSi tenés alguna consulta o querés revisar algo, estoy disponible. ¡Saludos!`,
+  buenas:      ctx => `¡Hola${_nomSaludo(ctx.nombre)}! 🎉\n\nQuería contarte que tu ON *${ctx.ticker}* está rindiendo bien. La TIR actual es de *${ctx.tir||''}* anual en dólares.\n\nSi querés conversarlo o revisar la cartera completa, avisame. ¡Saludos! 👋`,
+  atencion:    ctx => `Hola${_nomSaludo(ctx.nombre)}, te escribo para que estés al tanto de una situación en tu cartera.\n\nTu posición en *${ctx.ticker}* tiene una TIR de *${ctx.tir||''}*, que está por debajo del umbral que definimos. Conviene que hablemos para evaluar opciones. ¿Cuándo tenés unos minutos? 📞`,
+  vencimiento: ctx => `Hola${_nomSaludo(ctx.nombre)}, te aviso que tu ON *${ctx.ticker}* tiene el vencimiento próximo.\n\nEs un buen momento para definir qué hacemos con esos fondos cuando se liberen. ¿Hablamos esta semana? 📅`,
+  seguimiento: ctx => `Hola${_nomSaludo(ctx.nombre)}! 👋\n\nPasaba a saludarte y contarte que estuve revisando tu cartera. Todo en orden con tus posiciones en ONs.\n\nSi tenés alguna consulta o querés revisar algo, estoy disponible. ¡Saludos!`,
 };
 
 function abrirWpp(ctx) {
@@ -1899,7 +1961,7 @@ function wppBoton(d) {
     tirBaja:   d.tir !== null && d.tir < umbralTIR / 100,
     tirAlta:   d.tir !== null && d.tir > umbralTIRAlta / 100,
     tel:       d.tel || null,
-    nombre:    d.nombreStock || d.cliente,
+    nombre:    d.nombreStock || '',
     comitente: d.comitente,
   };
   const ctxJson = JSON.stringify(ctx).replace(/'/g, "&#39;");
@@ -1929,8 +1991,8 @@ function exportarExcel() {
 function mailBoton(d) {
   if(!d.mail) return '<span style="font-size:10px;color:var(--dim)">—</span>';
   const subj=encodeURIComponent(`Información sobre su posición en ${d.ticker}`);
-  const nombre=d.nombreStock||d.cliente||'';
-  const body=encodeURIComponent(`Estimado/a ${nombre},\n\nMe comunico para informarle sobre su posición en ${d.ticker}.\n\nQuedo a disposición ante cualquier consulta.\n\nSaludos,`);
+  const nombre=String(d.nombreStock||'').trim();
+  const body=encodeURIComponent(`Estimado/a ${nombre || 'cliente'},\n\nMe comunico para informarle sobre su posición en ${d.ticker}.\n\nQuedo a disposición ante cualquier consulta.\n\nSaludos,`);
   return `<a class="mail-btn" href="mailto:${d.mail}?subject=${subj}&body=${body}" title="${d.mail}">✉</a>`;
 }
 
@@ -2086,6 +2148,7 @@ function actualizarFiltrosDias() {
     if (cliente) waitForDataAndApply(cliente);
   }
   window.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', iniciarBYMA);
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = e => {
       if (!e.data) return;

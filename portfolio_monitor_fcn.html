@@ -7,6 +7,7 @@
 <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
   onerror="document.getElementById('xlsxErr').style.display='block'"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="fcn-byma.js"></script>
 <style>
 :root{
   --bg:#0d1117;--sf:#161b22;--sf2:#21262d;--bd:#30363d;
@@ -457,16 +458,24 @@ function applyData912(arr,isBond){
   });
 }
 
-// BYMA open API — retorna lista con ticker y ultimoPrecio en ARS
-function applyBYMA(arr){
-  arr.forEach(function(x){
-    var s=(x.symbol||x.ticker||'').trim();
-    var p=x.ultimoPrecio||x.price||x.c||0;
-    if(!s||!p||p<=0)return;
-    // BYMA da precios en ARS → convertir
-    setPrice(s, p/S.mep, 'byma');
-    // Algunos cedears tienen "D" (cable) sin sufijo; intentar con D
-    setPrice(s.replace(/D$/,''), p/S.mep, 'byma');
+// BYMA open API (negociable-obligations, vía fcn-byma.js) — gratis, sin login, CORS
+// abierto. Reemplaza al endpoint viejo (index-assets/assets), que devolvía 401 (pide
+// auth) y por lo tanto nunca aportó un precio real — quedaba silencioso como "byma✗" en
+// el pie de fuente. Solo llena ONs (sufijo O, la convención de ticker que usa este
+// archivo) que data912 no haya cubierto ya (mismo guard de setPrice de siempre).
+// OJO ESCALA: BYMA da el precio "por 100" (104.20) — acá se divide /100 para que quede
+// en la misma fracción decimal (1.0420) que usan LIVE_PRICES/FALLBACK_USD en este
+// archivo (ver FALLBACK_USD: 'CS48O':1.051, misma convención). No hace falta dividir
+// por el MEP: las puntas D/C de BYMA ya vienen valuadas en USD/cable.
+function applyBYMAOns(store){
+  if(!store || !store.ready) return;
+  var data = store.data || {};
+  Object.keys(data).forEach(function(stem){
+    var tk = stem + 'O';
+    if(LIVE_PRICES.hasOwnProperty(tk)) return; // ya lo trajo data912
+    var leg = data[stem].mep || data[stem].cable;   // preferí MEP; si no hay, cable
+    if(!leg || !(leg.precio>0)) return;
+    setPrice(tk, leg.precio/100, 'byma');
   });
 }
 
@@ -488,14 +497,12 @@ async function fetchLivePrices(){
     sources.push('data912');
   }catch(e){sources.push('data912✗');}
 
-  // ── BYMA open API ─────────────────────────────────────────────
+  // ── BYMA open API (negociable-obligations, vía fcn-byma.js) ────
   try{
-    var bymaRes=await fetchTimeout(
-      'https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free/index-assets/assets',6000);
-    var bymaJson=await bymaRes.json();
-    var bymaArr=Array.isArray(bymaJson)?bymaJson:(bymaJson.data||bymaJson.content||[]);
-    applyBYMA(bymaArr);
-    sources.push('byma');
+    if(typeof FCNByma==='undefined') throw new Error('fcn-byma.js no cargó');
+    var bymaStore=await FCNByma.getONs();
+    applyBYMAOns(bymaStore);
+    sources.push(bymaStore.ready?'byma':'byma✗');
   }catch(e){sources.push('byma✗');}
 
   // ── ArgentinaDatos (acciones en ARS) ──────────────────────────
