@@ -694,6 +694,14 @@ function parseRealizado(bufs){
     var ws=wb.Sheets[wb.SheetNames[0]];
     rows=rows.concat(XLSX.utils.sheet_to_json(ws,{defval:''}));
   });
+  // Dedup entre archivos — mismo patrón que parseMovimientos(). Sin esto, re-exportar la
+  // misma cuenta o subir rangos de fechas que se superponen duplicaba cada operación
+  // cerrada (bug real arreglado 05/09/2026: inflaba la ganancia/pérdida del informe).
+  var seenReal=new Set();
+  rows=rows.filter(function(r){
+    var k=[r['Fecha'],r['FechaCompra'],r['TipoMovimiento'],r['Ticker'],r['Cantidad'],r['Precio Compra'],r['Precio Venta'],r['Gastos']].join('|');
+    if(seenReal.has(k))return false;seenReal.add(k);return true;
+  });
   if(!rows.length)return null;
 
   var posData={};      // ticker → {lots, totalQty, pppUSD, …} — equivale a PosF
@@ -2420,7 +2428,10 @@ function renderTransferWarning(){
 
 function buildClosedTrades(movData){
   var trades=(movData&&movData.trades)||[];
-  var bolGastos=(movData&&movData.bolGastos)||[];
+  // Bug real arreglado 05/09/2026: leía `movData.bolGastos`, un campo que parseMovimientos()
+  // nunca llena (el array real se llama `gastos`) — las comisiones de este camino (FIFO sin
+  // Realizado subido) siempre daban 0/"—" aunque existieran gastos reales en Movimientos.
+  var bolGastos=(movData&&movData.gastos)||[];
   var sorted=trades.slice().sort(function(a,b){return a.fecha.localeCompare(b.fecha);});
 
   // FIFO queues per ticker

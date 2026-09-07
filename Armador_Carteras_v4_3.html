@@ -279,7 +279,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
       <div class="section-title">Tamaño de Cartera</div>
       <div class="size-row">
         <div class="field size-curr"><label>Moneda</label><select id="port-curr" onchange="updateDoc()"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
-        <div class="field" style="flex:1;"><label>Monto Total</label><div class="money-wrap"><span class="money-prefix" id="curr-pfx">$</span><input type="number" id="port-size" placeholder="100,000" min="0" style="padding-left:22px;" oninput="updateDoc()"></div></div>
+        <div class="field" style="flex:1;"><label>Monto Total</label><div class="money-wrap"><span class="money-prefix" id="curr-pfx">$</span><input type="number" id="port-size" placeholder="100,000" min="0" style="padding-left:22px;" oninput="updateDoc();checkLaminaLive()"></div></div>
       </div>
       <div class="port-pill" id="port-pill" style="display:none;"><span class="lbl">Total</span><span class="val" id="port-pill-val">—</span></div>
     </div>
@@ -296,12 +296,12 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
       <div class="field"><label>Buscar</label><div class="ac-wrap"><input type="text" id="f-name" placeholder="Ticker o nombre: VSCXO, GD30, TX26…" autocomplete="off" oninput="acS(this.value)" onblur="setTimeout(closeAC,180)"><div class="ac-dropdown" id="ac-dd"></div></div></div>
       <div class="field-row">
         <div class="field"><label>Categoría</label><select id="f-type" onchange="togglePriceRow()"><option value="Renta Variable | Argentina">RV · Argentina</option><option value="Renta Variable | CEDEARs">RV · CEDEARs</option><option value="Renta Variable | Internacional">RV · Internacional</option><option value="Renta Fija | Soberanos">RF · Soberanos</option><option value="Renta Fija | Sub-soberanos">RF · Sub-soberanos</option><option value="Renta Fija | Corporativos (ONs)">RF · Corporativos (ONs)</option><option value="Renta Fija | Letras y Bonos ARS">RF · Letras y Bonos ARS</option><option value="Renta Fija | Internacional">RF · Internacional</option><option value="Liquidez / Money Market">Liquidez / MM</option><option value="FCI">FCI</option><option value="Alternativos">Alternativos</option><option value="Commodities">Commodities</option><option value="Criptomonedas">Cripto</option><option value="Otro">Otro</option></select></div>
-        <div class="field"><label>Ticker</label><input type="text" id="f-ticker" placeholder="Ej: VSCXO" style="text-transform:uppercase;"></div>
+        <div class="field"><label>Ticker</label><input type="text" id="f-ticker" placeholder="Ej: VSCXO" style="text-transform:uppercase;" oninput="updateLamRow()"></div>
       </div>
       <div class="field-row">
         <div class="field">
           <div class="pct-toggle"><label id="pct-label">Asignación</label><button class="pct-toggle-btn active" id="btn-mode-pct" onclick="setPctMode('pct')">%</button><button class="pct-toggle-btn" id="btn-mode-amt" onclick="setPctMode('amt')">$</button></div>
-          <div style="position:relative;"><input type="number" id="f-pct" placeholder="0" min="0" max="100" step="0.5"><input type="number" id="f-amt" placeholder="Monto" min="0" style="display:none;"><span id="pct-suffix" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--cream-dim);pointer-events:none;">%</span></div>
+          <div style="position:relative;"><input type="number" id="f-pct" placeholder="0" min="0" max="100" step="0.5" oninput="checkLaminaLive()"><input type="number" id="f-amt" placeholder="Monto" min="0" style="display:none;"><span id="pct-suffix" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--cream-dim);pointer-events:none;">%</span></div>
           <div id="pct-mode-warning" style="font-size:9px;color:#D9892B;margin-top:3px;display:none;">Ingresá el tamaño del portfolio</div>
         </div>
         <div class="field"><label id="ret-label">Retorno Est.</label><input type="text" id="f-return" placeholder="Ej: TIR 7.5%"></div>
@@ -311,6 +311,14 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
         <div class="field"><label>Precio target (USD)</label><input type="number" id="f-price-target" placeholder="120" oninput="calcRetFromPrice()"></div>
       </div>
       <div id="yf-badge" style="display:none;margin-top:-4px;margin-bottom:6px;font-size:10px;"></div>
+      <div class="field-row" id="lam-row" style="display:none;">
+        <div class="field"><label>Precio del nominal</label><input type="number" id="f-lam-precio" placeholder="Ej: 1.03" step="0.0001" min="0" oninput="checkLaminaLive()"></div>
+        <div class="field"><label>Cotiza en</label><select id="f-lam-moneda" onchange="toggleLamTC();checkLaminaLive()"><option value="MEP">USD MEP</option><option value="CABLE">USD Cable</option><option value="ARS">Pesos (ARS)</option></select></div>
+      </div>
+      <div class="field-row" id="lam-tc-row" style="display:none;">
+        <div class="field"><label>Tipo de cambio ARS/USD</label><input type="number" id="f-lam-tc" placeholder="Ej: 1450" min="0" oninput="checkLaminaLive()"></div>
+      </div>
+      <div id="lam-hint" style="font-size:10px;margin:-4px 0 8px;"></div>
       <div class="field-row">
         <div class="field"><label>Moneda</label><select id="f-curr"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
         <div class="field"><label>Color</label><div class="color-strip" id="color-strip"></div></div>
@@ -1110,7 +1118,7 @@ function selAC(t,n,c,m){
     // Force letras category
     for(var i=0;i<sel.options.length;i++){if(sel.options[i].value==='Renta Fija | Letras y Bonos ARS'){sel.selectedIndex=i;break;}}
   }
-  togglePriceRow();closeAC();
+  togglePriceRow();updateLamRow();closeAC();
   // Auto-fetch precio y target para RV
   if(c.includes('Renta Variable')) setTimeout(onTickerBlur, 50);
 }
@@ -1118,6 +1126,61 @@ function selAC(t,n,c,m){
 function closeAC(){document.getElementById('ac-dd').classList.remove('open');}
 
 // ═══ FORM HELPERS ═══
+// Nominales que alcanzan con `montoUSD` (monto asignado, en USD-equivalente del portafolio),
+// dado el precio del nominal y en qué moneda cotiza el bono. Devuelve null si faltan datos
+// para calcular (sin precio, o Pesos sin tipo de cambio) — mejor no chequear que comparar mal.
+function nominalesDeLamina(montoUSD,precio,moneda,tc){
+  precio=parseFloat(precio);tc=parseFloat(tc);
+  if(!precio||precio<=0||!montoUSD)return null;
+  if(moneda==='ARS'){
+    if(!tc||tc<=0)return null;
+    return (montoUSD*tc)/precio; // pesos necesarios / precio en pesos por nominal
+  }
+  return montoUSD/precio; // MEP y Cable ya están en USD-equivalente por nominal
+}
+function toggleLamTC(){
+  var m=document.getElementById('f-lam-moneda').value;
+  document.getElementById('lam-tc-row').style.display=(m==='ARS')?'':'none';
+}
+// Muestra/oculta los campos de lámina mínima según si el ticker tipeado tiene lámina en el Monitor,
+// y precarga la moneda de cotización sugerida (MEP/Cable/Pesos según la columna "Dólar" del Monitor).
+function updateLamRow(){
+  var t=document.getElementById('f-ticker').value.trim().toUpperCase();
+  var on=ON_DB[t];
+  var row=document.getElementById('lam-row');
+  if(on&&on.lamina){
+    row.style.display='';
+    var msel=document.getElementById('f-lam-moneda');
+    var mm=(on.moneda||'').toLowerCase();
+    msel.value=mm.indexOf('cable')>=0?'CABLE':mm.indexOf('mep')>=0?'MEP':(mm?'ARS':'MEP');
+    toggleLamTC();
+  } else {
+    row.style.display='none';
+    document.getElementById('lam-tc-row').style.display='none';
+  }
+  checkLaminaLive();
+}
+// Hint en vivo mientras se completa el formulario: cuántos nominales alcanzan con el monto tipeado.
+function checkLaminaLive(){
+  var hint=document.getElementById('lam-hint');if(!hint)return;
+  var row=document.getElementById('lam-row');
+  if(!row||row.style.display==='none'){hint.textContent='';return;}
+  var t=document.getElementById('f-ticker').value.trim().toUpperCase();
+  var on=ON_DB[t];
+  if(!on||!on.lamina){hint.textContent='';return;}
+  var ps=parseFloat(document.getElementById('port-size').value)||0;
+  var pctVal=pctInputMode==='amt'?(ps>0?(parseFloat(document.getElementById('f-amt').value)||0)/ps*100:0):(parseFloat(document.getElementById('f-pct').value)||0);
+  var monto=ps*(pctVal/100);
+  if(!ps||!monto){hint.style.color='var(--cream-dim)';hint.textContent='Completá el tamaño del portafolio y la asignación para chequear la lámina.';return;}
+  var precio=document.getElementById('f-lam-precio').value;
+  var moneda=document.getElementById('f-lam-moneda').value;
+  var tc=document.getElementById('f-lam-tc').value;
+  var nom=nominalesDeLamina(monto,precio,moneda,tc);
+  if(nom==null){hint.style.color='var(--cream-dim)';hint.textContent='Ingresá el precio del nominal'+(moneda==='ARS'?' y el tipo de cambio':'')+' para chequear la lámina.';return;}
+  var ok=nom>=on.lamina;
+  hint.style.color=ok?'#1C8C5F':'#E8837E';
+  hint.textContent=(ok?'✓ ':'⚠ ')+'≈ '+Math.floor(nom).toLocaleString('es-AR')+' nominales con este monto (mínimo '+on.lamina.toLocaleString('es-AR')+').';
+}
 function togglePriceRow(){
   var type=document.getElementById('f-type').value;
   var isRV=type.includes('Renta Variable');
@@ -1148,7 +1211,7 @@ function setPctMode(mode){
     fp.style.display='none';if(fa)fa.style.display='';
     if(suf){var pc=document.getElementById('port-curr').value;suf.textContent=pc==='ARS'?'$':'USD';}
     bp.classList.remove('active');ba.classList.add('active');if(warn)warn.style.display='none';
-    if(fa)fa.oninput=function(){var a=parseFloat(fa.value)||0,ps2=parseFloat(document.getElementById('port-size').value)||0;if(ps2>0&&a>0)fp.value=Math.round((a/ps2)*10000)/100;};
+    if(fa)fa.oninput=function(){var a=parseFloat(fa.value)||0,ps2=parseFloat(document.getElementById('port-size').value)||0;if(ps2>0&&a>0)fp.value=Math.round((a/ps2)*10000)/100;checkLaminaLive();};
   }
 }
 
@@ -1179,19 +1242,25 @@ function addAsset(){
   var papel=document.getElementById('f-papel').value.trim();
   var priceCur=parseFloat(document.getElementById('f-price-current').value)||null;
   var priceTgt=parseFloat(document.getElementById('f-price-target').value)||null;
+  var lamPrecio=parseFloat(document.getElementById('f-lam-precio').value)||null;
+  var lamMoneda=document.getElementById('f-lam-moneda').value;
+  var lamTC=parseFloat(document.getElementById('f-lam-tc').value)||null;
   if(!name){hl('f-name');return;}
   if(pctVal<=0){hl(pctInputMode==='amt'?'f-amt':'f-pct');return;}
-  // Lámina mínima check for ONs
+  // Lámina mínima check for ONs — compara nominales, no dólares contra nominales (ver nominalesDeLamina)
   if(ticker&&ON_DB[ticker]&&ON_DB[ticker].lamina&&ps>0){
     var lamina=ON_DB[ticker].lamina;
     var monto=ps*(pctVal/100);
-    if(monto<lamina){
-      var pctMin=Math.ceil(lamina/ps*1000)/10; // round up to 1 decimal
-      var ok=confirm('⚠ Lámina mínima: '+lamina.toLocaleString('es-AR')+' nominales\n\nCon el '+pctVal+'% del portafolio (USD '+Math.round(monto).toLocaleString('es-AR')+') no alcanzás el mínimo.\n\n¿Ajustar automáticamente al '+pctMin+'%?');
+    var nomNec=nominalesDeLamina(monto,lamPrecio,lamMoneda,lamTC);
+    if(nomNec!=null&&nomNec<lamina){
+      var tcFactor=(lamMoneda==='ARS')?(lamTC||0):1;
+      var montoMinUSD=tcFactor>0?(lamina*lamPrecio)/tcFactor:0;
+      var pctMin=ps>0?Math.ceil(montoMinUSD/ps*1000)/10:0;
+      var ok=confirm('⚠ Lámina mínima: '+lamina.toLocaleString('es-AR')+' nominales\n\nCon el '+pctVal+'% del portafolio (USD '+Math.round(monto).toLocaleString('es-AR')+') alcanzan ~'+Math.floor(nomNec).toLocaleString('es-AR')+' nominales.\n\n¿Ajustar automáticamente al '+pctMin+'%?');
       if(ok) pctVal=pctMin;
     }
   }
-  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,dias:dias,papel:papel};
+  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC};
   if(editingId!==null){assets=assets.map(function(a){return a.id===editingId?obj:a;});cancelEdit();}
   else{
     assets.push(obj);
@@ -1200,9 +1269,9 @@ function addAsset(){
     selColor=PALETTE[(ci+1)%PALETTE.length];
     document.querySelectorAll('.color-swatch').forEach(function(sw){sw.classList.toggle('active',sw.style.background===selColor||sw.style.backgroundColor===selColor);});
   }
-  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('ret-label').textContent='Retorno Est.';
-  togglePriceRow();render();updateDoc();updateYield();
+  togglePriceRow();updateLamRow();render();updateDoc();updateYield();
 }
 
 function editAsset(id){
@@ -1220,9 +1289,13 @@ function editAsset(id){
     var faE=document.getElementById('f-amt');
     if(faE)faE.value=psE>0?Math.round(psE*(a.pct/100)):'';
   }
-  togglePriceRow();
+  togglePriceRow();updateLamRow();
   if(a.priceCur)document.getElementById('f-price-current').value=a.priceCur;
   if(a.priceTgt)document.getElementById('f-price-target').value=a.priceTgt;
+  if(a.lamPrecio)document.getElementById('f-lam-precio').value=a.lamPrecio;
+  if(a.lamMoneda)document.getElementById('f-lam-moneda').value=a.lamMoneda;
+  if(a.lamTC)document.getElementById('f-lam-tc').value=a.lamTC;
+  toggleLamTC();
   selColor=a.color;document.querySelectorAll('.color-swatch').forEach(function(sw){sw.classList.toggle('active',sw.style.background===a.color||sw.style.backgroundColor===a.color);});
   document.getElementById('add-asset-btn').textContent='✓ Guardar Cambios';document.getElementById('add-asset-btn').style.background='#1C8C5F';
   document.getElementById('cancel-edit-btn').style.display='block';document.getElementById('edit-mode-indicator').style.display='block';
@@ -1230,8 +1303,9 @@ function editAsset(id){
 }
 function cancelEdit(){
   editingId=null;
-  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('price-target-row').style.display='none';document.getElementById('letras-row').style.display='none';document.getElementById('cupon-row').style.display='';
+  updateLamRow();
   document.getElementById('add-asset-btn').textContent='+ Agregar Activo';document.getElementById('add-asset-btn').style.background='';
   document.getElementById('cancel-edit-btn').style.display='none';document.getElementById('edit-mode-indicator').style.display='none';
   document.getElementById('ret-label').textContent='Retorno Est.';
@@ -1264,14 +1338,17 @@ function render(){
     var isLet=a.type&&a.type.includes('Letras');
     var metaExtra=a.venc?' · '+a.venc.slice(0,7):'';
     if(a.dias&&isLet)metaExtra+=' · '+a.dias+'d';
-    // Lámina mínima warning
+    // Lámina mínima warning — compara nominales contra nominales (ver nominalesDeLamina), no dólares contra nominales
     var lamWarn='';
     if(a.ticker&&ON_DB[a.ticker]&&ON_DB[a.ticker].lamina){
       var lam=ON_DB[a.ticker].lamina;
       var monto=ps>0?ps*(a.pct/100):0;
-      if(ps>0&&monto<lam){
-        lamWarn='<div class="asset-meta" style="color:#E8837E;font-size:9px;">⚠ Lám. mín: '+lam.toLocaleString('es-AR')+' · capital insuficiente</div>';
-      } else if(lam){
+      var nomNec=ps>0?nominalesDeLamina(monto,a.lamPrecio,a.lamMoneda,a.lamTC):null;
+      if(nomNec==null){
+        lamWarn='<div class="asset-meta" style="color:rgba(255,255,255,.3);font-size:9px;">Lám. mín: '+lam.toLocaleString('es-AR')+' · falta precio del nominal para chequear</div>';
+      } else if(nomNec<lam){
+        lamWarn='<div class="asset-meta" style="color:#E8837E;font-size:9px;">⚠ Lám. mín: '+lam.toLocaleString('es-AR')+' · alcanzan ~'+Math.floor(nomNec).toLocaleString('es-AR')+' · capital insuficiente</div>';
+      } else {
         lamWarn='<div class="asset-meta" style="color:rgba(255,255,255,.3);font-size:9px;">Lám. mín: '+lam.toLocaleString('es-AR')+'</div>';
       }
     }
@@ -1734,8 +1811,9 @@ function printDoc(){
 function resetAll(){
   if(assets.length&&!confirm('Borrar todo y empezar de nuevo?'))return;
   assets=[];editingId=null;setPctMode('pct');
-  ['client-name','firm-name','strategy-note','f-name','f-ticker','f-pct','f-amt','f-return','port-size','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['client-name','firm-name','strategy-note','f-name','f-ticker','f-pct','f-amt','f-return','port-size','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('price-target-row').style.display='none';document.getElementById('letras-row').style.display='none';document.getElementById('cupon-row').style.display='';
+  updateLamRow();
   document.getElementById('client-risk').value='';document.getElementById('client-horizon').value='';
   document.getElementById('cancel-edit-btn').style.display='none';document.getElementById('edit-mode-indicator').style.display='none';
   render();updateDoc();updateYield();

@@ -586,11 +586,15 @@ function mergeOnsLive() {
     const live = liveByBase[base];
     if (!live) return row;
     usedBases.add(base);
+    // live.precioMep/precioCable vienen "por 100" (normalizePrice() de MAE, ver buildRecord),
+    // pero la tabla de ONs (y row.precioMep/precioCable del Excel) usan fracción decimal
+    // (~1.065, columna type:'num3') — sin este /100 el precio salta ×100 según si MAE
+    // cotizó ese ticker hoy o no. Bug real encontrado y arreglado 05/09/2026.
     return {
       ...row,
       tir: live.tir != null ? live.tir : row.tir,
-      precioMep: live.precioMep != null ? live.precioMep : row.precioMep,
-      precioCable: live.precioCable != null ? live.precioCable : row.precioCable,
+      precioMep: live.precioMep != null ? live.precioMep/100 : row.precioMep,
+      precioCable: live.precioCable != null ? live.precioCable/100 : row.precioCable,
       volumen: live.volumen,
       monto: live.monto,
       fuenteLive: live.fuente
@@ -603,7 +607,7 @@ function mergeOnsLive() {
       ticker: live.ticker, emisor: live.emisor, sector: null, calif: live.calif,
       tir: live.tir, tirCable: null, vencimiento: live.vencimiento, duration: null,
       cupon: null, mesCupon: null, dolar: null, ley: live.ley,
-      precioMep: live.precioMep, precioCable: live.precioCable,
+      precioMep: live.precioMep!=null?live.precioMep/100:null, precioCable: live.precioCable!=null?live.precioCable/100:null,
       volumen: live.volumen, monto: live.monto, fuenteLive: live.fuente
     });
   });

@@ -276,7 +276,9 @@ var tenenciaByTicker = {}; // TICKER -> [{cliente, nominales}]
 // El precio_ref de Soberanos que ya traía este archivo del Excel sí está en fracción
 // decimal (arrastra una inconsistencia previa, no introducida acá) — por eso se lo pasa
 // tal cual a matchTicker() como monitorPrecio (esa función SÍ espera la fracción decimal
-// para su guard de escala), pero nunca se usa esa fracción para cargar el campo de precio.
+// para su guard de escala). Cuando se usa como fallback de precio (sin match de BYMA), se
+// multiplica ×100 antes de mostrarlo/cargarlo — ver bug real encontrado y arreglado
+// 05/09/2026: se estaba cargando tal cual (1.07 en vez de ~107) en el campo "por 100 VN".
 // ═══════════════════════════════════════════════════════
 var BYMA_STORE = null;
 function iniciarBYMA(){
@@ -620,7 +622,7 @@ function seleccionarBono(ticker){
   var refBox = document.getElementById('ref-mercado');
   var refParts = [];
   if(b.tir_ref!==null && b.tir_ref!==undefined) refParts.push('TIR ref. Excel: <strong>'+b.tir_ref.toFixed(2)+'%</strong>');
-  if(b.precio_ref) refParts.push('Precio ref.: <strong>'+b.precio_ref.toFixed(2)+'</strong>');
+  if(b.precio_ref) refParts.push('Precio ref.: <strong>'+(b.precio_ref*100).toFixed(2)+'</strong>');
   if(b.dur_ref) refParts.push('Duration ref.: <strong>'+b.dur_ref.toFixed(2)+'</strong>');
 
   // Precargar Precio (o TIR si no hay precio) — preferimos el precio EN VIVO de BYMA
@@ -634,7 +636,7 @@ function seleccionarBono(ticker){
     refParts.push('<em>(precio EN VIVO de BYMA cargado abajo — se puede ajustar)</em>');
   } else if(b.precio_ref){
     setInputMode('precio');
-    document.getElementById('in-precio').value = b.precio_ref.toFixed(2);
+    document.getElementById('in-precio').value = (b.precio_ref*100).toFixed(2);
     if(refParts.length) refParts.push('<em>(precio precargado abajo — se puede ajustar)</em>');
   } else if(b.tir_ref!==null && b.tir_ref!==undefined){
     setInputMode('tir');

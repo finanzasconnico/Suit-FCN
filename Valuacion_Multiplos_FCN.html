@@ -399,10 +399,14 @@ function parseBuffer(entry){
   }).filter(r=>r.ticker);
 }
 
-// múltiplo primario de un sector (siempre el mismo, tenga dato o no — así la tabla es predecible)
+// múltiplo primario de un sector (siempre el mismo, tenga dato o no — así la tabla es predecible).
+// null cuando el sector está mapeado a propósito a "sin múltiplo comparable" (hoy solo Real
+// Estate, que usa P/FFO) — antes `prim[0]||DEFAULT_MULTIPLOS[0]` confundía lista vacía con
+// sector desconocido y mostraba P/E como si fuera válido pese a la exclusión explícita de
+// SECTOR_MULTIPLOS (bug real arreglado 05/09/2026).
 function multPrimario(sector){
   const prim=multiplosDeSector(sector);
-  return prim[0] || DEFAULT_MULTIPLOS[0];
+  return prim.length ? prim[0] : null;
 }
 // qué múltiplo mostrar para una fila, según el selector
 function multDeFila(r){
@@ -556,7 +560,7 @@ function render(){
     bodyHtml=rows.map(r=>{
       const k=multDeFila(r);
       const mm=r.m[k]||{actual:null,p3:null,p5:null,p10:null};
-      const badge=(auto && !r.sector) ? '<span class="dash">—</span>' : `<span class="mult-badge">${MULT[k]?.label||k}</span>`;
+      const badge=(auto && (!r.sector || !k)) ? '<span class="dash">—</span>' : `<span class="mult-badge">${MULT[k]?.label||k}</span>`;
       return `<tr>${tkCell(r)}
         <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
         <td class="td-sector">${r.sector||'—'}</td>

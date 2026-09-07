@@ -1223,8 +1223,8 @@ function renderHoy() {
     const bajasPos = c.posiciones.filter(d => d.tir !== null && d.tir < umbralTIR/100).sort((a,b) => a.tir - b.tir);
     let rotacionHTML = '';
     if (bajasPos.length > 0) {
-      const vendItems = bajasPos.map(p => `<span class="rot-item rot-vender">${p.ticker} <span class="rot-tir">${(p.tir*100).toFixed(1)}%</span></span>`).join('');
-      const comprarItem = c.sugerido ? `<span class="rot-arrow">&#8594;</span><span class="rot-label rot-label-comprar">Comprar</span><span class="rot-item rot-comprar">${c.sugerido.ticker} <span class="rot-tir">${(c.sugerido.tir*100).toFixed(1)}%</span></span>` : '';
+      const vendItems = bajasPos.map(p => `<span class="rot-item rot-vender">${p.ticker} ${liqBadgeInline(p.ticker)} <span class="rot-tir">${(p.tir*100).toFixed(1)}%</span></span>`).join('');
+      const comprarItem = c.sugerido ? `<span class="rot-arrow">&#8594;</span><span class="rot-label rot-label-comprar">Comprar</span><span class="rot-item rot-comprar">${c.sugerido.ticker} ${liqBadgeInline(c.sugerido.ticker)} <span class="rot-tir">${(c.sugerido.tir*100).toFixed(1)}%</span></span>` : '';
       rotacionHTML = `<div class="hoy-rotacion"><span class="rot-label rot-label-vender">Vender</span>${vendItems}${comprarItem}</div>`;
     }
     const sub = c.bajasCount > 0

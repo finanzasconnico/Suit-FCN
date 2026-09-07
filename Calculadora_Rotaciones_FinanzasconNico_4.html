@@ -367,6 +367,19 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
           <select id="lic-amort" onchange="licOnAmortTypeChange()"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
         </div>
       </div>
+      <div class="field-row">
+        <div class="field"><label>Ley</label>
+          <select id="lic-ley" onchange="licOnLeyChange()"><option value="arg" selected>Argentina — sin conversión</option><option value="ny">Nueva York — convertir cable → MEP</option></select>
+        </div>
+        <div class="field" id="lic-brecha-wrap" style="display:none;">
+          <label>Brecha CCL/MEP (%) <span style="color:var(--cream-dim);">+ 1% de canje vía AL30 (fijo)</span></label>
+          <input type="number" step="0.1" id="lic-brecha" placeholder="Ej: 2.0">
+        </div>
+      </div>
+      <div class="field">
+        <label>TIR de la ON (%) — opcional, a mano <span style="color:var(--cream-dim);">si ya la sabés (planilla, banco colocador) se usa esta y no se calcula ni se ajusta por brecha</span></label>
+        <input type="number" step="0.01" id="lic-tir-manual" placeholder="Vacío = se calcula sola del precio y los flujos">
+      </div>
       <div class="field" id="lic-amort-custom-wrap" style="display:none;">
         <label>Cronograma de amortización <span style="color:var(--cream-dim);">— opcional, solo para el cálculo (no va en el mail). Si no cargás fechas, se reparte en partes iguales entre todos los pagos.</span></label>
         <div id="lic-amort-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -775,6 +788,12 @@ function tirDesdePrecio(scheduleUSD, monto, hoy, seedPct){
 // ═══════════════════════════════════════════════════════
 // RETORNO TOTAL A UN HORIZONTE (años desde "hoy")
 // ═══════════════════════════════════════════════════════
+// `comisionPct` se recibe pero NO se descuenta acá: la comisión de la rotación ya se cobra
+// una sola vez, sobre el monto de la operación, vía difCash/comV/comC (ver renderCondiciones).
+// Bug real arreglado 05/09/2026: antes se restaba también sobre cada cupón/amortización
+// reinvertido hasta el horizonte, como si cada pago fuera una operación nueva con comisión
+// propia — eso inflaba de más la comisión total en bonos que pagan/amortizan seguido frente
+// a uno bullet con la misma TIR, sesgando el veredicto de rotación sin motivo real.
 function retornoAHorizonteAnios(scheduleUSD, tirDecimal, hoy, comisionPct, anios){
   var horizonDate = new Date(hoy.getTime());
   horizonDate.setDate(horizonDate.getDate() + Math.round(anios*365));
@@ -783,7 +802,7 @@ function retornoAHorizonteAnios(scheduleUSD, tirDecimal, hoy, comisionPct, anios
     if(cf.date.getTime() <= horizonDate.getTime()){
       realized += cf.total;
       var yrs = yearFrac(cf.date, horizonDate);
-      interes += yrs*cf.total*tirDecimal - cf.total*(comisionPct/100);
+      interes += yrs*cf.total*tirDecimal;
     } else {
       var t = yearFrac(horizonDate, cf.date);
       remanentePV += cf.total / Math.pow(1+tirDecimal, t);
@@ -1585,6 +1604,24 @@ function leerNuevaON(){
   var fechaLicitacion = parseISO(document.getElementById('lic-fecha-lic').value); // puede ser null (no bloquea la búsqueda, sí el mail)
   if(!ticker||isNaN(tasa)||isNaN(precio)||!fechaVenc) return null;
   var fechaEmision = new Date(); // la ON recién licita — hoy es su emisión
+
+  var esNY = document.getElementById('lic-ley').value === 'ny';
+  var brechaPct = parseFloat(document.getElementById('lic-brecha').value);
+  var tirManualVal = parseFloat(document.getElementById('lic-tir-manual').value);
+  var tirManual = (!isNaN(tirManualVal) && tirManualVal > 0) ? tirManualVal : null;
+
+  // Ley NY: el cliente opera en MEP, pero el bono liquida cable. Para pagar el precio de la ON
+  // tiene que canjear MEP→cable, perdiendo la brecha CCL/MEP + ~1% de comisión de compra/venta
+  // del AL30. Ese sobrecosto se aplica UNA vez, al entrar (los cupones/amortizaciones se cobran
+  // en cable y se asume que quedan afuera). Ley Argentina: sin ajuste.
+  // Si Nico carga la TIR a mano, ese número ya es el definitivo — no se ajusta nada.
+  var CANJE_AL30 = 0.01; // 1% round-trip (0,5% compra + 0,5% venta) — fijo, ver hint del campo
+  var precioEfectivo = precio, factorMep = 1;
+  if(esNY && tirManual == null && !isNaN(brechaPct) && brechaPct > 0){
+    factorMep = (1 + brechaPct/100) * (1 + CANJE_AL30);
+    precioEfectivo = precio * factorMep;
+  }
+
   return {
     ticker:ticker, emisor:emisor||ticker,
     tir:tasa, duration:null,
@@ -1592,8 +1629,11 @@ function leerNuevaON(){
     fechaEmision:fechaEmision, fechaVenc:fechaVenc,
     fechaLicitacion:fechaLicitacion,
     amortType:amortType, amortStart:fechaEmision,
-    ley:'', calif:calif,
-    precio:precio, nominales:100
+    ley: esNY ? 'NY' : 'Argentina', calif:calif,
+    precio: precioEfectivo, precioBruto: precio, factorMep: factorMep,
+    brechaPct: (esNY && !isNaN(brechaPct)) ? brechaPct : null,
+    tirManual: tirManual,
+    nominales:100
   };
 }
 
@@ -1602,6 +1642,10 @@ function leerNuevaON(){
 // {fecha, pct}; si se dejan vacías, buildSchedule()/​_licBuildSchedule100() reparten la
 // amortización en partes iguales entre todos los pagos, como ya hacía el motor. ──
 var licAmortRows = [];
+function licOnLeyChange(){
+  var esNY = document.getElementById('lic-ley').value === 'ny';
+  document.getElementById('lic-brecha-wrap').style.display = esNY ? '' : 'none';
+}
 function licOnAmortTypeChange(){
   var esAmort = document.getElementById('lic-amort').value === 'amortizable';
   document.getElementById('lic-amort-custom-wrap').style.display = esAmort ? '' : 'none';
@@ -1701,7 +1745,7 @@ function _licRegistrarEnUniverso(nuevaON, amortRows){
     monedaCobro: 'USD', tipoTasa: 'Fija',
     cuponAnual: nuevaON.cuponAnual, freq: nuevaON.freq, freqTexto: '',
     amortDesc: nuevaON.amortType === 'amortizable' ? 'Amortizable' : 'Bullet',
-    ley: '', fechaEmision: isoDate(nuevaON.fechaEmision), fechaVenc: isoDate(nuevaON.fechaVenc),
+    ley: nuevaON.ley || '', fechaEmision: isoDate(nuevaON.fechaEmision), fechaVenc: isoDate(nuevaON.fechaVenc),
     nominalesMin: null, nominalBase: 100,
     tirEfectiva: tirBase, duration: null,
     schedule100: built.schedule100
@@ -1711,7 +1755,7 @@ function _licRegistrarEnUniverso(nuevaON, amortRows){
     cuponAnual: nuevaON.cuponAnual, mesCupon: '',
     vencimiento: isoDate(nuevaON.fechaVenc),
     amortizacion: nuevaON.amortType === 'amortizable' ? 'Amortizable' : 'Bullet',
-    moneda: 'U$S', ley: '', calif: nuevaON.calif || '', laminaMin: null, duration: null,
+    moneda: 'U$S', ley: nuevaON.ley || '', calif: nuevaON.calif || '', laminaMin: null, duration: null,
     tirMep: tirBase, tirCable: tirBase,
     precioMep: nuevaON.precio, precioCable: nuevaON.precio
   };
@@ -1724,11 +1768,13 @@ function _licRegistrarEnUniverso(nuevaON, amortRows){
 // (BOND_DB/FLUJO_DB) — mismo criterio exacto que usa seleccionarBono() para precargar la pata de
 // venta/compra del comparador individual, solo que acá arma el objeto directo en vez de llenar
 // inputs del formulario.
-function bondDesdeUniverso(ticker){
+function bondDesdeUniverso(ticker, forzarTipoPrecio){
   var b = BOND_DB[ticker];
   var real = FLUJO_DB[ticker];
   if(!b && !real) return null;
-  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  // forzarTipoPrecio: la licitación siempre compara en MEP (Nico confía en la TIR/precio MEP
+  // del Monitor y la ON nueva ya viene ajustada a MEP) — sin importar el selector global.
+  var tipoPrecio = forzarTipoPrecio || document.getElementById('p-precio-tipo').value;
   var tir = tirEfectivo(ticker, tipoPrecio);
   var precio = precioEfectivo(ticker, tipoPrecio);
   var cuponAnual = (real && real.cuponAnual!=null) ? real.cuponAnual : (b?b.cuponAnual:null);
@@ -1768,11 +1814,21 @@ function bondDesdeUniverso(ticker){
 // % de retorno a un horizonte (en años), sobre lo invertido — no en dólares, para poder
 // comparar dos bonos con precios/nominales distintos en igualdad de condiciones (por cada $100
 // invertidos hoy en cada uno). Muta bond.tir (recalculado del precio, igual que hace renderAll()).
+// bond.tirManual (solo la ON de la licitación, cuando Nico la carga a mano): en vez de sacar la
+// TIR del precio, se toma ese número como la TIR definitiva. El "monto invertido" pasa a ser el
+// valor presente de los flujos a esa TIR (no el precio tipeado) — así los dos lados de la
+// comparación quedan simétricos: cada uno se mide contra su propio valor a su propia TIR.
 function pctRetornoAHorizonte(bond, hoy, comisionPct, anios){
   var sched = getScheduleForLeg(bond, hoy);
   if(!sched.length) return null;
-  var monto = bond.nominales*bond.precio;
-  bond.tir = tirDesdePrecio(sched, monto, hoy, bond.tir);
+  var monto;
+  if(bond.tirManual != null && !isNaN(bond.tirManual)){
+    bond.tir = bond.tirManual;
+    monto = pvSchedule(sched, bond.tir/100, hoy);
+  } else {
+    monto = bond.nominales*bond.precio;
+    bond.tir = tirDesdePrecio(sched, monto, hoy, bond.tir);
+  }
   if(bond.tir==null || isNaN(bond.tir)) return null;
   var r = retornoAHorizonteAnios(sched, bond.tir/100, hoy, comisionPct, anios);
   return { tir: bond.tir, pct: monto>0 ? (r.valorHorizonte-monto)/monto*100 : null };
@@ -1782,6 +1838,13 @@ function buscarCandidatosLicitacion(){
   var box = document.getElementById('lic-resultados');
   var nuevaON = leerNuevaON();
   if(!nuevaON){ box.innerHTML = '<div class="rot-comp-empty">Completá ticker, tasa, precio y vencimiento de la nueva ON.</div>'; licitacionResultados=null; return; }
+
+  // BORRAR la ficha registrada de una búsqueda anterior ANTES de calcular nada — si no,
+  // getScheduleForLeg() agarra el cronograma STALE (de la corrida pasada, con la tasa/precio
+  // vieja) y la "TIR calculada" ignora lo que acabás de tipear (bug real: poner 6,5 y que dé
+  // menos TIR que 6). Se vuelve a registrar, con los valores frescos, al final de esta función.
+  delete FLUJO_DB[nuevaON.ticker];
+  delete BOND_DB[nuevaON.ticker];
 
   var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
   var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
@@ -1815,7 +1878,7 @@ function buscarCandidatosLicitacion(){
   CLIENTE_LIST.forEach(function(cliente){
     (TENENCIA_POR_CLIENTE[cliente]||[]).forEach(function(pos){
       if(pos.ticker===nuevaON.ticker) return; // ya lo tiene — no aplica "rotar a lo mismo"
-      if(!bondCache.hasOwnProperty(pos.ticker)) bondCache[pos.ticker] = bondDesdeUniverso(pos.ticker);
+      if(!bondCache.hasOwnProperty(pos.ticker)) bondCache[pos.ticker] = bondDesdeUniverso(pos.ticker, 'mep');
       var baseBond = bondCache[pos.ticker];
       if(!baseBond){ huboTickersSinDatos = true; return; }
 
@@ -1991,21 +2054,33 @@ function toggleLicCliente(idx){
 function verDetalleLicitacion(cliente, tickerActual){
   if(!licitacionResultados) return;
   var nuevaON = licitacionResultados.nuevaON;
+  // El panel de licitación compara siempre en MEP (Nico confía en la TIR/precio MEP del
+  // Monitor). Dejamos el comparador en MEP también, para que el "Ver detalle" arranque con el
+  // mismo número que el "+X p.p." de la lista (el selector global venía en Cable por default).
+  var selTipo = document.getElementById('p-precio-tipo');
+  if(selTipo && selTipo.value !== 'mep'){ selTipo.value = 'mep'; }
   seleccionarClienteActivo(cliente);
   seleccionarBono('venta', tickerActual);
   var pos = (TENENCIA_POR_CLIENTE[cliente]||[]).filter(function(p){ return p.ticker===tickerActual; })[0];
   if(pos && pos.nominales) document.getElementById('v-nominales').value = Math.round(pos.nominales);
 
-  cargarManual('compra'); // la ON nueva no está en BOND_DB — se carga a mano, mismo mecanismo que ya existe
-  document.getElementById('c-ticker').value = nuevaON.ticker;
-  document.getElementById('c-emisor').value = nuevaON.emisor||'';
-  document.getElementById('c-cupon').value = nuevaON.cuponAnual;
-  document.getElementById('c-freq').value = String(nuevaON.freq);
-  document.getElementById('c-emision').value = isoDate(nuevaON.fechaEmision);
-  document.getElementById('c-venc').value = isoDate(nuevaON.fechaVenc);
-  setAmortType('compra', nuevaON.amortType); // ya llama a onCondChange('compra') internamente
-  document.getElementById('c-calif').value = nuevaON.calif||'';
-  document.getElementById('c-precio').value = nuevaON.precio;
+  // buscarCandidatosLicitacion() ya registró la ON en BOND_DB/FLUJO_DB con el MISMO cronograma
+  // que usó el triage — así el número del comparador y el "+X p.p." de la lista salen del mismo
+  // cronograma, sin re-tipear nada (antes se cargaba a mano y podían divergir).
+  if(BOND_DB[nuevaON.ticker] || FLUJO_DB[nuevaON.ticker]){
+    seleccionarBono('compra', nuevaON.ticker);
+  } else {
+    cargarManual('compra');
+    document.getElementById('c-ticker').value = nuevaON.ticker;
+    document.getElementById('c-emisor').value = nuevaON.emisor||'';
+    document.getElementById('c-cupon').value = nuevaON.cuponAnual;
+    document.getElementById('c-freq').value = String(nuevaON.freq);
+    document.getElementById('c-emision').value = isoDate(nuevaON.fechaEmision);
+    document.getElementById('c-venc').value = isoDate(nuevaON.fechaVenc);
+    setAmortType('compra', nuevaON.amortType);
+    document.getElementById('c-calif').value = nuevaON.calif||'';
+    document.getElementById('c-precio').value = nuevaON.precio;
+  }
   onCondChange('venta'); onCondChange('compra');
 
   var grid = document.querySelector('.legs-grid');
@@ -2022,14 +2097,21 @@ function renderResultadosLicitacion(){
     '<div class="lic-nueva-on-tk">'+nuevaON.ticker+(nuevaON.emisor?' <span style="opacity:.65;font-weight:400;">· '+nuevaON.emisor+'</span>':'')+'</div>'+
     '<div class="lic-nueva-on-chips">'+
       '<span class="chip">Cupón <b>'+fmtNum(nuevaON.cuponAnual,2)+'%</b></span>'+
-      '<span class="chip">TIR calculada <b>'+fmtNum(nuevaON.tirSolved,2)+'%</b></span>'+
+      '<span class="chip">'+(nuevaON.tirManual!=null?'TIR (cargada a mano)':'TIR calculada')+' <b>'+fmtNum(nuevaON.tirSolved,2)+'%</b></span>'+
       '<span class="chip">Vence <b>'+fmtDateAR(nuevaON.fechaVenc)+'</b></span>'+
-      '<span class="chip">Precio <b>'+fmtNum(nuevaON.precio,4)+'</b></span>'+
+      (nuevaON.factorMep && nuevaON.factorMep>1
+        ? '<span class="chip" title="Precio de licitación '+fmtNum(nuevaON.precioBruto,4)+' × (1 + brecha '+fmtNum(nuevaON.brechaPct,1)+'%) × 1,01 de canje AL30">Precio MEP-equiv. <b>'+fmtNum(nuevaON.precio,4)+'</b> <span style="opacity:.6;">(de '+fmtNum(nuevaON.precioBruto,4)+')</span></span>'
+        : '<span class="chip">Precio <b>'+fmtNum(nuevaON.precio,4)+'</b></span>')+
+      (nuevaON.ley==='NY'?'<span class="chip">Ley NY'+(nuevaON.brechaPct!=null?' · brecha '+fmtNum(nuevaON.brechaPct,1)+'%':'')+'</span>':'')+
       (nuevaON.calif?'<span class="chip">'+nuevaON.calif+'</span>':'')+
       (nuevaON.fechaLicitacion
         ? '<span class="chip">Se licita <b>'+fmtDateAR(nuevaON.fechaLicitacion)+'</b></span>'
         : '<span class="chip" style="background:rgba(229,115,115,.18);color:#e57373;">⚠ falta la fecha de licitación (obligatoria para el mail)</span>')+
-    '</div></div>';
+    '</div>'+
+    (nuevaON.ley==='NY' && nuevaON.tirManual==null && nuevaON.brechaPct==null
+      ? '<div style="font-size:10px;color:#e57373;margin-top:6px;">⚠ Marcaste Ley NY pero no cargaste la brecha CCL/MEP — la TIR está sin ajustar (sale igual que Ley Argentina).</div>'
+      : '')+
+    '</div>';
 
   // Filtros de PANTALLA — no vuelven a buscar, solo recortan/reordenan lo ya calculado.
   html += '<div class="lic-disp-filtros">'+
