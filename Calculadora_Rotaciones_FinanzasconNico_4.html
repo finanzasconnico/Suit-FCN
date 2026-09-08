@@ -3910,7 +3910,12 @@ async function descargarReportePDF(){
   // Nota técnica: html2pdf/html2canvas necesitan que el elemento a capturar esté en el flujo
   // normal del documento (sin position:fixed/absolute) para medir bien su alto — si no, generan
   // un PDF en blanco. Por eso se agrega al final del body en flujo normal y se saca apenas termina.
-  root.style.cssText = 'width:840px;background:var(--navy);color:var(--cream);font-family:"Hanken Grotesk",sans-serif;padding:36px 40px;';
+  // Ancho reducido de 840 a 740px: sin windowWidth explícito (ver por qué más abajo, en el
+  // html2pdf().set()), html2canvas termina capturando con una ventana de ~794px (el ancho de
+  // una hoja A4 a 96dpi) — con root en 840 eso dejaba el contenido pegado al borde derecho, sin
+  // margen, con pinta de "cortado" (reportado por un cliente real de Nico). 740px deja un
+  // margen visible y prolijo de verdad en los costados. Bug real arreglado 09/09/2026.
+  root.style.cssText = 'width:740px;background:var(--navy);color:var(--cream);font-family:"Hanken Grotesk",sans-serif;padding:36px 40px;';
 
   // Nombre del asesor que arma el informe: viene del "usuario" que FCN Suite pasa a esta
   // herramienta como ?u=... en la URL (mismo mecanismo que usan el resto de las herramientas de
@@ -4084,7 +4089,7 @@ async function descargarReportePDF(){
   // PDF real, con datos reales cargados, después de reproducir el bug con esos mismos datos.
   // Bug real arreglado 09/09/2026.
   html2pdf().set({
-    margin: [10,0,10,0],
+    margin: [12,8,12,8],
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
