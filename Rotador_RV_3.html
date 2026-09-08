@@ -395,22 +395,22 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
         </select>
         <div class="ctrl-label" style="margin-top:6px;">Rentabilidad (%)</div>
         <div style="display:flex;gap:6px;">
-          <input class="ctrl-input" type="number" id="f-rent-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
-          <input class="ctrl-input" type="number" id="f-rent-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
+          <input class="ctrl-input" type="number" id="f-rent-min" placeholder="Mín" style="width:50%" oninput="renderTablaActivaDebounced()">
+          <input class="ctrl-input" type="number" id="f-rent-max" placeholder="Máx" style="width:50%" oninput="renderTablaActivaDebounced()">
         </div>
         <div class="ctrl-label" style="margin-top:6px;">Días de tenencia</div>
         <div style="display:flex;gap:6px;">
-          <input class="ctrl-input" type="number" id="f-dias-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
-          <input class="ctrl-input" type="number" id="f-dias-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
+          <input class="ctrl-input" type="number" id="f-dias-min" placeholder="Mín" style="width:50%" oninput="renderTablaActivaDebounced()">
+          <input class="ctrl-input" type="number" id="f-dias-max" placeholder="Máx" style="width:50%" oninput="renderTablaActivaDebounced()">
         </div>
         <div class="ctrl-label" style="margin-top:6px;">Tenencia USD</div>
         <div style="display:flex;gap:6px;">
-          <input class="ctrl-input" type="number" id="f-ten-min" placeholder="Mín" style="width:50%" oninput="renderTablaActiva()">
-          <input class="ctrl-input" type="number" id="f-ten-max" placeholder="Máx" style="width:50%" oninput="renderTablaActiva()">
+          <input class="ctrl-input" type="number" id="f-ten-min" placeholder="Mín" style="width:50%" oninput="renderTablaActivaDebounced()">
+          <input class="ctrl-input" type="number" id="f-ten-max" placeholder="Máx" style="width:50%" oninput="renderTablaActivaDebounced()">
         </div>
         <div style="font-size:9px;color:var(--ink-muted);margin-top:4px;line-height:1.5;">💡 Ej: rentabilidad mín 15% + días máx 7 = compró hace poco y ya ganó bastante — posible oportunidad de venta.</div>
         <div class="ctrl-label" style="margin-top:8px;">Buscar ticker / cliente</div>
-        <input class="ctrl-input" id="f-buscar" placeholder="Ej: NVDA, Juan..." oninput="renderTablaActiva()">
+        <input class="ctrl-input" id="f-buscar" placeholder="Ej: NVDA, Juan..." oninput="renderTablaActivaDebounced()">
       </div>
     </div>
     <div class="divider"></div>
@@ -1107,12 +1107,6 @@ function mailBtnHtml(p) {
 
 function wppBtnHtml(p, fromDetail=false) {
   const r = aplicarReglas(p);
-  const ctx = JSON.stringify({
-    cliente: p.cliente, ticker: p.ticker, tipo: p.tipo,
-    senal: r.senal, autor: r.autor, nota: r.nota,
-    rent: getRentEfectiva(p),
-    tel: p.tel||null, nombre: p.nombre||'',
-  }).replace(/'/g,"&#39;").replace(/"/g,'&quot;');
   return `<a class="wpp-btn" href="javascript:void(0)" onclick='abrirWppModal(${JSON.stringify({
     cliente:p.cliente,ticker:p.ticker,tipo:p.tipo,
     senal:r.senal,autor:r.autor,nota:r.nota,
@@ -1190,11 +1184,16 @@ function abrirMailMasivo(listaCustom, labelExtra) {
   const porCliente = {};
   filtradas.forEach(p => { (porCliente[p.cliente] ||= []).push(p); });
   const clientes = Object.keys(porCliente);
+  // Antes se recorría `posiciones` entera (todos los clientes, no solo los filtrados) una vez
+  // POR CADA cliente de la lista, solo para contar cuántas posiciones totales tenía — un solo
+  // conteo agrupado alcanza. Bug real arreglado 08/09/2026.
+  const totalPorCliente = {};
+  posiciones.forEach(p => { totalPorCliente[p.cliente] = (totalPorCliente[p.cliente]||0) + 1; });
   document.getElementById('mail-masivo-sub').textContent = `${labelExtra?labelExtra+' · ':''}${clientes.length} cliente(s) · ${filtradas.length} posición(es)${listaCustom?'':' filtradas'}`;
   const cardsEl = document.getElementById('mail-masivo-cards');
   cardsEl.innerHTML = clientes.map((cliente, i) => {
     const poss = porCliente[cliente];
-    const totalDelCliente = posiciones.filter(p => p.cliente === cliente).length;
+    const totalDelCliente = totalPorCliente[cliente] || poss.length;
     const huboFiltro = totalDelCliente > poss.length;
     const nombre = poss[0]?.nombre || cliente;
     const mail = poss[0]?.mail || null;
@@ -1397,6 +1396,15 @@ function renderStats(){
     <div class="stat-card warn"><div class="sv">${sV} / ${sS}</div><div class="sl">Vender / Stop</div></div>`;
 }
 
+// Debounce de los filtros (rentabilidad/días/tenencia mín-máx y buscador): sin esto, cada
+// tecla tipeada disparaba un renderTablaActiva() completo (recalcula reglas de todas las
+// posiciones filtradas y reconstruye la tabla entera). 200ms alcanza para no sentirse tipeando
+// con lag, pero evita repetir el trabajo en cada letra. Bug real arreglado 08/09/2026.
+let _renderTablaActivaTimer=null;
+function renderTablaActivaDebounced(){
+  clearTimeout(_renderTablaActivaTimer);
+  _renderTablaActivaTimer=setTimeout(renderTablaActiva,200);
+}
 function renderTablaActiva(){
   renderStats();
   if(tabActiva==='t-tabla') renderTabla();
@@ -1558,16 +1566,26 @@ function tarjetaSenal(p,r){
 function renderClientes(){
   const map={};
   filtrarPosiciones().forEach(p=>{if(!map[p.cliente])map[p.cliente]=[];map[p.cliente].push(p);});
-  const clientes=Object.entries(map).sort((a,b)=>{
-    const rA=a[1].filter(p=>['VENDER','STOP'].includes(aplicarReglas(p).senal)).length;
-    const rB=b[1].filter(p=>['VENDER','STOP'].includes(aplicarReglas(p).senal)).length;
-    return rB-rA;
+  // Antes el comparador de sort recalculaba aplicarReglas() sobre TODAS las posiciones de
+  // ambos clientes en CADA comparación (O(m log m × posiciones/cliente)), y el conteo de
+  // alertas/acumular de cada card lo volvía a calcular de cero después — un solo pase por
+  // cliente alcanza para las tres cosas. Bug real arreglado 08/09/2026.
+  const statsPorCliente={};
+  Object.entries(map).forEach(([cliente,poss])=>{
+    let alertas=0,acumular=0;
+    poss.forEach(p=>{
+      const senal=aplicarReglas(p).senal;
+      if(senal==='VENDER'||senal==='STOP')alertas++;
+      else if(senal==='ACUMULAR')acumular++;
+    });
+    statsPorCliente[cliente]={alertas,acumular};
   });
+  const clientes=Object.entries(map).sort((a,b)=>statsPorCliente[b[0]].alertas-statsPorCliente[a[0]].alertas);
   document.getElementById('clientes-content').innerHTML=clientes.map(([cliente,poss])=>{
     const tenTotal=poss.reduce((a,p)=>a+p.tenencia,0);
     const gpTotal=poss.reduce((a,p)=>a+(getGananciaEfectiva(p)||0),0);
-    const alertas=poss.filter(p=>['VENDER','STOP'].includes(aplicarReglas(p).senal)).length;
-    const acumular=poss.filter(p=>aplicarReglas(p).senal==='ACUMULAR').length;
+    const alertas=statsPorCliente[cliente].alertas;
+    const acumular=statsPorCliente[cliente].acumular;
     const id='cc-'+cliente.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,'');
     const tel=poss[0]?.tel;
     const nombre=poss[0]?.nombre||cliente;
@@ -1731,6 +1749,10 @@ function renderTabPrecios(){
   const tbody=document.getElementById('tbody-precios');
   if(!tbody) return;
   const targetCache=loadTargetCache();
+  // Agrupar una sola vez por ticker en vez de recorrer `filtradas` entera por cada ticker
+  // único (antes O(tickers × posiciones)). Bug real arreglado 08/09/2026.
+  const porTicker={};
+  filtradas.forEach(p=>{ (porTicker[p.ticker] ||= []).push(p); });
   let filas=tickers.map(ticker=>{
     const base=precios[ticker]||{precio:null,targetPrice:null,upsideAnalistas:null,source:'none'};
     // Cadena de targets: live de Yahoo > Precios Objetivo (archivo mensual compartido de la
@@ -1742,7 +1764,7 @@ function renderTabPrecios(){
     const precioEfectivo = base.precio ?? precioTenencia;
     const upsideFromCache = (effectiveTarget!=null && precioEfectivo) ? ((effectiveTarget/precioEfectivo)-1)*100 : base.upsideAnalistas;
     const fromMensual = base.targetPrice==null && mensual?.target!=null;
-    const posTicker = filtradas.filter(p=>p.ticker===ticker);
+    const posTicker = porTicker[ticker] || [];
     const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromMensual: fromMensual, _fromCache: base.targetPrice==null && !fromMensual && cachedTarget!=null, _fromTenencia: precioTenencia!=null};
     return {
       ticker, precio: px.precio, targetPrice: px.targetPrice, upside: px.upsideAnalistas,

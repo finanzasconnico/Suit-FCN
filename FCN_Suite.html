@@ -2700,7 +2700,27 @@ const dashData = { tenencia: null, precios: null, monitor: null, stock: null };
 const DASH_KEY_TO_FIELD = { tenencia: 'tenencia', precios_objetivo: 'precios', monitor: 'monitor', stock: 'stock' };
 const DASH_PARSERS = { tenencia: parseTenencia, precios_objetivo: parsePreciosObjetivo, monitor: parseMonitorTIR, stock: parseStockFCN };
 
-async function loadDashKey(key) {
+// Tenencia se parsea acá Y en refreshClienteList() (necesitan el mismo dato pero cada uno
+// vive en su propio flujo) — antes cada uno hacía su propio fetch+parse por separado, pagando
+// el costo de XLSX.read+sheet_to_json (nada gratis en un archivo de miles de filas) dos veces
+// por cada carga/cambio de archivo. Bug real arreglado 08/09/2026: se comparte una sola
+// promesa en vuelo — quien pida la tenencia primero dispara el parse, el segundo espera la
+// misma promesa en vez de arrancar una corrida propia.
+let _tenenciaParsePromise = null;
+async function getTenenciaParsedCached(force) {
+  if (force) _tenenciaParsePromise = null;
+  if (!_tenenciaParsePromise) {
+    _tenenciaParsePromise = (async () => {
+      let entry = await getSharedFile(userKey('tenencia'));
+      if (!entry && STATIC_PUBLISH_KEYS.tenencia) entry = await fetchStaticFallback('data/' + STATIC_PUBLISH_KEYS.tenencia);
+      return parseTenencia(entry);
+    })();
+  }
+  return _tenenciaParsePromise;
+}
+
+async function loadDashKey(key, force) {
+  if (key === 'tenencia') { dashData.tenencia = await getTenenciaParsedCached(force); return; }
   let entry = await getSharedFile(userKey(key));
   // tenencia/stock nunca tienen fallback estático (datos de clientes) — solo aplica a
   // monitor/precios_objetivo, que sí se publican para todo el equipo.
@@ -2734,15 +2754,20 @@ async function refreshFilesStatusBits() {
 }
 
 async function buildDashboard() {
-  await Promise.all(Object.keys(DASH_KEY_TO_FIELD).map(loadDashKey));
+  // OJO: nunca pasar loadDashKey directo a .map() — .map() manda (elemento, índice, array) y
+  // el índice se colaría como el parámetro `force`, forzando un re-parse de Tenencia si no
+  // fuera la primera key del objeto.
+  await Promise.all(Object.keys(DASH_KEY_TO_FIELD).map(k => loadDashKey(k)));
   renderDashboardAll();
   await refreshFilesStatusBits();
 }
 
 // Se llama tras subir/borrar/pegar UN archivo compartido — reparsea solo ese, reusa el
-// resto ya cacheado en dashData y vuelve a renderizar (el render en sí es barato).
+// resto ya cacheado en dashData y vuelve a renderizar (el render en sí es barato). Fuerza el
+// re-parse (no reusa el caché de getTenenciaParsedCached) porque este es justo el caso en que
+// el archivo cambió de verdad.
 async function refreshDashboardForKey(key) {
-  if (DASH_KEY_TO_FIELD[key]) await loadDashKey(key);
+  if (DASH_KEY_TO_FIELD[key]) await loadDashKey(key, key === 'tenencia');
   renderDashboardAll();
   await refreshFilesStatusBits();
 }
@@ -2759,8 +2784,7 @@ let activeClienteNombre = null;
 let topClientesFiltro = null; // null | { n, set: Set<string> }
 
 async function refreshClienteList() {
-  const tenenciaEntry = await getSharedFile(userKey('tenencia'));
-  const tenencia = parseTenencia(tenenciaEntry);
+  const tenencia = await getTenenciaParsedCached();
   clienteListCache = tenencia && tenencia.porCliente
     ? Object.entries(tenencia.porCliente).sort((a,b) => b[1]-a[1]).map(([cliente,aum]) => ({cliente, aum}))
     : [];
@@ -2817,14 +2841,6 @@ async function aplicarTopNClientes(n) {
   renderRanking();
   renderCliente360();
   showToast(`🏆 Filtro activo: Top ${n} clientes por capital`);
-}
-async function quitarTopNClientes() {
-  topClientesFiltro = null;
-  await clearTopClientsStorage();
-  updateClientPill();
-  if (BC) BC.postMessage({ type: 'top_clients_selected', n: null, clientes: null });
-  renderRanking();
-  renderCliente360();
 }
 function renderTopNChipsActive() {
   document.querySelectorAll('.topn-chip').forEach(btn => {

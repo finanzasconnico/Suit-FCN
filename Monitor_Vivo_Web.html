@@ -435,7 +435,19 @@ async function conectarProxy() {
     setDot('Bon', 'err', 'Bonistas: error (' + e.message + ')');
   }
 
-  if (maeData || bonData) { buildLiveTabs(maeData || [], bonData || []); mergeOnsLive(); }
+  if (maeData || bonData) {
+    // Antes esto corría fuera de cualquier try/catch: un payload con forma inesperada tiraba acá
+    // y dejaba los indicadores en "ok" (ya seteados arriba, antes de este paso) mintiendo que
+    // todo salió bien mientras la tabla nunca se actualizaba. Bug real arreglado 08/09/2026.
+    try {
+      buildLiveTabs(maeData || [], bonData || []);
+      mergeOnsLive();
+    } catch (e) {
+      console.error('[Monitor Vivo] error combinando datos en vivo', e);
+      setDot('Mae', 'err', 'MAE: error combinando datos (' + e.message + ')');
+      setDot('Bon', 'err', 'Bonistas: error combinando datos (' + e.message + ')');
+    }
+  }
   renderTab();
 }
 
@@ -847,7 +859,8 @@ function renderTableInterna(cfg, rows) {
     }
     if (c.k === 'tir') return `<td class="${tirClass(raw == null ? null : raw * 100)}">${text}</td>`;
     if (c.k === 'volumen') return `<td class="${raw > 0 ? 'vol-si' : 'vol-no'}">${raw > 0 ? '● ' : '○ '}${text}</td>`;
-    if (c.type === 'tirpct100' || c.type === 'pctColor100') return `<td class="${tirClass((raw || 0) * 100)}">${text}</td>`;
+    // tirpct100 no se chequea acá: toda columna con ese type tiene k:'tir', que ya se intercepta arriba.
+    if (c.type === 'pctColor100') return `<td class="${tirClass((raw || 0) * 100)}">${text}</td>`;
     return `<td>${text}</td>`;
   }).join('') + '</tr>').join('');
 }

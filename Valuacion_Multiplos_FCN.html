@@ -134,7 +134,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
   <div class="toolbar" id="toolbar" style="display:none">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input type="text" id="search-input" placeholder="Buscar ticker o empresa…" oninput="render()">
+      <input type="text" id="search-input" placeholder="Buscar ticker o empresa…" oninput="renderDebounced()">
     </div>
     <label class="mult-pick" id="mult-pick">Múltiplo
       <select id="mult-sel" onchange="setMult(this.value)">
@@ -524,6 +524,11 @@ function tkCell(r){
   return `<td class="td-ticker" onclick="abrirHolders('${esc}')" title="Ver qué clientes lo tienen">${r.ticker}${badge}</td>`;
 }
 
+// Debounce del buscador — antes cada tecla tipeada reconstruía la tabla entera de +300
+// tickers. 200ms no se nota tipeando pero evita repetir el trabajo por letra. Bug real
+// arreglado 08/09/2026.
+let _renderTimer=null;
+function renderDebounced(){ clearTimeout(_renderTimer); _renderTimer=setTimeout(render,200); }
 function render(){
   const thead=document.getElementById('thead'), tbody=document.getElementById('tbody');
   if(!thead||!tbody) return;
@@ -631,7 +636,19 @@ async function loadAndRender(){
     return;
   }
   try{ allRows=parseBuffer(entry); }
-  catch(e){ console.error('Error parseando valuacion_multiplos:',e); return; }
+  catch(e){
+    // Antes esto solo logueaba a consola y dejaba la página en blanco, sin ningún estado
+    // visible — un Excel corrupto o con columnas cambiadas no daba ninguna pista de qué pasó.
+    // Bug real arreglado 08/09/2026: reusa el mismo cartel de "sin datos" con un mensaje
+    // distinto, así al menos queda claro que el archivo se encontró pero no se pudo leer.
+    console.error('Error parseando valuacion_multiplos:',e);
+    const title=document.getElementById('empty-state')?.querySelector('.empty-title');
+    const sub=document.getElementById('empty-state')?.querySelector('.empty-sub');
+    if(title) title.textContent='No se pudo leer el archivo';
+    if(sub) sub.innerHTML='El Excel se encontró pero no se pudo procesar (columnas cambiadas o archivo corrupto). Detalle: '+String(e.message||e).replace(/</g,'&lt;');
+    show('empty-state','flex'); show('table-wrap','none'); show('toolbar','none'); show('tabs','none'); show('foot-note','none');
+    return;
+  }
 
   show('empty-state','none'); show('table-wrap','block'); show('toolbar','flex'); show('tabs','flex'); show('foot-note','block');
 

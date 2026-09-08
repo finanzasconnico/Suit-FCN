@@ -1803,10 +1803,6 @@ async function doExport(el,prefix){
   }catch(e){alert('Error al exportar: '+e.message);}
   btn.textContent=orig;btn.disabled=false;
 }
-function printDoc(){
-  document.body.setAttribute('data-print','cartera');window.print();setTimeout(function(){document.body.removeAttribute('data-print');},1000);
-}
-
 // ═══ RESET / NAV ═══
 function resetAll(){
   if(assets.length&&!confirm('Borrar todo y empezar de nuevo?'))return;

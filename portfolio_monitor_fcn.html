@@ -158,7 +158,7 @@ tr:hover td{background:rgba(33,38,45,.5);}
       <option value="">-- Seleccionar cliente --</option>
     </select>
     <input id="clientName" placeholder="Nombre del cliente" style="background:var(--sf);border:1px solid var(--bd);border-radius:6px;color:var(--tx);padding:6px 10px;font-size:12px;width:200px;">
-    <button class="btn btn-s" onclick="generate()" title="La cartera se actualiza sola apenas cargás algo — usá esto solo para forzar un refresh manual (ej. después de editar el texto del PDF a mano)">🔄 Actualizar</button>
+    <button class="btn btn-s" onclick="generate(true)" title="La cartera se actualiza sola apenas cargás algo — usá esto solo para forzar un refresh manual (ej. después de editar el texto del PDF a mano)">🔄 Actualizar</button>
     <button class="btn" onclick="nuevoCliente()" title="Borra el PDF, Realizado y Movimientos cargados, y todo lo calculado de la cartera actual, para analizar otro cliente sin recargar la página. No toca la Tenencia compartida (podés elegir otro cliente del desplegable sin volver a subirla)." style="background:var(--sf);border:1px solid var(--bd);color:var(--tx);">🗑 Nuevo cliente</button>
     <label id="modoAsesorLbl" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;" title="En Operaciones Cerradas, cada ticker aparece agrupado en una sola fila — este modo agrega un desplegable para ver el detalle de cada operación. No se incluye si el reporte es para el cliente.">
       <input type="checkbox" id="modoAsesorChk" style="accent-color:var(--ac);">Modo asesor (detalle desglosable)
@@ -292,7 +292,7 @@ tr:hover td{background:rgba(33,38,45,.5);}
 // STATE
 // ══════════════════════════════════════════════════════════════
 var S={
-  posBuf:null, movBufs:[], tenBuf:null, bolBuf:null,
+  movBufs:[], tenBuf:null,
   mep:1544.5, cable:1607, mepSrc:'fallback',
   positions:{}, movData:null, tenData:null,
   tenRows:[], tenClients:{}, comitente:'',
@@ -479,7 +479,17 @@ function applyBYMAOns(store){
   });
 }
 
-async function fetchLivePrices(){
+// Caché de sesión con el mismo TTL que ya usa fcn-byma.js (90s) — sin esto, subir PDF, después
+// Realizado, después Movimientos (el flujo normal para armar un informe) disparaba 3 rondas
+// completas de fetch a las mismas 6 fuentes de precio para exactamente los mismos datos, cada
+// vez que autoGenerate() dispara generate() de nuevo. Bug real arreglado 08/09/2026.
+var _livePricesCacheTs=0, _livePricesCacheText='';
+var LIVE_PRICES_TTL_MS=90000;
+async function fetchLivePrices(force){
+  if(!force && _livePricesCacheTs && (Date.now()-_livePricesCacheTs)<LIVE_PRICES_TTL_MS){
+    document.getElementById('mepSrc').textContent=_livePricesCacheText+' (caché)';
+    return;
+  }
   LIVE_PRICES={}; PRICE_SOURCE={};  // reset para obtener precios frescos
 
   var sources=[];
@@ -518,8 +528,9 @@ async function fetchLivePrices(){
   }catch(e){sources.push('argdatos✗');}
 
   var mepStr=S.mepSrc==='DolarAPI'?'DolarAPI':'fallback';
-  document.getElementById('mepSrc').textContent=
-    mepStr+' · '+sources.join(' ')+' · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  _livePricesCacheText=mepStr+' · '+sources.join(' ')+' · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  _livePricesCacheTs=Date.now();
+  document.getElementById('mepSrc').textContent=_livePricesCacheText;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -605,10 +616,21 @@ function loadFile(inp,type){
     r.onload=function(e){
       S.tenBuf=new Uint8Array(e.target.result);
       S.tenRows=[]; // reset para forzar re-parse
-      var n=parseTenencia(S.tenBuf);
       var stTen=document.getElementById('stTen'),bTen=document.getElementById('bTen');
-      if(stTen)stTen.textContent='✓ '+files[0].name+' ('+n+' clientes)';
-      if(bTen)bTen.classList.add('ok');
+      // A diferencia de Realizado/Movimientos (que parsean recién adentro de generate(), ya
+      // cubierto por su propio try/catch), Tenencia se parsea acá mismo, al toque de cargarla —
+      // sin este try/catch, un Excel con columnas cambiadas tiraba en silencio y el cartelito se
+      // quedaba en "Sin cargar" sin ninguna pista de qué pasó. Bug real arreglado 08/09/2026.
+      try{
+        var n=parseTenencia(S.tenBuf);
+        if(stTen)stTen.textContent='✓ '+files[0].name+' ('+n+' clientes)';
+        if(bTen)bTen.classList.add('ok');
+      }catch(err){
+        console.error('[Tenencia]',err);
+        if(stTen)stTen.innerHTML='<span style="color:var(--rd);">⚠ Error leyendo el archivo: '+err.message+'</span>';
+        if(bTen)bTen.classList.remove('ok');
+        return;
+      }
       autoGenerate();
     };
     r.readAsArrayBuffer(files[0]);
@@ -655,30 +677,6 @@ function loadFile(inp,type){
     onPdfFile(inp);
   });
 })();
-
-// Merge de múltiples PosF con deduplicación de lotes
-function parsePosicionMulti(bufs){
-  if(bufs.length===1)return parsePosicion(bufs[0]);
-  var merged={};
-  bufs.forEach(function(buf){
-    var pd=parsePosicion(buf);
-    Object.entries(pd).forEach(function(e){
-      var ticker=e[0],entry=e[1];
-      if(!merged[ticker]){merged[ticker]=Object.assign({},entry,{lots:[]});merged[ticker].totalQty=0;}
-      // Merge lotes con dedup por (fecha, precio, cantidad)
-      var existing=merged[ticker];
-      entry.lots.forEach(function(lot){
-        var key=lot.fecha+'|'+lot.precioUSD.toFixed(4)+'|'+lot.qty;
-        var dup=existing.lots.some(function(l){return l.fecha+'|'+l.precioUSD.toFixed(4)+'|'+l.qty===key;});
-        if(!dup)existing.lots.push(lot);
-      });
-      // Recalcular totales desde los lotes merged
-      existing.totalQty=existing.lots.reduce(function(s,l){return s+l.qty;},0);
-      existing.pppUSD=existing.totalQty>0?existing.lots.reduce(function(s,l){return s+l.loteUSD;},0)/existing.totalQty:0;
-    });
-  });
-  return merged;
-}
 
 // ══════════════════════════════════════════════════════════════
 // PARSER: REALIZADO (reemplaza PosF + Boletos)
@@ -840,67 +838,8 @@ function parseRealizado(bufs){
 }
 
 // ══════════════════════════════════════════════════════════════
-// PARSER: POSICIÓN FINAL → PPP
-// ══════════════════════════════════════════════════════════════
-function parsePosicion(buf){
-  var wb=XLSX.read(buf,{type:'array'});
-  var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
-  var lots={};
-  rows.forEach(function(r){
-    var ticker=(r['Ticker']||'').trim();if(!ticker)return;
-    if(ticker==='SNSBO')ticker='SNEBO'; // typo de Balanz
-    // Repos: "POA - GD30" → "POA" (el PDF usa solo el ticker del repo)
-    if(ticker.match(/^([A-Z0-9]+)\s+-\s+/))ticker=ticker.match(/^([A-Z0-9]+)\s+-\s+/)[1];
-    var qty=pN(r['Cantidad']);var precio=pN(r['Precio Compra']);
-    var moneda=(r['Moneda']||'').trim();
-    var tipo=(r['Tipo']||'').trim();
-    var mepC=pN(r['Dólar MEP']||r['Dolar MEP'])||0;
-    var gastos=pN(r['Gastos'])||0;
-    var fecha=dt(r['Fecha']||'');
-    if(!qty||precio<=0)return;
-    var mep=mepC>0?mepC:mepAt(fecha);
-    var gastoUSD=gastos/mep; // gastos SIEMPRE en ARS
-    var isARS=moneda==='Pesos';
-    var precioUSD=isARS?precio/mep:precio;
-    var loteUSD=qty*precioUSD+gastoUSD;
-    if(!lots[ticker])lots[ticker]={lots:[],totalQty:0,totalCostUSD:0,
-      tipo:tipo,desc:(r['Descripción']||r['Descripcion']||'').trim()};
-    lots[ticker].lots.push({qty,precio,precioUSD,moneda,mep,fecha,gastos,gastoUSD,loteUSD});
-    lots[ticker].totalQty+=qty;
-    lots[ticker].totalCostUSD+=loteUSD;
-  });
-  Object.values(lots).forEach(function(p){
-    p.pppUSD=p.totalQty>0?p.totalCostUSD/p.totalQty:0;
-  });
-  return lots;
-}
-
-// ══════════════════════════════════════════════════════════════
 // PARSER: MOVIMIENTOS → cantidades + flujos + income
 // ══════════════════════════════════════════════════════════════
-// Parser de boletos.xlsx → gastos por comisiones (Neto - Bruto por operación)
-function parseBoletos(buf){
-  var wb=XLSX.read(buf,{type:'array'});
-  var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
-  var gastos=[];
-  rows.forEach(function(r){
-    var bruto=pN(r['Bruto'])||0;
-    var neto=pN(r['Neto'])||0;
-    if(!bruto||!neto)return;
-    var moneda=String(r['Moneda']||'');
-    var fecha=dt(r['Concertación']||r['Concertacion']||'');
-    var ticker=String(r['Ticker']||'');
-    var tipo=String(r['Tipo']||'');
-    var com=Math.abs(neto-bruto);
-    if(com<0.001)return;
-    var mep=mepAt(fecha)||S.mep;
-    var usd=moneda.toLowerCase().includes('peso')?com/mep:com;
-    gastos.push({fecha,ticker,tipo,moneda,com,usd,mep});
-  });
-  var totalUSD=gastos.reduce(function(s,g){return s+g.usd;},0);
-  return {gastos,totalUSD};
-}
-
 function emptyMov(){return {qty:{},deposits:[],withdrawals:[],income:[],rebates:[],gastos:[],trades:[],transfers:[]};}
 function parseMovimientos(bufs){
   var allRows=[];
@@ -1704,18 +1643,28 @@ async function onPdfFile(input){
 // ══════════════════════════════════════════════════════════════
 // GENERATE
 // ══════════════════════════════════════════════════════════════
-async function generate(){
+// Guard de re-entrancia: sin esto, clickear "Actualizar" mientras un generate() anterior
+// todavía esperaba el fetch de precios (o el debounce de autoGenerate disparando dos veces
+// seguidas al subir varios archivos) podía arrancar una segunda corrida que pisa a la primera
+// a mitad de camino, mezclando resultados de dos runs sobre los mismos globals (LIVE_PRICES,
+// PDF_DATA, S.positions). Bug real arreglado 08/09/2026: si ya hay una corrida en curso, la
+// nueva queda pendiente y se dispara sola apenas termina la actual, en vez de solaparse o
+// perderse en silencio.
+var _generating=false, _generatePending=false;
+async function generate(forceLivePrices){
   var hasPDF=PDF_DATA&&PDF_DATA.count>0;
   var hasTen=!!S.tenBuf;
   if(!hasPDF&&!hasTen){
     alert('Cargá el PDF de Posición Consolidada (recomendado) o el archivo de Tenencia Balanz.');
     return;
   }
+  if(_generating){ _generatePending=true; return; }
+  _generating=true;
   document.getElementById('out').style.display='block';
   document.getElementById('heroEl').innerHTML=
     '<div style="color:var(--mu);padding:20px;">Procesando archivos...</div>';
   try{
-    await Promise.all([fetchMep(), fetchLivePrices(), fetchMepHistorico()]);
+    await Promise.all([fetchMep(), fetchLivePrices(forceLivePrices), fetchMepHistorico()]);
 
     // Re-parsear PDF con MEP actualizado
     if(hasPDF){
@@ -1799,6 +1748,9 @@ async function generate(){
       '<div style="color:var(--rd);padding:16px;background:rgba(248,81,73,.08);border-radius:8px;font-family:monospace;white-space:pre-wrap;font-size:12px;">'+
       '⚠ Error:\n'+err.message+'\n\n'+err.stack+'</div>';
     console.error(err);
+  }finally{
+    _generating=false;
+    if(_generatePending){ _generatePending=false; generate(); }
   }
 }
 
@@ -2887,7 +2839,11 @@ function downloadReport(){
 
   var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'+
     '<title>Reporte Cartera — '+clientName+'</title>'+
-    '<style>*{margin:0;padding:0;box-sizing:border-box;}'+
+    // Sin esto, Chrome no imprime colores de fondo/gradientes por default — hay que tildar
+    // "Gráficos de fondo" a mano en el diálogo de impresión, algo que casi nadie nota, y el PDF
+    // sale sin el celeste de la tapa ni los colores de las tarjetas del Resumen. Forzarlo acá
+    // saca esa dependencia de un tilde escondido del navegador.
+    '<style>*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}'+
     'body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11px;color:#1a1a2e;background:#f8fafc;padding:0;}'+
     '@page{margin:12mm 12mm;size:A4;}'+
     // Antes TODAS las <section> tenían break-inside:avoid — una sección larga (Detalle de

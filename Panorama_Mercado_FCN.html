@@ -157,7 +157,7 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
 
     <div class="field">
       <div class="field-label">Ticker o cliente</div>
-      <input type="text" id="f-ticker" placeholder="Buscar ticker o cliente..." oninput="render()">
+      <input type="text" id="f-ticker" placeholder="Buscar ticker o cliente..." oninput="renderDebounced()">
     </div>
 
     <div class="field">
@@ -173,16 +173,16 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
     <div class="field">
       <div class="field-label">Duration (años)</div>
       <div class="range-row">
-        <input type="number" id="f-dur-min" placeholder="Min" step="0.5" oninput="render()">
-        <input type="number" id="f-dur-max" placeholder="Max" step="0.5" oninput="render()">
+        <input type="number" id="f-dur-min" placeholder="Min" step="0.5" oninput="renderDebounced()">
+        <input type="number" id="f-dur-max" placeholder="Max" step="0.5" oninput="renderDebounced()">
       </div>
     </div>
 
     <div class="field">
       <div class="field-label">Tenencia (USD)</div>
       <div class="range-row">
-        <input type="number" id="f-ten-min" placeholder="Min" step="1000" oninput="render()">
-        <input type="number" id="f-ten-max" placeholder="Max" step="1000" oninput="render()">
+        <input type="number" id="f-ten-min" placeholder="Min" step="1000" oninput="renderDebounced()">
+        <input type="number" id="f-ten-max" placeholder="Max" step="1000" oninput="renderDebounced()">
       </div>
     </div>
 
@@ -647,6 +647,12 @@ function puntosBase(){
     }));
 }
 
+// Debounce de los filtros (ticker/cliente, duration y tenencia mín-máx) — render() reconstruye
+// la curva de referencia y hace chart.destroy()+new Chart(...) del scatter entero; sin esto,
+// cada tecla tipeada pagaba ese costo completo. 200ms no se nota tipeando. Bug real arreglado
+// 08/09/2026.
+let _renderTimer=null;
+function renderDebounced(){ clearTimeout(_renderTimer); _renderTimer=setTimeout(render,200); }
 function render(){
   if (Object.keys(dataMonitor).length === 0) {
     document.getElementById('empty-state').style.display = 'flex';

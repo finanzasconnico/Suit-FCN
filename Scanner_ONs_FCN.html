@@ -709,10 +709,6 @@ let califFiltroSugeridas = '';
 let dropdownFocusIdx = -1;
 let stockMap = {}; // comitente (string) -> { tel, nombre, denominacion, mail }
 
-// Preview state (MEJORA 2)
-let previewExcluidas = new Set();
-let previewExcluidasSug = new Set();
-let previewTexto = '';
 
 let licitaciones = (() => {
   try { const s = localStorage.getItem('fcn-licitaciones'); return s ? JSON.parse(s) : []; } catch(e){ return []; }
@@ -1632,7 +1628,6 @@ function guardarTIR(idxFusion) {
   const val=parseFloat(inp.value);
   if(!isNaN(val)&&val>=0){datosFusionados[idxFusion].tir=val/100;datosFusionados[idxFusion].tirEditada=true;}
   aplicarFiltros();
-  if(clienteActivo){const ta=document.getElementById('preview-texto');if(ta)previewTexto=ta.value;}
 }
 
 function resetearTIRsTop() {
@@ -1798,7 +1793,13 @@ function iniciarBYMA(){
 function onBYMA(store){
   BYMA_STORE = store;
   renderEstadoBYMA();
-  if(typeof datosFusionados!=='undefined' && datosFusionados.length>0) renderTablas();
+  if(typeof datosFusionados!=='undefined' && datosFusionados.length>0){
+    // Si ya hay badges pintados (no es la primera vez que BYMA carga), alcanza con
+    // actualizarlos en el lugar — un renderTablas() completo por cada refresh periódico
+    // (~90s) redibujaba las 6 vistas enteras solo para cambiar un puntito de color.
+    if(document.querySelector('.liq-badge[data-ticker]')) actualizarBadgesLiquidez();
+    else renderTablas();
+  }
   if(typeof tickerModalActual!=='undefined' && tickerModalActual) renderAlternativasRotacion(tickerModalActual);
 }
 function refrescarBYMA(){ FCNByma.refresh().then(onBYMA); }
@@ -1819,9 +1820,23 @@ function liqBadgeInline(ticker){
   if(!BYMA_STORE || !BYMA_STORE.ready) return '';
   var info = dataMonitor[ticker];
   var m = FCNByma.matchTicker(ticker, info?info.dolar:'', null);
-  if(!m) return '<span class="liq-badge" title="No matcheó contra BYMA (vencido, o BYMA lo nombra distinto)">⚪</span>';
+  // data-ticker permite que actualizarBadgesLiquidez() los actualice en el lugar sin
+  // redibujar toda la fila/tabla — ver esa función y su uso en onBYMA().
+  var tkAttr=' data-ticker="'+String(ticker).replace(/"/g,'&quot;')+'"';
+  if(!m) return '<span class="liq-badge"'+tkAttr+' title="No matcheó contra BYMA (vencido, o BYMA lo nombra distinto)">⚪</span>';
   var lq = FCNByma.liquidez(m);
-  return '<span class="liq-badge" title="'+lq.label+' (BYMA '+(BYMA_STORE.asOfText||'')+')">'+lq.emoji+'</span>';
+  return '<span class="liq-badge"'+tkAttr+' title="'+lq.label+' (BYMA '+(BYMA_STORE.asOfText||'')+')">'+lq.emoji+'</span>';
+}
+// Actualiza los badges de liquidez YA pintados en el DOM sin reconstruir las 6 vistas enteras
+// (Hoy, stats, bajas, todas, top, resumen) — antes cada refresh de BYMA (cada ~90s, o cuando
+// otra pestaña lo actualiza) hacía un renderTablas() completo, perdiendo cualquier scroll o
+// desplegable abierto. Se usa en los refrescos periódicos; el primer renderTablas() (el que
+// crea los badges por primera vez) sigue siendo completo — ver onBYMA(). Bug real arreglado
+// 08/09/2026.
+function actualizarBadgesLiquidez(){
+  document.querySelectorAll('.liq-badge[data-ticker]').forEach(function(el){
+    el.outerHTML = liqBadgeInline(el.getAttribute('data-ticker'));
+  });
 }
 function formatNum(n) { if(!n&&n!==0) return'—'; return new Intl.NumberFormat('es-AR',{maximumFractionDigits:0}).format(n); }
 function formatVto(v) {

@@ -444,7 +444,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="ac-dropdown" id="ac-dd-venta"></div>
       </div>
       <div class="field-row field-big">
-        <div class="field"><label>Nominales</label><input type="number" step="1" id="v-nominales" value="10000" oninput="onCondChange('venta')"></div>
+        <div class="field"><label>Nominales</label><input type="number" step="1" id="v-nominales" value="10000" oninput="onNominalesVentaChange()"></div>
         <div class="field"><label>Precio actual</label><input type="number" step="0.0001" id="v-precio" oninput="onCondChange('venta')"></div>
       </div>
       <div class="chip-row" id="v-chips"></div>
@@ -520,6 +520,13 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <div class="autolink-row advisor-only">
         <input type="checkbox" id="chk-automatch" checked onchange="onGlobalChange()">
         <label for="chk-automatch" style="margin:0;text-transform:none;color:var(--cream-dim);">🔗 Calcular nominales solo (cash matcheado con la venta) — desmarcá para poner un número vos</label>
+      </div>
+      <div class="autolink-row advisor-only" style="margin-top:4px;">
+        <label style="margin:0;text-transform:none;color:var(--cream-dim);white-space:nowrap;">Después del mínimo, el lote va</label>
+        <select id="c-lote-step" onchange="onGlobalChange()" title="La lámina mínima (o el mínimo de la hoja del Monitor) marca el piso para entrar. Después de ese piso, algunas ONs se operan de a 1 nominal (lo más común); otras solo en múltiplos exactos de la lámina.">
+          <option value="uno" selected>de a 1 (ej: 1000, 1001, 1002…)</option>
+          <option value="multiplo">solo en múltiplos exactos de la lámina (ej: 1000, 2000, 3000…)</option>
+        </select>
       </div>
       <div class="chip-row" id="c-chips"></div>
       <div class="ticker-holders" id="c-holders"></div>
@@ -652,7 +659,6 @@ function parseISO(s){ if(!s) return null; var p=s.split('-'); return new Date(pa
 function fmtDateAR(d){ if(!d) return '—'; return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
 function fmtNum(n,dec){ if(n===null||n===undefined||isNaN(n)) return '—'; dec=dec===undefined?2:dec; return Number(n).toLocaleString('es-AR',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 function fmtUSD(n){ if(n===null||n===undefined||isNaN(n)) return '—'; var sign = n<0?'-':''; return sign+'$'+fmtNum(Math.abs(n),0); }
-function fmtPct(n){ if(n===null||n===undefined||isNaN(n)) return '—'; return fmtNum(n*100,2)+'%'; }
 function daysBetween(d1,d2){ return Math.round((d2-d1)/86400000); }
 function yearFrac(d1,d2){ return daysBetween(d1,d2)/365; }
 var MONTH_ABR = {ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
@@ -1248,6 +1254,15 @@ function setAmortType(pata, type){
 }
 
 function onCondChange(pata){ renderAll(); }
+// El campo Nominales de la venta escala el monto y el cronograma por igual — la TIR resultante
+// (y por lo tanto la lista de comparables, que ordena por TIR) no cambia. Antes tipear acá
+// disparaba el mismo renderComparablesRotacion(venta) caro (recorre y puntúa todo BOND_DB/
+// FLUJO_DB) que un cambio real de ticker/precio/cupón. Bug real arreglado 08/09/2026.
+var _skipComparablesRerender=false;
+function onNominalesVentaChange(){
+  _skipComparablesRerender=true;
+  renderAll();
+}
 function onGlobalChange(){ renderAll(); }
 function onNominalesCompraManual(){
   // si el usuario toca el campo a mano, apagamos el auto-match para no pisarle el número
@@ -1271,7 +1286,20 @@ function computeMatchedNominales(){
     if(bC && bC.laminaMin && parseFloat(bC.laminaMin)>0) loteMin = parseFloat(bC.laminaMin);
   }
   var cashVenta = nomV*precioV*(1-comision);
-  var nomC = Math.floor((cashVenta/(precioC*(1+comision)))/loteMin)*loteMin;
+  var nomCRaw = cashVenta/(precioC*(1+comision));
+  // Dos convenciones de lote distintas, ver selector "Después del mínimo, el lote va":
+  // la mayoría de las ONs piden un mínimo (ej. 1000 nominales) y de ahí en más se operan de a
+  // 1 (1000, 1001, 1002…) — antes esto SIEMPRE redondeaba al múltiplo exacto de la lámina
+  // (Math.floor(x/loteMin)*loteMin), que solo es correcto para el puñado de bonos que realmente
+  // exigen lotes fijos arriba del mínimo. Bug real reportado por Nico y arreglado 08/09/2026.
+  var selStep = document.getElementById('c-lote-step');
+  var nomC;
+  if(selStep && selStep.value==='multiplo'){
+    nomC = Math.floor(nomCRaw/loteMin)*loteMin;
+  } else {
+    nomC = Math.floor(nomCRaw);
+    if(nomC < loteMin) nomC = 0; // no alcanza ni para el mínimo — mejor 0 que un número no operable
+  }
   document.getElementById('c-nominales').value = nomC;
 }
 
@@ -1327,11 +1355,15 @@ function renderAll(){
     var schedVComp = getScheduleForLeg(venta, hoy);
     venta.tir = tirDesdePrecio(schedVComp, venta.nominales*venta.precio, hoy, venta.tir);
     venta.duration = macaulayDuration(schedVComp, venta.tir/100, hoy);
-    renderComparablesRotacion(venta);
+    // Solo se saltea si ya había comparables calculados antes (si no, es la primera vez que
+    // "venta" queda completo — por ejemplo, nominales era el único campo que faltaba — y ahí sí
+    // hace falta el cálculo real, no hay nada previo que reusar).
+    if(!(_skipComparablesRerender && lastVentaParaComparables)) renderComparablesRotacion(venta);
   } else {
     lastVentaParaComparables = null;
     document.getElementById('rot-comp-wrap').style.display='none';
   }
+  _skipComparablesRerender=false;
 
   if(!venta || !compra){
     document.getElementById('empty-state').style.display='';
@@ -1659,15 +1691,63 @@ function licOnLaminaChange(){
   var lam = parseFloat(document.getElementById('lic-lamina-min').value);
   var tm = document.getElementById('lic-tenencia-min');
   if(tm && !isNaN(lam) && lam > 0 && !tm.value.trim()) tm.value = lam;
+  guardarEstadoLicitacion();
+}
+
+// ── Persistencia del panel de licitación ──────────────────────────────────────
+// Guarda TODO lo que cargaste (datos de la ON + reglas del filtro + cronograma de
+// amortización a mano) en localStorage, y lo restaura al volver a abrir la herramienta —
+// para no re-tipear todo cada vez. Al restaurar también re-registra la ON en BOND_DB/FLUJO_DB
+// (igual que buscarCandidatosLicitacion) así queda disponible en "Bono a comprar" al toque.
+var LIC_ESTADO_KEY = 'fcn-licitacion-estado';
+var LIC_ESTADO_CAMPOS = ['lic-ticker','lic-emisor','lic-tasa','lic-precio','lic-venc','lic-calif',
+  'lic-freq','lic-amort','lic-fecha-lic','lic-ley','lic-brecha','lic-tir-manual','lic-lamina-min',
+  'lic-tenencia-min','lic-ventaja-min','lic-calnotch','lic-dias-min','lic-ganancia-override'];
+function guardarEstadoLicitacion(){
+  var o = {};
+  LIC_ESTADO_CAMPOS.forEach(function(id){ var el = document.getElementById(id); if(el) o[id] = el.value; });
+  o.amortRows = (licAmortRows || []).slice();
+  o.vistaModo = licVistaModo;
+  try{ localStorage.setItem(LIC_ESTADO_KEY, JSON.stringify(o)); }catch(e){}
+}
+function restaurarEstadoLicitacion(){
+  var raw; try{ raw = localStorage.getItem(LIC_ESTADO_KEY); }catch(e){ return; }
+  if(!raw) return;
+  var o; try{ o = JSON.parse(raw); }catch(e){ return; }
+  LIC_ESTADO_CAMPOS.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && o[id] != null && o[id] !== '') el.value = o[id];
+  });
+  if(Array.isArray(o.amortRows)) licAmortRows = o.amortRows;
+  if(o.vistaModo === 'on' || o.vistaModo === 'cliente') licVistaModo = o.vistaModo;
+  licOnLeyChange();          // muestra/oculta el campo de brecha según la ley restaurada
+  licOnAmortTypeChange();    // muestra/oculta el bloque de cronograma según la amortización
+  renderLicAmortRows();
+  // Re-registrar la ON como bono del universo (para "Bono a comprar"), si el form quedó completo.
+  var on = leerNuevaON();
+  if(on){
+    // Borrar cualquier ficha vieja de este ticker (pudo quedar serializada en el storage del
+    // Monitor de una sesión anterior con otra tasa/precio) y reconstruirla del form restaurado.
+    delete FLUJO_DB[on.ticker];
+    delete BOND_DB[on.ticker];
+    var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+    var comPct = parseFloat(document.getElementById('p-comision').value) || 0;
+    var aniosN = yearFrac(hoy, on.fechaVenc);
+    if(aniosN > 0){
+      var info = pctRetornoAHorizonte(Object.assign({}, on, {nominales:100}), hoy, comPct, aniosN);
+      on.tirSolved = info ? info.tir : on.tir;
+    }
+    _licRegistrarEnUniverso(on, leerLicAmortRows(), true); // true = sin toast al restaurar
+  }
 }
 function licOnAmortTypeChange(){
   var esAmort = document.getElementById('lic-amort').value === 'amortizable';
   document.getElementById('lic-amort-custom-wrap').style.display = esAmort ? '' : 'none';
   if(esAmort && !licAmortRows.length) renderLicAmortRows();
 }
-function licAmortAgregarFila(){ licAmortRows.push({fecha:'', pct:''}); renderLicAmortRows(); }
-function licAmortQuitarFila(i){ licAmortRows.splice(i,1); renderLicAmortRows(); }
-function licAmortEditar(i, campo, val){ if(licAmortRows[i]){ licAmortRows[i][campo] = val; actualizarSumaLicAmort(); } }
+function licAmortAgregarFila(){ licAmortRows.push({fecha:'', pct:''}); renderLicAmortRows(); guardarEstadoLicitacion(); }
+function licAmortQuitarFila(i){ licAmortRows.splice(i,1); renderLicAmortRows(); guardarEstadoLicitacion(); }
+function licAmortEditar(i, campo, val){ if(licAmortRows[i]){ licAmortRows[i][campo] = val; actualizarSumaLicAmort(); guardarEstadoLicitacion(); } }
 function renderLicAmortRows(){
   var wrap = document.getElementById('lic-amort-rows');
   if(!wrap) return;
@@ -1750,7 +1830,7 @@ function _licBuildSchedule100(nuevaON, amortRows){
 // cada vez que se corre "🔍 Buscar candidatos", así que si se edita algo del formulario y se
 // vuelve a buscar, la ficha registrada queda al día. Pedido de Nico (04/09): "que la pueda
 // cargar y ver como cualquiera que cargo en comprar".
-function _licRegistrarEnUniverso(nuevaON, amortRows){
+function _licRegistrarEnUniverso(nuevaON, amortRows, silencioso){
   if(!nuevaON || !nuevaON.ticker) return;
   var built = _licBuildSchedule100(nuevaON, amortRows);
   var tirBase = nuevaON.tirSolved != null ? nuevaON.tirSolved : nuevaON.tir;
@@ -1773,7 +1853,7 @@ function _licRegistrarEnUniverso(nuevaON, amortRows){
     tirMep: tirBase, tirCable: tirBase,
     precioMep: nuevaON.precio, precioCable: nuevaON.precio
   };
-  if(built.sinMatch.length){
+  if(built.sinMatch.length && !silencioso){
     mostrarToastPanorama('⚠ ' + built.sinMatch.length + ' fecha(s) de amortización no coincidieron con ningún pago (revisá el cronograma) — se ignoraron.');
   }
 }
@@ -1888,6 +1968,12 @@ function buscarCandidatosLicitacion(){
 
   var porCliente = {};
   var bondCache = {}; // ticker del cliente -> bond base (se calcula 1 sola vez aunque varios clientes tengan el mismo ticker)
+  // retVenta/retCompra (cada uno un solve de TIR completo, Newton-Raphson) dependen solo del
+  // ticker que se vende (anios sale de su vencimiento, retCompra usa ese mismo horizonte) —
+  // nunca de qué cliente lo tiene. Antes se recalculaban ambos por cada CLIENTE que compartía
+  // el ticker, no por ticker — con 20 clientes en el mismo bono, 20 solves en vez de 1. Bug
+  // real arreglado 08/09/2026.
+  var retCache = {};
   var huboTickersSinDatos = false;
   var posFiltradasPorTamano = 0;
 
@@ -1905,10 +1991,16 @@ function buscarCandidatosLicitacion(){
       var anios = yearFrac(hoy, baseBond.fechaVenc);
       if(!(anios>0)) return; // ya venció o vence hoy
 
-      var ventaBond = Object.assign({}, baseBond, {nominales:100});
-      var compraBond = Object.assign({}, nuevaON, {nominales:100});
-      var retVenta = pctRetornoAHorizonte(ventaBond, hoy, comisionPct, anios);
-      var retCompra = pctRetornoAHorizonte(compraBond, hoy, comisionPct, anios);
+      if(!retCache.hasOwnProperty(pos.ticker)){
+        var ventaBond = Object.assign({}, baseBond, {nominales:100});
+        var compraBond = Object.assign({}, nuevaON, {nominales:100});
+        retCache[pos.ticker] = {
+          retVenta: pctRetornoAHorizonte(ventaBond, hoy, comisionPct, anios),
+          retCompra: pctRetornoAHorizonte(compraBond, hoy, comisionPct, anios)
+        };
+      }
+      var retVenta = retCache[pos.ticker].retVenta;
+      var retCompra = retCache[pos.ticker].retCompra;
       if(!retVenta || !retCompra) return;
       var ventajaPuntos = retCompra.pct - retVenta.pct;
       if(ventajaPuntos < ventajaMin) return;
@@ -1947,6 +2039,7 @@ function buscarCandidatosLicitacion(){
   }
 
   licitacionResultados = { nuevaON: nuevaON, porCliente: porCliente, huboTickersSinDatos: huboTickersSinDatos, huboCandidatosLiquidez: huboCandidatosLiquidez, posFiltradasPorTamano: posFiltradasPorTamano, tenenciaMinPos: tenenciaMinPos };
+  guardarEstadoLicitacion();
   renderResultadosLicitacion();
 }
 
@@ -2023,7 +2116,7 @@ function quitarTickerLicitacion(ticker){
 // cliente, como era antes). Nunca se pierde info entre vistas — las dos leen exactamente
 // candidatosVisiblesLicitacion(), solo cambia el agrupamiento visual.
 var licVistaModo = 'on';
-function setLicVistaModo(m){ licVistaModo = m; renderResultadosLicitacion(); }
+function setLicVistaModo(m){ licVistaModo = m; guardarEstadoLicitacion(); renderResultadosLicitacion(); }
 
 // Agrupa candidatosVisiblesLicitacion() por TICKER a rotar — ordenado por tenencia total en
 // USD (de mayor a menor), después mejor ventaja, después cantidad de clientes. Los clientes que
@@ -3678,7 +3771,13 @@ function iniciarBYMA(){
 function refrescarBYMA(){
   var el = document.getElementById('byma-estado');
   if(el) el.querySelector('.byma-ref') && (el.querySelector('.byma-ref').textContent = '↻ …');
-  FCNByma.refresh().then(aplicarVivo);
+  // Sin el .catch, un fetch que falla (sin internet un instante, etc.) dejaba el botón
+  // trabado en "↻ …" para siempre, porque aplicarVivo() — el que restaura el texto del botón
+  // vía renderEstadoBYMA() — nunca llegaba a correr. Bug real arreglado 08/09/2026.
+  FCNByma.refresh().then(aplicarVivo).catch(function(e){
+    console.warn('[BYMA]', e);
+    renderEstadoBYMA();
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3688,6 +3787,14 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('p-hoy').value = isoDate(new Date());
   loadDBFromStorage();
   loadFlujoDBFromStorage();
+  restaurarEstadoLicitacion();
+  var licBody = document.getElementById('lic-body');
+  if(licBody) licBody.addEventListener('change', function(e){
+    // los filtros de PANTALLA (lic-disp-*) viven adentro de #lic-resultados y se regeneran en
+    // cada render — no los persistimos; el resto de los campos del panel sí.
+    if(e.target && /^lic-disp-/.test(e.target.id || '')) return;
+    guardarEstadoLicitacion();
+  });
   iniciarBYMA();
 });
 
