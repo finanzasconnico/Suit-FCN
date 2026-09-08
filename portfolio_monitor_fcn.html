@@ -325,6 +325,26 @@ function pct(v,d){
   if(!isFinite(v)||isNaN(v))return '—';
   return (v>=0?'+':'')+N(v,d===undefined?1:d)+'%';
 }
+// "en 2 años y 3 meses" / "en 8 meses" / "en 12 días" — el mensaje que le da contexto a la
+// ganancia mostrada (no es lo mismo +30% en 3 meses que en 5 años). Fechas ISO (YYYY-MM-DD).
+function fmtDuracionDesde(fechaISO){
+  var d0=new Date(fechaISO+'T00:00:00');
+  if(isNaN(d0))return null;
+  var dias=Math.round((Date.now()-d0.getTime())/86400000);
+  if(dias<1)return null;
+  var anios=Math.floor(dias/365.25);
+  var mesesResto=Math.round((dias-anios*365.25)/30.44);
+  if(mesesResto===12){anios++;mesesResto=0;}
+  if(anios>=1)return anios+' año'+(anios!==1?'s':'')+(mesesResto>0?' y '+mesesResto+' mes'+(mesesResto!==1?'es':''):'');
+  var meses=Math.floor(dias/30.44);
+  if(meses>=1)return meses+' mes'+(meses!==1?'es':'');
+  return dias+' día'+(dias!==1?'s':'');
+}
+function fmtFechaCorta(fechaISO){
+  var d=new Date(fechaISO+'T00:00:00');
+  if(isNaN(d))return '';
+  return d.toLocaleDateString('es-AR',{day:'numeric',month:'short',year:'numeric'});
+}
 
 // ══════════════════════════════════════════════════════════════
 // MEP
@@ -2700,6 +2720,16 @@ function downloadReport(){
   var incBarData=meses.map(function(m){return{label:m.slice(5),value:byMonth[m],color:'#f59e0b'};});
   var incBarSVG=incBarData.length?makeSVGBar(incBarData,0,0,380,70):'';
 
+  // Fecha de la primera inversión — la ganancia sola no dice nada sin saber en cuánto tiempo
+  // se logró (no es lo mismo +30% en 3 meses que en 5 años); primer depósito o primera compra,
+  // lo que sea más temprano. Se muestra pegado a la Ganancia/Pérdida total, no al final del
+  // reporte — es el dato que le da sentido a ESE número específico, no una nota al pie.
+  var fechasInversion=mov.deposits.map(function(x){return x.fecha;})
+    .concat(mov.trades.filter(function(t){return t.tipo==='Compra';}).map(function(t){return t.fecha;}))
+    .filter(Boolean).sort();
+  var fechaPrimeraInversion=fechasInversion.length?fechasInversion[0]:null;
+  var duracionInversion=fechaPrimeraInversion?fmtDuracionDesde(fechaPrimeraInversion):null;
+
   // ── Flujos / Rendimiento real ─────────────────────────────────
   var tDep=mov.deposits.reduce(function(s,x){return s+x.usd;},0);
   var tRet=mov.withdrawals.reduce(function(s,x){return s+x.usd;},0);
@@ -2923,7 +2953,7 @@ function downloadReport(){
     '<div class="card c-blue"><div class="lbl">Capital aportado</div><div class="val">'+U2(netoAp)+'</div><div class="sub">'+(transferInfoR.detalle.length?'Efectivo + títulos transferidos':'Depósitos − retiros')+'</div></div>'+
     '<div class="card c-blue"><div class="lbl">Valor de cartera hoy</div><div class="val">'+U2(totalCuenta2)+'</div><div class="sub">Activos'+(cashVR>0?' + efectivo '+U2(cashVR):'')+'</div></div>'+
     '<div class="card"><div class="lbl">Renta cobrada</div><div class="val" style="color:#f59e0b;">'+U2(totalInc)+'</div><div class="sub">Cupones + dividendos</div></div>'+
-    '<div class="card hero '+(gpReal>=0?'c-green':'c-red')+'"><div class="lbl">Ganancia / Pérdida total</div><div class="val">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div><div class="sub" style="font-size:11px;">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado</div></div>'+
+    '<div class="card hero '+(gpReal>=0?'c-green':'c-red')+'"><div class="lbl">Ganancia / Pérdida total</div><div class="val">'+(gpReal>=0?'+':'')+U2(gpReal)+'</div><div class="sub" style="font-size:11px;">'+(gpRealPct>=0?'+':'')+N(gpRealPct,2)+'% sobre lo aportado'+(duracionInversion?' · en '+duracionInversion:'')+'</div>'+(fechaPrimeraInversion?'<div class="sub" style="font-size:9px;opacity:.75;">Primera inversión: '+fmtFechaCorta(fechaPrimeraInversion)+'</div>':'')+'</div>'+
     '</div>'+
     (tDep>0||tRet>0||transferInfoR.detalle.length?
     '<div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:9px;color:#94a3b8;">'+

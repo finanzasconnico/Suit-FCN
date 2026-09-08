@@ -2233,7 +2233,15 @@ function renderResultadosLicitacion(){
   '</div>';
 
   var porClienteVisible = candidatosVisiblesLicitacion();
-  var clientes = Object.keys(porClienteVisible).sort(function(a,b){ return a.localeCompare(b,'es'); });
+  // Orden por tenencia total (rotación + liquidez sumadas), de mayor a menor — mismo criterio
+  // que ya usa la vista "Por ON" (agruparPorTickerLicitacion). Antes esta vista ordenaba
+  // alfabético por nombre, sin relación con qué tan grande era la oportunidad de cada cliente.
+  var tenenciaTotalPorCliente = function(cliente){
+    return porClienteVisible[cliente].reduce(function(s,c){ return s+(c.tenenciaUSD||c.montoUSD||0); },0);
+  };
+  var clientes = Object.keys(porClienteVisible).sort(function(a,b){
+    return tenenciaTotalPorCliente(b)-tenenciaTotalPorCliente(a);
+  });
   if(!clientes.length){
     html += '<div class="rot-comp-empty">No hay candidatos para mostrar con estos filtros/exclusiones — probá bajar la ventaja mínima de búsqueda, ampliar los notches de calificación, o revisar qué sacaste con "✕ Quitar".</div>'
       + (licitacionResultados.huboTickersSinDatos ? '<div class="rot-comp-empty">⚠️ Algunos tickers en cartera no están en el Monitor — no se pudieron evaluar.</div>' : '');

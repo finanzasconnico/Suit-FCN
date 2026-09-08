@@ -768,6 +768,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <label for="ranking-min-tenencia" style="font-size:11px;color:var(--muted);white-space:nowrap;">Tenencia mín. (USD)</label>
           <input type="number" id="ranking-min-tenencia" placeholder="0" min="0" step="500" oninput="filtrarRankingMinTenencia(this.value)" style="width:110px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
         </div>
+        <div style="display:flex;align-items:center;gap:6px;" title="Promedio ponderado por costo de los días de tenencia de cada posición del cliente — filtra a quienes recién empezaron a invertir, para que la rentabilidad no se compare entre plazos muy distintos.">
+          <label for="ranking-min-dias" style="font-size:11px;color:var(--muted);white-space:nowrap;">Días invertido mín.</label>
+          <input type="number" id="ranking-min-dias" placeholder="0" min="0" step="30" oninput="filtrarRankingMinDias(this.value)" style="width:90px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;">
+        </div>
         <span id="ranking-count" style="font-size:11px;color:var(--muted);white-space:nowrap;"></span>
       </div>
       <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="ranking-body"></div>
@@ -2458,8 +2462,10 @@ function renderCliente360() {
 // ══════════════════════════════════════════════════════════════
 let rankingSearch = '';
 let rankingMinTenencia = 0;
+let rankingMinDias = 0;
 function filtrarRanking(val) { rankingSearch = (val || '').trim().toLowerCase(); renderRanking(); }
 function filtrarRankingMinTenencia(val) { rankingMinTenencia = Math.max(0, parseFloat(val) || 0); renderRanking(); }
+function filtrarRankingMinDias(val) { rankingMinDias = Math.max(0, parseFloat(val) || 0); renderRanking(); }
 
 function renderRanking() {
   const el = document.getElementById('ranking-body');
@@ -2474,19 +2480,28 @@ function renderRanking() {
   let filas = Object.keys(cartera).map(cliente => {
     const posiciones = cartera[cliente];
     let costoTotal = 0, valorTotal = 0, tenenciaTotalCliente = 0, incluidas = 0, excluidas = 0;
+    let diasPonderados = 0, costoConDias = 0;
     posiciones.forEach(p => {
       tenenciaTotalCliente += p.tenencia || 0; // cartera completa, incluye Liquidez y sin dato de compra
       if (p.grupo === 'Liquidez') return; // el efectivo no tiene "rentabilidad"
       if (!(p.ppc > 0) || !(p.nominales > 0)) { excluidas++; return; }
       incluidas++;
-      costoTotal += p.ppc * p.nominales;
+      const costo = p.ppc * p.nominales;
+      costoTotal += costo;
       valorTotal += p.tenencia;
+      // Promedio de días de tenencia PONDERADO por costo — un cliente con 90% de la cartera
+      // hace 3 años y un 10% comprado ayer está invertido "hace 3 años" a los fines de este
+      // filtro, no un promedio simple que lo trata igual que si todo fuera reciente. Solo
+      // suma posiciones con dato real (dias>0) — si no, "sin dato" arrastraría el promedio
+      // hacia 0 en vez de simplemente no aportar información.
+      if (p.dias > 0) { diasPonderados += p.dias * costo; costoConDias += costo; }
     });
     if (costoTotal <= 0) return null; // ninguna posición con precio de compra registrado — no entra al ranking
     return {
       cliente,
       rentabilidad: (valorTotal / costoTotal - 1) * 100,
       ganancia: valorTotal - costoTotal,
+      diasInvertido: costoConDias > 0 ? diasPonderados / costoConDias : null,
       valorTotal, tenenciaTotalCliente, incluidas, excluidas,
     };
   }).filter(Boolean);
@@ -2494,21 +2509,26 @@ function renderRanking() {
   if (topClientesFiltro) filas = filas.filter(f => topClientesFiltro.set.has(f.cliente));
   if (rankingSearch) filas = filas.filter(f => f.cliente.toLowerCase().includes(rankingSearch));
   if (rankingMinTenencia > 0) filas = filas.filter(f => f.tenenciaTotalCliente >= rankingMinTenencia);
+  // Sin días mínimos, un cliente que compró ayer y todavía no se movió puede aparecer primero
+  // en el ranking por pura volatilidad de corto plazo — este filtro deja ver solo a quienes ya
+  // llevan un tiempo real invertidos, para que la rentabilidad sea comparable entre clientes.
+  if (rankingMinDias > 0) filas = filas.filter(f => f.diasInvertido != null && f.diasInvertido >= rankingMinDias);
   filas.sort((a, b) => b.rentabilidad - a.rentabilidad);
 
   if (countEl) countEl.textContent = `${filas.length} cliente(s)`;
   if (!filas.length) {
-    el.innerHTML = `<div class="dash-empty">Sin resultados${rankingMinTenencia > 0 ? ' con ese filtro de tenencia mínima' : ' — ningún cliente tiene posiciones con precio de compra registrado'}.</div>`;
+    el.innerHTML = `<div class="dash-empty">Sin resultados${(rankingMinTenencia > 0 || rankingMinDias > 0) ? ' con esos filtros' : ' — ningún cliente tiene posiciones con precio de compra registrado'}.</div>`;
     return;
   }
   el.innerHTML = `<table class="cc-table"><thead><tr>
-      <th>#</th><th>Cliente</th><th>Rentabilidad</th><th>Ganancia</th><th>Tenencia (con dato)</th><th>Posiciones</th>
+      <th>#</th><th>Cliente</th><th>Rentabilidad</th><th>Días invertido</th><th>Ganancia</th><th>Tenencia (con dato)</th><th>Posiciones</th>
     </tr></thead><tbody>
     ${filas.map((f, i) => `
       <tr class="v360-row" onclick="abrirCarteraCliente('${escHtml(f.cliente).replace(/'/g,"\\'")}')" title="Ver cartera completa de ${escHtml(f.cliente)}">
         <td>${i + 1}</td>
         <td>${escHtml(f.cliente)}</td>
         <td style="font-weight:700;color:${f.rentabilidad >= 0 ? 'var(--jade)' : 'var(--danger)'};">${f.rentabilidad >= 0 ? '+' : ''}${f.rentabilidad.toFixed(1)}%</td>
+        <td style="color:var(--muted);">${f.diasInvertido != null ? Math.round(f.diasInvertido) + ' d' : '—'}</td>
         <td style="color:${f.ganancia >= 0 ? 'var(--jade)' : 'var(--danger)'};">${f.ganancia >= 0 ? '+' : '-'}$${fmtK(Math.abs(f.ganancia))}</td>
         <td>USD ${fmtK(f.valorTotal)}</td>
         <td style="font-size:9px;color:var(--muted);">${f.incluidas}${f.excluidas ? ` (+${f.excluidas} sin precio de compra)` : ''}</td>
