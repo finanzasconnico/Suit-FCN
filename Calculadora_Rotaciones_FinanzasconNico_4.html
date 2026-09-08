@@ -4069,13 +4069,20 @@ async function descargarReportePDF(){
   // diferencia de alto es justo lo que le agregaba una hoja en blanco al final cuando el reporte
   // queda corto (sin la ficha comparativa) — con la ficha, por casualidad, los altos quedaban
   // más parecidos y no se notaba.
+  //
+  // Página fija a la altura EXACTA del contenido (format:[w,h] + pagebreak avoid-all) evitaba
+  // esa hoja en blanco, pero como efecto secundario generaba una sola página de un tamaño no
+  // estándar (a veces varias pantallas de alto) — algunos lectores de PDF (Acrobat entre ellos,
+  // reportado por Nico) la abren con un zoom desproporcionado, mostrando el reporte "gigante" y
+  // cortado. Bug real arreglado 08/09/2026: A4 real, paginado de verdad — el contenido fluye en
+  // tantas hojas normales como haga falta, evitando partir tablas/secciones a la mitad.
   html2pdf().set({
-    margin: 0,
+    margin: [14,0,14,0],
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true, scrollX:0, scrollY:0, windowWidth:w, windowHeight:h },
-    jsPDF: { unit:'px', format:[w, h], orientation:'portrait' },
-    pagebreak: { mode:['avoid-all'] }
+    jsPDF: { unit:'px', format:'a4', orientation:'portrait' },
+    pagebreak: { mode:['css','legacy'], avoid: ['.section-block','.verdict-banner-wrap','#samemoney-wrap','tr','img'] }
   }).from(root).save().then(function(){
     window.scrollTo(0, scrollYPrevio);
     document.body.removeChild(root);
