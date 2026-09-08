@@ -600,7 +600,8 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <input type="text" id="reporte-cliente-input" placeholder="Nombre para el informe (opcional)">
       <label class="pdf-opt-check"><input type="checkbox" id="chk-pdf-ficha"> Incluir ficha comparativa completa</label>
       <label class="pdf-opt-check"><input type="checkbox" id="chk-pdf-comisiones" checked> Con comisiones en la ficha</label>
-      <button class="btn btn-primary" id="btn-pdf-reporte" onclick="descargarReportePDF()">📄 Descargar reporte PDF</button>
+      <button class="btn btn-primary" id="btn-pdf-reporte" onclick="descargarReportePDF('a4')">🖨 Descargar para imprimir (A4)</button>
+      <button class="btn btn-outline" id="btn-pdf-reporte-unica" onclick="descargarReportePDF('unica')" title="Una sola página larga, sin cortes de hoja — pensado para mandarlo por mail o WhatsApp y que se lea de un scroll, no para imprimir en papel.">📄 Ver como una sola página (digital)</button>
     </div>
 
     <div class="horizon-box">
@@ -3896,9 +3897,11 @@ async function svgToDataUrlPng(svgEl, w, h, scale){
   }
 }
 
-async function descargarReportePDF(){
+async function descargarReportePDF(modo){
   if(!lastCtx || typeof html2pdf === 'undefined') return;
+  var modoUnica = modo==='unica';
   var btn = document.getElementById('btn-pdf-reporte');
+  var btnUnica = document.getElementById('btn-pdf-reporte-unica');
   var venta = lastCtx.venta, compra = lastCtx.compra;
   var clienteInput = document.getElementById('reporte-cliente-input');
   var cliente = (clienteInput && clienteInput.value.trim()) || clienteActivoNombre || '';
@@ -4054,7 +4057,8 @@ async function descargarReportePDF(){
   root.appendChild(footer);
 
   document.body.appendChild(root);
-  if(btn){ btn.disabled = true; btn.textContent = 'Generando PDF…'; }
+  if(btn){ btn.disabled = true; btn.textContent = modoUnica?'🖨 Descargar para imprimir (A4)':'Generando PDF…'; }
+  if(btnUnica){ btnUnica.disabled = true; btnUnica.textContent = modoUnica?'Generando PDF…':'📄 Ver como una sola página (digital)'; }
 
   // html2canvas calcula qué capturar en base al scroll actual de la página —
   // si el asesor scrolleó la calculadora antes de descargar el reporte (lo
@@ -4068,41 +4072,66 @@ async function descargarReportePDF(){
   var nombreArchivo = 'Rotacion_'+venta.ticker+'_a_'+compra.ticker+(cliente?'_'+cliente.replace(/\s+/g,''):'')+'.pdf';
 
   // Historial de esta config, para quien lo toque después — se rompió 3 veces distintas antes
-  // de llegar a esto:
+  // de llegar al modo A4 actual:
   // 1) Página del tamaño EXACTO del contenido (format:[w,h] + pagebreak avoid-all): sin hoja en
   //    blanco al final, pero una sola página de tamaño no estándar que Acrobat abría con un
   //    zoom desproporcionado ("gigante").
   // 2) A4 real pero con unit:'px' (formato con nombre, definido en mm/pt): la hoja salía mucho
   //    más chica que el contenido, cada página se veía recortada por la izquierda.
   // 3) A4 + unit:'mm', PERO pasando además windowWidth/windowHeight explícitos (para fijar el
-  //    tamaño exacto del reporte y evitar la hoja en blanco de la opción 1) + una lista
-  //    "avoid" de selectores para no partir tablas/secciones: funcionaba con datos sueltos de
-  //    prueba, pero con datos reales cargados (Monitor/Tenencia, mucho más DOM) el paginado
-  //    interno de la librería (mode:['css','legacy']) terminaba usando un ancho de captura
-  //    propio (fijo, tipo "ancho de página") que no coincidía con el windowWidth pedido —
-  //    resultado: contenido angosto y corrido dentro de una página en blanco. Reproducido y
-  //    confirmado con un PDF real (no alcanzaba con mirar la config, había que generarlo).
-  // La solución fue sacar TODO lo custom (windowWidth/windowHeight/scrollX/scrollY/pagebreak
-  // con avoid) y dejar que html2canvas mida el elemento (root) solo — es el uso más simple y
-  // más probado de la librería. La hoja en blanco de la opción 1 no volvió: al medir el
-  // elemento directamente (no toda la página), el alto ya sale bien solo. Verificado con un
-  // PDF real, con datos reales cargados, después de reproducir el bug con esos mismos datos.
-  // Bug real arreglado 09/09/2026.
-  html2pdf().set({
+  //    tamaño exacto del reporte) + una lista "avoid" de selectores para no partir
+  //    tablas/secciones: funcionaba con datos sueltos de prueba, pero con datos reales cargados
+  //    (Monitor/Tenencia, mucho más DOM) el paginado interno de la librería usaba un ancho de
+  //    captura propio que no coincidía con el windowWidth pedido — contenido angosto y corrido.
+  // 4) A4 sin nada custom (ni windowWidth ni avoid): arregló el ancho, pero sin la lista
+  //    "avoid" el gráfico y la ficha comparativa podían partirse a la mitad entre una hoja y la
+  //    siguiente — reportado por Nico como "poco profesional".
+  // La solución final: root a 740px (en vez de 840 — ver por qué en su propio comentario, más
+  // arriba) para que quepa cómodo en el ancho de captura que usa la librería por default, MÁS
+  // la lista "avoid" de vuelta — esta vez SIN el windowWidth que causaba el conflicto de la
+  // opción 3. Verificado con un PDF real: márgenes correctos en los 4 lados y ningún gráfico ni
+  // tabla partido entre hojas. Bug real arreglado 09/09/2026.
+  //
+  // Modo 'unica' (nuevo, opcional — botón aparte): una sola página del alto exacto del
+  // contenido, pensada para compartir digital (mail/WhatsApp), no para imprimir.
+  // Primer intento acá pasaba windowWidth/windowHeight explícitos (el ancho real de root) —
+  // pensando que como el format:[w,h] usaba el mismo w no había riesgo de conflicto. Probado con
+  // un PDF real: se veía cortado por la izquierda, casi la mitad del contenido afuera — el mismo
+  // patrón de bug que la opción 3 de arriba, aunque acá el mecanismo exacto es otro (al forzar
+  // windowWidth, html2canvas re-renderiza el documento COMPLETO —no solo root— dentro de una
+  // ventana virtual de ese ancho, y esa re-simulación no reproduce fielmente la posición de root
+  // en el flujo real de la página). Igual que en el modo A4, la solución es no tocar
+  // windowWidth/windowHeight y dejar que html2canvas mida root directamente tal como está en el
+  // documento real; el format:[w,h] de la página sigue usando esas mismas medidas para que la
+  // hoja quede del tamaño justo del contenido, sin sobrar ni cortar. Bug real arreglado 09/09/2026.
+  var anchoUnica = root.getBoundingClientRect().width;
+  var altoUnica = root.scrollHeight;
+  var htmlOpts = modoUnica ? {
+    margin: 0,
+    filename: nombreArchivo,
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
+    jsPDF: { unit:'px', format:[anchoUnica, altoUnica], orientation:'portrait' },
+    pagebreak: { mode:['avoid-all'] }
+  } : {
     margin: [12,8,12,8],
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
-  }).from(root).save().then(function(){
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    pagebreak: { mode:['css','legacy'], avoid: ['.section-block','.verdict-banner-wrap','#samemoney-wrap','tr','img'] }
+  };
+  html2pdf().set(htmlOpts).from(root).save().then(function(){
     window.scrollTo(0, scrollYPrevio);
     document.body.removeChild(root);
-    if(btn){ btn.disabled = false; btn.textContent = '📄 Descargar reporte PDF'; }
+    if(btn){ btn.disabled = false; btn.textContent = '🖨 Descargar para imprimir (A4)'; }
+    if(btnUnica){ btnUnica.disabled = false; btnUnica.textContent = '📄 Ver como una sola página (digital)'; }
   }).catch(function(err){
     console.error('[Reporte PDF] error', err);
     window.scrollTo(0, scrollYPrevio);
     if(root.parentNode) document.body.removeChild(root);
-    if(btn){ btn.disabled = false; btn.textContent = '📄 Descargar reporte PDF'; }
+    if(btn){ btn.disabled = false; btn.textContent = '🖨 Descargar para imprimir (A4)'; }
+    if(btnUnica){ btnUnica.disabled = false; btnUnica.textContent = '📄 Ver como una sola página (digital)'; }
     alert('No se pudo generar el PDF. Probá de nuevo — si sigue fallando, avisale a Nico.');
   });
 }
