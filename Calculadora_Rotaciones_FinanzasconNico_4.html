@@ -4059,36 +4059,36 @@ async function descargarReportePDF(){
   var scrollYPrevio = window.scrollY || window.pageYOffset || 0;
   window.scrollTo(0, 0);
 
-  var w = root.scrollWidth, h = root.scrollHeight;
   var navyColor = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#081917';
   var nombreArchivo = 'Rotacion_'+venta.ticker+'_a_'+compra.ticker+(cliente?'_'+cliente.replace(/\s+/g,''):'')+'.pdf';
 
-  // windowWidth/windowHeight tienen que ser el tamaño del REPORTE (root), no el de toda la
-  // página en pantalla — antes usaban document.documentElement.scrollHeight (toda la
-  // calculadora, ahora siempre larga porque Vista avanzada quedó desplegada por defecto), y esa
-  // diferencia de alto es justo lo que le agregaba una hoja en blanco al final cuando el reporte
-  // queda corto (sin la ficha comparativa) — con la ficha, por casualidad, los altos quedaban
-  // más parecidos y no se notaba.
-  //
-  // Página fija a la altura EXACTA del contenido (format:[w,h] + pagebreak avoid-all) evitaba
-  // esa hoja en blanco, pero como efecto secundario generaba una sola página de un tamaño no
-  // estándar (a veces varias pantallas de alto) — algunos lectores de PDF (Acrobat entre ellos,
-  // reportado por Nico) la abren con un zoom desproporcionado, mostrando el reporte "gigante" y
-  // cortado. Bug real arreglado 08/09/2026: A4 real, paginado de verdad — el contenido fluye en
-  // tantas hojas normales como haga falta, evitando partir tablas/secciones a la mitad.
-  // OJO: 'a4' es un tamaño con nombre — jsPDF lo tiene definido en milímetros/puntos, no en
-  // píxeles. Combinarlo con unit:'px' (lo que quedó del intento anterior) hacía que la hoja
-  // real terminara mucho más chica que el contenido, así que cada página salía recortada por
-  // la izquierda (se veía "por la mitad"). Con unit:'mm' + format:'a4' jsPDF usa la conversión
-  // real que ya sabe hacer — es el uso estándar documentado por la propia librería. Bug real
-  // arreglado 09/09/2026 (reportado por Nico con un PDF real, no alcanzaba con la sintaxis).
+  // Historial de esta config, para quien lo toque después — se rompió 3 veces distintas antes
+  // de llegar a esto:
+  // 1) Página del tamaño EXACTO del contenido (format:[w,h] + pagebreak avoid-all): sin hoja en
+  //    blanco al final, pero una sola página de tamaño no estándar que Acrobat abría con un
+  //    zoom desproporcionado ("gigante").
+  // 2) A4 real pero con unit:'px' (formato con nombre, definido en mm/pt): la hoja salía mucho
+  //    más chica que el contenido, cada página se veía recortada por la izquierda.
+  // 3) A4 + unit:'mm', PERO pasando además windowWidth/windowHeight explícitos (para fijar el
+  //    tamaño exacto del reporte y evitar la hoja en blanco de la opción 1) + una lista
+  //    "avoid" de selectores para no partir tablas/secciones: funcionaba con datos sueltos de
+  //    prueba, pero con datos reales cargados (Monitor/Tenencia, mucho más DOM) el paginado
+  //    interno de la librería (mode:['css','legacy']) terminaba usando un ancho de captura
+  //    propio (fijo, tipo "ancho de página") que no coincidía con el windowWidth pedido —
+  //    resultado: contenido angosto y corrido dentro de una página en blanco. Reproducido y
+  //    confirmado con un PDF real (no alcanzaba con mirar la config, había que generarlo).
+  // La solución fue sacar TODO lo custom (windowWidth/windowHeight/scrollX/scrollY/pagebreak
+  // con avoid) y dejar que html2canvas mida el elemento (root) solo — es el uso más simple y
+  // más probado de la librería. La hoja en blanco de la opción 1 no volvió: al medir el
+  // elemento directamente (no toda la página), el alto ya sale bien solo. Verificado con un
+  // PDF real, con datos reales cargados, después de reproducir el bug con esos mismos datos.
+  // Bug real arreglado 09/09/2026.
   html2pdf().set({
-    margin: [14,0,14,0],
+    margin: [10,0,10,0],
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
-    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true, scrollX:0, scrollY:0, windowWidth:w, windowHeight:h },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-    pagebreak: { mode:['css','legacy'], avoid: ['.section-block','.verdict-banner-wrap','#samemoney-wrap','tr','img'] }
+    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
   }).from(root).save().then(function(){
     window.scrollTo(0, scrollYPrevio);
     document.body.removeChild(root);
