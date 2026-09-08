@@ -4076,12 +4076,18 @@ async function descargarReportePDF(){
   // reportado por Nico) la abren con un zoom desproporcionado, mostrando el reporte "gigante" y
   // cortado. Bug real arreglado 08/09/2026: A4 real, paginado de verdad — el contenido fluye en
   // tantas hojas normales como haga falta, evitando partir tablas/secciones a la mitad.
+  // OJO: 'a4' es un tamaño con nombre — jsPDF lo tiene definido en milímetros/puntos, no en
+  // píxeles. Combinarlo con unit:'px' (lo que quedó del intento anterior) hacía que la hoja
+  // real terminara mucho más chica que el contenido, así que cada página salía recortada por
+  // la izquierda (se veía "por la mitad"). Con unit:'mm' + format:'a4' jsPDF usa la conversión
+  // real que ya sabe hacer — es el uso estándar documentado por la propia librería. Bug real
+  // arreglado 09/09/2026 (reportado por Nico con un PDF real, no alcanzaba con la sintaxis).
   html2pdf().set({
     margin: [14,0,14,0],
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true, scrollX:0, scrollY:0, windowWidth:w, windowHeight:h },
-    jsPDF: { unit:'px', format:'a4', orientation:'portrait' },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
     pagebreak: { mode:['css','legacy'], avoid: ['.section-block','.verdict-banner-wrap','#samemoney-wrap','tr','img'] }
   }).from(root).save().then(function(){
     window.scrollTo(0, scrollYPrevio);
