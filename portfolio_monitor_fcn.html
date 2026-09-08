@@ -163,7 +163,8 @@ tr:hover td{background:rgba(33,38,45,.5);}
     <label id="modoAsesorLbl" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;" title="En Operaciones Cerradas, cada ticker aparece agrupado en una sola fila — este modo agrega un desplegable para ver el detalle de cada operación. No se incluye si el reporte es para el cliente.">
       <input type="checkbox" id="modoAsesorChk" style="accent-color:var(--ac);">Modo asesor (detalle desglosable)
     </label>
-    <button class="btn" onclick="iniciarDescargaReporte()" id="btnReport" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">📄 Descargar Reporte</button>
+    <button class="btn" onclick="iniciarDescargaReporte('unica')" id="btnReport" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">📄 Descargar Reporte</button>
+    <button class="btn" onclick="iniciarDescargaReporte('a4')" id="btnReportA4" title="Para clientes que quieren imprimirlo y analizarlo en papel: mismo reporte, pero en hojas A4 normales (tamaño de letra normal, tantas hojas como haga falta) en vez de una sola hoja continua." style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">🖨 Imprimir en A4 (varias hojas)</button>
   </div>
 </div>
 
@@ -1095,12 +1096,18 @@ function aplicarPreciosTransferenciaAPosData(posData,movData){
 // Importe cargados) o ya se había cargado a mano antes, no interrumpe con nada — el modal
 // aparece únicamente para los tickers donde de verdad no hay otra fuente que la estimación
 // con el precio de hoy.
-function iniciarDescargaReporte(){
+// 'unica' (una sola hoja continua, prolijo para ver en pantalla/PDF) o 'a4' (paginado A4
+// normal, para clientes que lo quieren imprimir y analizar en papel) — se guarda acá porque
+// el modal de precios de transferencia (aceptarPreciosTransferencia/omitirPreciosTransferencia)
+// termina llamando a downloadReport() por su cuenta, sin pasar por este parámetro.
+var _reporteModoPendiente='unica';
+function iniciarDescargaReporte(modo){
+  _reporteModoPendiente=modo||'unica';
   if(!S.positions||!Object.keys(S.positions).length){alert('Generá primero el reporte.');return;}
   var mov=S.movData||emptyMov();
   var info=estimarCapitalTransferidoUSD(mov.transfers,S.positions,loadManualTransferPrices());
   var pendientes=info.detalle.filter(function(d){return d.fuente==='estimado'&&d.usd>0;});
-  if(!pendientes.length){downloadReport();return;}
+  if(!pendientes.length){downloadReport(_reporteModoPendiente);return;}
   renderTransferPriceModal(pendientes);
   document.getElementById('transferPriceOverlay').style.display='flex';
 }
@@ -1128,11 +1135,11 @@ function aceptarPreciosTransferencia(){
   });
   if(huboAlgunPrecio)saveManualTransferPrices(manual);
   cerrarModalTransferencia();
-  downloadReport();
+  downloadReport(_reporteModoPendiente);
 }
 function omitirPreciosTransferencia(){
   cerrarModalTransferencia();
-  downloadReport();
+  downloadReport(_reporteModoPendiente);
 }
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.getElementById('transferPriceOverlay').style.display!=='none')omitirPreciosTransferencia();
@@ -1617,6 +1624,7 @@ function nuevoCliente(){
   if(modoAsesorChk)modoAsesorChk.checked=false;
 
   document.getElementById('btnReport').style.display='none';
+  document.getElementById('btnReportA4').style.display='none';
   document.getElementById('out').style.display='none';
   document.getElementById('subEl').textContent='Cargá los archivos para ver la cartera';
 }
@@ -1762,6 +1770,7 @@ async function generate(forceLivePrices){
     renderTransferWarning();
     document.getElementById('glosario').style.display='';
     document.getElementById('btnReport').style.display='';
+    document.getElementById('btnReportA4').style.display='';
     document.getElementById('modoAsesorLbl').style.display='flex';
   }catch(err){
     document.getElementById('heroEl').innerHTML=
@@ -2652,7 +2661,8 @@ function makeSVGBar(data,x,y,w,h){
   });
   return s;
 }
-function downloadReport(){
+function downloadReport(modo){
+  var modoA4=modo==='a4';
   var pos=S.positions;
   if(!pos||!Object.keys(pos).length){alert('Generá primero el reporte.');return;}
   var mov=S.movData||emptyMov();
@@ -2929,7 +2939,7 @@ function downloadReport(){
     '</style></head><body>'+
 
     '<div class="no-print" style="background:#1e40af;color:white;padding:10px 36px;display:flex;align-items:center;justify-content:space-between;">'+
-    '<span style="font-weight:600;font-size:13px;">Vista previa del reporte</span>'+
+    '<span style="font-weight:600;font-size:13px;">Vista previa del reporte'+(modoA4?' (A4, varias hojas)':'')+'</span>'+
     '<button onclick="window.print()" style="background:white;color:#1e40af;border:none;padding:6px 16px;border-radius:5px;cursor:pointer;font-weight:600;">🖨 Imprimir / Guardar PDF</button></div>'+
 
     '<div class="cover">'+
@@ -3065,10 +3075,15 @@ function downloadReport(){
     // mismo: contenido que "no está". Por eso se fuerza el mismo ancho de impresión (210mm) ANTES
     // de medir, y se restaura después para que la vista previa en pantalla siga cómoda.
     '<script>(function(){'+
+    // modoA4=true: NO se ajusta el alto de la hoja — se deja el @page{size:A4} plano del
+    // <style> de arriba, así el reporte pagina normal (varias hojas A4, texto tamaño normal),
+    // pensado para clientes que lo quieren imprimir y analizar en papel. Pedido real de un
+    // cliente que solo podía imprimirlo achicado a una sola hoja física. Arreglado 09/09/2026.
+    'var modoA4='+(modoA4?'true':'false')+';'+
     // Modo asesor: expande/colapsa el detalle de operaciones agrupadas por ticker en
     // Operaciones Cerradas. Ojo — si esto se abre/cierra DESPUÉS de haber ajustado el alto de
     // la hoja (@page), hay que recalcularlo, si no el contenido nuevo queda cortado o sobra
-    // espacio vacío.
+    // espacio vacío. No aplica en modoA4 (no se ajusta ningún alto ahí).
     'window.toggleDetalle=function(id){'+
     'var rows=document.querySelectorAll("tr[data-grp=\'"+id+"\']");'+
     'if(!rows.length)return;'+
@@ -3076,7 +3091,7 @@ function downloadReport(){
     'rows.forEach(function(r){r.style.display=isOpen?"none":"table-row";});'+
     'var tgl=document.getElementById("tgl-"+id);'+
     'if(tgl)tgl.textContent=(isOpen?"▸ ":"▾ ")+rows.length+" op.";'+
-    'ajustarAltoPagina();'+
+    'if(!modoA4)ajustarAltoPagina();'+
     '};'+
     'function ajustarAltoPagina(){'+
     'try{'+
@@ -3106,8 +3121,7 @@ function downloadReport(){
     'document.head.appendChild(st);'+
     '}catch(e){}'+
     '}'+
-    'if(document.readyState==="complete")ajustarAltoPagina();'+
-    'else window.addEventListener("load",ajustarAltoPagina);'+
+    'if(!modoA4){if(document.readyState==="complete")ajustarAltoPagina();else window.addEventListener("load",ajustarAltoPagina);}'+
     '})();</'+'script>'+
     '</body></html>';
 
