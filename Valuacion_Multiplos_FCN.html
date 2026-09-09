@@ -337,9 +337,10 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 // percentil del retorno 6m contra toda la lista (fuerza relativa). Se recalcula
 // cada vez que se cargan datos nuevos.
 function calcularFuerzaRelativa(){
-  const vals=allRows.map(r=>r.ret6m).filter(v=>v!==null&&v!==undefined).sort((a,b)=>a-b);
+  // solo tickers en USD — mezclar retornos en ARS (inflados) distorsiona el percentil
+  const vals=allRows.filter(r=>r.moneda!=='ARS').map(r=>r.ret6m).filter(v=>v!==null&&v!==undefined).sort((a,b)=>a-b);
   allRows.forEach(r=>{
-    if(r.ret6m===null||r.ret6m===undefined||!vals.length){ r._rs=null; return; }
+    if(r.moneda==='ARS'||r.ret6m===null||r.ret6m===undefined||!vals.length){ r._rs=null; return; }
     let lo=0; while(lo<vals.length && vals[lo]<r.ret6m) lo++;
     r._rs = vals.length>1 ? lo/(vals.length-1) : 0.5;   // 0..1
   });
@@ -347,6 +348,8 @@ function calcularFuerzaRelativa(){
 
 // componentes, cada uno en -1..+1, con su peso
 function tendencia(r){
+  // en pesos el precio siempre "sube" por inflación -> la tendencia nominal no dice nada
+  if(r.moneda==='ARS') return null;
   const c=[];
   if(r.precio!==null && r.mm200) c.push([clamp((r.precio/r.mm200-1)/0.25,-1,1), 0.25]);
   if(r.mm21 && r.mm50 && r.mm200){
