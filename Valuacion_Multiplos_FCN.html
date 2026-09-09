@@ -76,6 +76,15 @@ tbody tr:hover{filter:brightness(1.35);}
 .td-tend{text-align:right;font-family:var(--font-m);font-size:12px;font-weight:600;}
 .val-pos{color:#4ade80;} .val-neg{color:#E8837E;}
 .foco-cliente{color:var(--ambar);font-weight:600;}
+.sv{display:inline-block;font-size:10px;font-family:var(--font-m);padding:2px 7px;border-radius:3px;letter-spacing:.02em;white-space:nowrap;}
+.sv-good{background:rgba(28,140,95,.16);color:#4ade80;border:1px solid rgba(28,140,95,.35);}
+.sv-bad{background:rgba(192,69,59,.16);color:#E8837E;border:1px solid rgba(192,69,59,.35);}
+.sv-warn{background:rgba(219,160,60,.14);color:var(--ambar);border:1px solid rgba(219,160,60,.3);}
+.sv-mix{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);}
+.rec{display:inline-block;font-size:9.5px;font-family:var(--font-m);padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.03em;}
+.rec-sb{background:rgba(28,140,95,.18);color:#4ade80;} .rec-b{background:rgba(28,140,95,.1);color:var(--jade);}
+.rec-h{background:rgba(219,160,60,.1);color:var(--ambar);} .rec-s{background:rgba(192,69,59,.1);color:#E8837E;}
+.rec-ss{background:rgba(192,69,59,.18);color:var(--danger);}
 tbody td{padding:9px 12px;vertical-align:middle;}
 tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .td-ticker{font-family:var(--font-m);font-size:12px;font-weight:500;color:var(--text);cursor:pointer;}
@@ -224,6 +233,7 @@ if(BC){
   BC.onmessage=e=>{
     if(e.data?.type==='file_updated' && e.data?.key==='valuacion_multiplos') setTimeout(loadAndRender,300);
     if(e.data?.type==='file_updated' && e.data?.rawKey==='tenencia') setTimeout(loadTenencia,300);
+    if(e.data?.type==='file_updated' && (e.data?.key==='precios_objetivo'||e.data?.rawKey==='precios_objetivo')) setTimeout(loadAnalistas,300);
     if(e.data?.type==='client_selected'){ clienteActivo=e.data.cliente||null; render(); }
     if(e.data?.type==='top_clients_selected'){ topClientesSet=(e.data.clientes&&e.data.clientes.length)?new Set(e.data.clientes):null; render(); }
   };
@@ -282,6 +292,7 @@ let soloCartera=false, _carteraTocado=false;
 let sortState={};   // { tabName: {col, asc} }
 let dataTenencia=[], holdersByTicker={};
 let FOOT_BASE='';
+let ANALISTAS={};   // { TICKER: {rec, upside} } — del archivo de Precios Objetivo
 // foco de cliente — lo maneja el FCN Suite (mismo patrón que Precios Objetivo)
 let clienteActivo=null, topClientesSet=null;
 
@@ -368,6 +379,38 @@ function valuacion5y(r){
   const mm=r.m[k];
   return (mm && mm.actual!==null && mm.p5!==null) ? corr(mm.actual,mm.p5) : null;
 }
+
+// ══════════════════════════════════════════
+//  SCORE FUNDAMENTAL (-100 negocio deteriorándose … +100 negocio sólido y creciendo)
+// ══════════════════════════════════════════
+function fundamental(r){
+  const f=r.f||{};
+  const c=[];
+  // crecimiento de ventas anualizado: +15%/año → +1, -15% → -1
+  if(f.revCagr!==null && f.revCagr!==undefined) c.push([clamp(f.revCagr/0.15,-1,1), 0.30]);
+  // rentabilidad: fracción de años con ganancia (0..1) → -1..+1
+  if(f.niPos!==null && f.niPos!==undefined) c.push([f.niPos*2-1, 0.25]);
+  // tendencia del margen neto: +5 puntos → +1, -5 → -1
+  if(f.margenTrend!==null && f.margenTrend!==undefined) c.push([clamp(f.margenTrend/0.05,-1,1), 0.20]);
+  // generación de caja: fracción de años con FCF positivo
+  if(f.fcfPos!==null && f.fcfPos!==undefined) c.push([f.fcfPos*2-1, 0.15]);
+  // apalancamiento: caja neta → +1, 2.5x deuda/EBITDA → 0, 5x+ → -1
+  if(f.ndEbitda!==null && f.ndEbitda!==undefined) c.push([clamp((2.5-f.ndEbitda)/2.5,-1,1), 0.10]);
+  if(c.length<3) return null;
+  const w=c.reduce((a,x)=>a+x[1],0);
+  return Math.round(100 * c.reduce((a,x)=>a+x[0]*x[1],0) / w);
+}
+
+// lectura combinada de los tres ejes (observación, no recomendación)
+function senalVerdict(r){
+  const t=tendencia(r), fu=fundamental(r);
+  if(t===null||fu===null) return null;
+  if(t>=30 && fu>=15)  return {txt:'Favorable', cls:'sv-good'};
+  if(t<=-30 && fu<=-15) return {txt:'Desfavorable', cls:'sv-bad'};
+  if(t>=30 && fu<=-15) return {txt:'Momentum sin sustento', cls:'sv-warn'};
+  if(t<=-30 && fu>=15) return {txt:'Castigada — posible valor', cls:'sv-warn'};
+  return {txt:'Mixto', cls:'sv-mix'};
+}
 // color de fondo según el score (rojo -100 … neutro 0 … verde +100)
 function tendBg(score){
   if(score===null||score===undefined) return 'var(--surface)';
@@ -425,6 +468,34 @@ function abrirHolders(ticker){
 }
 function cerrarHolders(){ document.getElementById('holdersOverlay').classList.remove('open'); }
 
+// datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
+const REC_LABEL={strongbuy:'Compra fuerte',buy:'Compra',hold:'Mantener',sell:'Venta',strongsell:'Venta fuerte',underperform:'Venta',outperform:'Compra',none:''};
+const REC_CLS={strongbuy:'rec-sb',buy:'rec-b',hold:'rec-h',sell:'rec-s',strongsell:'rec-ss',underperform:'rec-s',outperform:'rec-b'};
+async function loadAnalistas(){
+  let entry=await getSharedFile('precios_objetivo');
+  if(!entry||!entry.data) entry=await fetchStaticFallback('data/precios_objetivo.xlsx');
+  if(!entry||!entry.data) return;
+  try{
+    const wb=XLSX.read(entry.data,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+    ANALISTAS={};
+    rows.forEach(r=>{
+      const tk=String(r['Ticker_original']||r['Ticker_usado']||'').trim().toUpperCase();
+      if(!tk) return;
+      const px=num(r['Precio_actual']), tgt=num(r['Precio_objetivo_promedio']);
+      ANALISTAS[tk]={
+        rec:String(r['Recomendacion']||'').toLowerCase().replace(/[\s_-]/g,''),
+        upside:(tgt!==null&&px!==null&&px>0)?(tgt/px-1):null,
+        n:num(r['N_analistas']),
+      };
+    });
+    render();
+  }catch(e){ console.warn('[Múltiplos] no se pudo leer Precios Objetivo',e); }
+}
+function analistasDe(r){
+  return ANALISTAS[String(r.ticker||'').toUpperCase()] || ANALISTAS[String(r.tickerUsado||'').toUpperCase()] || null;
+}
+
 async function loadTenencia(){
   const entry=await getSharedFile('tenencia');
   if(!entry||!entry.data) return;
@@ -466,6 +537,8 @@ function parseBuffer(entry){
       m,
       mm21:num(r['MM21_sem']), mm50:num(r['MM50_sem']), mm200:num(r['MM200_sem']),
       ret3m:num(r['Ret_3m']), ret6m:num(r['Ret_6m']), ret12m:num(r['Ret_12m']), dist52:num(r['Dist_max_52s']),
+      f:{ revCagr:num(r['Rev_CAGR']), niPos:num(r['NI_pos']), fcfPos:num(r['FCF_pos']),
+          margenTrend:num(r['Margen_trend']), ndEbitda:num(r['ND_EBITDA']) },
       estado:String(r['Estado']||'').trim(),
       fuente:String(r['Fuente']||'').trim(),
       actualizado:String(r['Actualizado']||'').trim(),
@@ -542,9 +615,9 @@ function sortGetters(){
   if(activeTab==='Tendencia'){
     return {
       ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, precio:r=>r.precio,
-      tend:r=>tendencia(r), val:r=>valuacion5y(r),
-      ret3m:r=>r.ret3m, ret6m:r=>r.ret6m, dist52:r=>r.dist52,
-      v200:r=>(r.precio!==null&&r.mm200)?r.precio/r.mm200-1:null,
+      tend:r=>tendencia(r), fund:r=>fundamental(r), val:r=>valuacion5y(r),
+      anal:r=>analistasDe(r)?.upside ?? null,
+      senal:r=>{const s=senalVerdict(r); return s?({'Favorable':5,'Castigada — posible valor':4,'Mixto':3,'Momentum sin sustento':2,'Desfavorable':1}[s.txt]):0;},
     };
   }
   if(activeTab==='Técnico'){
@@ -635,20 +708,24 @@ function render(){
   const tr=(r,cells)=>`<tr style="background:${tendBg(tendencia(r))}">${cells}</tr>`;
 
   if(activeTab==='Tendencia'){
-    ncols=10;
+    ncols=9;
     headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}${th('precio','Precio',1)}
-      ${th('tend','Tendencia',1)}${th('val','Valuación',1)}
-      ${th('ret3m','Ret. 3m',1)}${th('ret6m','Ret. 6m',1)}${th('dist52','vs máx 52s',1)}${th('v200','vs MM200',1)}</tr>`;
+      ${th('tend','Tendencia',1)}${th('fund','Fundamental',1)}${th('val','Valuación',1)}${th('anal','Analistas',1)}${th('senal','Lectura')}</tr>`;
     bodyHtml=rows.map(r=>{
-      const val=valuacion5y(r);
+      const val=valuacion5y(r), fu=fundamental(r), an=analistasDe(r), sv=senalVerdict(r);
+      const valTxt = val===null?'<span class="dash">—</span>'
+        : `<span class="${val>=0?'val-pos':'val-neg'}" title="cuánto debería corregir el precio para volver al múltiplo promedio de 5 años">${val>=0?'+':''}${fmtN(val*100,0)}%</span>`;
+      const anTxt = !an ? '<span class="dash">—</span>'
+        : `${an.rec&&REC_LABEL[an.rec]?`<span class="rec ${REC_CLS[an.rec]||''}">${REC_LABEL[an.rec]}</span> `:''}${an.upside!==null?`<span class="${an.upside>=0?'val-pos':'val-neg'}">${an.upside>=0?'+':''}${fmtN(an.upside*100,0)}%</span>`:''}`;
       return tr(r,`${tkCell(r)}
       <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
       <td class="td-sector">${r.sector||'—'}</td>
       <td class="num">${nCell(r.precio)}</td>
       <td class="td-tend">${tendCell(tendencia(r))}</td>
-      <td class="num" title="${val!==null?'cuánto debería corregir el precio para volver al múltiplo promedio de 5 años':''}">${val===null?'<span class="dash">—</span>':`<span class="${val>=0?'val-pos':'val-neg'}">${val>=0?'+':''}${fmtN(val*100,0)}%</span>`}</td>
-      <td class="num">${pctCell(r.ret3m)}</td><td class="num">${pctCell(r.ret6m)}</td>
-      <td class="num">${pctCell(r.dist52)}</td><td class="num">${vs(r.precio,r.mm200)}</td>`);
+      <td class="td-tend">${tendCell(fu)}</td>
+      <td class="num">${valTxt}</td>
+      <td class="num" style="font-size:11px">${anTxt||'<span class="dash">—</span>'}</td>
+      <td>${sv?`<span class="sv ${sv.cls}">${sv.txt}</span>`:'<span class="dash">—</span>'}</td>`);
     }).join('');
 
   }else if(activeTab==='Técnico'){
@@ -705,7 +782,7 @@ function render(){
   let note=FOOT_BASE;
   const faltan=rows.length-conDato;
   if(activeTab==='Tendencia'){
-    note='Tendencia (−100 bajista … +100 alcista) = precio vs media 200s (25%), orden de las medias (20%), retorno 3m (20%), fuerza relativa vs la lista (20%), distancia al máximo de 52s (15%). Es dirección del precio, no predicción. Valuación = qué tan lejos está el múltiplo del promedio de 5 años. El cruce alcista + barato es el mejor setup.';
+    note='<b>Tendencia</b> (−100…+100): dirección del precio — media 200s, orden de las medias, retorno 3m, fuerza relativa vs la lista, distancia al máximo. No es predicción. · <b>Fundamental</b> (−100…+100): salud del negocio — crecimiento de ventas, rentabilidad, tendencia del margen, generación de caja, apalancamiento. · <b>Valuación</b>: qué tan lejos está el múltiplo del promedio de 5 años (negativo = caro). · <b>Analistas</b>: consenso + upside al precio objetivo (del archivo de Precios Objetivo). · <b>Lectura</b>: combina tendencia + fundamental — observación, no recomendación.';
   }else if(activeTab==='Técnico'){
     note='Medias móviles = promedio del cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo). Verde: precio por encima de la media · rojo: por debajo.'
       + (faltan>0?` — ${faltan} todavía sin calcular.`:'');
@@ -783,6 +860,7 @@ async function loadAndRender(){
 // ── INIT ──
 loadAndRender();
 loadTenencia();
+loadAnalistas();
 </script>
 </body>
 </html>

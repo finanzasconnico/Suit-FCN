@@ -313,6 +313,43 @@ def build_entry(ticker):
                     numer = (cap_y + d_ - c_) if k == "EVEBITDA" else cap_y
                     series[k].append(clean_mult(numer / m, CAP[k]))
 
+        # ---- score fundamental (calidad + crecimiento del negocio) ----
+        # todo son ratios/tasas -> no le afecta la moneda, así que se calcula
+        # siempre (incluso para ADRs que reportan en otra moneda).
+        def vlist(s, n=6):
+            return [col_val(s, c) for c in cols[:n]] if cols else []
+        revv = vlist(rev); niv = vlist(ni)
+        fcfv = [fcf_val(c) for c in cols[:6]] if cols else []
+        ebv  = [(col_val(ebitda, c) or col_val(ebit, c)) for c in cols[:6]] if cols else []
+        def cagr(vals):
+            xs = [v for v in vals if v is not None and v > 0]
+            if len(xs) < 3:
+                return None
+            yrs = len(xs) - 1
+            try:
+                return round((xs[0] / xs[-1]) ** (1 / yrs) - 1, 4)
+            except Exception:
+                return None
+        def frac_pos(vals):
+            xs = [v for v in vals if v is not None]
+            return round(sum(1 for v in xs if v > 0) / len(xs), 3) if xs else None
+        margen = [niv[i] / revv[i] for i in range(min(len(niv), len(revv)))
+                  if niv[i] is not None and revv[i] and revv[i] > 0]
+        # el crecimiento de ventas no sirve si la empresa reporta en una moneda con
+        # inflacion alta (ARS): las ventas "crecen" solo por la inflacion
+        rev_cagr = None if fin_cur in ("ARS",) else cagr(revv)
+        fund = {
+            "Rev_CAGR":     rev_cagr,
+            "NI_pos":       frac_pos(niv),
+            "FCF_pos":      frac_pos(fcfv),
+            "Margen_trend": round(margen[0] - margen[-1], 4) if len(margen) >= 3 else None,
+        }
+        d0 = col_val(debt, cols[0]) if cols else None
+        c0 = col_val(cash, cols[0]) if cols else None
+        e0 = ebv[0] if ebv else None
+        if d0 is not None and e0 and e0 > 0:
+            fund["ND_EBITDA"] = round((d0 - (c0 or 0)) / e0, 2)
+
         # CEDEAR sin mapear (precio ARS del CEDEAR, balances en otra moneda): los
         # valores "actual" de Yahoo para el .BA no sirven -> se descarta todo.
         if sym.endswith(".BA") and not same_currency:
@@ -350,6 +387,7 @@ def build_entry(ticker):
             "actual":  actual,
             "series":  series,
             "mm":      mm,
+            "fund":    fund,
         }
     return None
 
@@ -360,6 +398,7 @@ for k in MULTS:
     COLS += [f"{k}_actual", f"{k}_prom_3y", f"{k}_prom_5y", f"{k}_prom_10y"]
 COLS += ["MM21_sem", "MM50_sem", "MM200_sem",
          "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s",
+         "Rev_CAGR", "NI_pos", "FCF_pos", "Margen_trend", "ND_EBITDA",
          "Estado", "Fuente", "Actualizado"]
 
 
@@ -399,6 +438,9 @@ def row_from_cache(ticker, e):
     mm = e.get("mm", {})
     for k in ("MM21_sem", "MM50_sem", "MM200_sem", "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s"):
         r[k] = mm.get(k)
+    fund = e.get("fund", {})
+    for k in ("Rev_CAGR", "NI_pos", "FCF_pos", "Margen_trend", "ND_EBITDA"):
+        r[k] = fund.get(k)
     has_mm = any(mm.get(k) is not None for k in ("MM21_sem", "MM50_sem", "MM200_sem"))
     r["Estado"] = "OK" if any_mult else ("SIN_DATOS" if (has_mm or e.get("sector")) else "NO_ENCONTRADO")
     return r
