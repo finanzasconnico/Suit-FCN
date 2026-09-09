@@ -34,20 +34,20 @@
    "FCF_pos": null,
    "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "IRSA": {
   "ticker_usado": "IRSA.BA",
   "empresa": "IRSA Inversiones y Representaciones Sociedad An\u00f3nima",
   "sector": "Real Estate",
   "moneda": "ARS",
-  "precio": 2465.0,
+  "precio": 2455.0,
   "actual": {
-   "PE": 4.88,
-   "PS": 4.0,
+   "PE": 4.86,
+   "PS": 3.98,
    "PB": 0.88,
    "EVEBITDA": 11.35,
-   "PFCF": 14.71
+   "PFCF": 14.65
   },
   "series": {
    "PE": [
@@ -87,22 +87,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 2313.33,
-   "MM50_sem": 2261.96,
-   "MM200_sem": 1238.81,
-   "Ret_3m": -0.008,
-   "Ret_6m": 0.1573,
-   "Ret_12m": 0.5488,
-   "Dist_max_52s": -0.0645
+   "MM21_sem": 2312.86,
+   "MM50_sem": 2261.76,
+   "MM200_sem": 1238.76,
+   "Ret_3m": -0.0121,
+   "Ret_6m": 0.1526,
+   "Ret_12m": 0.5425,
+   "Dist_max_52s": -0.0683
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 1.0,
-   "Margen_trend": -0.0763,
+   "Margen_trend": null,
    "ND_EBITDA": 1.34
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "GE": {
   "ticker_usado": "GE",
@@ -177,13 +177,13 @@
   "empresa": "Ecogas Inversiones S.A.",
   "sector": "Utilities",
   "moneda": "ARS",
-  "precio": 2855.0,
+  "precio": 2867.5,
   "actual": {
    "PE": 8.99,
    "PS": 0.9,
    "PB": 1.26,
    "EVEBITDA": 2.73,
-   "PFCF": 8.48
+   "PFCF": 8.52
   },
   "series": {
    "PE": [
@@ -208,13 +208,13 @@
    ]
   },
   "mm": {
-   "MM21_sem": 3012.98,
-   "MM50_sem": 3000.01,
+   "MM21_sem": 3013.57,
+   "MM50_sem": 3000.26,
    "MM200_sem": null,
-   "Ret_3m": -0.1154,
-   "Ret_6m": -0.0805,
-   "Ret_12m": 0.7825,
-   "Dist_max_52s": -0.1992
+   "Ret_3m": -0.1115,
+   "Ret_6m": -0.0765,
+   "Ret_12m": 0.7903,
+   "Dist_max_52s": -0.1957
   },
   "fund": {
    "Rev_CAGR": null,
@@ -222,20 +222,20 @@
    "FCF_pos": 1.0,
    "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "COME": {
   "ticker_usado": "COME.BA",
   "empresa": "Sociedad Comercial del Plata S.A.",
   "sector": "Industrials",
   "moneda": "ARS",
-  "precio": 41.09,
+  "precio": 41.14,
   "actual": {
    "PE": null,
    "PS": 0.43,
    "PB": 0.45,
    "EVEBITDA": 13.95,
-   "PFCF": 19.98
+   "PFCF": 20.01
   },
   "series": {
    "PE": [
@@ -273,31 +273,31 @@
    "MM21_sem": 43.43,
    "MM50_sem": 48.95,
    "MM200_sem": 51.61,
-   "Ret_3m": -0.0865,
-   "Ret_6m": -0.0221,
-   "Ret_12m": 0.2373,
-   "Dist_max_52s": -0.4857
+   "Ret_3m": -0.0854,
+   "Ret_6m": -0.0209,
+   "Ret_12m": 0.2388,
+   "Dist_max_52s": -0.4851
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.5,
    "FCF_pos": 0.75,
-   "Margen_trend": -0.1596
+   "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "BHIP": {
   "ticker_usado": "BHIP.BA",
   "empresa": "Banco Hipotecario S.A.",
   "sector": "Financial Services",
   "moneda": "ARS",
-  "precio": 312.0,
+  "precio": 308.5,
   "actual": {
    "PE": 30.61,
-   "PS": 0.91,
-   "PB": 0.71,
+   "PS": 0.9,
+   "PB": 0.7,
    "EVEBITDA": null,
-   "PFCF": 2.94
+   "PFCF": 2.91
   },
   "series": {
    "PE": [
@@ -337,21 +337,21 @@
    ]
   },
   "mm": {
-   "MM21_sem": 326.33,
-   "MM50_sem": 367.26,
-   "MM200_sem": 246.8,
-   "Ret_3m": -0.1136,
-   "Ret_6m": -0.0951,
-   "Ret_12m": 0.5888,
-   "Dist_max_52s": -0.4271
+   "MM21_sem": 326.16,
+   "MM50_sem": 367.19,
+   "MM200_sem": 246.78,
+   "Ret_3m": -0.1236,
+   "Ret_6m": -0.1052,
+   "Ret_12m": 0.571,
+   "Dist_max_52s": -0.4336
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 1.0,
-   "Margen_trend": -0.0365
+   "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "AGRO": {
   "ticker_usado": "AGRO",
@@ -426,13 +426,13 @@
   "empresa": "Bolsas y Mercados Argentinos S.A.",
   "sector": "Financial Services",
   "moneda": "ARS",
-  "precio": 263.0,
+  "precio": 264.0,
   "actual": {
-   "PE": 13.53,
-   "PS": 6.93,
-   "PB": 3.0,
+   "PE": 13.58,
+   "PS": 6.96,
+   "PB": 3.01,
    "EVEBITDA": 2.01,
-   "PFCF": 8.53
+   "PFCF": 8.56
   },
   "series": {
    "PE": [
@@ -467,32 +467,32 @@
    ]
   },
   "mm": {
-   "MM21_sem": 290.86,
-   "MM50_sem": 292.21,
-   "MM200_sem": 161.96,
-   "Ret_3m": -0.137,
-   "Ret_6m": -0.1334,
-   "Ret_12m": 0.6649,
-   "Dist_max_52s": -0.2219
+   "MM21_sem": 290.9,
+   "MM50_sem": 292.23,
+   "MM200_sem": 161.97,
+   "Ret_3m": -0.1337,
+   "Ret_6m": -0.1301,
+   "Ret_12m": 0.6712,
+   "Dist_max_52s": -0.2189
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 0.5,
-   "Margen_trend": 0.6211
+   "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "MORI": {
   "ticker_usado": "MORI.BA",
   "empresa": "Morixe Hermanos S.A.C.I.",
   "sector": "Consumer Defensive",
   "moneda": "ARS",
-  "precio": 21.85,
+  "precio": 22.1,
   "actual": {
    "PE": 91.3,
    "PS": 0.37,
-   "PB": 0.68,
+   "PB": 0.69,
    "EVEBITDA": 21.26,
    "PFCF": null
   },
@@ -529,22 +529,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 25.83,
-   "MM50_sem": 31.48,
-   "MM200_sem": 25.86,
-   "Ret_3m": -0.214,
-   "Ret_6m": -0.2491,
-   "Ret_12m": -0.2906,
-   "Dist_max_52s": -0.5716
+   "MM21_sem": 25.84,
+   "MM50_sem": 31.49,
+   "MM200_sem": 25.87,
+   "Ret_3m": -0.205,
+   "Ret_6m": -0.2405,
+   "Ret_12m": -0.2825,
+   "Dist_max_52s": -0.5667
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 0.25,
-   "Margen_trend": 0.0387,
+   "Margen_trend": null,
    "ND_EBITDA": 3.01
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "SEMI": {
   "ticker_usado": "SEMI",
@@ -655,13 +655,13 @@
   "empresa": "Compa\u00f1\u00eda de Transporte de Energ\u00eda El\u00e9ctrica en Alta Tensi\u00f3n Transener S.A.",
   "sector": "Utilities",
   "moneda": "ARS",
-  "precio": 3105.0,
+  "precio": 3115.0,
   "actual": {
-   "PE": 5.83,
-   "PS": 2.08,
+   "PE": 5.85,
+   "PS": 2.09,
    "PB": 1.2,
    "EVEBITDA": 2.84,
-   "PFCF": 10.91
+   "PFCF": 10.95
   },
   "series": {
    "PE": [
@@ -696,22 +696,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 3152.32,
-   "MM50_sem": 3051.36,
-   "MM200_sem": 1501.62,
-   "Ret_3m": -0.0806,
-   "Ret_6m": -0.1296,
-   "Ret_12m": 0.927,
-   "Dist_max_52s": -0.1488
+   "MM21_sem": 3152.8,
+   "MM50_sem": 3051.56,
+   "MM200_sem": 1501.67,
+   "Ret_3m": -0.0777,
+   "Ret_6m": -0.1268,
+   "Ret_12m": 0.9332,
+   "Dist_max_52s": -0.1461
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 1.0,
-   "Margen_trend": 0.285,
+   "Margen_trend": null,
    "ND_EBITDA": -0.21
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "DOME": {
   "ticker_usado": "DOME.BA",
@@ -776,9 +776,9 @@
    "Rev_CAGR": null,
    "NI_pos": 0.0,
    "FCF_pos": 0.5,
-   "Margen_trend": -0.134
+   "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "GGAL": {
   "ticker_usado": "GGAL",
@@ -822,11 +822,11 @@
   "empresa": "Banco de Valores S.A.",
   "sector": "Financial Services",
   "moneda": "ARS",
-  "precio": 540.5,
+  "precio": 547.5,
   "actual": {
-   "PE": 10.76,
-   "PS": 2.28,
-   "PB": 1.37,
+   "PE": 10.9,
+   "PS": 2.31,
+   "PB": 1.39,
    "EVEBITDA": 2.98,
    "PFCF": null
   },
@@ -863,22 +863,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 623.13,
-   "MM50_sem": 558.85,
-   "MM200_sem": 311.04,
-   "Ret_3m": -0.1322,
-   "Ret_6m": -0.0898,
-   "Ret_12m": 1.0183,
-   "Dist_max_52s": -0.2506
+   "MM21_sem": 623.47,
+   "MM50_sem": 558.99,
+   "MM200_sem": 311.07,
+   "Ret_3m": -0.121,
+   "Ret_6m": -0.078,
+   "Ret_12m": 1.0444,
+   "Dist_max_52s": -0.2409
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 0.75,
-   "Margen_trend": 0.1226,
+   "Margen_trend": null,
    "ND_EBITDA": -4.34
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "BKNG": {
   "ticker_usado": "BKNG",
@@ -953,7 +953,7 @@
   "empresa": "Inversora Juramento S.A.",
   "sector": "Consumer Defensive",
   "moneda": "ARS",
-  "precio": 423.0,
+  "precio": 421.0,
   "actual": {
    "PE": null,
    "PS": 1.48,
@@ -989,22 +989,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 434.14,
-   "MM50_sem": 471.91,
-   "MM200_sem": 341.65,
-   "Ret_3m": -0.0386,
-   "Ret_6m": -0.1523,
-   "Ret_12m": 0.5216,
-   "Dist_max_52s": -0.3502
+   "MM21_sem": 434.05,
+   "MM50_sem": 471.87,
+   "MM200_sem": 341.64,
+   "Ret_3m": -0.0432,
+   "Ret_6m": -0.1563,
+   "Ret_12m": 0.5144,
+   "Dist_max_52s": -0.3533
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.333,
    "FCF_pos": 0.333,
-   "Margen_trend": 0.1965,
+   "Margen_trend": null,
    "ND_EBITDA": 0.42
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "EDN": {
   "ticker_usado": "EDN",
@@ -1111,63 +1111,68 @@
   "empresa": "Aluar Aluminio Argentino S.A.I.C.",
   "sector": "Basic Materials",
   "moneda": "ARS",
-  "precio": 882.0,
+  "precio": 888.5,
   "actual": {
-   "PE": 9.55,
-   "PS": 1.25,
-   "PB": 1.2,
+   "PE": 9.62,
+   "PS": 1.26,
+   "PB": 1.21,
    "EVEBITDA": 10.09,
-   "PFCF": null
+   "PFCF": 4.96
   },
   "series": {
    "PE": [
-    null,
+    10.75,
+    201.71,
     17.08,
     4.05,
-    3.46
+    null
    ],
    "PS": [
-    1.3,
+    0.96,
+    0.97,
     1.69,
     0.86,
-    0.59
+    null
    ],
    "EVEBITDA": [
-    13.08,
+    6.1,
+    10.92,
     7.75,
     3.41,
-    1.71
+    null
    ],
    "PFCF": [
+    5.55,
     null,
     28.81,
     11.64,
-    4.96
+    null
    ],
    "PB": [
-    1.32,
+    1.21,
+    0.99,
     1.89,
     1.06,
-    0.88
+    null
    ]
   },
   "mm": {
-   "MM21_sem": 947.69,
-   "MM50_sem": 944.37,
-   "MM200_sem": 758.72,
-   "Ret_3m": -0.1429,
-   "Ret_6m": 0.115,
-   "Ret_12m": 0.3283,
-   "Dist_max_52s": -0.2109
+   "MM21_sem": 948.0,
+   "MM50_sem": 944.5,
+   "MM200_sem": 758.75,
+   "Ret_3m": -0.1365,
+   "Ret_6m": 0.1233,
+   "Ret_12m": 0.3381,
+   "Dist_max_52s": -0.205
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 0.75,
-   "Margen_trend": -0.1662,
-   "ND_EBITDA": 3.33
+   "Margen_trend": null,
+   "ND_EBITDA": 1.01
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "TXAR": {
   "ticker_usado": "TX",
@@ -1338,13 +1343,13 @@
   "empresa": "S.A. San Miguel A.G.I.C.I. y F.",
   "sector": "Consumer Defensive",
   "moneda": "ARS",
-  "precio": 456.0,
+  "precio": 450.0,
   "actual": {
    "PE": null,
-   "PS": 4.64,
-   "PB": 13.42,
+   "PS": 4.58,
+   "PB": 13.25,
    "EVEBITDA": 18.8,
-   "PFCF": 58.28
+   "PFCF": 57.51
   },
   "series": {
    "PE": [
@@ -1384,22 +1389,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 501.1,
-   "MM50_sem": 572.32,
-   "MM200_sem": 649.79,
-   "Ret_3m": -0.0898,
-   "Ret_6m": -0.1739,
-   "Ret_12m": 0.2095,
-   "Dist_max_52s": -0.4847
+   "MM21_sem": 500.81,
+   "MM50_sem": 572.2,
+   "MM200_sem": 649.76,
+   "Ret_3m": -0.1018,
+   "Ret_6m": -0.1848,
+   "Ret_12m": 0.1936,
+   "Dist_max_52s": -0.4915
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.0,
    "FCF_pos": 0.25,
-   "Margen_trend": 0.476,
+   "Margen_trend": null,
    "ND_EBITDA": 16.78
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "NOW": {
   "ticker_usado": "NOW",
@@ -1474,13 +1479,13 @@
   "empresa": "Transportadora de Gas del Norte S.A.",
   "sector": "Energy",
   "moneda": "ARS",
-  "precio": 3247.5,
+  "precio": 3235.0,
   "actual": {
-   "PE": 7.31,
-   "PS": 2.37,
-   "PB": 1.1,
+   "PE": 7.28,
+   "PS": 2.36,
+   "PB": 1.09,
    "EVEBITDA": 3.29,
-   "PFCF": 4.01
+   "PFCF": 4.0
   },
   "series": {
    "PE": [
@@ -1515,22 +1520,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 3702.56,
-   "MM50_sem": 3834.1,
-   "MM200_sem": 2266.2,
-   "Ret_3m": -0.2055,
-   "Ret_6m": -0.243,
-   "Ret_12m": 0.2994,
-   "Dist_max_52s": -0.3201
+   "MM21_sem": 3701.96,
+   "MM50_sem": 3833.85,
+   "MM200_sem": 2266.14,
+   "Ret_3m": -0.2085,
+   "Ret_6m": -0.2459,
+   "Ret_12m": 0.2944,
+   "Dist_max_52s": -0.3227
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 0.5,
-   "Margen_trend": 0.5399,
+   "Margen_trend": null,
    "ND_EBITDA": 0.02
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "NVDA": {
   "ticker_usado": "NVDA",
@@ -1605,13 +1610,13 @@
   "empresa": "Ledesma Sociedad An\u00f3nima Agr\u00edcola Industrial",
   "sector": "Industrials",
   "moneda": "ARS",
-  "precio": 822.5,
+  "precio": 827.5,
   "actual": {
    "PE": null,
    "PS": 0.35,
    "PB": 0.65,
    "EVEBITDA": 16.22,
-   "PFCF": 12.24
+   "PFCF": 12.32
   },
   "series": {
    "PE": [
@@ -1651,22 +1656,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 771.05,
-   "MM50_sem": 847.12,
-   "MM200_sem": 811.68,
-   "Ret_3m": 0.0808,
-   "Ret_6m": 0.113,
-   "Ret_12m": -0.0962,
-   "Dist_max_52s": -0.2689
+   "MM21_sem": 771.29,
+   "MM50_sem": 847.22,
+   "MM200_sem": 811.7,
+   "Ret_3m": 0.0874,
+   "Ret_6m": 0.1198,
+   "Ret_12m": -0.0907,
+   "Dist_max_52s": -0.2644
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.5,
    "FCF_pos": 0.75,
-   "Margen_trend": -0.0943,
+   "Margen_trend": null,
    "ND_EBITDA": 2.71
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "AMZN": {
   "ticker_usado": "AMZN",
@@ -1984,63 +1989,68 @@
   "empresa": "Sociedad An\u00f3nima Importadora y Exportadora de la Patagonia",
   "sector": "Consumer Cyclical",
   "moneda": "ARS",
-  "precio": 1225.0,
+  "precio": 1250.0,
   "actual": {
-   "PE": 23.32,
-   "PS": 0.24,
-   "PB": 0.84,
+   "PE": 23.79,
+   "PS": 0.25,
+   "PB": 0.86,
    "EVEBITDA": 26.06,
-   "PFCF": null
+   "PFCF": 8.01
   },
   "series": {
    "PE": [
-    null,
+    26.05,
+    14.12,
     10.78,
     3.91,
-    2.59
+    null
    ],
    "PS": [
-    0.23,
+    0.2,
+    0.17,
     0.31,
     0.06,
     null
    ],
    "EVEBITDA": [
-    7.41,
+    7.94,
+    5.56,
     3.57,
     1.62,
-    2.15
+    null
    ],
    "PFCF": [
+    8.78,
     null,
     11.91,
     null,
     null
    ],
    "PB": [
-    1.03,
+    0.86,
+    0.77,
     1.44,
     0.35,
-    0.24
+    null
    ]
   },
   "mm": {
-   "MM21_sem": 1269.76,
-   "MM50_sem": 1311.47,
-   "MM200_sem": 990.32,
-   "Ret_3m": -0.1026,
-   "Ret_6m": 0.0251,
-   "Ret_12m": 0.162,
-   "Dist_max_52s": -0.2857
+   "MM21_sem": 1270.95,
+   "MM50_sem": 1311.97,
+   "MM200_sem": 990.45,
+   "Ret_3m": -0.0842,
+   "Ret_6m": 0.046,
+   "Ret_12m": 0.1857,
+   "Dist_max_52s": -0.2711
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
-   "FCF_pos": 0.5,
-   "Margen_trend": 0.0131,
-   "ND_EBITDA": 1.1
+   "FCF_pos": 0.75,
+   "Margen_trend": null,
+   "ND_EBITDA": 0.58
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "IVV": {
   "ticker_usado": "IVV",
@@ -2084,13 +2094,13 @@
   "empresa": "A3 Mercados S.A.",
   "sector": "Financial Services",
   "moneda": "ARS",
-  "precio": 2930.0,
+  "precio": 3020.0,
   "actual": {
    "PE": 21.88,
-   "PS": 2.99,
-   "PB": 0.93,
+   "PS": 3.08,
+   "PB": 0.96,
    "EVEBITDA": 2.64,
-   "PFCF": 14.87
+   "PFCF": 15.33
   },
   "series": {
    "PE": [
@@ -2125,22 +2135,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 2249.05,
-   "MM50_sem": 2150.01,
-   "MM200_sem": 1282.91,
-   "Ret_3m": 0.3228,
-   "Ret_6m": 0.3998,
-   "Ret_12m": 0.4759,
+   "MM21_sem": 2253.33,
+   "MM50_sem": 2151.81,
+   "MM200_sem": 1283.36,
+   "Ret_3m": 0.3634,
+   "Ret_6m": 0.4428,
+   "Ret_12m": 0.5212,
    "Dist_max_52s": 0.0
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 0.75,
-   "Margen_trend": -0.0172,
+   "Margen_trend": null,
    "ND_EBITDA": -3.21
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "SUPV": {
   "ticker_usado": "SUPV",
@@ -2300,13 +2310,13 @@
   "empresa": "MetroGAS S.A.",
   "sector": "Utilities",
   "moneda": "ARS",
-  "precio": 2341.0,
+  "precio": 2344.0,
   "actual": {
-   "PE": 10.29,
+   "PE": 10.3,
    "PS": 1.05,
    "PB": 1.12,
    "EVEBITDA": 4.66,
-   "PFCF": 36.74
+   "PFCF": 36.79
   },
   "series": {
    "PE": [
@@ -2346,35 +2356,35 @@
    ]
   },
   "mm": {
-   "MM21_sem": 1931.08,
-   "MM50_sem": 1958.04,
-   "MM200_sem": 1209.74,
-   "Ret_3m": 0.3037,
-   "Ret_6m": 0.3011,
-   "Ret_12m": 1.0224,
-   "Dist_max_52s": -0.0563
+   "MM21_sem": 1931.22,
+   "MM50_sem": 1958.1,
+   "MM200_sem": 1209.75,
+   "Ret_3m": 0.3054,
+   "Ret_6m": 0.3027,
+   "Ret_12m": 1.025,
+   "Dist_max_52s": -0.0551
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 1.0,
-   "Margen_trend": 0.0544,
+   "Margen_trend": null,
    "ND_EBITDA": -0.1
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "GBAN": {
   "ticker_usado": "GBAN.BA",
   "empresa": "Naturgy BAN, S.A.",
   "sector": "Utilities",
   "moneda": "ARS",
-  "precio": 1760.0,
+  "precio": 1755.0,
   "actual": {
-   "PE": 3.53,
+   "PE": 3.52,
    "PS": 0.7,
    "PB": 1.26,
    "EVEBITDA": 3.42,
-   "PFCF": 5.03
+   "PFCF": 5.02
   },
   "series": {
    "PE": [
@@ -2409,22 +2419,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 1688.71,
-   "MM50_sem": 1642.32,
-   "MM200_sem": 946.21,
-   "Ret_3m": 0.1279,
-   "Ret_6m": 0.1161,
-   "Ret_12m": 0.7477,
-   "Dist_max_52s": -0.111
+   "MM21_sem": 1688.47,
+   "MM50_sem": 1642.22,
+   "MM200_sem": 946.19,
+   "Ret_3m": 0.1247,
+   "Ret_6m": 0.113,
+   "Ret_12m": 0.7428,
+   "Dist_max_52s": -0.1135
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 1.0,
-   "Margen_trend": 0.1313,
+   "Margen_trend": null,
    "ND_EBITDA": -0.3
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "LRCX": {
   "ticker_usado": "LRCX",
@@ -2600,11 +2610,11 @@
   "empresa": "Consultatio S.A.",
   "sector": "Real Estate",
   "moneda": "ARS",
-  "precio": 1780.0,
+  "precio": 1790.0,
   "actual": {
    "PE": null,
-   "PS": 2.18,
-   "PB": 0.77,
+   "PS": 2.19,
+   "PB": 0.78,
    "EVEBITDA": null,
    "PFCF": null
   },
@@ -2641,22 +2651,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 1897.85,
-   "MM50_sem": 2001.78,
-   "MM200_sem": 1587.83,
-   "Ret_3m": -0.0705,
-   "Ret_6m": -0.0404,
-   "Ret_12m": 0.1447,
-   "Dist_max_52s": -0.2675
+   "MM21_sem": 1898.33,
+   "MM50_sem": 2001.98,
+   "MM200_sem": 1587.88,
+   "Ret_3m": -0.0653,
+   "Ret_6m": -0.035,
+   "Ret_12m": 0.1511,
+   "Dist_max_52s": -0.2634
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.5,
    "FCF_pos": 0.75,
-   "Margen_trend": -0.0555,
+   "Margen_trend": null,
    "ND_EBITDA": -4.74
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "WBO": {
   "ticker_usado": "WBO",
@@ -2800,10 +2810,10 @@
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 0.75,
-   "Margen_trend": -0.0446,
+   "Margen_trend": null,
    "ND_EBITDA": 1.56
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "BBAR": {
   "ticker_usado": "BBAR",
@@ -2884,13 +2894,13 @@
   "empresa": "Distribuidora de Gas Cuyana S.A.",
   "sector": "Utilities",
   "moneda": "ARS",
-  "precio": 1575.0,
+  "precio": 1565.0,
   "actual": {
-   "PE": 6.38,
+   "PE": 6.34,
    "PS": 0.87,
-   "PB": 1.2,
+   "PB": 1.19,
    "EVEBITDA": 2.76,
-   "PFCF": 9.48
+   "PFCF": 9.42
   },
   "series": {
    "PE": [
@@ -2925,21 +2935,21 @@
    ]
   },
   "mm": {
-   "MM21_sem": 1622.6,
-   "MM50_sem": 1708.08,
-   "MM200_sem": 1060.75,
-   "Ret_3m": -0.0247,
-   "Ret_6m": -0.1051,
-   "Ret_12m": 0.497,
-   "Dist_max_52s": -0.2775
+   "MM21_sem": 1622.13,
+   "MM50_sem": 1707.88,
+   "MM200_sem": 1060.7,
+   "Ret_3m": -0.0309,
+   "Ret_6m": -0.1108,
+   "Ret_12m": 0.4875,
+   "Dist_max_52s": -0.2821
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 0.5,
-   "Margen_trend": 0.1998
+   "Margen_trend": null
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "BAK": {
   "ticker_usado": "BAK",
@@ -14265,11 +14275,11 @@
   "empresa": "Mirgor Sociedad An\u00f3nima, Comercial, Industrial, Financiera, Inmobiliaria y Agropecuaria",
   "sector": "Technology",
   "moneda": "ARS",
-  "precio": 1910.0,
+  "precio": 1920.0,
   "actual": {
-   "PE": 115.76,
+   "PE": 116.36,
    "PS": 1.53,
-   "PB": 0.7,
+   "PB": 0.71,
    "EVEBITDA": 5.53,
    "PFCF": null
   },
@@ -14311,22 +14321,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 12761.67,
-   "MM50_sem": 17731.84,
-   "MM200_sem": 15997.18,
-   "Ret_3m": -0.8886,
-   "Ret_6m": -0.8963,
-   "Ret_12m": -0.8871,
-   "Dist_max_52s": -0.9308
+   "MM21_sem": 12762.14,
+   "MM50_sem": 17732.04,
+   "MM200_sem": 15997.23,
+   "Ret_3m": -0.888,
+   "Ret_6m": -0.8958,
+   "Ret_12m": -0.8866,
+   "Dist_max_52s": -0.9304
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 0.75,
    "FCF_pos": 0.5,
-   "Margen_trend": -0.0217,
+   "Margen_trend": null,
    "ND_EBITDA": 4.29
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "ABBV": {
   "ticker_usado": "ABBV",
@@ -15202,13 +15212,13 @@
   "empresa": "Molinos Agro S.A.",
   "sector": "Consumer Defensive",
   "moneda": "ARS",
-  "precio": 23800.0,
+  "precio": 23825.0,
   "actual": {
-   "PE": 5.2,
+   "PE": 5.21,
    "PS": 0.28,
    "PB": 5.81,
    "EVEBITDA": 4.38,
-   "PFCF": 9.34
+   "PFCF": 9.35
   },
   "series": {
    "PE": [
@@ -15248,22 +15258,22 @@
    ]
   },
   "mm": {
-   "MM21_sem": 22875.0,
-   "MM50_sem": 23859.85,
-   "MM200_sem": 16051.06,
-   "Ret_3m": 0.0248,
-   "Ret_6m": -0.0775,
-   "Ret_12m": 0.3964,
-   "Dist_max_52s": -0.1185
+   "MM21_sem": 22876.19,
+   "MM50_sem": 23860.35,
+   "MM200_sem": 16051.18,
+   "Ret_3m": 0.0258,
+   "Ret_6m": -0.0766,
+   "Ret_12m": 0.3978,
+   "Dist_max_52s": -0.1176
   },
   "fund": {
    "Rev_CAGR": null,
    "NI_pos": 1.0,
    "FCF_pos": 0.75,
-   "Margen_trend": 0.0375,
+   "Margen_trend": null,
    "ND_EBITDA": 0.44
   },
-  "fetched": "2000-01-01"
+  "fetched": "2026-09-09"
  },
  "TMO": {
   "ticker_usado": "TMO",
