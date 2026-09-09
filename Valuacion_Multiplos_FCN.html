@@ -108,6 +108,24 @@ tbody tr:hover{filter:brightness(1.35);}
 .guia-nota{font-size:11.5px;background:rgba(255,255,255,.03);padding:8px 10px;border-radius:5px;}
 .guia-disc{font-size:11px;color:var(--dim);border-top:1px solid var(--border);margin-top:16px;padding-top:12px;}
 
+/* ── MENSAJE AL CLIENTE ── */
+.chip-msg{border-color:rgba(28,140,95,.4);color:var(--jade);}
+.msg-modal{background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.msg-body{padding:16px 20px 20px;overflow-y:auto;}
+.msg-dest{font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.msg-lbl{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 4px;}
+.msg-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12.5px;padding:8px 10px;outline:none;resize:vertical;line-height:1.5;}
+.msg-input:focus{border-color:var(--jade);}
+.msg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.btn-msg{padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;cursor:pointer;}
+.btn-msg:hover{border-color:var(--jade);}
+.btn-wa{border-color:rgba(37,211,102,.4);color:#25D366;}
+.msg-nota{font-size:10.5px;color:var(--dim);margin-top:12px;line-height:1.5;}
+.msg-list{max-height:44vh;overflow-y:auto;margin:6px 0;}
+.msg-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,58,52,.5);font-size:12px;}
+.btn-sm{padding:4px 9px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10.5px;cursor:pointer;}
+.btn-sm:hover{color:var(--text);border-color:var(--jade);}
+
 /* ── PANORAMA ── */
 .pa-activo{white-space:nowrap;}
 .pa-tk{font-family:var(--font-m);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
@@ -217,6 +235,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
+    <button class="chip chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
     <span class="counter" id="counter"></span>
   </div>
 
@@ -331,6 +350,35 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
+  <div class="holders-overlay" id="msgOverlay" onclick="if(event.target===this) cerrarMsg()">
+    <div class="msg-modal">
+      <div class="hm-head">
+        <div><div class="hm-title">Mensaje al cliente</div><div class="hm-sub" id="msg-sub"></div></div>
+        <button class="hm-close" onclick="cerrarMsg()">✕</button>
+      </div>
+
+      <div class="msg-body" id="msg-masivo" hidden>
+        <p class="msg-nota" id="msg-masivo-nota"></p>
+        <div class="msg-list" id="msg-masivo-list"></div>
+        <div class="msg-actions"><button class="btn-msg" onclick="bajarDrafts()">⬇ Descargar todos (.txt)</button></div>
+      </div>
+
+      <div class="msg-body" id="msg-individual" hidden>
+        <div class="msg-dest" id="msg-dest"></div>
+        <label class="msg-lbl">Asunto</label>
+        <input type="text" id="msg-asunto" class="msg-input">
+        <label class="msg-lbl">Mensaje</label>
+        <textarea id="msg-texto" class="msg-input" rows="12"></textarea>
+        <div class="msg-actions">
+          <button class="btn-msg" onclick="msgAbrirMail()">✉ Abrir en mail</button>
+          <button class="btn-msg btn-wa" onclick="msgWhatsapp()">📱 WhatsApp</button>
+          <button class="btn-msg" id="msg-copiar" onclick="msgCopiar()">Copiar</button>
+        </div>
+        <p class="msg-nota">Revisá el texto antes de enviar — es un borrador armado con la lectura de la pantalla, no un mensaje listo.</p>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -375,6 +423,7 @@ if(BC){
   BC.onmessage=e=>{
     if(e.data?.type==='file_updated' && e.data?.key==='valuacion_multiplos') setTimeout(loadAndRender,300);
     if(e.data?.type==='file_updated' && e.data?.rawKey==='tenencia') setTimeout(loadTenencia,300);
+    if(e.data?.type==='file_updated' && e.data?.rawKey==='stock') setTimeout(loadStock,300);
     if(e.data?.type==='file_updated' && (e.data?.key==='precios_objetivo'||e.data?.rawKey==='precios_objetivo')) setTimeout(loadAnalistas,300);
     if(e.data?.type==='client_selected'){ clienteActivo=e.data.cliente||null; render(); }
     if(e.data?.type==='top_clients_selected'){ topClientesSet=(e.data.clientes&&e.data.clientes.length)?new Set(e.data.clientes):null; render(); }
@@ -657,11 +706,177 @@ function construirHolders(){
     if(!ticker) return;
     (holdersByTicker[ticker]=holdersByTicker[ticker]||[]).push({
       cliente:row['Cuenta']||row['Comitente']||'—',
+      comitente:String(row['Comitente']||'').trim(),
       asesor:row['Asesor']||'',
       tenencia:parseFloat(row['Tenencia'])||0,
       nominales:parseFloat(row['Nominales'])||0,
+      precCompra:parseFloat(String(row['Prec prom de compra']||'').replace(',','.'))||null,
+      dias:parseInt(row['Días de tenencia'])||null,
     });
   });
+}
+// ── STOCK (nombre / mail / teléfono del cliente) — nunca se publica ──
+let STOCK={};   // { comitente: {nombre, mail, tel} }
+async function loadStock(){
+  const entry=await getSharedFile('stock');
+  if(!entry||!entry.data) return;
+  try{
+    const wb=XLSX.read(entry.data,{type:'array'});
+    const sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
+    STOCK={};
+    raw.forEach(r=>{
+      const com=String(r['Comitente']||'').trim();
+      if(!com) return;
+      let tel=String(r['Teléfono']||r['Telefono']||'').trim().replace(/\s+/g,'');
+      if(tel && !tel.startsWith('+')) tel='+'+tel;
+      STOCK[com]={
+        nombre:String(r['Nombre']||'').trim()||null,
+        mail:String(r['Mail']||r['Mails']||r['Email']||'').trim()||null,
+        tel:tel||null,
+      };
+    });
+    render();
+  }catch(e){ console.warn('[Panorama] no se pudo leer Stock',e); }
+}
+function datosCliente(cli){
+  for(const arr of Object.values(holdersByTicker)){
+    const h=arr.find(x=>x.cliente===cli);
+    if(h && h.comitente && STOCK[h.comitente]) return {...STOCK[h.comitente], comitente:h.comitente};
+  }
+  return {nombre:null, mail:null, tel:null};
+}
+// posiciones de un cliente, unidas con la fila de datos + qué hacer
+function carteraDeCliente(cli){
+  const out=[];
+  Object.entries(holdersByTicker).forEach(([tk,arr])=>{
+    const h=arr.find(x=>x.cliente===cli);
+    if(!h) return;
+    const r=allRows.find(x=>x.ticker.toUpperCase()===tk || x.tickerUsado.toUpperCase()===tk);
+    if(!r) return;
+    let gan=null;
+    if(h.precCompra && r.precio) gan=r.precio/h.precCompra-1;
+    out.push({r, ten:h.tenencia, gan, dias:h.dias, q:queHacer(r)});
+  });
+  return out.sort((a,b)=>b.ten-a.ten);
+}
+function clientesConCartera(){
+  const m={};
+  Object.values(holdersByTicker).forEach(arr=>arr.forEach(h=>{
+    m[h.cliente]=(m[h.cliente]||0)+h.tenencia;
+  }));
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+}
+
+// ══════════════════════════════════════════
+//  MENSAJE AL CLIENTE (mismo patrón que Rotador RV)
+// ══════════════════════════════════════════
+function _saludo(n){ n=String(n||'').trim(); return n?` ${n.split(' ')[0]}`:''; }
+function nombreAsesor(){
+  const u=(new URLSearchParams(location.search).get('u')||'').trim();
+  if(!u) return 'Tu asesor';
+  return /nico/i.test(u)?'Nico':u.split(' ')[0];
+}
+// frase para el cliente según el veredicto (más suave, sin jerga)
+const FRASE_CLIENTE={
+  'Sumar':   p=>`viene bien: el precio sube y la empresa está sólida. Es buen momento para mantenerla o sumar.`,
+  'Atención':p=>`el precio rebotó pero el negocio viene flojo. Si te interesa, podemos evaluar tomar la ganancia.`,
+  'Reducir': p=>`el precio bajó y la empresa está más débil que antes. Me gustaría que lo revisemos juntos.`,
+};
+function esCastigada(q){ return q.v==='Mantener' && /castig/i.test(q.por); }
+
+function mensajeCliente(cli){
+  const d=datosCliente(cli);
+  const nombre=d.nombre||cli;
+  const cart=carteraDeCliente(cli);
+  // priorizo lo que pide acción; después las "castigadas"; el resto va en una línea
+  const destacar=cart.filter(x=>['Sumar','Atención','Reducir'].includes(x.q.v) || esCastigada(x.q));
+  const resto=cart.filter(x=>!destacar.includes(x));
+  const lineas=destacar.slice(0,6).map(x=>{
+    const nm=x.r.empresa
+      ? x.r.empresa.replace(/,?\s*(Inc\.?|Corp\.?|Corporation|Company|Co\.|S\.?A\.?B?\.?|Ltd\.?|plc|N\.V\.|Holdings?|Group|Class [A-C])\b.*$/i,'').replace(/^The\s+/i,'').trim() || x.r.ticker
+      : x.r.ticker;
+    const ganTxt = x.gan!==null ? ` (${x.gan>=0?'+':''}${fmtN(x.gan*100,0)}% desde tu compra)` : '';
+    const frase = esCastigada(x.q)
+      ? `cayó bastante pero sigue siendo una buena empresa — el mercado la está castigando de más. La seguimos de cerca, por ahora conviene aguantar.`
+      : FRASE_CLIENTE[x.q.v](x);
+    return `• ${nm} (${x.r.ticker})${ganTxt} — ${frase}`;
+  }).join('\n\n');
+  const restoTxt = resto.length ? `\n\nEl resto de tu cartera (${resto.map(x=>x.r.ticker).join(', ')}) viene estable, sin nada para destacar.` : '';
+  const asunto=`Repaso de tu cartera${d.nombre?' — '+d.nombre:''}`;
+  const cuerpo=`Hola${_saludo(nombre)},\n\n`
+    + (lineas ? `Te paso un repaso de cómo vienen tus principales posiciones:\n\n${lineas}${restoTxt}\n\n`
+              : `Pasé revista a tu cartera y por ahora viene todo estable, sin cambios para destacar.\n\n`)
+    + `Cuando quieras lo charlamos por teléfono.\n\nSaludos,\n${nombreAsesor()}`;
+  return {asunto, cuerpo, mail:d.mail, tel:d.tel, nombre, nPos:cart.length};
+}
+
+let msgCtx=null;
+function abrirMensaje(cli){
+  if(!cli){
+    // sin cliente enfocado -> modo masivo (top clientes)
+    abrirMensajeMasivo(); return;
+  }
+  const m=mensajeCliente(cli);
+  msgCtx={cli, mail:m.mail, tel:m.tel};
+  document.getElementById('msg-sub').textContent=`${m.nombre} · ${m.nPos} posición(es)`;
+  document.getElementById('msg-asunto').value=m.asunto;
+  document.getElementById('msg-texto').value=m.cuerpo;
+  const dest=document.getElementById('msg-dest');
+  dest.innerHTML = m.mail ? `✉ ${m.mail}${m.tel?`  ·  📱 ${m.tel}`:''}`
+    : `<span style="color:var(--ambar)">Sin mail — cargá "Stock de cuentas" en el Suite</span>`;
+  document.getElementById('msg-masivo').hidden=true;
+  document.getElementById('msg-individual').hidden=false;
+  document.getElementById('msgOverlay').classList.add('open');
+}
+function abrirMensajeMasivo(){
+  const cls=clientesConCartera();
+  const drafts=cls.map(c=>({c, ...mensajeCliente(c)}));
+  const conAccion=drafts.filter(d=>/(evaluar tomar|revisemos juntos|buen momento para)/.test(d.cuerpo));
+  document.getElementById('msg-sub').textContent=`${cls.length} clientes con cartera`;
+  document.getElementById('msg-masivo-list').innerHTML = drafts.map((d,i)=>`
+    <div class="msg-row">
+      <div><b>${d.nombre}</b> · ${d.nPos} pos.${d.mail?'':' <span style="color:var(--ambar)">(sin mail)</span>'}</div>
+      <button class="btn-sm" onclick="verDraft(${i})">ver / editar</button>
+    </div>`).join('');
+  window._drafts=drafts;
+  document.getElementById('msg-masivo-nota').textContent =
+    `${conAccion.length} de ${cls.length} tienen algo para conversar. Podés bajar todos los borradores en un .txt y mandarlos uno por uno.`;
+  document.getElementById('msg-individual').hidden=true;
+  document.getElementById('msg-masivo').hidden=false;
+  document.getElementById('msgOverlay').classList.add('open');
+}
+function verDraft(i){
+  const d=window._drafts[i];
+  msgCtx={cli:d.c, mail:d.mail, tel:d.tel};
+  document.getElementById('msg-sub').textContent=`${d.nombre} · ${d.nPos} posición(es)`;
+  document.getElementById('msg-asunto').value=d.asunto;
+  document.getElementById('msg-texto').value=d.cuerpo;
+  document.getElementById('msg-dest').innerHTML = d.mail ? `✉ ${d.mail}${d.tel?`  ·  📱 ${d.tel}`:''}` : `<span style="color:var(--ambar)">Sin mail</span>`;
+  document.getElementById('msg-masivo').hidden=true;
+  document.getElementById('msg-individual').hidden=false;
+}
+function bajarDrafts(){
+  const txt=(window._drafts||[]).map(d=>`=== ${d.nombre} (${d.mail||'sin mail'}) ===\nAsunto: ${d.asunto}\n\n${d.cuerpo}`).join('\n\n\n──────────\n\n\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));
+  a.download='resumenes-clientes.txt'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+function cerrarMsg(){ document.getElementById('msgOverlay').classList.remove('open'); msgCtx=null; }
+function msgAbrirMail(){
+  if(!msgCtx?.mail) return;
+  location.href=`mailto:${msgCtx.mail}?subject=${encodeURIComponent(document.getElementById('msg-asunto').value)}&body=${encodeURIComponent(document.getElementById('msg-texto').value)}`;
+}
+function msgWhatsapp(){
+  if(!msgCtx?.tel) return;
+  const t=encodeURIComponent(document.getElementById('msg-texto').value);
+  window.open(`https://wa.me/${msgCtx.tel.replace(/[^0-9]/g,'')}?text=${t}`,'_blank');
+}
+function msgCopiar(){
+  const t=document.getElementById('msg-asunto').value+'\n\n'+document.getElementById('msg-texto').value;
+  navigator.clipboard?.writeText(t);
+  const b=document.getElementById('msg-copiar'); const o=b.textContent; b.textContent='✓ copiado'; setTimeout(()=>b.textContent=o,1500);
 }
 function holdersFor(r){
   return holdersByTicker[String(r.ticker||'').toUpperCase()]
@@ -692,7 +907,7 @@ function abrirHolders(ticker){
 function cerrarHolders(){ document.getElementById('holdersOverlay').classList.remove('open'); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); } });
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
 const REC_LABEL={strongbuy:'Compra fuerte',buy:'Compra',hold:'Mantener',sell:'Venta',strongsell:'Venta fuerte',underperform:'Venta',outperform:'Compra',none:''};
@@ -734,6 +949,7 @@ async function loadTenencia(){
     const chip=document.getElementById('chip-cartera');
     if(chip && dataTenencia.length){
       chip.style.display='';
+      const cm=document.getElementById('chip-msg'); if(cm) cm.style.display='';
       // por defecto arranca filtrado a lo que realmente tenemos en cartera
       if(!_carteraTocado){ soloCartera=true; chip.classList.add('active'); }
     }
@@ -1019,6 +1235,8 @@ function render(){
   // contador
   const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo}</span>`
     : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes</span>` : '';
+  const cmsg=document.getElementById('chip-msg');
+  if(cmsg) cmsg.textContent = clienteActivo ? `✉ Mensaje a ${String(clienteActivo).split(' ')[0]}` : '✉ Mensajes';
   let conDato, unidad='tickers';
   if(activeTab==='Panorama'){
     unidad='activos';
@@ -1117,6 +1335,7 @@ async function loadAndRender(){
 loadAndRender();
 loadTenencia();
 loadAnalistas();
+loadStock();
 </script>
 </body>
 </html>
