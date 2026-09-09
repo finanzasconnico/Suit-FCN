@@ -89,6 +89,25 @@ tbody tr:hover{filter:brightness(1.35);}
 .help-grid li{margin:3px 0;}
 .help-foot{font-size:11px;color:var(--dim);border-top:1px solid var(--border);margin-top:12px;padding:10px 0 4px;line-height:1.5;}
 
+/* ── GUÍA (modal) ── */
+.guia-modal{background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:100%;max-width:640px;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.guia-body{padding:18px 22px 24px;overflow-y:auto;font-size:12.5px;line-height:1.6;color:var(--muted);}
+.guia-body h4{font-family:var(--font-d);font-size:15px;font-weight:600;color:var(--text);margin:20px 0 6px;}
+.guia-body h4:first-child{margin-top:0;}
+.guia-body p{margin:6px 0;}
+.guia-body b{color:var(--text);}
+.guia-body ul,.guia-body ol{margin:6px 0;padding-left:18px;}
+.guia-body li{margin:4px 0;}
+.guia-mult>div{margin:10px 0;padding-left:10px;border-left:2px solid var(--border);}
+.guia-mult>div>b{color:var(--jade);}
+.gm-use{font-size:11.5px;}
+.guia-tabla{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
+.guia-tabla td{padding:5px 8px;border-bottom:1px solid rgba(30,58,52,.5);}
+.guia-tabla td:first-child{color:var(--text);}
+.guia-tabla td:last-child{font-family:var(--font-m);font-size:11px;color:var(--jade);text-align:right;white-space:nowrap;}
+.guia-nota{font-size:11.5px;background:rgba(255,255,255,.03);padding:8px 10px;border-radius:5px;}
+.guia-disc{font-size:11px;color:var(--dim);border-top:1px solid var(--border);margin-top:16px;padding-top:12px;}
+
 /* ── PANORAMA ── */
 .pa-activo{white-space:nowrap;}
 .pa-tk{font-family:var(--font-m);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
@@ -101,9 +120,14 @@ tbody tr:hover{filter:brightness(1.35);}
 .qh{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:4px;letter-spacing:.01em;}
 .qh-add{background:rgba(28,140,95,.20);color:#4ade80;}
 .qh-hold{background:rgba(255,255,255,.06);color:var(--text);}
-.qh-check{background:rgba(219,160,60,.18);color:var(--ambar);}
+.qh-watch{background:rgba(219,160,60,.18);color:var(--ambar);}
+.qh-cut{background:rgba(192,69,59,.20);color:#E8837E;}
 .qh-none{background:rgba(255,255,255,.04);color:var(--dim);}
 .pa-por{font-size:11px;color:var(--muted);line-height:1.4;margin-top:4px;}
+.pa-tgt{font-size:10px;color:var(--dim);margin-top:2px;font-family:var(--font-m);}
+.ac{font-size:9px;font-family:var(--font-m);padding:1px 5px;border-radius:3px;letter-spacing:.02em;}
+.ac-ok{background:rgba(28,140,95,.14);color:var(--jade);}
+.ac-no{background:rgba(219,160,60,.12);color:var(--ambar);}
 .pa-sig{white-space:nowrap;}
 .pa-sig-row{display:flex;align-items:center;gap:7px;font-size:10.5px;margin:2px 0;}
 .pa-sig-lbl{color:var(--dim);width:64px;flex-shrink:0;}
@@ -192,6 +216,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
+    <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
     <span class="counter" id="counter"></span>
   </div>
 
@@ -202,13 +227,15 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         <ul>
           <li><b>Sumar</b> — el precio sube y la empresa está sólida. Buen momento para tener o agregar.</li>
           <li><b>Mantener</b> — está bien donde está. Puede estar cara, sin tendencia clara, o cayendo pero con buen negocio.</li>
-          <li><b>Revisar</b> — el negocio viene flojo. Prestá atención: evaluá tomar ganancia o reducir.</li>
+          <li><b>Atención</b> — el precio sube pero el negocio no acompaña. Rebote frágil: no sumar.</li>
+          <li><b>Reducir</b> — cae el precio y el negocio está peor. El sesgo es a salir; confirmá vos.</li>
         </ul>
       </div>
       <div><b>Tendencia</b><p>¿El precio viene subiendo o bajando? Mira las medias móviles y el rendimiento de los últimos meses. <b>Alcista</b> / Lateral / <b>Bajista</b>.</p></div>
       <div><b>Negocio</b><p>¿La empresa crece, gana plata y genera caja? Sale de los últimos 5 balances. <b>Sólido</b> / Regular / <b>Flojo</b>.</p></div>
       <div><b>Precio</b><p>¿Está cara o barata comparada con su propia historia? Compara los múltiplos de hoy contra su promedio de 5 años. <b>Barato</b> / En precio / <b>Caro</b>.</p></div>
-      <div><b>Analistas</b><p>Qué recomiendan los analistas que siguen la acción y cuánta suba le ven al precio objetivo. Sale del archivo de Precios Objetivo.</p></div>
+      <div><b>Analistas</b><p>Qué recomiendan los analistas que siguen la acción, su precio objetivo promedio y cuánta suba le ven. Sale del archivo de Precios Objetivo (lo subís una vez por mes). El "coinciden / difieren" te dice si los analistas están de acuerdo con la lectura.</p></div>
+      <div><b>📖 Guía de múltiplos</b><p>Tocá el botón <b>"Guía"</b> arriba para el detalle de qué es P/E, P/S, EV/EBITDA, etc., qué sectores usa cada uno y cómo comparar activos dentro de un rubro.</p></div>
     </div>
     <p class="help-foot">Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b> con el precio y el negocio. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
   </div>
@@ -236,6 +263,71 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         <button class="hm-close" onclick="cerrarHolders()">✕</button>
       </div>
       <div class="hm-body" id="hmBody"></div>
+    </div>
+  </div>
+
+  <div class="holders-overlay" id="guiaOverlay" onclick="if(event.target===this) cerrarGuia()">
+    <div class="guia-modal">
+      <div class="hm-head">
+        <div class="hm-title">Guía de múltiplos</div>
+        <button class="hm-close" onclick="cerrarGuia()">✕</button>
+      </div>
+      <div class="guia-body">
+
+        <h4>Para qué sirve esta pantalla</h4>
+        <p>Ver, de un vistazo, qué está pasando con cada activo que tienen tus clientes — empezando por los que más pesan en tu cartera. Cada fila junta tres miradas independientes (tendencia del precio, salud del negocio, precio vs. su historia) y las resume en un "qué hacer". Es material para la conversación con el cliente, no un reemplazo de tu criterio.</p>
+
+        <h4>Los tres semáforos</h4>
+        <ul>
+          <li><b>Tendencia</b> — ¿el precio viene subiendo o bajando? Sale de las medias móviles (promedios de precio de las últimas 21, 50 y 200 semanas) y del rendimiento de los últimos meses. Una acción por encima de su media de 200, con las medias ordenadas y subiendo, está en tendencia alcista.</li>
+          <li><b>Negocio</b> — ¿la empresa está mejor o peor que hace unos años? Mira crecimiento de ventas, si gana plata de forma consistente, si el margen se expande o se comprime, si genera caja, y cuánta deuda tiene. Sale de los últimos 5 balances.</li>
+          <li><b>Precio</b> — ¿está cara o barata? Compara los múltiplos de hoy contra el promedio de esa misma empresa en los últimos 5 años.</li>
+        </ul>
+
+        <h4>Qué es cada múltiplo</h4>
+        <div class="guia-mult">
+          <div><b>P/E — Precio sobre Ganancias</b>
+            <p>Cuántos años de la ganancia actual pagás por la acción. P/E 20 = pagás 20 veces lo que la empresa gana en un año.</p>
+            <p class="gm-use"><b>Sirve para:</b> empresas rentables y con ganancias estables — bancos, consumo, salud, industria. <b>No sirve</b> cuando la empresa pierde plata o sus ganancias son muy volátiles (mineras, tecnológicas jóvenes).</p></div>
+          <div><b>P/S — Precio sobre Ventas</b>
+            <p>Cuánto pagás por cada dólar de ventas de la empresa.</p>
+            <p class="gm-use"><b>Sirve para:</b> empresas que todavía no ganan plata o tienen márgenes cambiantes — software, e-commerce, tecnológicas en crecimiento. Ojo: una empresa con 30% de margen "vale" más P/S que una con 5%.</p></div>
+          <div><b>EV/EBITDA — Valor de empresa sobre ganancia operativa</b>
+            <p>Como el P/E pero mirando toda la empresa (con la deuda incluida) y la ganancia operativa "limpia", antes de intereses y amortizaciones.</p>
+            <p class="gm-use"><b>Sirve para:</b> comparar empresas con distinto nivel de deuda — energía, telecomunicaciones, industria pesada, cable.</p></div>
+          <div><b>P/FCF — Precio sobre Flujo de Caja Libre</b>
+            <p>Cuánto pagás por el efectivo real que le queda a la empresa después de invertir en mantenerse funcionando. El más difícil de maquillar.</p>
+            <p class="gm-use"><b>Sirve para:</b> empresas maduras que generan caja — consumo, tecnología establecida, salud.</p></div>
+          <div><b>P/B — Precio sobre Valor Libros</b>
+            <p>Cuánto pagás sobre el patrimonio contable. P/B 1 = pagás exactamente el patrimonio; 2 = el doble.</p>
+            <p class="gm-use"><b>Sirve para:</b> bancos y aseguradoras, casi exclusivamente — donde los activos son plata y préstamos, fáciles de valuar.</p></div>
+        </div>
+
+        <h4>Qué múltiplo mira cada sector</h4>
+        <table class="guia-tabla">
+          <tr><td>Bancos y finanzas</td><td>P/B · P/E</td></tr>
+          <tr><td>Tecnología y comunicación</td><td>P/S · EV/EBITDA · P/FCF</td></tr>
+          <tr><td>Consumo</td><td>P/E · EV/EBITDA · P/FCF</td></tr>
+          <tr><td>Salud</td><td>P/E · EV/EBITDA · P/FCF</td></tr>
+          <tr><td>Industria</td><td>P/E · EV/EBITDA · P/B</td></tr>
+          <tr><td>Energía y materiales</td><td>EV/EBITDA · P/B · P/FCF</td></tr>
+          <tr><td>Servicios públicos (utilities)</td><td>P/E · EV/EBITDA · P/B</td></tr>
+        </table>
+        <p class="guia-nota">En la pestaña <b>Múltiplos</b>, "Según sector" te muestra automáticamente el múltiplo más relevante para cada empresa. Con el selector podés fijar uno para toda la lista.</p>
+
+        <h4>La regla de oro</h4>
+        <p>Un múltiplo <b>solo</b> tiene sentido comparado contra:</p>
+        <ol>
+          <li>El promedio histórico de <b>la misma empresa</b> (¿está más cara o más barata que lo normal para ella?).</li>
+          <li>Otras empresas del <b>mismo rubro</b> (¿está cara o barata contra sus pares?).</li>
+        </ol>
+        <p>Nunca compares el P/E de un banco con el de una tecnológica, ni el P/S de un software con el de un supermercado. Son negocios distintos y los números no significan lo mismo.</p>
+
+        <h4>Precio objetivo de analistas</h4>
+        <p>La columna "Analistas" sale del archivo de Precios Objetivo que cargás una vez por mes. Muestra la recomendación de consenso (Compra / Mantener / Venta), el precio objetivo promedio y cuánta suba le ven desde el precio de hoy. El "coinciden / difieren" te avisa si los analistas están de acuerdo con la lectura de la fila — cuando difieren, vale la pena mirar por qué.</p>
+
+        <p class="guia-disc">Ninguno de estos números predice el futuro. Son fotos de lo que ya pasó con el precio y con el negocio. Sirven para ordenar la conversación con el cliente y priorizar a quién llamar primero — no para decidir por vos.</p>
+      </div>
     </div>
   </div>
 
@@ -493,15 +585,15 @@ function queHacer(r){
     // ETF / papel sin fundamentales -> se sigue por tendencia sola
     if(t===null) return {v:'Sin señal', cls:'qh-none', por:'Faltan datos para dar una lectura.'};
     if(t>=25)  return {v:'Mantener', cls:'qh-hold', por:'Viene subiendo. Es un ETF o papel sin datos del negocio — se sigue por la tendencia.'};
-    if(t<=-25) return {v:'Revisar',  cls:'qh-check', por:'Viene bajando sostenido. Revisá si sigue teniendo sentido en la cartera.'};
+    if(t<=-25) return {v:'Atención', cls:'qh-watch', por:'Viene bajando sostenido. Revisá si sigue teniendo sentido en la cartera.'};
     return {v:'Mantener', cls:'qh-hold', por:'Sin una tendencia marcada.'};
   }
   if(t===null) return {v:'Sin señal', cls:'qh-none', por:'Faltan datos de precio para dar una lectura.'};
 
   if(flojo){
-    return {v:'Revisar', cls:'qh-check', por: up
-      ? 'El precio sube pero la empresa viene floja (ventas o márgenes en baja). No conviene sumar; si tenés ganancia, puede ser momento de tomarla.'
-      : 'El precio baja y la empresa está peor que antes. Evaluá reducir o salir.'};
+    return up
+      ? {v:'Atención', cls:'qh-watch', por:'El precio sube pero la empresa viene floja (ventas o márgenes en baja). Rebote sin sustento: no conviene sumar, y si tenés ganancia puede ser momento de tomarla.'}
+      : {v:'Reducir',  cls:'qh-cut',   por:'Cae el precio y la empresa está peor que antes. El sesgo es a reducir o salir — confirmalo con tu análisis.'};
   }
   if(up && solido){
     return caro
@@ -513,8 +605,21 @@ function queHacer(r){
   }
   return {v:'Mantener', cls:'qh-hold', por:'Sin una tendencia marcada y el negocio va bien. Nada urgente por ahora.'};
 }
-// orden para el sort: primero lo que pide acción (Revisar), después oportunidades (Sumar)
-const QH_ORDEN = {'Revisar':4,'Sumar':3,'Mantener':2,'Sin señal':1};
+// orden para el sort: primero lo que pide acción, después oportunidades
+const QH_ORDEN = {'Reducir':5,'Atención':4,'Sumar':3,'Mantener':2,'Sin señal':1};
+
+// ¿los analistas coinciden con la lectura?
+function analConfirma(r){
+  const an=analistasDe(r); if(!an) return null;
+  const q=queHacer(r).v;
+  const qBias = q==='Sumar'?1 : (q==='Reducir'||q==='Atención')?-1 : 0;
+  if(!qBias) return null;
+  let aBias=0;
+  if(an.rec==='strongbuy'||an.rec==='buy'||an.rec==='outperform' || (an.upside!==null&&an.upside>0.12)) aBias=1;
+  else if(an.rec==='sell'||an.rec==='strongsell'||an.rec==='underperform' || (an.upside!==null&&an.upside<-0.03)) aBias=-1;
+  if(!aBias) return null;
+  return aBias===qBias ? {txt:'coinciden', cls:'ac-ok'} : {txt:'difieren', cls:'ac-no'};
+}
 
 // tenencia total (o del cliente enfocado) en USD para un activo
 function tenenciaTotal(r){
@@ -585,6 +690,9 @@ function abrirHolders(ticker){
   document.getElementById('holdersOverlay').classList.add('open');
 }
 function cerrarHolders(){ document.getElementById('holdersOverlay').classList.remove('open'); }
+function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
+function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); } });
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
 const REC_LABEL={strongbuy:'Compra fuerte',buy:'Compra',hold:'Mantener',sell:'Venta',strongsell:'Venta fuerte',underperform:'Venta',outperform:'Compra',none:''};
@@ -603,6 +711,7 @@ async function loadAnalistas(){
       const px=num(r['Precio_actual']), tgt=num(r['Precio_objetivo_promedio']);
       ANALISTAS[tk]={
         rec:String(r['Recomendacion']||'').toLowerCase().replace(/[\s_-]/g,''),
+        target:tgt, moneda:String(r['Moneda']||'').trim(),
         upside:(tgt!==null&&px!==null&&px>0)?(tgt/px-1):null,
         n:num(r['N_analistas']),
       };
@@ -833,8 +942,16 @@ function render(){
     const d=p/m-1; return `<span class="${d>=0?'mm-above':'mm-below'}">${d>=0?'+':''}${fmtN(d*100,1)}%</span>`;
   };
   const tr=(r,cells)=>`<tr style="background:${tendBg(tendencia(r))}">${cells}</tr>`;
-  const analCell=(an)=> !an ? '<span class="dash">—</span>'
-    : `${an.rec&&REC_LABEL[an.rec]?`<span class="rec ${REC_CLS[an.rec]||''}">${REC_LABEL[an.rec]}</span> `:''}${an.upside!==null?`<span class="${an.upside>=0?'val-pos':'val-neg'}">${an.upside>=0?'+':''}${fmtN(an.upside*100,0)}%</span>`:''}` || '<span class="dash">—</span>';
+  const analCell=(r)=>{
+    const an=analistasDe(r); if(!an) return '<span class="dash">—</span>';
+    const rec = an.rec&&REC_LABEL[an.rec] ? `<span class="rec ${REC_CLS[an.rec]||''}">${REC_LABEL[an.rec]}</span> ` : '';
+    const up  = an.upside!==null ? `<span class="${an.upside>=0?'val-pos':'val-neg'}">${an.upside>=0?'+':''}${fmtN(an.upside*100,0)}%</span>` : '';
+    const tgt = an.target!==null ? `<div class="pa-tgt" title="precio objetivo promedio de analistas">obj. ${an.moneda||'US$'} ${fmtN(an.target, an.target>100?0:2)}</div>` : '';
+    const conf = analConfirma(r);
+    const cf = conf ? ` <span class="ac ${conf.cls}" title="¿los analistas coinciden con la lectura de arriba?">${conf.txt}</span>` : '';
+    if(!rec && !up && !tgt) return '<span class="dash">—</span>';
+    return `<div>${rec}${up}${cf}</div>${tgt}`;
+  };
 
   if(activeTab==='Panorama'){
     ncols=5;
@@ -855,7 +972,7 @@ function render(){
         <td class="pa-cartera">${carteraCell}</td>
         <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span><div class="pa-por">${q.por}</div></td>
         <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
-        <td class="pa-anal">${analCell(analistasDe(r))}</td>
+        <td class="pa-anal">${analCell(r)}</td>
       </tr>`;
     }).join('');
 
