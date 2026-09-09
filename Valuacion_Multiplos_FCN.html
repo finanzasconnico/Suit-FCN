@@ -76,11 +76,42 @@ tbody tr:hover{filter:brightness(1.35);}
 .td-tend{text-align:right;font-family:var(--font-m);font-size:12px;font-weight:600;}
 .val-pos{color:#4ade80;} .val-neg{color:#E8837E;}
 .foco-cliente{color:var(--ambar);font-weight:600;}
-.sv{display:inline-block;font-size:10px;font-family:var(--font-m);padding:2px 7px;border-radius:3px;letter-spacing:.02em;white-space:nowrap;}
-.sv-good{background:rgba(28,140,95,.16);color:#4ade80;border:1px solid rgba(28,140,95,.35);}
-.sv-bad{background:rgba(192,69,59,.16);color:#E8837E;border:1px solid rgba(192,69,59,.35);}
-.sv-warn{background:rgba(219,160,60,.14);color:var(--ambar);border:1px solid rgba(219,160,60,.3);}
-.sv-mix{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);}
+.chip-help{margin-left:2px;}
+.chip-help.active{border-color:var(--jade);background:var(--jade-d);color:var(--jade);}
+
+/* ── PANEL DE AYUDA ── */
+.help-panel{flex-shrink:0;background:var(--surface2);border-bottom:1px solid var(--border);padding:16px 20px 6px;}
+.help-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 26px;}
+.help-grid>div{font-size:12px;line-height:1.5;}
+.help-grid b{color:var(--text);}
+.help-grid p{color:var(--muted);margin:3px 0 0;}
+.help-grid ul{margin:5px 0 0;padding-left:16px;color:var(--muted);}
+.help-grid li{margin:3px 0;}
+.help-foot{font-size:11px;color:var(--dim);border-top:1px solid var(--border);margin-top:12px;padding:10px 0 4px;line-height:1.5;}
+
+/* ── PANORAMA ── */
+.pa-activo{white-space:nowrap;}
+.pa-tk{font-family:var(--font-m);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;}
+.pa-tk:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
+.pa-emp{font-size:10.5px;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+.pa-cartera{white-space:nowrap;text-align:right;}
+.pa-usd{font-family:var(--font-m);font-size:13px;color:var(--text);font-weight:500;}
+.pa-cli{font-size:10px;color:var(--muted);}
+.pa-qh{max-width:300px;}
+.qh{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:4px;letter-spacing:.01em;}
+.qh-add{background:rgba(28,140,95,.20);color:#4ade80;}
+.qh-hold{background:rgba(255,255,255,.06);color:var(--text);}
+.qh-check{background:rgba(219,160,60,.18);color:var(--ambar);}
+.qh-none{background:rgba(255,255,255,.04);color:var(--dim);}
+.pa-por{font-size:11px;color:var(--muted);line-height:1.4;margin-top:4px;}
+.pa-sig{white-space:nowrap;}
+.pa-sig-row{display:flex;align-items:center;gap:7px;font-size:10.5px;margin:2px 0;}
+.pa-sig-lbl{color:var(--dim);width:64px;flex-shrink:0;}
+.sig{font-family:var(--font-m);font-size:10.5px;font-weight:500;padding:1px 7px;border-radius:3px;cursor:default;}
+.sig-ok{background:rgba(28,140,95,.14);color:#4ade80;}
+.sig-mid{background:rgba(219,160,60,.12);color:var(--ambar);}
+.sig-bad{background:rgba(192,69,59,.13);color:#E8837E;}
+.pa-anal{white-space:nowrap;font-size:11px;}
 .rec{display:inline-block;font-size:9.5px;font-family:var(--font-m);padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.03em;}
 .rec-sb{background:rgba(28,140,95,.18);color:#4ade80;} .rec-b{background:rgba(28,140,95,.1);color:var(--jade);}
 .rec-h{background:rgba(219,160,60,.1);color:var(--ambar);} .rec-s{background:rgba(192,69,59,.1);color:#E8837E;}
@@ -160,7 +191,26 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </label>
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
+    <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <span class="counter" id="counter"></span>
+  </div>
+
+  <div class="help-panel" id="help-panel" hidden>
+    <div class="help-grid">
+      <div><b>En cartera</b><p>Cuánta plata de tus clientes hay en ese activo y cuántos lo tienen. La lista arranca ordenada por acá — lo primero es lo que más pesa en el libro.</p></div>
+      <div><b>Qué hacer</b><p>Una lectura simple que junta los tres semáforos. Es una <b>observación, no una recomendación</b>: vos decidís con lo que sabés del cliente.</p>
+        <ul>
+          <li><b>Sumar</b> — el precio sube y la empresa está sólida. Buen momento para tener o agregar.</li>
+          <li><b>Mantener</b> — está bien donde está. Puede estar cara, sin tendencia clara, o cayendo pero con buen negocio.</li>
+          <li><b>Revisar</b> — el negocio viene flojo. Prestá atención: evaluá tomar ganancia o reducir.</li>
+        </ul>
+      </div>
+      <div><b>Tendencia</b><p>¿El precio viene subiendo o bajando? Mira las medias móviles y el rendimiento de los últimos meses. <b>Alcista</b> / Lateral / <b>Bajista</b>.</p></div>
+      <div><b>Negocio</b><p>¿La empresa crece, gana plata y genera caja? Sale de los últimos 5 balances. <b>Sólido</b> / Regular / <b>Flojo</b>.</p></div>
+      <div><b>Precio</b><p>¿Está cara o barata comparada con su propia historia? Compara los múltiplos de hoy contra su promedio de 5 años. <b>Barato</b> / En precio / <b>Caro</b>.</p></div>
+      <div><b>Analistas</b><p>Qué recomiendan los analistas que siguen la acción y cuánta suba le ven al precio objetivo. Sale del archivo de Precios Objetivo.</p></div>
+    </div>
+    <p class="help-foot">Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b> con el precio y el negocio. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
   </div>
 
   <div id="empty-state">
@@ -285,7 +335,7 @@ function multiplosDeSector(sector){
 //  ESTADO
 // ══════════════════════════════════════════
 let allRows=[];
-let activeTab='Tendencia';
+let activeTab='Panorama';
 let activeSector='todos';
 let multSel='auto';                 // 'auto' (según sector) | 'PE' | 'PS' | 'EVEBITDA' | 'PFCF' | 'PB'
 let soloCartera=false, _carteraTocado=false;
@@ -296,7 +346,7 @@ let ANALISTAS={};   // { TICKER: {rec, upside} } — del archivo de Precios Obje
 // foco de cliente — lo maneja el FCN Suite (mismo patrón que Precios Objetivo)
 let clienteActivo=null, topClientesSet=null;
 
-const TABS=['Tendencia','Múltiplos','Técnico'];
+const TABS=['Panorama','Múltiplos','Técnico'];
 
 // ══════════════════════════════════════════
 //  HELPERS DE CÁLCULO
@@ -323,6 +373,12 @@ function precioObj(precio,actual,prom){
 function fmtN(v,dec){
   if(v===null||v===undefined||isNaN(v)) return null;
   return Number(v).toLocaleString('es-AR',{minimumFractionDigits:dec??2,maximumFractionDigits:dec??2});
+}
+function fmtUsd(v){
+  if(v===null||v===undefined||isNaN(v)) return '—';
+  if(v>=1e6) return 'US$ '+(v/1e6).toLocaleString('es-AR',{maximumFractionDigits:1})+'M';
+  if(v>=1e3) return 'US$ '+Math.round(v/1e3)+'k';
+  return 'US$ '+Math.round(v);
 }
 function corrCell(c){
   if(c===null) return '<span class="corr-none">—</span>';
@@ -401,15 +457,77 @@ function fundamental(r){
   return Math.round(100 * c.reduce((a,x)=>a+x[0]*x[1],0) / w);
 }
 
-// lectura combinada de los tres ejes (observación, no recomendación)
-function senalVerdict(r){
-  const t=tendencia(r), fu=fundamental(r);
-  if(t===null||fu===null) return null;
-  if(t>=30 && fu>=15)  return {txt:'Favorable', cls:'sv-good'};
-  if(t<=-30 && fu<=-15) return {txt:'Desfavorable', cls:'sv-bad'};
-  if(t>=30 && fu<=-15) return {txt:'Momentum sin sustento', cls:'sv-warn'};
-  if(t<=-30 && fu>=15) return {txt:'Castigada — posible valor', cls:'sv-warn'};
-  return {txt:'Mixto', cls:'sv-mix'};
+// ── SEÑALES en palabras (para asesores que arrancan) ──
+function palabra(score, bueno, medio, malo){
+  if(score===null||score===undefined) return null;
+  if(score>=20) return {txt:bueno, cls:'sig-ok'};
+  if(score<=-20) return {txt:malo, cls:'sig-bad'};
+  return {txt:medio, cls:'sig-mid'};
+}
+function sigTendencia(r){
+  const t=tendencia(r);
+  const p=palabra(t,'Alcista','Lateral','Bajista');
+  return p ? {...p, num:t} : null;
+}
+function sigNegocio(r){
+  const n=fundamental(r);
+  const p=palabra(n,'Sólido','Regular','Flojo');
+  return p ? {...p, num:n} : null;
+}
+function sigPrecio(r){
+  const v=valuacion5y(r);   // % corrección al promedio: + = barato, − = caro
+  if(v===null) return null;
+  if(v>=0.05)  return {txt:'Barato',    cls:'sig-ok',  num:v};
+  if(v<=-0.30) return {txt:'Caro',      cls:'sig-bad', num:v};
+  return {txt:'En precio', cls:'sig-mid', num:v};
+}
+
+// ── QUÉ HACER: veredicto simple (observación, NO recomendación) ──
+function queHacer(r){
+  const t=tendencia(r), n=fundamental(r), v=valuacion5y(r);
+  const up = t!==null && t>=25, down = t!==null && t<=-20;
+  const solido = n!==null && n>=20, flojo = n!==null && n<=-15;
+  const caro = v!==null && v<=-0.40;
+
+  if(n===null){
+    // ETF / papel sin fundamentales -> se sigue por tendencia sola
+    if(t===null) return {v:'Sin señal', cls:'qh-none', por:'Faltan datos para dar una lectura.'};
+    if(t>=25)  return {v:'Mantener', cls:'qh-hold', por:'Viene subiendo. Es un ETF o papel sin datos del negocio — se sigue por la tendencia.'};
+    if(t<=-25) return {v:'Revisar',  cls:'qh-check', por:'Viene bajando sostenido. Revisá si sigue teniendo sentido en la cartera.'};
+    return {v:'Mantener', cls:'qh-hold', por:'Sin una tendencia marcada.'};
+  }
+  if(t===null) return {v:'Sin señal', cls:'qh-none', por:'Faltan datos de precio para dar una lectura.'};
+
+  if(flojo){
+    return {v:'Revisar', cls:'qh-check', por: up
+      ? 'El precio sube pero la empresa viene floja (ventas o márgenes en baja). No conviene sumar; si tenés ganancia, puede ser momento de tomarla.'
+      : 'El precio baja y la empresa está peor que antes. Evaluá reducir o salir.'};
+  }
+  if(up && solido){
+    return caro
+      ? {v:'Mantener', cls:'qh-hold', por:'Sube y la empresa acompaña, pero ya está cara frente a su historia. Buen lugar para estar, no para sumar.'}
+      : {v:'Sumar', cls:'qh-add', por:'Sube y la empresa acompaña. Buen momento para tener o agregar.'};
+  }
+  if(down && solido){
+    return {v:'Mantener', cls:'qh-hold', por:'Cae el precio pero la empresa está sólida — el mercado la está castigando. Si ya la tenés, aguantá; para sumar, esperá que frene la caída.'};
+  }
+  return {v:'Mantener', cls:'qh-hold', por:'Sin una tendencia marcada y el negocio va bien. Nada urgente por ahora.'};
+}
+// orden para el sort: primero lo que pide acción (Revisar), después oportunidades (Sumar)
+const QH_ORDEN = {'Revisar':4,'Sumar':3,'Mantener':2,'Sin señal':1};
+
+// tenencia total (o del cliente enfocado) en USD para un activo
+function tenenciaTotal(r){
+  const hs=holdersFor(r);
+  const filt = clienteActivo ? hs.filter(h=>h.cliente===clienteActivo)
+             : topClientesSet ? hs.filter(h=>topClientesSet.has(h.cliente)) : hs;
+  return filt.reduce((a,h)=>a+(h.tenencia||0),0);
+}
+function nClientes(r){
+  const hs=holdersFor(r);
+  const filt = clienteActivo ? hs.filter(h=>h.cliente===clienteActivo)
+             : topClientesSet ? hs.filter(h=>topClientesSet.has(h.cliente)) : hs;
+  return filt.length;
 }
 // color de fondo según el score (rojo -100 … neutro 0 … verde +100)
 function tendBg(score){
@@ -584,6 +702,12 @@ function buildSectorChips(){
 }
 function setSector(s){ activeSector=s; buildSectorChips(); render(); }
 function setMult(v){ multSel=v; render(); }
+function toggleHelp(){
+  const p=document.getElementById('help-panel'), open=p.hidden;
+  p.hidden=!open;
+  document.getElementById('chip-help').classList.toggle('active',open);
+  try{ localStorage.setItem('vm_help_open', open?'1':'0'); }catch(e){}
+}
 function toggleCartera(){
   soloCartera=!soloCartera;
   _carteraTocado=true;
@@ -612,12 +736,15 @@ function visibleRows(){
 //  SORT
 // ══════════════════════════════════════════
 function sortGetters(){
-  if(activeTab==='Tendencia'){
+  if(activeTab==='Panorama'){
+    // sin datos de tenencia, "En cartera" ordena por urgencia (Revisar arriba)
+    const hayTen=dataTenencia.length>0;
     return {
-      ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, precio:r=>r.precio,
+      activo:r=>r.ticker,
+      cartera:r=>hayTen?tenenciaTotal(r):(QH_ORDEN[queHacer(r).v]||0),
+      quehacer:r=>QH_ORDEN[queHacer(r).v]||0,
       tend:r=>tendencia(r), fund:r=>fundamental(r), val:r=>valuacion5y(r),
       anal:r=>analistasDe(r)?.upside ?? null,
-      senal:r=>{const s=senalVerdict(r); return s?({'Favorable':5,'Castigada — posible valor':4,'Mixto':3,'Momentum sin sustento':2,'Desfavorable':1}[s.txt]):0;},
     };
   }
   if(activeTab==='Técnico'){
@@ -645,7 +772,7 @@ function sortGetters(){
   };
 }
 function defaultSort(){
-  if(activeTab==='Tendencia') return {col:'tend',asc:false};   // más alcistas arriba
+  if(activeTab==='Panorama') return {col:'cartera',asc:false};  // más tenencia arriba
   if(activeTab==='Técnico') return {col:'tend',asc:false};
   return {col:'c5',asc:true};
 }
@@ -706,26 +833,30 @@ function render(){
     const d=p/m-1; return `<span class="${d>=0?'mm-above':'mm-below'}">${d>=0?'+':''}${fmtN(d*100,1)}%</span>`;
   };
   const tr=(r,cells)=>`<tr style="background:${tendBg(tendencia(r))}">${cells}</tr>`;
+  const analCell=(an)=> !an ? '<span class="dash">—</span>'
+    : `${an.rec&&REC_LABEL[an.rec]?`<span class="rec ${REC_CLS[an.rec]||''}">${REC_LABEL[an.rec]}</span> `:''}${an.upside!==null?`<span class="${an.upside>=0?'val-pos':'val-neg'}">${an.upside>=0?'+':''}${fmtN(an.upside*100,0)}%</span>`:''}` || '<span class="dash">—</span>';
 
-  if(activeTab==='Tendencia'){
-    ncols=9;
-    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}${th('precio','Precio',1)}
-      ${th('tend','Tendencia',1)}${th('fund','Fundamental',1)}${th('val','Valuación',1)}${th('anal','Analistas',1)}${th('senal','Lectura')}</tr>`;
+  if(activeTab==='Panorama'){
+    ncols=5;
+    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1)}${th('quehacer','Qué hacer')}
+      <th>Señales</th>${th('anal','Analistas',1)}</tr>`;
+    const sigRow=(lbl,s)=> `<div class="pa-sig-row"><span class="pa-sig-lbl">${lbl}</span>`
+      + (s ? `<span class="sig ${s.cls}" title="${lbl}: ${typeof s.num==='number' && Math.abs(s.num)<=1 ? (s.num>=0?'+':'')+fmtN(s.num*100,0)+'%' : (s.num>0?'+':'')+s.num}">${s.txt}</span>` : '<span class="dash">—</span>')
+      + `</div>`;
     bodyHtml=rows.map(r=>{
-      const val=valuacion5y(r), fu=fundamental(r), an=analistasDe(r), sv=senalVerdict(r);
-      const valTxt = val===null?'<span class="dash">—</span>'
-        : `<span class="${val>=0?'val-pos':'val-neg'}" title="cuánto debería corregir el precio para volver al múltiplo promedio de 5 años">${val>=0?'+':''}${fmtN(val*100,0)}%</span>`;
-      const anTxt = !an ? '<span class="dash">—</span>'
-        : `${an.rec&&REC_LABEL[an.rec]?`<span class="rec ${REC_CLS[an.rec]||''}">${REC_LABEL[an.rec]}</span> `:''}${an.upside!==null?`<span class="${an.upside>=0?'val-pos':'val-neg'}">${an.upside>=0?'+':''}${fmtN(an.upside*100,0)}%</span>`:''}`;
-      return tr(r,`${tkCell(r)}
-      <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
-      <td class="td-sector">${r.sector||'—'}</td>
-      <td class="num">${nCell(r.precio)}</td>
-      <td class="td-tend">${tendCell(tendencia(r))}</td>
-      <td class="td-tend">${tendCell(fu)}</td>
-      <td class="num">${valTxt}</td>
-      <td class="num" style="font-size:11px">${anTxt||'<span class="dash">—</span>'}</td>
-      <td>${sv?`<span class="sv ${sv.cls}">${sv.txt}</span>`:'<span class="dash">—</span>'}</td>`);
+      const q=queHacer(r), usd=tenenciaTotal(r), nc=nClientes(r);
+      const bg = q.v==='Sumar'?'rgba(28,140,95,.10)' : q.v==='Revisar'?'rgba(192,69,59,.10)' : 'var(--surface)';
+      const carteraCell = usd>0
+        ? `<div class="pa-usd">${fmtUsd(usd)}</div><div class="pa-cli">${clienteActivo?clienteActivo:nc+(nc===1?' cliente':' clientes')}</div>`
+        : `<span class="dash">—</span>`;
+      const esc=String(r.ticker).replace(/'/g,"\\'");
+      return `<tr style="background:${bg}">
+        <td class="pa-activo"><div class="pa-tk" onclick="abrirHolders('${esc}')" title="Ver qué clientes lo tienen">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
+        <td class="pa-cartera">${carteraCell}</td>
+        <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span><div class="pa-por">${q.por}</div></td>
+        <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
+        <td class="pa-anal">${analCell(analistasDe(r))}</td>
+      </tr>`;
     }).join('');
 
   }else if(activeTab==='Técnico'){
@@ -768,21 +899,28 @@ function render(){
   thead.innerHTML=headHtml;
   tbody.innerHTML=bodyHtml || `<tr><td colspan="${ncols}" style="padding:30px;text-align:center;color:var(--muted);">Sin filas para este filtro.</td></tr>`;
 
-  // contador: cuántos de los visibles ya tienen el dato de esta vista
-  let conDato;
-  if(activeTab==='Tendencia') conDato=rows.filter(r=>tendencia(r)!==null).length;
-  else if(activeTab==='Técnico') conDato=rows.filter(r=>r.mm200!==null||r.mm50!==null).length;
-  else conDato=rows.filter(r=>{const m=r.m[multDeFila(r)];return m&&m.actual!==null&&m.p5!==null;}).length;
+  // contador
   const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo}</span>`
     : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes</span>` : '';
-  document.getElementById('counter').innerHTML=
-    `<strong>${rows.length}</strong> tickers · <strong>${conDato}</strong> con datos${foco}`;
+  let conDato, unidad='tickers';
+  if(activeTab==='Panorama'){
+    unidad='activos';
+    const tot=rows.reduce((a,r)=>a+tenenciaTotal(r),0);
+    conDato=rows.filter(r=>queHacer(r).v!=='Sin señal').length;
+    document.getElementById('counter').innerHTML=
+      `<strong>${rows.length}</strong> activos · <strong>${fmtUsd(tot)}</strong> en cartera${foco}`;
+  }else{
+    if(activeTab==='Técnico') conDato=rows.filter(r=>r.mm200!==null||r.mm50!==null).length;
+    else conDato=rows.filter(r=>{const m=r.m[multDeFila(r)];return m&&m.actual!==null&&m.p5!==null;}).length;
+    document.getElementById('counter').innerHTML=
+      `<strong>${rows.length}</strong> tickers · <strong>${conDato}</strong> con datos${foco}`;
+  }
 
   // nota al pie
   let note=FOOT_BASE;
-  const faltan=rows.length-conDato;
-  if(activeTab==='Tendencia'){
-    note='<b>Tendencia</b> (−100…+100): dirección del precio — media 200s, orden de las medias, retorno 3m, fuerza relativa vs la lista, distancia al máximo. No es predicción. · <b>Fundamental</b> (−100…+100): salud del negocio — crecimiento de ventas, rentabilidad, tendencia del margen, generación de caja, apalancamiento. · <b>Valuación</b>: qué tan lejos está el múltiplo del promedio de 5 años (negativo = caro). · <b>Analistas</b>: consenso + upside al precio objetivo (del archivo de Precios Objetivo). · <b>Lectura</b>: combina tendencia + fundamental — observación, no recomendación.';
+  const faltan=rows.length-(conDato||0);
+  if(activeTab==='Panorama'){
+    note='Ordenado por cuánta plata de tus clientes hay en cada activo. <b>"Qué hacer"</b> es una observación que combina tendencia + negocio + precio — no es una recomendación. Tocá <b>"¿Cómo leo esto?"</b> arriba para el detalle.';
   }else if(activeTab==='Técnico'){
     note='Medias móviles = promedio del cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo). Verde: precio por encima de la media · rojo: por debajo.'
       + (faltan>0?` — ${faltan} todavía sin calcular.`:'');
@@ -845,6 +983,7 @@ async function loadAndRender(){
 
   show('empty-state','none'); show('table-wrap','block'); show('toolbar','flex'); show('tabs','flex'); show('foot-note','block');
   calcularFuerzaRelativa();
+  try{ if(localStorage.getItem('vm_help_open')==='1'){ document.getElementById('help-panel').hidden=false; document.getElementById('chip-help').classList.add('active'); } }catch(e){}
 
   const semilla=allRows.length && allRows.every(r=>r.fuente==='SEMILLA');
   FOOT_BASE=(semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot los reemplaza con la cartera completa en la próxima actualización. ':'')
