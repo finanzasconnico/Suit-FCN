@@ -335,14 +335,14 @@ def build_entry(ticker):
             return round(sum(1 for v in xs if v > 0) / len(xs), 3) if xs else None
         margen = [niv[i] / revv[i] for i in range(min(len(niv), len(revv)))
                   if niv[i] is not None and revv[i] and revv[i] > 0]
-        # el crecimiento de ventas no sirve si la empresa reporta en una moneda con
-        # inflacion alta (ARS): las ventas "crecen" solo por la inflacion
-        rev_cagr = None if fin_cur in ("ARS",) else cagr(revv)
+        # en ARS (inflacion alta) el crecimiento de ventas y la tendencia del margen
+        # quedan distorsionados por la contabilidad ajustada por inflacion -> se saltean
+        hi_inf = fin_cur in ("ARS",)
         fund = {
-            "Rev_CAGR":     rev_cagr,
+            "Rev_CAGR":     None if hi_inf else cagr(revv),
             "NI_pos":       frac_pos(niv),
             "FCF_pos":      frac_pos(fcfv),
-            "Margen_trend": round(margen[0] - margen[-1], 4) if len(margen) >= 3 else None,
+            "Margen_trend": None if hi_inf else (round(margen[0] - margen[-1], 4) if len(margen) >= 3 else None),
         }
         d0 = col_val(debt, cols[0]) if cols else None
         c0 = col_val(cash, cols[0]) if cols else None
