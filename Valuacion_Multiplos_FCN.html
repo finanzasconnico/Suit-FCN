@@ -71,8 +71,11 @@ thead th.num{text-align:right;}
 thead th .sort-arrow{display:inline-block;margin-left:4px;opacity:.35;font-size:9px;}
 thead th.sorted{color:var(--jade);}
 thead th.sorted .sort-arrow{opacity:1;}
-tbody tr{border-bottom:1px solid rgba(30,58,52,.5);transition:background .1s;}
-tbody tr:hover{background:var(--surface2);}
+tbody tr{border-bottom:1px solid rgba(30,58,52,.5);transition:filter .1s;background:var(--surface);}
+tbody tr:hover{filter:brightness(1.35);}
+.td-tend{text-align:right;font-family:var(--font-m);font-size:12px;font-weight:600;}
+.val-pos{color:#4ade80;} .val-neg{color:#E8837E;}
+.foco-cliente{color:var(--ambar);font-weight:600;}
 tbody td{padding:9px 12px;vertical-align:middle;}
 tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .td-ticker{font-family:var(--font-m);font-size:12px;font-weight:500;color:var(--text);cursor:pointer;}
@@ -221,8 +224,19 @@ if(BC){
   BC.onmessage=e=>{
     if(e.data?.type==='file_updated' && e.data?.key==='valuacion_multiplos') setTimeout(loadAndRender,300);
     if(e.data?.type==='file_updated' && e.data?.rawKey==='tenencia') setTimeout(loadTenencia,300);
+    if(e.data?.type==='client_selected'){ clienteActivo=e.data.cliente||null; render(); }
+    if(e.data?.type==='top_clients_selected'){ topClientesSet=(e.data.clientes&&e.data.clientes.length)?new Set(e.data.clientes):null; render(); }
   };
 }
+// cliente / Top N ya elegidos en el Suite antes de abrir esta pestaña
+(async()=>{
+  try{
+    const [ac,tf]=await Promise.all([getSharedFile('activeClient'),getSharedFile('topClientsFilter')]);
+    if(ac?.cliente) clienteActivo=ac.cliente;
+    if(tf?.clientes?.length) topClientesSet=new Set(tf.clientes);
+    if(clienteActivo||topClientesSet) render();
+  }catch(e){}
+})();
 
 // ══════════════════════════════════════════
 //  MÚLTIPLOS + MAPEO POR SECTOR
@@ -261,15 +275,17 @@ function multiplosDeSector(sector){
 //  ESTADO
 // ══════════════════════════════════════════
 let allRows=[];
-let activeTab='Múltiplos';
+let activeTab='Tendencia';
 let activeSector='todos';
 let multSel='auto';                 // 'auto' (según sector) | 'PE' | 'PS' | 'EVEBITDA' | 'PFCF' | 'PB'
 let soloCartera=false, _carteraTocado=false;
 let sortState={};   // { tabName: {col, asc} }
 let dataTenencia=[], holdersByTicker={};
 let FOOT_BASE='';
+// foco de cliente — lo maneja el FCN Suite (mismo patrón que Precios Objetivo)
+let clienteActivo=null, topClientesSet=null;
 
-const TABS=['Múltiplos','Técnico'];
+const TABS=['Tendencia','Múltiplos','Técnico'];
 
 // ══════════════════════════════════════════
 //  HELPERS DE CÁLCULO
@@ -306,6 +322,60 @@ function corrCell(c){
 function nCell(v,dec){
   const s=fmtN(v,dec);
   return s===null?'<span class="dash">—</span>':s;
+}
+function pctCell(v,dec){
+  if(v===null||v===undefined||isNaN(v)) return '<span class="dash">—</span>';
+  const p=v*100;
+  return `<span class="${p>=0?'corr-pos':'corr-neg'}">${p>=0?'+':''}${fmtN(p,dec??1)}%</span>`;
+}
+
+// ══════════════════════════════════════════
+//  SCORE DE TENDENCIA (-100 bajista … +100 alcista)
+// ══════════════════════════════════════════
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+// percentil del retorno 6m contra toda la lista (fuerza relativa). Se recalcula
+// cada vez que se cargan datos nuevos.
+function calcularFuerzaRelativa(){
+  const vals=allRows.map(r=>r.ret6m).filter(v=>v!==null&&v!==undefined).sort((a,b)=>a-b);
+  allRows.forEach(r=>{
+    if(r.ret6m===null||r.ret6m===undefined||!vals.length){ r._rs=null; return; }
+    let lo=0; while(lo<vals.length && vals[lo]<r.ret6m) lo++;
+    r._rs = vals.length>1 ? lo/(vals.length-1) : 0.5;   // 0..1
+  });
+}
+
+// componentes, cada uno en -1..+1, con su peso
+function tendencia(r){
+  const c=[];
+  if(r.precio!==null && r.mm200) c.push([clamp((r.precio/r.mm200-1)/0.25,-1,1), 0.25]);
+  if(r.mm21 && r.mm50 && r.mm200){
+    c.push([(r.mm21>r.mm50?0.5:-0.5)+(r.mm50>r.mm200?0.5:-0.5), 0.20]);
+  }
+  if(r.ret3m!==null && r.ret3m!==undefined) c.push([clamp(r.ret3m/0.20,-1,1), 0.20]);
+  if(r._rs!==null && r._rs!==undefined) c.push([r._rs*2-1, 0.20]);
+  if(r.dist52!==null && r.dist52!==undefined) c.push([clamp((r.dist52+0.15)/0.15,-1,1), 0.15]);
+  if(c.length<3) return null;   // pedí al menos 3 componentes para dar un score
+  const w=c.reduce((a,x)=>a+x[1],0);
+  return Math.round(100 * c.reduce((a,x)=>a+x[0]*x[1],0) / w);
+}
+// múltiplo primario del sector -> % corrección 5Y (el eje de valuación)
+function valuacion5y(r){
+  const k=multPrimario(r.sector);
+  const mm=r.m[k];
+  return (mm && mm.actual!==null && mm.p5!==null) ? corr(mm.actual,mm.p5) : null;
+}
+// color de fondo según el score (rojo -100 … neutro 0 … verde +100)
+function tendBg(score){
+  if(score===null||score===undefined) return 'var(--surface)';
+  const a=Math.pow(Math.min(Math.abs(score)/100, 1), 0.75)*0.42;
+  return score>=0 ? `rgba(28,140,95,${a.toFixed(3)})` : `rgba(192,69,59,${a.toFixed(3)})`;
+}
+function tendCell(score){
+  if(score===null||score===undefined) return '<span class="dash">—</span>';
+  const a=Math.min(Math.abs(score)/100,1)*0.9+0.1;
+  const col=score>=0?`rgba(74,222,128,${a.toFixed(2)})`:`rgba(232,131,126,${a.toFixed(2)})`;
+  return `<b style="color:${col}">${score>0?'+':''}${score}</b>`;
 }
 
 // ══════════════════════════════════════════
@@ -392,6 +462,7 @@ function parseBuffer(entry){
       precio:num(r['Precio_actual']),
       m,
       mm21:num(r['MM21_sem']), mm50:num(r['MM50_sem']), mm200:num(r['MM200_sem']),
+      ret3m:num(r['Ret_3m']), ret6m:num(r['Ret_6m']), ret12m:num(r['Ret_12m']), dist52:num(r['Dist_max_52s']),
       estado:String(r['Estado']||'').trim(),
       fuente:String(r['Fuente']||'').trim(),
       actualizado:String(r['Actualizado']||'').trim(),
@@ -452,6 +523,11 @@ function visibleRows(){
     if(q && !r.ticker.toLowerCase().includes(q) && !r.empresa.toLowerCase().includes(q)) return false;
     if(activeSector!=='todos' && r.sector!==activeSector) return false;
     if(soloCartera && !holdersFor(r).length) return false;
+    if(clienteActivo || topClientesSet){
+      const hs=holdersFor(r);
+      if(clienteActivo && !hs.some(h=>h.cliente===clienteActivo)) return false;
+      if(topClientesSet && !hs.some(h=>topClientesSet.has(h.cliente))) return false;
+    }
     return true;
   });
 }
@@ -460,10 +536,20 @@ function visibleRows(){
 //  SORT
 // ══════════════════════════════════════════
 function sortGetters(){
+  if(activeTab==='Tendencia'){
+    return {
+      ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, precio:r=>r.precio,
+      tend:r=>tendencia(r), val:r=>valuacion5y(r),
+      ret3m:r=>r.ret3m, ret6m:r=>r.ret6m, dist52:r=>r.dist52,
+      v200:r=>(r.precio!==null&&r.mm200)?r.precio/r.mm200-1:null,
+    };
+  }
   if(activeTab==='Técnico'){
     return {
       ticker:r=>r.ticker, empresa:r=>r.empresa, sector:r=>r.sector, precio:r=>r.precio,
+      tend:r=>tendencia(r),
       mm21:r=>r.mm21, mm50:r=>r.mm50, mm200:r=>r.mm200,
+      ret3m:r=>r.ret3m, ret6m:r=>r.ret6m, dist52:r=>r.dist52,
       v21:r=>(r.precio!==null&&r.mm21)?r.precio/r.mm21-1:null,
       v50:r=>(r.precio!==null&&r.mm50)?r.precio/r.mm50-1:null,
       v200:r=>(r.precio!==null&&r.mm200)?r.precio/r.mm200-1:null,
@@ -483,7 +569,9 @@ function sortGetters(){
   };
 }
 function defaultSort(){
-  return activeTab==='Técnico' ? {col:'v200',asc:true} : {col:'c5',asc:true};
+  if(activeTab==='Tendencia') return {col:'tend',asc:false};   // más alcistas arriba
+  if(activeTab==='Técnico') return {col:'tend',asc:false};
+  return {col:'c5',asc:true};
 }
 function currentSort(){
   if(!sortState[activeTab]) sortState[activeTab]=defaultSort();
@@ -537,43 +625,63 @@ function render(){
   if(pick) pick.style.display = activeTab==='Múltiplos' ? '' : 'none';
 
   let headHtml='', bodyHtml='', ncols=12;
+  const vs=(p,m)=>{
+    if(p===null||!m) return '<span class="corr-none">—</span>';
+    const d=p/m-1; return `<span class="${d>=0?'mm-above':'mm-below'}">${d>=0?'+':''}${fmtN(d*100,1)}%</span>`;
+  };
+  const tr=(r,cells)=>`<tr style="background:${tendBg(tendencia(r))}">${cells}</tr>`;
 
-  if(activeTab==='Técnico'){
-    ncols=9;
+  if(activeTab==='Tendencia'){
+    ncols=10;
     headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}${th('precio','Precio',1)}
-      ${th('mm21','MM 21s',1)}${th('mm50','MM 50s',1)}${th('mm200','MM 200s',1)}
-      ${th('v21','vs 21s',1)}${th('v50','vs 50s',1)}${th('v200','vs 200s',1)}</tr>`;
-    const vs=(p,m)=>{
-      if(p===null||!m) return '<span class="corr-none">—</span>';
-      const d=p/m-1; return `<span class="${d>=0?'mm-above':'mm-below'}">${d>=0?'+':''}${fmtN(d*100,1)}%</span>`;
-    };
-    bodyHtml=rows.map(r=>`<tr>${tkCell(r)}
+      ${th('tend','Tendencia',1)}${th('val','Valuación',1)}
+      ${th('ret3m','Ret. 3m',1)}${th('ret6m','Ret. 6m',1)}${th('dist52','vs máx 52s',1)}${th('v200','vs MM200',1)}</tr>`;
+    bodyHtml=rows.map(r=>{
+      const val=valuacion5y(r);
+      return tr(r,`${tkCell(r)}
       <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
       <td class="td-sector">${r.sector||'—'}</td>
       <td class="num">${nCell(r.precio)}</td>
+      <td class="td-tend">${tendCell(tendencia(r))}</td>
+      <td class="num" title="${val!==null?'cuánto debería corregir el precio para volver al múltiplo promedio de 5 años':''}">${val===null?'<span class="dash">—</span>':`<span class="${val>=0?'val-pos':'val-neg'}">${val>=0?'+':''}${fmtN(val*100,0)}%</span>`}</td>
+      <td class="num">${pctCell(r.ret3m)}</td><td class="num">${pctCell(r.ret6m)}</td>
+      <td class="num">${pctCell(r.dist52)}</td><td class="num">${vs(r.precio,r.mm200)}</td>`);
+    }).join('');
+
+  }else if(activeTab==='Técnico'){
+    ncols=11;
+    headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('precio','Precio',1)}${th('tend','Tend.',1)}
+      ${th('mm21','MM 21s',1)}${th('mm50','MM 50s',1)}${th('mm200','MM 200s',1)}
+      ${th('v50','vs 50s',1)}${th('v200','vs 200s',1)}${th('ret3m','Ret. 3m',1)}${th('ret6m','Ret. 6m',1)}</tr>`;
+    bodyHtml=rows.map(r=>tr(r,`${tkCell(r)}
+      <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
+      <td class="num">${nCell(r.precio)}</td>
+      <td class="td-tend">${tendCell(tendencia(r))}</td>
       <td class="num">${nCell(r.mm21)}</td><td class="num">${nCell(r.mm50)}</td><td class="num">${nCell(r.mm200)}</td>
-      <td class="num">${vs(r.precio,r.mm21)}</td><td class="num">${vs(r.precio,r.mm50)}</td><td class="num">${vs(r.precio,r.mm200)}</td></tr>`).join('');
+      <td class="num">${vs(r.precio,r.mm50)}</td><td class="num">${vs(r.precio,r.mm200)}</td>
+      <td class="num">${pctCell(r.ret3m)}</td><td class="num">${pctCell(r.ret6m)}</td>`)).join('');
 
   }else{
     // MÚLTIPLOS — una sola tabla, el múltiplo lo fija el selector (o el sector en modo auto)
     const auto = multSel==='auto';
-    ncols = auto ? 13 : 12;
+    ncols = auto ? 14 : 13;
     headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('sector','Sector')}`
       +(auto?th('mult','Múlt.'):'')
-      +`${th('precio','Precio',1)}${th('actual','Actual',1)}${th('p3','Prom. 3Y',1)}${th('p5','Prom. 5Y',1)}${th('p10','Prom. 10Y',1)}`
+      +`${th('tend','Tend.',1)}${th('precio','Precio',1)}${th('actual','Actual',1)}${th('p3','Prom. 3Y',1)}${th('p5','Prom. 5Y',1)}${th('p10','Prom. 10Y',1)}`
       +`${th('c3','% corr. 3Y',1)}${th('c5','% corr. 5Y',1)}${th('c10','% corr. 10Y',1)}${th('obj5','P. objetivo 5Y',1)}</tr>`;
     bodyHtml=rows.map(r=>{
       const k=multDeFila(r);
       const mm=r.m[k]||{actual:null,p3:null,p5:null,p10:null};
       const badge=(auto && (!r.sector || !k)) ? '<span class="dash">—</span>' : `<span class="mult-badge">${MULT[k]?.label||k}</span>`;
-      return `<tr>${tkCell(r)}
+      return tr(r,`${tkCell(r)}
         <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
         <td class="td-sector">${r.sector||'—'}</td>
         ${auto?`<td>${badge}</td>`:''}
+        <td class="td-tend">${tendCell(tendencia(r))}</td>
         <td class="num">${nCell(r.precio)}</td>
         <td class="num">${nCell(mm.actual)}</td><td class="num">${nCell(mm.p3)}</td><td class="num">${nCell(mm.p5)}</td><td class="num">${nCell(mm.p10)}</td>
         <td class="num">${corrCell(corr(mm.actual,mm.p3))}</td><td class="num">${corrCell(corr(mm.actual,mm.p5))}</td><td class="num">${corrCell(corr(mm.actual,mm.p10))}</td>
-        <td class="num">${nCell(precioObj(r.precio,mm.actual,mm.p5))}</td></tr>`;
+        <td class="num">${nCell(precioObj(r.precio,mm.actual,mm.p5))}</td>`);
     }).join('');
   }
 
@@ -582,15 +690,20 @@ function render(){
 
   // contador: cuántos de los visibles ya tienen el dato de esta vista
   let conDato;
-  if(activeTab==='Técnico') conDato=rows.filter(r=>r.mm200!==null||r.mm50!==null).length;
+  if(activeTab==='Tendencia') conDato=rows.filter(r=>tendencia(r)!==null).length;
+  else if(activeTab==='Técnico') conDato=rows.filter(r=>r.mm200!==null||r.mm50!==null).length;
   else conDato=rows.filter(r=>{const m=r.m[multDeFila(r)];return m&&m.actual!==null&&m.p5!==null;}).length;
+  const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo}</span>`
+    : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes</span>` : '';
   document.getElementById('counter').innerHTML=
-    `<strong>${rows.length}</strong> tickers · <strong>${conDato}</strong> con datos`;
+    `<strong>${rows.length}</strong> tickers · <strong>${conDato}</strong> con datos${foco}`;
 
   // nota al pie
   let note=FOOT_BASE;
   const faltan=rows.length-conDato;
-  if(activeTab==='Técnico'){
+  if(activeTab==='Tendencia'){
+    note='Tendencia (−100 bajista … +100 alcista) = precio vs media 200s (25%), orden de las medias (20%), retorno 3m (20%), fuerza relativa vs la lista (20%), distancia al máximo de 52s (15%). Es dirección del precio, no predicción. Valuación = qué tan lejos está el múltiplo del promedio de 5 años. El cruce alcista + barato es el mejor setup.';
+  }else if(activeTab==='Técnico'){
     note='Medias móviles = promedio del cierre semanal de las últimas 21 / 50 / 200 semanas (Yahoo). Verde: precio por encima de la media · rojo: por debajo.'
       + (faltan>0?` — ${faltan} todavía sin calcular.`:'');
   }else if(faltan>0){
@@ -651,6 +764,7 @@ async function loadAndRender(){
   }
 
   show('empty-state','none'); show('table-wrap','block'); show('toolbar','flex'); show('tabs','flex'); show('foot-note','block');
+  calcularFuerzaRelativa();
 
   const semilla=allRows.length && allRows.every(r=>r.fuente==='SEMILLA');
   FOOT_BASE=(semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot los reemplaza con la cartera completa en la próxima actualización. ':'')

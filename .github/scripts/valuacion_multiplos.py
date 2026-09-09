@@ -323,11 +323,23 @@ def build_entry(ticker):
             if actual[k] is None and series[k] and series[k][0] is not None:
                 actual[k] = series[k][0]
 
-        # medias moviles
+        # medias moviles + momentum (de la misma serie de cierres semanales)
         mm = {}
         if close is not None and len(close) >= 10:
             for lbl, w in (("MM21_sem", 21), ("MM50_sem", 50), ("MM200_sem", 200)):
                 mm[lbl] = round(float(close.rolling(w).mean().iloc[-1]), 2) if len(close) >= w else None
+            last = float(close.iloc[-1])
+            def ret(weeks_back):
+                if len(close) <= weeks_back:
+                    return None
+                past = float(close.iloc[-1 - weeks_back])
+                return round(last / past - 1, 4) if past > 0 else None
+            mm["Ret_3m"]  = ret(13)
+            mm["Ret_6m"]  = ret(26)
+            mm["Ret_12m"] = ret(52)
+            win = close.iloc[-52:] if len(close) >= 52 else close
+            hi = float(win.max())
+            mm["Dist_max_52s"] = round(last / hi - 1, 4) if hi > 0 else None
 
         return {
             "ticker_usado": sym,
@@ -346,7 +358,9 @@ def build_entry(ticker):
 COLS = ["Ticker", "Ticker_usado", "Empresa", "Sector", "Moneda", "Precio_actual"]
 for k in MULTS:
     COLS += [f"{k}_actual", f"{k}_prom_3y", f"{k}_prom_5y", f"{k}_prom_10y"]
-COLS += ["MM21_sem", "MM50_sem", "MM200_sem", "Estado", "Fuente", "Actualizado"]
+COLS += ["MM21_sem", "MM50_sem", "MM200_sem",
+         "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s",
+         "Estado", "Fuente", "Actualizado"]
 
 
 def row_from_cache(ticker, e):
@@ -383,9 +397,8 @@ def row_from_cache(ticker, e):
         if a is not None or p5 is not None:
             any_mult = True
     mm = e.get("mm", {})
-    r["MM21_sem"]  = mm.get("MM21_sem")
-    r["MM50_sem"]  = mm.get("MM50_sem")
-    r["MM200_sem"] = mm.get("MM200_sem")
+    for k in ("MM21_sem", "MM50_sem", "MM200_sem", "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s"):
+        r[k] = mm.get(k)
     has_mm = any(mm.get(k) is not None for k in ("MM21_sem", "MM50_sem", "MM200_sem"))
     r["Estado"] = "OK" if any_mult else ("SIN_DATOS" if (has_mm or e.get("sector")) else "NO_ENCONTRADO")
     return r
