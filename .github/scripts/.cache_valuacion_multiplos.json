@@ -34,7 +34,7 @@
    "FCF_pos": null,
    "Margen_trend": null
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "IRSA": {
   "ticker_usado": "IRSA.BA",
@@ -102,7 +102,7 @@
    "Margen_trend": -0.0763,
    "ND_EBITDA": 1.34
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "GE": {
   "ticker_usado": "GE",
@@ -222,7 +222,7 @@
    "FCF_pos": 1.0,
    "Margen_trend": null
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "COME": {
   "ticker_usado": "COME.BA",
@@ -284,7 +284,7 @@
    "FCF_pos": 0.75,
    "Margen_trend": -0.1596
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "BHIP": {
   "ticker_usado": "BHIP.BA",
@@ -351,7 +351,7 @@
    "FCF_pos": 1.0,
    "Margen_trend": -0.0365
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "AGRO": {
   "ticker_usado": "AGRO",
@@ -481,7 +481,7 @@
    "FCF_pos": 0.5,
    "Margen_trend": 0.6211
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "MORI": {
   "ticker_usado": "MORI.BA",
@@ -544,7 +544,7 @@
    "Margen_trend": 0.0387,
    "ND_EBITDA": 3.01
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "SEMI": {
   "ticker_usado": "SEMI",
@@ -711,7 +711,7 @@
    "Margen_trend": 0.285,
    "ND_EBITDA": -0.21
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "DOME": {
   "ticker_usado": "DOME.BA",
@@ -778,7 +778,7 @@
    "FCF_pos": 0.5,
    "Margen_trend": -0.134
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "GGAL": {
   "ticker_usado": "GGAL",
@@ -878,7 +878,7 @@
    "Margen_trend": 0.1226,
    "ND_EBITDA": -4.34
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "BKNG": {
   "ticker_usado": "BKNG",
@@ -1004,7 +1004,7 @@
    "Margen_trend": 0.1965,
    "ND_EBITDA": 0.42
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "EDN": {
   "ticker_usado": "EDN",
@@ -1167,7 +1167,7 @@
    "Margen_trend": -0.1662,
    "ND_EBITDA": 3.33
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "TXAR": {
   "ticker_usado": "TX",
@@ -1399,7 +1399,7 @@
    "Margen_trend": 0.476,
    "ND_EBITDA": 16.78
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "NOW": {
   "ticker_usado": "NOW",
@@ -1530,7 +1530,7 @@
    "Margen_trend": 0.5399,
    "ND_EBITDA": 0.02
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "NVDA": {
   "ticker_usado": "NVDA",
@@ -1666,7 +1666,7 @@
    "Margen_trend": -0.0943,
    "ND_EBITDA": 2.71
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "AMZN": {
   "ticker_usado": "AMZN",
@@ -2040,7 +2040,7 @@
    "Margen_trend": 0.0131,
    "ND_EBITDA": 1.1
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "IVV": {
   "ticker_usado": "IVV",
@@ -2140,7 +2140,7 @@
    "Margen_trend": -0.0172,
    "ND_EBITDA": -3.21
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "SUPV": {
   "ticker_usado": "SUPV",
@@ -2361,7 +2361,7 @@
    "Margen_trend": 0.0544,
    "ND_EBITDA": -0.1
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "GBAN": {
   "ticker_usado": "GBAN.BA",
@@ -2424,7 +2424,7 @@
    "Margen_trend": 0.1313,
    "ND_EBITDA": -0.3
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "LRCX": {
   "ticker_usado": "LRCX",
@@ -2656,7 +2656,7 @@
    "Margen_trend": -0.0555,
    "ND_EBITDA": -4.74
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "WBO": {
   "ticker_usado": "WBO",
@@ -2803,7 +2803,7 @@
    "Margen_trend": -0.0446,
    "ND_EBITDA": 1.56
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "BBAR": {
   "ticker_usado": "BBAR",
@@ -2939,7 +2939,7 @@
    "FCF_pos": 0.5,
    "Margen_trend": 0.1998
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "BAK": {
   "ticker_usado": "BAK",
@@ -14326,7 +14326,7 @@
    "Margen_trend": -0.0217,
    "ND_EBITDA": 4.29
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "ABBV": {
   "ticker_usado": "ABBV",
@@ -15263,7 +15263,7 @@
    "Margen_trend": 0.0375,
    "ND_EBITDA": 0.44
   },
-  "fetched": "2026-09-09"
+  "fetched": "2000-01-01"
  },
  "TMO": {
   "ticker_usado": "TMO",
