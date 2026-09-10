@@ -1,10 +1,12 @@
 name: Actualizar Valuacion por Multiplos
 
 # Corre 1 vez por semana (lunes 06:30 UTC = 03:30 ART) y a mano desde la pestaña
-# "Actions" (boton "Run workflow"). Fuente unica: Yahoo Finance via yfinance —
-# gratis, sin API key, sin limite diario. El script cachea el avance en
-# .github/scripts/.cache_valuacion_multiplos.json (se commitea) y solo refresca
-# los tickers con mas de 6 dias.
+# "Actions" (boton "Run workflow"). Fuentes: Yahoo Finance (yfinance) para precios,
+# medias moviles y multiplo actual + SEC EDGAR (companyfacts XBRL) para la serie
+# historica larga de fundamentales de los emisores US. Las dos gratis, sin API key.
+# El script cachea el avance en .github/scripts/.cache_valuacion_multiplos.json (se
+# commitea) y solo refresca los tickers con mas de 6 dias. El caché de EDGAR
+# (.cache_edgar/, varios GB) NO se commitea — se guarda con actions/cache por mes.
 on:
   schedule:
     - cron: '30 6 * * 1'
@@ -20,6 +22,7 @@ concurrency:
 jobs:
   actualizar:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,6 +34,23 @@ jobs:
 
       - name: Instalar dependencias
         run: pip install yfinance pandas openpyxl --upgrade
+
+      - name: Mes actual (para la key del caché)
+        id: mes
+        run: echo "ym=$(date +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      # companyfacts de EDGAR: ~5-30 MB por empresa. La key es unica por corrida
+      # (siempre guarda un snapshot nuevo al final); restore-keys agarra el mas
+      # reciente del mes, o cualquiera si el mes recien arranca. El modulo igual
+      # re-baja solo lo que tiene mas de 20 dias (EDGAR_FRESH_DAYS).
+      - name: Cache EDGAR companyfacts
+        uses: actions/cache@v4
+        with:
+          path: .github/scripts/.cache_edgar
+          key: edgar-${{ steps.mes.outputs.ym }}-${{ github.run_id }}
+          restore-keys: |
+            edgar-${{ steps.mes.outputs.ym }}-
+            edgar-
 
       - name: Generar valuacion_multiplos.xlsx
         run: python .github/scripts/valuacion_multiplos.py

@@ -48,6 +48,15 @@ import logging
 import pandas as pd
 import yfinance as yf
 
+# Fundamentales historicos oficiales de la SEC (companyfacts XBRL). Extiende la
+# reconstruccion de multiplos de ~5 a 15-19 años y llena la columna 10y, para los
+# emisores que reportan a la SEC (acciones US + varios ADR). Si el modulo no esta
+# o el ticker no cotiza en US, el bot sigue con solo lo de yfinance.
+try:
+    from edgar_fundamentals import edgar_multiple_series
+except Exception:
+    edgar_multiple_series = None
+
 # yfinance imprime cada 404 de un ticker que no existe (ej. "PAMP" antes de probar
 # el ADR). Son esperados y ruidosos — los silenciamos.
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)
@@ -62,6 +71,10 @@ OUT_XLSX     = os.path.join(REPO, "data", "valuacion_multiplos.xlsx")
 FRESH_DAYS = 6       # no re-consultar un ticker si su dato tiene menos de esto
 THROTTLE   = 0.6     # s entre tickers (Yahoo tira 429 si se lo apura)
 RETRIES    = 3
+
+# version del esquema de cache. Al subirla, todo dato viejo se re-baja (aunque
+# tenga menos de FRESH_DAYS). v2 = serie historica de EDGAR + 10y + media recortada.
+CACHE_VER = 2
 
 MULTS = ("PE", "PS", "EVEBITDA", "PFCF", "PB")
 
@@ -124,6 +137,8 @@ def save_cache(cache):
 def is_fresh(entry):
     if not entry or not entry.get("fetched"):
         return False
+    if entry.get("v") != CACHE_VER:
+        return False
     try:
         d = datetime.date.fromisoformat(entry["fetched"])
     except Exception:
@@ -155,6 +170,8 @@ def avg(vals, n):
     xs = [v for v in vals[:n] if v is not None]
     if len(xs) < max(2, n - 2):     # exijo casi todos los años del horizonte
         return None
+    if len(xs) >= 5:                # media recortada: saco el mayor y el menor de
+        xs = sorted(xs)[1:-1]       # la ventana (un año raro no ancla el promedio)
     return round(sum(xs) / len(xs), 2)
 
 
@@ -198,7 +215,7 @@ def price_near(hist_close, when):
 
 
 def yf_get(sym):
-    """(info, income_stmt, balance_sheet, cashflow, weekly_close) o None."""
+    """(info, income_stmt, balance_sheet, cashflow, weekly_close, splits) o None."""
     last_err = None
     for attempt in range(RETRIES):
         try:
@@ -210,9 +227,14 @@ def yf_get(sym):
             fin = t.income_stmt
             bs  = t.balance_sheet
             cf  = t.cashflow
-            hist = t.history(period="7y", interval="1wk", auto_adjust=True)
+            # "max" (no 7y): la reconstruccion con EDGAR mira hasta ~18 años atras
+            hist = t.history(period="max", interval="1wk", auto_adjust=True)
             close = hist["Close"].dropna() if hist is not None and not hist.empty else None
-            return info, fin, bs, cf, close
+            try:
+                splits = t.splits
+            except Exception:
+                splits = None
+            return info, fin, bs, cf, close, splits
         except Exception as e:
             last_err = e
             msg = str(e).lower()
@@ -234,7 +256,7 @@ def build_entry(ticker):
         time.sleep(THROTTLE)
         if not got:
             continue
-        info, fin, bs, cf, close = got
+        info, fin, bs, cf, close, splits = got
 
         price = num(info.get("currentPrice") or info.get("regularMarketPrice"))
         mcap  = num(info.get("marketCap"))
@@ -313,6 +335,45 @@ def build_entry(ticker):
                         continue
                     numer = (cap_y + d_ - c_) if k == "EVEBITDA" else cap_y
                     series[k].append(clean_mult(numer / m, CAP[k]))
+
+        # ---- serie larga oficial (SEC EDGAR) ----
+        # Para los emisores que reportan a la SEC, se reemplaza la serie corta de
+        # yfinance (~5 años) por la reconstruida con balances oficiales (15-19 años).
+        # Precios y ajuste por splits salen de la misma serie semanal de Yahoo.
+        edgar_used = False
+        if (edgar_multiple_series and same_currency and close is not None
+                and len(close) >= 52):
+            _cl = close.copy()
+            if _cl.index.tz is not None:
+                _cl.index = _cl.index.tz_localize(None)
+            _sp = splits.copy() if splits is not None and len(splits) else pd.Series(dtype=float)
+            if getattr(_sp.index, "tz", None) is not None:
+                _sp.index = _sp.index.tz_localize(None)
+
+            def _px_of(iso, _c=_cl):
+                try:
+                    pos = _c.index.get_indexer([pd.Timestamp(iso)], method="nearest")[0]
+                    return float(_c.iloc[pos]) if pos >= 0 else None
+                except Exception:
+                    return None
+
+            def _sf_of(iso, _s=_sp):
+                d = pd.Timestamp(iso)
+                fac = 1.0
+                for dt, r in _s.items():
+                    if dt > d and r > 0:
+                        fac *= r
+                return fac
+
+            try:
+                es = edgar_multiple_series(sym, _px_of, _sf_of, CAP)
+            except Exception as ex:
+                es = {}
+            for k in MULTS:
+                yrs = sorted(es.get(k, {}), reverse=True)
+                if len(yrs) >= 8:
+                    series[k] = [es[k][y] for y in yrs]   # mas nuevo primero, hasta ~19
+                    edgar_used = True
 
         # ---- score fundamental (calidad + crecimiento del negocio) ----
         # todo son ratios/tasas -> no le afecta la moneda, así que se calcula
@@ -395,6 +456,7 @@ def build_entry(ticker):
             "series":  series,
             "mm":      mm,
             "fund":    fund,
+            "edgar":   edgar_used,
         }
     return None
 
@@ -416,6 +478,8 @@ def row_from_cache(ticker, e):
     if not e:
         r["Estado"] = "NO_ENCONTRADO"
         return r
+    if e.get("edgar"):
+        r["Fuente"] = "yfinance+SEC"
     r["Ticker_usado"] = e.get("ticker_usado") or ticker
     r["Empresa"] = e.get("empresa")
     r["Sector"]  = e.get("sector")
@@ -428,7 +492,7 @@ def row_from_cache(ticker, e):
     for k in MULTS:
         vals = series.get(k, [])
         a = actual.get(k)
-        p3, p5 = avg(vals, 3), avg(vals, 5)
+        p3, p5, p10 = avg(vals, 3), avg(vals, 5), avg(vals, 10)
         # backstop: un promedio que se despega >8x (o <1/8) del actual casi seguro
         # es error de dato (moneda mal etiquetada, unidades) -> se descarta
         if a:
@@ -436,10 +500,12 @@ def row_from_cache(ticker, e):
                 p3 = None
             if p5 and not (0.12 <= p5 / a <= 8):
                 p5 = None
+            if p10 and not (0.12 <= p10 / a <= 8):
+                p10 = None
         r[f"{k}_actual"]  = a
         r[f"{k}_prom_3y"] = p3
         r[f"{k}_prom_5y"] = p5
-        r[f"{k}_prom_10y"] = None
+        r[f"{k}_prom_10y"] = p10
         if a is not None or p5 is not None:
             any_mult = True
     mm = e.get("mm", {})
@@ -487,10 +553,11 @@ def main():
         if e is None:
             cache[t] = {"ticker_usado": t, "empresa": "", "sector": "", "moneda": "",
                         "precio": None, "actual": {}, "series": {}, "mm": (cache.get(t) or {}).get("mm", {}),
-                        "fetched": today}
+                        "fetched": today, "v": CACHE_VER}
             print("sin datos")
         else:
             e["fetched"] = today
+            e["v"] = CACHE_VER
             cache[t] = e
             n3 = sum(1 for k in MULTS if avg(e["series"].get(k, []), 3) is not None)
             print(f"({e['ticker_usado']}) {e.get('sector') or '?'} · {n3}/5 multiplos · "

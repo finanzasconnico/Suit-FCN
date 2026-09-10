@@ -73,6 +73,10 @@ plantillas-mail/*.vba
 # sweep de ~319 tickers. Son ratios de mercado, sin datos de clientes. Solo se ignora el .tmp.
 .github/scripts/.cache_valuacion_multiplos.json.tmp
 
+# Caché de companyfacts de SEC EDGAR (un JSON de 5-30 MB por empresa). NO se versiona:
+# son varios GB, se regenera solo en la corrida (o vía actions/cache si se configura).
+.github/scripts/.cache_edgar/
+
 # Bytecode compilado de Python (queda si se corre/importa el script a mano para probarlo)
 __pycache__/
 *.pyc
