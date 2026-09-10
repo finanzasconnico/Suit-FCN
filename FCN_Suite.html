@@ -349,6 +349,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .cc-table th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 8px 8px 0;font-weight:500;}
 .cc-table td{padding:7px 8px 7px 0;border-top:1px solid var(--border);color:var(--text);font-family:var(--font-m);}
 .cc-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
+.cc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.cc-abtn{font-family:var(--font-m);font-size:9px;letter-spacing:.07em;text-transform:uppercase;padding:8px 13px;background:var(--jade-d);border:1px solid rgba(28,140,95,.3);border-radius:var(--r);color:var(--jade);cursor:pointer;transition:all .15s;}
+.cc-abtn:hover{background:rgba(28,140,95,.2);}
 .v360-row{cursor:pointer;}
 .v360-row:hover{background:var(--jade-d);}
 .v360-row:hover td:first-child{text-decoration:underline;text-decoration-color:var(--ambar);}
@@ -2453,8 +2456,10 @@ function cerrarHolders() { document.getElementById('holdersOverlay').classList.r
 //  VALUACIÓN POR MÚLTIPLOS — port del veredicto "Qué hacer" (Sumar / Mantener /
 //  Atención / Reducir) de Valuacion_Multiplos_FCN.html, para usarlo como señal de
 //  renta variable en la Vista 360. Las funciones son un calco 1:1 de esa herramienta
-//  (misma fórmula de tendencia / fundamental / valuación) — si se toca allá el criterio,
-//  hay que replicarlo acá. Prefijo vm* / VM_ para no chocar con nada del Suite.
+//  (misma fórmula de tendencia / fundamental / valuación / queHacer, y también
+//  medianaSector / lecturaValuacion / candidatoRotacion, que usan el reporte de
+//  cartera y el salto al Armador) — si se toca allá el criterio, hay que replicarlo
+//  acá. Prefijo vm* / VM_ para no chocar con nada del Suite.
 // ══════════════════════════════════════════════════════════════
 const VM_SECTOR_MULTIPLOS = {
   'Financial Services': ['PB','PE'],
@@ -2590,6 +2595,64 @@ function vmVeredictoDeTicker(ticker) {
   if (!vm || !ticker) return null;
   return vm[String(ticker).trim().toUpperCase()] || null;
 }
+function vmFilaDeTicker(ticker) {
+  const rows = dashData.valuacion && dashData.valuacion.rows;
+  if (!rows || !ticker) return null;
+  const t = String(ticker).trim().toUpperCase();
+  return rows.find(r => r.ticker.toUpperCase() === t || r.tickerUsado.toUpperCase() === t) || null;
+}
+function vmNombreCorto(empresa, ticker) {
+  const e = String(empresa || '');
+  return e ? (e.replace(/,?\s*(Inc\.?|Corp\.?|Corporation|Company|Co\.|S\.?A\.?B?\.?|Ltd\.?|plc|N\.V\.|Holdings?|Group|Class [A-C])\b.*$/i, '').replace(/^The\s+/i, '').trim() || ticker) : (ticker || '');
+}
+// mediana del múltiplo k entre pares del mismo sector (solo USD) — calco del panel
+function vmMedianaSector(sector, k) {
+  const rows = (dashData.valuacion && dashData.valuacion.rows) || [];
+  if (!sector || !k) return null;
+  const xs = rows.filter(r => r.sector === sector && r.moneda !== 'ARS' && r.m[k] && r.m[k].actual != null)
+    .map(r => r.m[k].actual).sort((a, b) => a - b);
+  if (xs.length < 4) return null;
+  const m = Math.floor(xs.length / 2);
+  return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
+}
+// lectura de valuación con el múltiplo primario del sector (no caza el peor) — calco del panel
+function vmLecturaValuacion(r) {
+  const k = vmMultPrimario(r && r.sector);
+  const mm = (r && r.m[k]) || {};
+  const o = { k, actual: mm.actual != null ? mm.actual : null, p5: mm.p5 != null ? mm.p5 : null, p10: mm.p10 != null ? mm.p10 : null, med: vmMedianaSector(r && r.sector, k) };
+  o.excHist = (o.actual != null && o.p5) ? o.actual / o.p5 - 1 : null;
+  o.excPares = (o.actual != null && o.med) ? o.actual / o.med - 1 : null;
+  o.caro = (o.excHist != null && o.excHist > 0.10) || (o.excPares != null && o.excPares > 0.15);
+  return o;
+}
+// mejor candidato para rotar dentro del sector — calco reducido de candidatosRotacion del panel
+function vmCandidatoRotacion(r) {
+  const rows = (dashData.valuacion && dashData.valuacion.rows) || [];
+  if (!r || !r.sector) return null;
+  const k = vmMultPrimario(r.sector);
+  if (!k) return null;
+  const base = (r.m[k] && r.m[k].actual != null) ? r.m[k].actual : null;
+  const med = vmMedianaSector(r.sector, k);
+  const lista = rows.filter(x => {
+    if (x.ticker === r.ticker || x.tickerUsado === r.ticker) return false;
+    if (x.sector !== r.sector || x.moneda === 'ARS') return false;
+    const mm = x.m[k]; if (!mm || mm.actual == null) return false;
+    if (base != null && mm.actual >= base) return false;
+    if (med != null && mm.actual > med * 1.15) return false;
+    if (vmQueHacer(x).v === 'Reducir') return false;
+    const fn = vmFundamental(x); if (fn != null && fn < 0) return false;
+    const te = vmTendencia(x); if (te != null && te <= -25) return false;
+    return true;
+  }).sort((a, b) => {
+    const fa = vmQueHacer(a).v === 'Sumar' ? 1 : 0, fb = vmQueHacer(b).v === 'Sumar' ? 1 : 0;
+    if (fb !== fa) return fb - fa;
+    return (vmTendencia(b) ?? -101) - (vmTendencia(a) ?? -101) || (a.m[k].actual - b.m[k].actual);
+  });
+  const seen = new Set();
+  const c = lista.find(x => { const key = vmNombreCorto(x.empresa, x.ticker).toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; });
+  if (!c) return null;
+  return { ticker: c.ticker, empresa: vmNombreCorto(c.empresa, c.ticker), k, mult: c.m[k].actual };
+}
 
 // ══════════════════════════════════════════════════════════════
 //  VISTA 360 POR CLIENTE — señal de venta/rotación por posición, reusando los mismos
@@ -2702,13 +2765,185 @@ function abrirCarteraCliente(cliente) {
         <td>${badgeSenalHtml(s)}${s && s.alt ? `<div style="font-size:9px;color:var(--muted);margin-top:3px;">→ ${escHtml(s.alt.ticker)} (TIR ${(s.alt.tir*100).toFixed(1)}%)</div>` : ''}</td>
       </tr>`;
     }).join('');
-    body.innerHTML = `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Días</th><th>Rent.</th><th>Señal</th></tr></thead>` +
+    const cEsc = String(cliente).replace(/'/g, "\\'");
+    body.innerHTML = `<div class="cc-actions">
+        <button class="cc-abtn" onclick="reporteCartera('${cEsc}')">⬇ Reporte para el cliente</button>
+        <button class="cc-abtn" onclick="abrirArmadorConCartera('${cEsc}')">📊 Abrir en Armador</button>
+      </div>` +
+      `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Días</th><th>Rent.</th><th>Señal</th></tr></thead>` +
       `<tbody>${rows}</tbody></table>` +
       `<div class="cc-total">Tenencia total: <b>USD ${fmtK(tenTotal)}</b></div>`;
   }
   document.getElementById('ccOverlay').classList.add('open');
 }
 function cerrarCarteraCliente() { document.getElementById('ccOverlay').classList.remove('open'); }
+
+// ── Nombre del cliente para el saludo (columna "Nombre" del Stock, nunca el apellido) ──
+function _nombreClienteFCN(cliente) {
+  if (currentTenencia && currentTenencia.comitentePorCliente && currentStockMap) {
+    const com = currentTenencia.comitentePorCliente[cliente];
+    const e = com ? currentStockMap[com] : null;
+    if (e && e.nombre) return String(e.nombre).trim();
+  }
+  return cliente;
+}
+
+// ── LOTE 3: abrir el Armador de Carteras con la cartera del cliente ya cargada ──
+// El Armador acepta ?c=<base64(encodeURIComponent(json))> con {cn, ps, pc, assets:[{n,t,p,c,ty,no}]}.
+const _ARM_TIPO = {
+  cedears: 'Renta Variable | CEDEARs', acciones: 'Renta Variable | Argentina',
+  corporativos: 'Renta Fija | Corporativos (ONs)', bonos: 'Renta Fija | Soberanos',
+  letras: 'Renta Fija | Letras y Bonos ARS', fondos: 'FCI', efectivo: 'Liquidez / Money Market',
+};
+function abrirArmadorConCartera(cliente) {
+  const items = (currentTenencia && currentTenencia.carteraPorCliente && currentTenencia.carteraPorCliente[cliente]) || [];
+  if (!items.length) { alert('Sin posiciones cargadas para este cliente.'); return; }
+  const inv = items.filter(i => i.grupo !== 'Liquidez');
+  const tot = inv.reduce((a, i) => a + i.tenencia, 0);
+  if (!tot) { alert('Este cliente no tiene posiciones invertidas para armar una cartera.'); return; }
+  const assets = inv.slice().sort((a, b) => b.tenencia - a.tenencia).map(i => {
+    const ver = vmVeredictoDeTicker(i.ticker);
+    const rent = (i.ppc > 0 && i.nominales > 0) ? (i.tenencia / i.nominales / i.ppc - 1) * 100 : null;
+    const nota = [];
+    if (rent != null) nota.push(`Rent. actual ${rent >= 0 ? '+' : ''}${rent.toFixed(1)}%`);
+    if (ver && ver.qh && ['Sumar', 'Atención', 'Reducir'].includes(ver.qh.v)) nota.push('Múltiplos: ' + ver.qh.v);
+    return {
+      n: (ver && ver.empresa) || i.instrumento || i.ticker,
+      t: i.ticker,
+      p: +(i.tenencia / tot * 100).toFixed(1),
+      c: 'USD',
+      ty: _ARM_TIPO[String(i.tipo || '').toLowerCase().trim()] || 'Otro',
+      no: nota.join(' · '),
+    };
+  });
+  const payload = { cn: cliente, ps: Math.round(tot), pc: 'USD', assets };
+  let c;
+  try { c = btoa(encodeURIComponent(JSON.stringify(payload))); }
+  catch (e) { alert('No se pudo generar el enlace a Armador.'); return; }
+  window.open('Armador_Carteras_v4_3.html?c=' + c, '_blank');
+}
+
+// ── LOTE 2: reporte de cartera imprimible para presentar al cliente ──
+function _estadoClienteTxt(s) {
+  if (!s) return { t: 'En orden', c: '#5b6b66' };
+  const v = String(s.senal || '').toUpperCase();
+  if (v === 'SUMAR' || v === 'ACUMULAR') return { t: 'Para mantener o sumar', c: '#1C8C5F' };
+  if (v === 'ATENCIÓN' || v === 'ATENCION') return { t: 'Para revisar', c: '#B4801F' };
+  if (v === 'VENDER') return { t: 'Tomar ganancia', c: '#B0392F' };
+  if (v === 'REDUCIR' || v === 'ROTAR' || v === 'STOP') return { t: 'Para rotar', c: '#B0392F' };
+  return { t: 'En orden', c: '#5b6b66' };
+}
+function reporteCartera(cliente) {
+  const items = (currentTenencia && currentTenencia.carteraPorCliente && currentTenencia.carteraPorCliente[cliente]) || [];
+  if (!items.length) { alert('Sin posiciones cargadas para este cliente.'); return; }
+  const nombre = _nombreClienteFCN(cliente);
+  const asesor = nombreAsesorFirma();
+  const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const tenTotal = items.reduce((a, i) => a + i.tenencia, 0);
+  const inv = items.filter(i => i.grupo !== 'Liquidez');
+  const liq = items.filter(i => i.grupo === 'Liquidez');
+  const liqTotal = liq.reduce((a, i) => a + i.tenencia, 0);
+
+  const filas = inv.slice().sort((a, b) => b.tenencia - a.tenencia).map(i => {
+    const costo = (i.ppc > 0 && i.nominales > 0) ? i.ppc * i.nominales : null;
+    const rent = costo != null ? (i.tenencia / costo - 1) * 100 : null;
+    const ganUSD = costo != null ? i.tenencia - costo : null;
+    const s = calcularSenalPosicion(i);
+    const ver = vmVeredictoDeTicker(i.ticker);
+    const nom = (ver && ver.empresa) ? vmNombreCorto(ver.empresa, i.ticker) : (i.instrumento || i.ticker);
+    const est = _estadoClienteTxt(s);
+    const pct = tenTotal > 0 ? i.tenencia / tenTotal * 100 : 0;
+    // "cambio" = señal que pide sacar/revisar (no "Sumar", que es mantener/reforzar)
+    const senal = s ? String(s.senal || '').toUpperCase() : '';
+    const esCambio = ['ATENCIÓN', 'ATENCION', 'REDUCIR', 'ROTAR', 'VENDER', 'STOP'].includes(senal);
+    let alt = null;
+    if (esCambio) {
+      if (i.grupo === 'Renta Fija' && s.alt) alt = { ticker: s.alt.ticker, empresa: s.alt.emisor || s.alt.ticker, motivo: `TIR ${(s.alt.tir * 100).toFixed(1)}%` };
+      else if (i.grupo === 'Renta Variable') { const row = vmFilaDeTicker(i.ticker); const cand = row ? vmCandidatoRotacion(row) : null; if (cand) alt = { ticker: cand.ticker, empresa: cand.empresa, motivo: 'mismo sector, más barata hoy' }; }
+    }
+    return { i, nom, rent, ganUSD, s, est, pct, alt, ver, esCambio };
+  });
+
+  const ganTotal = filas.reduce((a, f) => a + (f.ganUSD || 0), 0);
+  const conGan = filas.some(f => f.ganUSD != null);
+  const cambios = filas.filter(f => f.esCambio);
+
+  const fmtUsd0 = v => 'USD ' + Math.round(v).toLocaleString('es-AR');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const trFilas = filas.map(f => `
+    <tr>
+      <td class="tk">${esc(f.i.ticker)}</td>
+      <td>${esc(f.nom)}</td>
+      <td class="num">${fmtUsd0(f.i.tenencia)}</td>
+      <td class="num">${f.pct.toFixed(1)}%</td>
+      <td class="num ${f.rent == null ? '' : (f.rent >= 0 ? 'pos' : 'neg')}">${f.rent == null ? '—' : (f.rent >= 0 ? '+' : '') + f.rent.toFixed(1) + '%'}</td>
+      <td style="color:${f.est.c};font-weight:600;">${f.est.t}</td>
+    </tr>`).join('');
+
+  const liFilas = cambios.length ? cambios.map(f => {
+    const motivo = f.s.detalle || '';
+    const altTxt = f.alt ? ` <b>Alternativa:</b> ${esc(f.alt.empresa)} (${esc(f.alt.ticker)}) — ${esc(f.alt.motivo)}.` : '';
+    const ganTxt = f.ganUSD != null && f.ganUSD > 0 ? ` Hoy lo tenés con una ganancia de ${fmtUsd0(f.ganUSD)} (${f.rent >= 0 ? '+' : ''}${f.rent.toFixed(0)}%).` : '';
+    return `<li><b>${esc(f.nom)} (${esc(f.i.ticker)})</b> — ${esc(motivo)}${ganTxt}${altTxt}</li>`;
+  }).join('') : '';
+
+  const liqBloque = liqTotal > 500 ? `<div class="box"><b>Liquidez sin invertir:</b> ${fmtUsd0(liqTotal)}. Ese dinero quieto no genera renta — podemos colocarlo aunque lo necesites pronto.</div>` : '';
+
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Revisión de cartera — ${esc(nombre)}</title>
+<style>
+  :root{ --jade:#1C8C5F; --ink:#1c2b28; --soft:#5b6b66; --line:#e2e6e4; --bg:#faf9f6; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;padding:38px 34px 60px;max-width:820px;margin:0 auto;}
+  .toolbar{position:sticky;top:0;background:var(--bg);padding-bottom:14px;margin-bottom:8px;}
+  .toolbar button{font:inherit;font-size:13px;background:var(--jade);color:#fff;border:0;border-radius:7px;padding:9px 18px;cursor:pointer;}
+  h1{font-size:22px;letter-spacing:-.01em;}
+  .meta{color:var(--soft);font-size:13px;margin:4px 0 22px;}
+  .cards{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:26px;}
+  .card{flex:1;min-width:150px;border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:#fff;}
+  .card .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);}
+  .card .v{font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums;}
+  h2{font-size:15px;margin:24px 0 10px;padding-bottom:5px;border-bottom:2px solid var(--jade);}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--soft);padding:0 10px 7px 0;font-weight:600;}
+  td{padding:8px 10px 8px 0;border-top:1px solid var(--line);}
+  td.num{text-align:right;} td.tk{font-weight:700;} .pos{color:var(--jade);} .neg{color:#B0392F;}
+  ul{margin:6px 0 0 20px;} li{margin:9px 0;}
+  .box{border:1px solid var(--line);background:#fff;border-radius:9px;padding:12px 14px;margin-top:14px;font-size:13px;}
+  .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);color:var(--soft);font-size:11.5px;}
+  @media print{ .toolbar{display:none;} body{padding:0;background:#fff;} .card,.box,td,th{border-color:#ccc;} }
+</style></head><body>
+  <div class="toolbar"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
+  <h1>Revisión de cartera</h1>
+  <div class="meta">${esc(nombre)} · ${hoy} · preparado por ${esc(asesor)}</div>
+  <div class="cards">
+    <div class="card"><div class="k">Tenencia total</div><div class="v">${fmtUsd0(tenTotal)}</div></div>
+    ${conGan ? `<div class="card"><div class="k">Resultado no realizado</div><div class="v" style="color:${ganTotal >= 0 ? 'var(--jade)' : '#B0392F'}">${ganTotal >= 0 ? '+' : ''}${fmtUsd0(ganTotal)}</div></div>` : ''}
+    <div class="card"><div class="k">Posiciones</div><div class="v">${inv.length}</div></div>
+    <div class="card"><div class="k">Cambios sugeridos</div><div class="v">${cambios.length}</div></div>
+  </div>
+
+  <h2>Tu cartera hoy</h2>
+  <table><thead><tr><th>Ticker</th><th>Activo</th><th class="num">Tenencia</th><th class="num">% cartera</th><th class="num">Rentabilidad</th><th>Estado</th></tr></thead>
+  <tbody>${trFilas}</tbody></table>
+
+  <h2>Cambios que propongo</h2>
+  ${cambios.length ? `<ul>${liFilas}</ul>` : `<p style="font-size:13px;color:var(--soft);">Tu cartera está alineada. No hay cambios urgentes para hacer hoy — la seguimos monitoreando.</p>`}
+  ${liqBloque}
+
+  <div class="foot">
+    Los estados y sugerencias combinan la tendencia del precio, la salud del negocio (últimos balances) y la valuación de cada activo frente a su historia y a sus comparables. La rentabilidad se calcula sobre el precio promedio de compra informado por el bróker.
+    Es material de trabajo para conversar juntos — no constituye una recomendación de inversión ni una oferta. Cualquier movimiento se define según tus objetivos y tu perfil.<br><br>
+    ${esc(asesor)} · FinanzasconNico
+  </div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('El navegador bloqueó la ventana del reporte. Permití las ventanas emergentes para este sitio.'); return; }
+  w.document.write(html);
+  w.document.close();
+}
 
 const V360_LIQ_MIN = 500; // USD sin invertir en la cuenta de un cliente — a partir de acá se marca como alerta
 
