@@ -534,12 +534,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
         <div class="dash-two-col">
           <div class="dash-card">
-            <div class="dash-section-title">🎯 Oportunidades de compra — precio vs. objetivo (Renta Variable)</div>
+            <div class="dash-section-title">📈 Renta Variable — momento de sumar <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(clic en una fila para ver la cartera del cliente)</span></div>
             <div id="dash-oportunidades" class="dash-scrollbox"></div>
+            <div id="dash-oportunidades-cap" style="font-size:10px;color:var(--muted);margin-top:6px;"></div>
           </div>
           <div class="dash-card">
-            <div class="dash-section-title">🔻 Conviene vender — objetivo bajo, en tenencia de clientes</div>
+            <div class="dash-section-title">📈 Renta Variable — revisar con clientes</div>
             <div id="dash-venta-sugerida" class="dash-scrollbox"></div>
+            <div id="dash-venta-sugerida-cap" style="font-size:10px;color:var(--muted);margin-top:6px;"></div>
           </div>
         </div>
         <div class="dash-two-col">
@@ -1613,57 +1615,106 @@ function preciosParseWarningHtml(precios) {
   return `<div class="dash-empty">⚠ El archivo de Precios Objetivo tiene ${precios.total} fila(s) pero no se pudo leer ninguna — revisá que las columnas "Precio_actual" y "Precio_objetivo_promedio" no hayan cambiado de nombre.</div>`;
 }
 
-function renderDashOportunidades(precios) {
-  const el = document.getElementById('dash-oportunidades');
-  if (!el) return;
-  const warn = preciosParseWarningHtml(precios);
-  if (warn) { el.innerHTML = warn; return; }
-  if (!precios || !precios.items.length) {
-    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí el archivo de <a onclick="showFiles()">Precios Objetivo</a> para ver acá los tickers con mayor upside/downside vs. el consenso de analistas.</div>`;
-    return;
-  }
-  const top = [...precios.items].sort((a, b) => b.pct - a.pct).slice(0, 30);
-  el.innerHTML = top.map(it => {
-    const n = holdersCount(it.ticker);
-    return `
-    <div class="dash-row clickable" onclick="abrirHolders('${escHtml(it.ticker).replace(/'/g,"\\'")}')" title="Ver qué clientes lo tienen">
-      <span class="dash-row-ticker">${escHtml(it.ticker)}</span>
-      <span class="dash-row-name">${escHtml(it.empresa || it.moneda)}</span>
-      ${n ? `<span class="dash-row-holders">👤${n}</span>` : ''}
-      <span class="dash-row-pct ${it.pct >= 0 ? 'up' : 'down'}">${it.pct >= 0 ? '+' : ''}${it.pct.toFixed(1)}%</span>
-    </div>`;
-  }).join('');
+// ══════════════════════════════════════════════════════════════
+//  RENTA VARIABLE — acciones por cliente, cruzando tenencia × veredicto de
+//  Valuación por Múltiplos (Sumar / Atención / Reducir). Es la misma lógica de
+//  la Vista 360 pero a nivel libro: una fila por (cliente, papel), ordenada por
+//  monto — te dice a quién llamar y por qué. Los papeles que no están en el
+//  archivo de Múltiplos caen al criterio viejo de analistas (upside vs objetivo).
+// ══════════════════════════════════════════════════════════════
+const DASH_RV_ANALISTA_SUMAR = 15;   // upside ≥ +15% vs objetivo de analistas → oportunidad (papel sin veredicto de Múltiplos)
+const DASH_RV_ANALISTA_REVISAR = -3; // upside ≤ -3% (precio ya arriba del objetivo) → revisar
+
+function chipAnalistasRV(verdict, an) {
+  if (!an || an.pct == null) return '';
+  const bias = verdict === 'Sumar' ? 1 : (verdict === 'Reducir' || verdict === 'Atención') ? -1 : 0;
+  const anBias = an.pct >= 8 ? 1 : an.pct <= -3 ? -1 : 0;
+  if (bias === 0 || anBias === 0) return '';
+  const agree = bias === anBias;
+  return `<span style="font-size:8px;color:${agree ? 'var(--jade)' : 'var(--muted)'};border:1px solid var(--border);border-radius:8px;padding:1px 5px;margin-left:5px;" title="${agree ? 'los analistas van en la misma dirección que el veredicto' : 'los analistas no coinciden con el veredicto — mirá los dos'}">analistas ${agree ? '✓' : '✗'}</span>`;
 }
 
-function renderDashVentaSugerida(tenencia, precios) {
+function construirAccionesRV() {
+  const ten = dashData.tenencia;
+  if (!ten || !ten.carteraPorCliente) return { sumar: [], revisar: [] };
+  const anByTicker = {};
+  if (dashData.precios && dashData.precios.items) dashData.precios.items.forEach(it => { anByTicker[it.ticker] = it; });
+  const sumar = [], revisar = [];
+  Object.keys(ten.carteraPorCliente).forEach(cliente => {
+    const porTk = {};
+    ten.carteraPorCliente[cliente].forEach(p => {
+      if (p.grupo !== 'Renta Variable') return;
+      if (!porTk[p.ticker]) porTk[p.ticker] = { ticker: p.ticker, instrumento: p.instrumento, tenencia: 0 };
+      porTk[p.ticker].tenencia += p.tenencia || 0;
+    });
+    Object.values(porTk).forEach(pos => {
+      const tkU = String(pos.ticker).toUpperCase();
+      const ver = vmVeredictoDeTicker(pos.ticker);
+      const an = anByTicker[tkU];
+      const base = { cliente, ticker: pos.ticker, empresa: (ver && ver.empresa) || (an && an.empresa) || pos.instrumento || '', tenencia: pos.tenencia };
+      if (ver && ver.qh) {
+        const v = ver.qh.v;
+        if (v === 'Sumar') sumar.push({ ...base, senal: 'SUMAR', color: 'jade', por: ver.qh.por, fuente: 'multiplos', anChip: chipAnalistasRV(v, an) });
+        else if (v === 'Reducir' || v === 'Atención') revisar.push({ ...base, senal: v === 'Reducir' ? 'REDUCIR' : 'ATENCIÓN', color: v === 'Reducir' ? 'danger' : 'ambar', por: ver.qh.por, fuente: 'multiplos', prio: v === 'Reducir' ? 2 : 1, anChip: chipAnalistasRV(v, an) });
+      } else if (an) {
+        if (an.pct >= DASH_RV_ANALISTA_SUMAR) sumar.push({ ...base, senal: '+' + an.pct.toFixed(0) + '%', color: 'jade', por: `+${an.pct.toFixed(0)}% de upside vs objetivo de analistas (sin datos de Múltiplos)`, fuente: 'analistas' });
+        else if (an.pct <= DASH_RV_ANALISTA_REVISAR) revisar.push({ ...base, senal: an.pct.toFixed(0) + '%', color: 'ambar', por: `el precio ya está ${Math.abs(an.pct).toFixed(0)}% arriba del objetivo de analistas (sin datos de Múltiplos)`, fuente: 'analistas', prio: 0 });
+      }
+    });
+  });
+  sumar.sort((a, b) => b.tenencia - a.tenencia);
+  revisar.sort((a, b) => (b.prio || 0) - (a.prio || 0) || b.tenencia - a.tenencia);
+  return { sumar, revisar };
+}
+
+function dashRVRow(r) {
+  const [fg, bg] = V360_COLOR[r.color] || V360_COLOR.ambar;
+  return `<div class="dash-row clickable" onclick="abrirCarteraCliente('${escHtml(r.cliente).replace(/'/g,"\\'")}')" title="${escHtml(r.por || '')}">
+    <span class="dash-row-ticker">${escHtml(r.ticker)}</span>
+    <span style="font-family:var(--font-m);font-size:8px;font-weight:700;color:${fg};background:${bg};padding:1px 6px;border-radius:9px;white-space:nowrap;">${escHtml(r.senal)}</span>${r.anChip || ''}
+    <span class="dash-row-name">${escHtml(r.cliente)}</span>
+    <span class="dash-row-amt">USD ${fmtK(r.tenencia)}</span>
+  </div>`;
+}
+
+function renderDashOportunidades() {
+  const el = document.getElementById('dash-oportunidades');
+  if (!el) return;
+  const cap = document.getElementById('dash-oportunidades-cap');
+  const ten = dashData.tenencia;
+  if (!ten || !ten.carteraPorCliente || !Object.keys(ten.carteraPorCliente).length) {
+    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> para ver qué clientes tienen papeles con señal de sumar (veredicto de <a onclick="openTool('multiplos')">Valuación por Múltiplos</a>).</div>`;
+    if (cap) cap.textContent = '';
+    return;
+  }
+  const { sumar } = construirAccionesRV();
+  if (!sumar.length) {
+    el.innerHTML = `<div class="dash-empty">Ningún papel en cartera tiene hoy señal de sumar.</div>`;
+    if (cap) cap.textContent = '';
+    return;
+  }
+  el.innerHTML = sumar.slice(0, 40).map(dashRVRow).join('');
+  if (cap) cap.textContent = `${sumar.length} par(es) cliente-papel · veredicto "Sumar" de Múltiplos; papeles fuera de ese archivo, upside ≥ +${DASH_RV_ANALISTA_SUMAR}% vs analistas`;
+}
+
+function renderDashVentaSugerida() {
   const el = document.getElementById('dash-venta-sugerida');
   if (!el) return;
-  const warn = preciosParseWarningHtml(precios);
-  if (warn) { el.innerHTML = warn; return; }
-  if (!precios || !precios.items.length || !tenencia || !tenencia.porTicker || !Object.keys(tenencia.porTicker).length) {
-    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> y <a onclick="showFiles()">Precios Objetivo</a> para ver acá qué activos de tus clientes conviene vender.</div>`;
+  const cap = document.getElementById('dash-venta-sugerida-cap');
+  const ten = dashData.tenencia;
+  if (!ten || !ten.carteraPorCliente || !Object.keys(ten.carteraPorCliente).length) {
+    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> para ver qué clientes tienen papeles con veredicto Atención o Reducir de <a onclick="openTool('multiplos')">Valuación por Múltiplos</a>.</div>`;
+    if (cap) cap.textContent = '';
     return;
   }
-  const candidatos = precios.items
-    .filter(it => tenencia.porTicker[it.ticker] && it.pct < 0)
-    .sort((a,b) => a.pct - b.pct)
-    .slice(0, 30);
-  if (!candidatos.length) {
-    el.innerHTML = `<div class="dash-empty">Ningún activo en cartera está por debajo de su precio objetivo ahora mismo. 👍</div>`;
+  const { revisar } = construirAccionesRV();
+  if (!revisar.length) {
+    el.innerHTML = `<div class="dash-empty">Ningún papel en cartera tiene hoy señal de atención o reducir. 👍</div>`;
+    if (cap) cap.textContent = '';
     return;
   }
-  el.innerHTML = candidatos.map(it => {
-    const tk = tenencia.porTicker[it.ticker];
-    const n = holdersCount(it.ticker);
-    return `
-    <div class="dash-row clickable" onclick="abrirHolders('${escHtml(it.ticker).replace(/'/g,"\\'")}')" title="Ver qué clientes lo tienen">
-      <span class="dash-row-ticker">${escHtml(it.ticker)}</span>
-      <span class="dash-row-name">${escHtml(it.empresa || it.moneda)}</span>
-      ${n ? `<span class="dash-row-holders">👤${n}</span>` : ''}
-      <span class="dash-row-pct down">${it.pct.toFixed(1)}%</span>
-      <span class="dash-row-amt">USD ${fmtK(tk.tenencia)}</span>
-    </div>`;
-  }).join('');
+  el.innerHTML = revisar.slice(0, 40).map(dashRVRow).join('');
+  if (cap) cap.textContent = `${revisar.length} par(es) cliente-papel · veredicto Reducir/Atención de Múltiplos; papeles fuera de ese archivo, precio arriba del objetivo de analistas`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3023,8 +3074,8 @@ function renderDashboardAll() {
   renderDashLiquidez(tenencia);
   renderDashTopClientes(tenencia);
   renderDashTopTickers(tenencia);
-  renderDashOportunidades(precios);
-  renderDashVentaSugerida(tenencia, precios);
+  renderDashOportunidades();
+  renderDashVentaSugerida();
   renderDashRFOportunidades(monitor);
   renderDashRFRotar(monitor, tenencia);
   renderCliente360();
