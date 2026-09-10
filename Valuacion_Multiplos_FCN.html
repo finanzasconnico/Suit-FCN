@@ -218,6 +218,31 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .cli-badges{display:flex;gap:4px;}
 .cli-b{font-size:9.5px;font-family:var(--font-m);padding:1px 5px;border-radius:3px;}
 .cli-b.add{background:rgba(28,140,95,.16);color:#4ade80;} .cli-b.cut{background:rgba(192,69,59,.16);color:#E8837E;} .cli-b.watch{background:rgba(219,160,60,.14);color:var(--ambar);}
+.chip-nov{border-color:rgba(219,160,60,.45);color:var(--ambar);}
+.nv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 4px;border-bottom:1px solid rgba(30,58,52,.5);cursor:pointer;}
+.nv-row:hover{background:var(--surface);}
+.nv-emp{font-size:10.5px;color:var(--muted);}
+.nv-chg{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--font-m);}
+.nv-arrow.up{color:#4ade80;} .nv-arrow.down{color:#E8837E;}
+.nv-ten{font-family:var(--font-m);font-size:11px;color:var(--muted);white-space:nowrap;text-align:right;}
+.qh-rech{font-size:9.5px;font-family:var(--font-m);color:var(--ambar);background:rgba(219,160,60,.12);padding:1px 5px;border-radius:3px;}
+.reg-item{font-size:11px;color:var(--muted);padding:5px 0;border-bottom:1px solid rgba(30,58,52,.5);line-height:1.5;}
+.reg-item b{color:var(--text);}
+.reg-fecha{font-family:var(--font-m);font-size:10px;color:var(--dim);margin-right:6px;}
+.reg-del{float:right;cursor:pointer;color:var(--dim);}
+.reg-del:hover{color:var(--danger);}
+.reg-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.reg-form select,.reg-form input{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:11.5px;padding:5px 7px;}
+.reg-form input{flex:1;min-width:120px;}
+
+/* ── BANNER DE CLIENTE ENFOCADO ── */
+.foco-banner{flex-shrink:0;padding:10px 20px;background:var(--jade-d);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;}
+.foco-banner b{color:var(--text);}
+.foco-banner .fb-name{font-family:var(--font-d);font-size:14px;color:var(--jade);}
+.foco-banner .fb-conc{color:var(--ambar);}
+.foco-banner .fb-act{margin-left:auto;display:flex;gap:6px;}
+.foco-banner .fb-btn{padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:11px;cursor:pointer;}
+.foco-banner .fb-btn:hover{border-color:var(--jade);}
 
 /* ── NOTA PIE ── */
 .foot-note{flex-shrink:0;padding:7px 20px;background:var(--surface);border-top:1px solid var(--border);font-size:10px;color:var(--dim);line-height:1.5;}
@@ -255,12 +280,15 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </label>
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
+    <button class="chip chip-nov" id="chip-nov" onclick="abrirNovedades()" style="display:none">🔔 Novedades</button>
     <button class="chip chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
     <button class="chip chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
     <span class="counter" id="counter"></span>
   </div>
+
+  <div class="foco-banner" id="foco-banner" hidden></div>
 
   <div class="help-panel" id="help-panel" hidden>
     <div class="help-grid">
@@ -278,6 +306,9 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>Precio</b><p>¿Está cara o barata comparada con su propia historia? Compara los múltiplos de hoy contra su promedio de 5 años. <b>Barato</b> / En precio / <b>Caro</b>.</p></div>
       <div><b>Analistas</b><p>Qué recomiendan los analistas que siguen la acción, su precio objetivo promedio y cuánta suba le ven. Sale del archivo de Precios Objetivo (lo subís una vez por mes). El "coinciden / difieren" te dice si los analistas están de acuerdo con la lectura.</p></div>
       <div><b>📖 Guía de múltiplos</b><p>Tocá el botón <b>"Guía"</b> arriba para el detalle de qué es P/E, P/S, EV/EBITDA, etc., qué sectores usa cada uno y cómo comparar activos dentro de un rubro.</p></div>
+      <div><b>🔔 Novedades</b><p>Qué activos cambiaron de lectura desde la actualización anterior (ej. "MELI pasó de Mantener a Reducir"), ordenados por cuánta plata de clientes hay en juego. Tu lista de llamados de la semana.</p></div>
+      <div><b>👤 Clientes</b><p>Todos tus clientes ordenados por tenencia, con cuántos activos tiene cada uno para sumar / atención / reducir, y aviso si la cartera está muy concentrada en un ticker o sector. Click para enfocar su cartera.</p></div>
+      <div><b>📝 Registro</b><p>Dentro de la ficha de cada empresa (con un cliente enfocado) podés anotar qué le propusiste y si aceptó o rechazó. Si ya rechazó algo, te lo marca en Panorama para que no lo vuelvas a plantear. Se guarda solo en esta compu.</p></div>
     </div>
     <p class="help-foot">La pestaña <b>Panorama</b> junta todo. Para ver cada análisis por separado y con más detalle: <b>Técnico</b> (el precio y las medias), <b>Negocio</b> (crecimiento, rentabilidad, deuda) y <b>Múltiplos</b> (caro o barato vs. su historia). La opinión de los analistas tiene su propia herramienta, "Precios Objetivo".<br><br>Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b>. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
   </div>
@@ -453,6 +484,16 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
+  <div class="holders-overlay" id="novedadesOverlay" onclick="if(event.target===this) cerrarNovedades()">
+    <div class="holders-modal cli-modal">
+      <div class="hm-head">
+        <div><div class="hm-title">Qué cambió</div><div class="hm-sub" id="nv-sub"></div></div>
+        <button class="hm-close" onclick="cerrarNovedades()">✕</button>
+      </div>
+      <div class="hm-body" id="nv-body"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -618,10 +659,11 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
 // percentil del retorno 6m contra toda la lista (fuerza relativa). Se recalcula
 // cada vez que se cargan datos nuevos.
-function calcularFuerzaRelativa(){
+function calcularFuerzaRelativa(rows){
+  rows=rows||allRows;
   // solo tickers en USD — mezclar retornos en ARS (inflados) distorsiona el percentil
-  const vals=allRows.filter(r=>r.moneda!=='ARS').map(r=>r.ret6m).filter(v=>v!==null&&v!==undefined).sort((a,b)=>a-b);
-  allRows.forEach(r=>{
+  const vals=rows.filter(r=>r.moneda!=='ARS').map(r=>r.ret6m).filter(v=>v!==null&&v!==undefined).sort((a,b)=>a-b);
+  rows.forEach(r=>{
     if(r.moneda==='ARS'||r.ret6m===null||r.ret6m===undefined||!vals.length){ r._rs=null; return; }
     let lo=0; while(lo<vals.length && vals[lo]<r.ret6m) lo++;
     r._rs = vals.length>1 ? lo/(vals.length-1) : 0.5;   // 0..1
@@ -841,6 +883,48 @@ function clientesConCartera(){
   }));
   return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
 }
+// ══════════════════════════════════════════
+//  REGISTRO DE PITCHES (qué le propuse a cada cliente) — localStorage, por asesor/compu
+// ══════════════════════════════════════════
+function _regAll(){ try{ return JSON.parse(localStorage.getItem('vm_registro')||'{}'); }catch(e){ return {}; } }
+function _regSave(o){ try{ localStorage.setItem('vm_registro',JSON.stringify(o)); }catch(e){} }
+function regKey(cli,tk){ return `${cli}|${String(tk).toUpperCase()}`; }
+function getReg(cli,tk){ return _regAll()[regKey(cli,tk)]||[]; }
+function addReg(cli,tk,e){ const o=_regAll(); const k=regKey(cli,tk); (o[k]=o[k]||[]).push({...e,fecha:new Date().toISOString().slice(0,10)}); _regSave(o); }
+function delReg(cli,tk,i){ const o=_regAll(); const k=regKey(cli,tk); if(o[k]){ o[k].splice(i,1); if(!o[k].length) delete o[k]; _regSave(o); } }
+function regRechazado(cli,tk){ return getReg(cli,tk).some(e=>e.resultado==='Rechazó'); }
+const REG_ACCIONES=['Comprar','Sumar','Mantener','Reducir','Vender','Rotar'];
+const REG_RESULT=['Sin respuesta','Aceptó','Rechazó','Lo está pensando'];
+function _fichaRegistro(ticker){
+  if(!clienteActivo) return '';
+  const cli=clienteActivo, reg=getReg(cli,ticker);
+  const hist=reg.map((e,i)=>`<div class="reg-item"><span class="reg-fecha">${e.fecha}</span>
+    <b>${e.accion}</b> · ${e.resultado}${e.nota?` — ${e.nota.replace(/</g,'&lt;')}`:''}
+    <span class="reg-del" onclick="event.stopPropagation();delReg('${cli.replace(/'/g,"\\'")}','${ticker}',${i});abrirFicha('${ticker}')">✕</span></div>`).join('');
+  return `<div class="fs-sec"><h5>📝 Registro con ${datosCliente(cli).nombre||cli}</h5>
+    ${hist||'<p class="fs-p">Todavía no anotaste nada para este cliente en este activo.</p>'}
+    <div class="reg-form">
+      <select id="reg-accion">${REG_ACCIONES.map(a=>`<option>${a}</option>`).join('')}</select>
+      <select id="reg-result">${REG_RESULT.map(a=>`<option>${a}</option>`).join('')}</select>
+      <input id="reg-nota" placeholder="nota (opcional)">
+      <button class="fb-btn" onclick="event.stopPropagation();addReg('${cli.replace(/'/g,"\\'")}','${ticker}',{accion:reg_accion.value,resultado:reg_result.value,nota:reg_nota.value});abrirFicha('${ticker}')">Guardar</button>
+    </div></div>`;
+}
+
+// ¿la cartera del cliente está muy concentrada en un ticker o un sector?
+function concentracion(cli){
+  const cart=carteraDeCliente(cli);
+  const total=cart.reduce((a,x)=>a+x.ten,0);
+  if(!total || cart.length<2) return null;
+  const top=cart[0], topPct=top.ten/total;
+  const bySec={}; cart.forEach(x=>{const s=x.r.sector||'Otros'; bySec[s]=(bySec[s]||0)+x.ten;});
+  const [secNom,secTen]=Object.entries(bySec).sort((a,b)=>b[1]-a[1])[0];
+  const secPct=secTen/total;
+  const flags=[];
+  if(topPct>=0.30) flags.push(`${fmtN(topPct*100,0)}% en ${top.r.ticker}`);
+  if(secPct>=0.50 && Object.keys(bySec).length>1) flags.push(`${fmtN(secPct*100,0)}% en ${secNom}`);
+  return flags.length ? flags : null;
+}
 
 // ══════════════════════════════════════════
 //  MENSAJE AL CLIENTE (mismo patrón que Rotador RV)
@@ -1047,6 +1131,7 @@ function abrirFicha(ticker){
     ${sec('🏭 El negocio', neg)}
     ${sec('⚖️ La valuación', val)}
     ${sec('👔 Analistas', anl)}
+    ${_fichaRegistro(ticker)}
     ${_fichaHolders(ticker)}`;
 }
 function cerrarHolders(){
@@ -1066,9 +1151,11 @@ function abrirClientes(){
     const cnt={Sumar:0,Atención:0,Reducir:0};
     cart.forEach(x=>{ if(cnt[x.q.v]!==undefined) cnt[x.q.v]++; });
     const b=[];
-    if(cnt.Sumar) b.push(`<span class="cli-b add">${cnt.Sumar} sumar</span>`);
-    if(cnt.Atención) b.push(`<span class="cli-b watch">${cnt.Atención} atención</span>`);
     if(cnt.Reducir) b.push(`<span class="cli-b cut">${cnt.Reducir} reducir</span>`);
+    if(cnt.Atención) b.push(`<span class="cli-b watch">${cnt.Atención} atención</span>`);
+    if(cnt.Sumar) b.push(`<span class="cli-b add">${cnt.Sumar} sumar</span>`);
+    const conc=concentracion(c);
+    if(conc) b.push(`<span class="cli-b watch" title="${conc.join(' · ')}">⚠ concentrado</span>`);
     const nom=datosCliente(c).nombre||c;
     return `<div class="cli-row" onclick="focoDesdeFicha('${String(c).replace(/'/g,"\\'")}');cerrarClientes()">
       <span class="cli-nom">${nom}</span>
@@ -1080,7 +1167,7 @@ function abrirClientes(){
 function cerrarClientes(){ document.getElementById('clientesOverlay').classList.remove('open'); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); cerrarNovedades(); } });
 function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
@@ -1112,6 +1199,51 @@ async function loadAnalistas(){
 function analistasDe(r){
   return ANALISTAS[String(r.ticker||'').toUpperCase()] || ANALISTAS[String(r.tickerUsado||'').toUpperCase()] || null;
 }
+
+// ── "QUÉ CAMBIÓ" — compara con la foto de la corrida anterior ──
+let PREV={};   // { TICKER: fila parseada de la corrida anterior }
+async function loadPrev(){
+  const entry=await fetchStaticFallback('data/valuacion_multiplos_prev.xlsx');
+  if(!entry||!entry.data) return;
+  try{
+    const rows=parseBuffer(entry);
+    calcularFuerzaRelativa(rows);
+    PREV={}; rows.forEach(r=>{ PREV[r.ticker.toUpperCase()]=r; });
+    render();
+  }catch(e){ console.warn('[Panorama] no se pudo leer la foto anterior',e); }
+}
+const QH_BONDAD={'Sumar':4,'Mantener':3,'Atención':2,'Reducir':1};   // de mejor a peor
+function novedades(){
+  const out=[];
+  allRows.forEach(r=>{
+    const p=PREV[r.ticker.toUpperCase()];
+    if(!p) return;
+    const va=queHacer(r).v, vp=queHacer(p).v;
+    if(va===vp || va==='Sin señal' || vp==='Sin señal') return;
+    out.push({r, de:vp, a:va, ten:tenenciaTotal(r), nCli:nClientes(r), mejor:(QH_BONDAD[va]||0)>(QH_BONDAD[vp]||0)});
+  });
+  // primero los que empeoraron (piden acción), después por plata en juego
+  return out.sort((a,b)=>(a.mejor-b.mejor) || (b.ten-a.ten) || (b.nCli-a.nCli));
+}
+function abrirNovedades(){
+  const nv=novedades();
+  document.getElementById('nv-sub').textContent = nv.length
+    ? `${nv.length} activo(s) cambiaron de lectura desde la actualización anterior`
+    : 'Sin cambios de lectura desde la actualización anterior';
+  const body=document.getElementById('nv-body');
+  body.innerHTML = !nv.length
+    ? '<div class="hm-empty">Nada cambió de veredicto. Cuando el bot actualice los datos y algún activo pase de una lectura a otra, aparece acá.</div>'
+    : nv.map(x=>{
+        const esc=String(x.r.ticker).replace(/'/g,"\\'");
+        return `<div class="nv-row" onclick="abrirFicha('${esc}')">
+          <div><b>${x.r.ticker}</b> <span class="nv-emp">${x.r.empresa||''}</span>
+            <div class="nv-chg">${x.de} <span class="nv-arrow ${x.mejor?'up':'down'}">→</span> <b class="${x.mejor?'val-pos':'val-neg'}">${x.a}</b></div></div>
+          <div class="nv-ten">${x.ten>0?fmtUsd(x.ten)+' · '+x.nCli+(x.nCli===1?' cliente':' clientes'):'no está en cartera'}</div>
+        </div>`;
+      }).join('');
+  document.getElementById('novedadesOverlay').classList.add('open');
+}
+function cerrarNovedades(){ document.getElementById('novedadesOverlay').classList.remove('open'); }
 
 async function loadTenencia(){
   const entry=await getSharedFile('tenencia');
@@ -1373,7 +1505,7 @@ function render(){
       return `<tr style="background:${bg}">
         <td class="pa-activo"><div class="pa-tk" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
         <td class="pa-cartera">${carteraCell}</td>
-        <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span><div class="pa-por">${q.por}</div></td>
+        <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span>${clienteActivo&&regRechazado(clienteActivo,r.ticker)?' <span class="qh-rech" title="ya se lo propusiste y lo rechazó — mirá la ficha">📝 rechazado</span>':''}<div class="pa-por">${q.por}</div></td>
         <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
         <td class="pa-anal">${analCell(r)}</td>
       </tr>`;
@@ -1449,11 +1581,36 @@ function render(){
   thead.innerHTML=headHtml;
   tbody.innerHTML=bodyHtml || `<tr><td colspan="${ncols}" style="padding:30px;text-align:center;color:var(--muted);">Sin filas para este filtro.</td></tr>`;
 
+  // banner del cliente enfocado
+  const fbEl=document.getElementById('foco-banner');
+  if(fbEl){
+    if(clienteActivo && dataTenencia.length){
+      const cart=carteraDeCliente(clienteActivo);
+      const tot=cart.reduce((a,x)=>a+x.ten,0);
+      const cnt={Reducir:0,Atención:0,Sumar:0};
+      cart.forEach(x=>{ if(cnt[x.q.v]!==undefined) cnt[x.q.v]++; });
+      const partes=[];
+      if(cnt.Reducir) partes.push(`<b class="val-neg">${cnt.Reducir}</b> para reducir`);
+      if(cnt.Atención) partes.push(`<b style="color:var(--ambar)">${cnt.Atención}</b> en atención`);
+      if(cnt.Sumar) partes.push(`<b class="val-pos">${cnt.Sumar}</b> para sumar`);
+      const conc=concentracion(clienteActivo);
+      const d=datosCliente(clienteActivo);
+      fbEl.innerHTML=`<span class="fb-name">${d.nombre||clienteActivo}</span>`
+        +`<span>${fmtUsd(tot)} en ${cart.length} posiciones${partes.length?' · '+partes.join(' · '):''}</span>`
+        +(conc?`<span class="fb-conc">⚠ concentración: ${conc.join(' · ')}</span>`:'')
+        +`<span class="fb-act"><button class="fb-btn" onclick="abrirMensaje(clienteActivo)">✉ Mensaje</button><button class="fb-btn" onclick="quitarFoco()">Quitar foco</button></span>`;
+      fbEl.hidden=false;
+    } else fbEl.hidden=true;
+  }
+
   // contador
   const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo} <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>`
     : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>` : '';
   const cmsg=document.getElementById('chip-msg');
   if(cmsg) cmsg.textContent = clienteActivo ? `✉ Mensaje a ${String(clienteActivo).split(' ')[0]}` : '✉ Mensajes';
+  const cnov=document.getElementById('chip-nov');
+  if(cnov){ const n=Object.keys(PREV).length?novedades().length:0;
+    cnov.style.display=n?'':'none'; cnov.textContent=`🔔 Novedades (${n})`; }
   let conDato, unidad='tickers';
   if(activeTab==='Panorama'){
     unidad='activos';
@@ -1557,6 +1714,7 @@ loadAndRender();
 loadTenencia();
 loadAnalistas();
 loadStock();
+loadPrev();
 </script>
 </body>
 </html>

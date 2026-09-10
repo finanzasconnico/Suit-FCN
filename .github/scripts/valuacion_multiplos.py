@@ -40,6 +40,7 @@ import sys
 import json
 import time
 import math
+import shutil
 import datetime
 
 import logging
@@ -453,6 +454,9 @@ def write_xlsx(cache, tickers):
         return
     df = pd.DataFrame(rows, columns=COLS)
     os.makedirs(os.path.dirname(OUT_XLSX), exist_ok=True)
+    # foto de la corrida anterior -> el panel la usa para "que cambio esta semana"
+    if os.path.exists(OUT_XLSX):
+        shutil.copy2(OUT_XLSX, OUT_XLSX.replace(".xlsx", "_prev.xlsx"))
     df.to_excel(OUT_XLSX, index=False, sheet_name="valuacion")
     ok = sum(1 for r in rows if r["Estado"] == "OK")
     print(f"\n{OUT_XLSX} -> {len(rows)} filas ({ok} con multiplos)")
