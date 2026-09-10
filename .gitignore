@@ -75,3 +75,11 @@ plantillas-mail/*.vba
 # Bytecode compilado de Python (queda si se corre/importa el script a mano para probarlo)
 __pycache__/
 *.pyc
+
+# Skill /graphify (grafo de conocimiento del repo). Todo derivado y regenerable
+# con regenerar-grafo.bat — no se versiona ni se publica.
+#   graphify-src/ = el JS de los <script> de cada .html, extraído para que
+#                   tree-sitter lo parsee (no tiene gramática de HTML).
+#   graphify-out/ = graph.json + graph.html + GRAPH_REPORT.md
+graphify-src/
+graphify-out/

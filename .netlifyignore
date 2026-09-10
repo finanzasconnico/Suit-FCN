@@ -34,6 +34,8 @@ En desarrollo/
 .git/
 .netlify/
 node_modules/
+graphify-src/
+graphify-out/
 
 # Excepción: estos 2 archivos NO tienen datos de clientes — son los que
 # Monitor de Individuos y Precios Objetivo autocargan como fallback público.

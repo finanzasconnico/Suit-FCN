@@ -45,6 +45,28 @@ Todas comparten datos así:
 
 **Antes de asumir cómo funciona un archivo que no tocaste en la sesión actual, mirá su código real.** Ya pasó más de una vez que un cambio "obvio" rompía este patrón compartido por no conocer una convención que ya existía ahí (ver incidente del 19/08 abajo — se perdió y hubo que restaurar el fallback en 3 archivos distintos por este motivo).
 
+## Grafo de conocimiento (skill /graphify)
+Hay un grafo de llamadas de toda la Suite, generado con el skill `/graphify`. Útil para
+"¿quién llama a esta función?", "¿qué se rompe si toco X?", "¿dónde está la lógica de Y?"
+sin abrir cada HTML de 200 KB.
+
+- **Cómo está armado:** graphify no tiene gramática de HTML, así que
+  `.github/scripts/graphify_extraer_scripts.py` extrae el JS de los `<script>` de cada
+  `.html` de producción (usa `git ls-files`, respeta `.gitignore` → sin datos de clientes)
+  a `graphify-src/*.js`, y `graphify` corre AST sobre eso.
+- **Regenerar** (después de tocar el JS de cualquier tool): `regenerar-grafo.bat`.
+  Todo local, sin API key, sin costo.
+- **Salida:** `graphify-src/graphify-out/` (`graph.html` interactivo, `GRAPH_REPORT.md`,
+  `graph.json`). `graphify-src/` y `graphify-out/` están en `.gitignore` y `.netlifyignore`
+  (derivado, no se versiona ni se publica).
+- **Consultar:** `python -m graphify query "<pregunta>" --graph graphify-src/graphify-out/graph.json`
+  (también `explain`, `affected`, `god-nodes`, `path`).
+- **Limitación:** los números de línea del grafo mapean al `.js` extraído, alineado al
+  primer bloque `<script>` del HTML — exacto para tools de un solo `<script>`, con drift
+  después del primer bloque en las que tienen varios (Calculadora de Rotaciones). Las
+  comunidades quedan sin nombre salvo que se corra `graphify label graphify-src` con el
+  CLI `claude` logueado.
+
 ## Skills de diseño instaladas (si Nico ya corrió los comandos)
 Si ves `.claude/skills/emil-design-eng/` y/o `.claude/skills/frontend-design/` en este repo: son skills de Claude Code, no reemplazan nada de este `CLAUDE.md` (esto es contexto de negocio siempre activo; los skills son guías especializadas que se activan solo cuando aplica). `emil-design-eng` (basado en el curso de Emil Kowalski) da criterio de animaciones/microinteracciones (duración <300ms, easing custom, qué vale la pena animar). `frontend-design` (de Anthropic) empuja a decisiones visuales más distintivas en vez de genéricas. Tenelos en cuenta activamente cuando toques CSS, animaciones o layout de cualquier herramienta de la suite — no hace falta que Nico los mencione cada vez, alcanza con que el pedido sea de tipo visual/de animación.
 

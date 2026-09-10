@@ -1,0 +1,24 @@
+# Exclusiones extra para graphify (se suman al .gitignore, que ya bloquea
+# todos los archivos de datos de clientes por extensión y carpeta).
+# Acá solo saco ruido que ensuciaría el grafo con nodos casi duplicados.
+
+# Versiones viejas / obsoletas ya confirmadas como descartables
+_to_delete/
+*viejo*
+*_old*
+*_OLDER*
+
+# Copias de desarrollo (duplican los .html de producción de la raíz)
+En desarrollo/
+
+# Carpeta de datos (Excels de mercado y de prueba, no es código)
+data/
+
+# Salida del propio graphify
+graphify-out/
+
+# Infra / dependencias
+node_modules/
+.git/
+.netlify/
+__pycache__/
