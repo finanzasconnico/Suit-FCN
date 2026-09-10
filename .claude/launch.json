@@ -4,7 +4,7 @@
     {
       "name": "portfolio_monitor_fcn",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "http-server", "-p", "8090", "-c-1"],
+      "runtimeArgs": ["-y", "http-server", ".", "-p", "8090", "-c-1"],
       "port": 8090
     }
   ]

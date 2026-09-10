@@ -546,6 +546,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <div class="dash-card">
             <div class="dash-section-title">💵 Mejores TIR disponibles (Renta Fija)</div>
             <div id="dash-rf-oportunidades" class="dash-scrollbox"></div>
+            <div id="dash-rf-oportunidades-cap" style="font-size:10px;color:var(--muted);margin-top:6px;"></div>
           </div>
           <div class="dash-card">
             <div class="dash-section-title">🔁 Conviene rotar — TIR baja, en tenencia de clientes (Renta Fija)</div>
@@ -896,6 +897,58 @@ const SHARED_FILES = [
 // cualquier compañero que abra la web en otra compu los vea sin tener que subirlos
 // él mismo. Tenencia y Stock quedan afuera a propósito: tienen datos de clientes.
 const STATIC_PUBLISH_KEYS = { monitor: 'monitor.xlsx', precios_objetivo: 'precios_objetivo.xlsx', valuacion_multiplos: 'valuacion_multiplos.xlsx' };
+
+// El Monitor de Individuos de Balanz es un .xlsm de ~40 hojas y ~5 MB; la Suite sólo lee
+// Corporativos, Soberanos, Letras-Bonos $ y las hojas de detalle por ticker (B3 = "Emisor",
+// que usa la Calculadora de Rotaciones para el cronograma real de flujos). Al PUBLICAR, se
+// reescribe como valores puros (sin fórmulas ni estilos) y sin las ~17 hojas agregadas/de
+// trabajo que ninguna herramienta consume: pasa de ~5 MB a ~1,6 MB y de ~2,6 s a ~0,4 s de
+// parseo en cada tool que abre. Verificado (2026-09): valor de cada celda de las hojas que
+// quedan, idéntico al original (diff = 0). Si Balanz renombra una hoja hoy descartada y una
+// tool empieza a necesitarla, sacala de esta lista.
+const MONITOR_HOJAS_DESCARTABLES = new Set(['SANDBOX', 'Hist', 'VivoPrecios', 'Precios', 'Prueba', 'VivoCorpoOFF', 'Detalles', 'Flujo', 'Caución', 'Sintéticos', 'Curvas Comparativas ONs', 'Equity', 'Calendario', 'Carteras', 'Comparativas', 'Carteras recomendadas', 'ΔTIR']);
+// Reescribe una hoja quedándose SOLO con el valor de cada celda no vacía (sin fórmulas, sin
+// estilos, sin las miles de celdas vacías con formato que infla el .xlsm). Se conservan las
+// direcciones absolutas (A1, B3, …) Y el origen del rango tal cual: las hojas de detalle por
+// ticker se leen por celda fija (ws['B3']==='Emisor', ws['C8']=interés, …) y varias hojas
+// (Soberanos empieza en B1) se leen con sheet_to_json, que toma la columna 0 del origen del
+// !ref — moverlo correría todas las columnas. Solo se recorta el FINAL del rango a la última
+// celda con dato real.
+function slimSheetValores(ws) {
+  if (!ws || !ws['!ref']) return ws;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const out = {};
+  let maxR = -1, maxC = -1;
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (!cell || cell.v === undefined || cell.v === null || cell.v === '') continue;
+      out[addr] = { t: cell.t, v: cell.v };
+      if (R > maxR) maxR = R;
+      if (C > maxC) maxC = C;
+    }
+  }
+  out['!ref'] = maxR < 0 ? ws['!ref'] : XLSX.utils.encode_range({ s: range.s, e: { r: Math.max(range.s.r, maxR), c: Math.max(range.s.c, maxC) } });
+  return out;
+}
+function slimMonitorArrayBuffer(arrayBuffer) {
+  try {
+    const wb = XLSX.read(arrayBuffer, { type: 'array', cellFormula: false, cellStyles: false, cellDates: false, raw: true });
+    const out = XLSX.utils.book_new();
+    let kept = 0;
+    for (const name of wb.SheetNames) {
+      if (MONITOR_HOJAS_DESCARTABLES.has(name)) continue;
+      XLSX.utils.book_append_sheet(out, slimSheetValores(wb.Sheets[name]), name.slice(0, 31));
+      kept++;
+    }
+    if (!kept) return arrayBuffer;
+    return XLSX.write(out, { bookType: 'xlsx', type: 'array', compression: true });
+  } catch (e) {
+    console.warn('[Publicar] no se pudo compactar el Monitor, se publica tal cual', e);
+    return arrayBuffer;
+  }
+}
 
 function downloadForPublish(key, arrayBuffer) {
   const fixedName = STATIC_PUBLISH_KEYS[key];
@@ -1621,6 +1674,27 @@ const DASH_RF_TIR_MIN = 0.04;   // < 4% no se muestra como "oportunidad"
 const DASH_RF_TIR_MAX = 0.20;   // > 20% se descarta por riesgo/distress
 const DASH_RF_TIR_BAJA = 0.05;  // debajo de esto, en cartera de un cliente, es candidato a rotar (mismo criterio que Scanner ONs)
 
+// Escala local (.ar) de calificación → rank numérico. Solo se aplica a ONs CORPORATIVAS en la
+// caja de "mejores TIR disponibles": una TIR alta en una ON con calificación baja o en default
+// casi siempre es el mercado descontando riesgo de pago, no una oportunidad — sugerirla ahí
+// confunde. Los soberanos / provinciales / BOPREAL / dollar-linked NO se filtran por esto: son
+// escala global (B-) y deuda argentina que Nico ofrece a propósito, no "una empresa en quiebra".
+const RF_RATING_RANK = { 'AAA':7,'AA+':6.7,'AA':6.3,'AA-':6,'A+':5.3,'A':5,'A-':4.7,'BBB+':4.3,'BBB':4,'BBB-':3.7,'BB+':3.3,'BB':3,'BB-':2.7,'B+':2.3,'B':2,'B-':1.7,'CCC':1,'CC':0.5,'C':0.3,'D':0,'SD':0,'RD':0 };
+function rfRatingRank(calif) {
+  if (!calif) return null;
+  const c = String(calif).toUpperCase().replace(/\(.*?\)/g, '').replace(/\.AR\b/g, '').replace(/[^A-Z+\-]/g, '').trim();
+  return (c in RF_RATING_RANK) ? RF_RATING_RANK[c] : null;
+}
+const DASH_RF_CORP_MIN_RANK = 6;  // AA- — mínimo de calificación local para que una ON corporativa entre a "mejores TIR"
+// true si el ticker es apto para sugerir como oportunidad (corporativas: calificación AA- o mejor;
+// el resto pasa siempre). Compartido por la caja del dashboard y por la alternativa de rotación
+// de la Vista 360, para no sugerir rotar HACIA un papel que la caja de arriba no mostraría.
+function rfAptaComoOportunidad(d) {
+  if (d.tipo !== 'corporativo') return true;
+  const rk = rfRatingRank(d.calificacion);
+  return rk != null && rk >= DASH_RF_CORP_MIN_RANK;
+}
+
 // Adaptado de Scanner_ONs_FCN.html → cargarMonitor(), sin las llamadas de UI propias de esa herramienta.
 function parseMonitorTIR(entry) {
   if (!entry || !entry.data) return null;
@@ -1643,6 +1717,18 @@ function parseMonitorTIR(entry) {
       return yrs > 0 ? Math.round(yrs * 100) / 100 : null;
     };
     const parseNum = v => { if (v === null || v === undefined || v === '') return null; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+    // Un bono/ON cuyo vencimiento ya pasó no es ni una posición ni una oportunidad — el Monitor
+    // a veces lo sigue trayendo unos días con TIR basura (negativa o disparada), y eso ensuciaba
+    // "conviene rotar" y "mejores TIR". Se descarta acá, así queda afuera de todo el dashboard y
+    // la Vista 360. Margen de 3 días para no cortar por diferencia de huso el mismo día del vto.
+    const nowMs = Date.now();
+    const yaVencio = vtoRaw => {
+      let ms = null;
+      if (typeof vtoRaw === 'number' && vtoRaw > 20000) ms = Math.round((vtoRaw - 25569) * 86400 * 1000);
+      else if (vtoRaw) { const d = new Date(String(vtoRaw)); if (!isNaN(d.getTime())) ms = d.getTime(); }
+      return ms != null && ms < nowMs - 3 * 86400000;
+    };
+    let vencidosCnt = 0;
     // Busca una columna por nombre de header (variantes conocidas) y si no la encuentra
     // cae al offset fijo actual como respaldo — así si Balanz reordena/inserta una columna,
     // esto se autocorrige en vez de leer en silencio el valor de otra columna.
@@ -1672,6 +1758,7 @@ function parseMonitorTIR(entry) {
           const row = raw[i]; const tk = String(row[iT] || '').trim();
           if (!tk || !/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
           const vtoRaw = row[iVto];
+          if (yaVencio(vtoRaw)) { vencidosCnt++; continue; }
           const vencimiento = typeof vtoRaw === 'number' ? excelSerialToDate(vtoRaw) : (String(vtoRaw || '').trim());
           const durFromExcel = parseNum(iDur >= 0 ? row[iDur] : null);
           const duration = durFromExcel !== null && durFromExcel > 0 ? durFromExcel : calcDurFromVto(vtoRaw);
@@ -1723,15 +1810,17 @@ function parseMonitorTIR(entry) {
           const tir = Math.abs(tirRaw) > 1 ? tirRaw / 100 : tirRaw;
           if (tir > 1.5 || tir < -0.5) continue;
           if (dataMonitor[tk]) continue;
+          const vRaw = dr[jVto];
+          if (yaVencio(vRaw)) { vencidosCnt++; continue; }
           const cupRaw = parseFloat(dr[jCup]);
           const cup = isNaN(cupRaw) ? null : (Math.abs(cupRaw) > 1 ? cupRaw / 100 : cupRaw);
-          const vRaw = dr[jVto];
           const vencimiento = vRaw ? (typeof vRaw === 'number' ? excelSerialToDate(vRaw) : String(vRaw).trim()) : '';
           dataMonitor[tk] = { tipo: currentCat, tir, cupon: cup, vencimiento, calificacion: String(dr[jCal] || '').trim(), emisor: em, instrumento: em, duration: calcDurFromVto(vRaw) };
           sovCnt++;
         }
       }
     }
+    if (vencidosCnt) console.log(`[Dashboard] ${vencidosCnt} instrumento(s) de Renta Fija descartado(s) por vencimiento pasado.`);
     if (corpCnt + sovCnt === 0) return null;
     return dataMonitor;
   } catch (e) { console.warn('[Dashboard] error leyendo monitor (TIR renta fija)', e); return null; }
@@ -1745,23 +1834,27 @@ function renderDashRFOportunidades(monitor) {
     return;
   }
   const top = Object.entries(monitor)
-    .filter(([tk, d]) => d.tir !== null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX)
+    .filter(([tk, d]) => d.tir !== null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX && rfAptaComoOportunidad(d))
     .sort((a, b) => b[1].tir - a[1].tir)
     .slice(0, 30);
   if (!top.length) {
-    el.innerHTML = `<div class="dash-empty">No hay tickers con TIR entre ${(DASH_RF_TIR_MIN*100).toFixed(0)}% y ${(DASH_RF_TIR_MAX*100).toFixed(0)}% ahora mismo (se descartan TIR muy bajas o muy altas/riesgosas).</div>`;
+    el.innerHTML = `<div class="dash-empty">No hay tickers con TIR entre ${(DASH_RF_TIR_MIN*100).toFixed(0)}% y ${(DASH_RF_TIR_MAX*100).toFixed(0)}% y calificación suficiente ahora mismo.</div>`;
     return;
   }
   el.innerHTML = top.map(([tk, d]) => {
     const n = holdersCount(tk);
+    const cal = String(d.calificacion || '').trim();
     return `
     <div class="dash-row clickable" onclick="abrirHolders('${escHtml(tk).replace(/'/g,"\\'")}')" title="Ver qué clientes lo tienen">
       <span class="dash-row-ticker">${escHtml(tk)}</span>
       <span class="dash-row-name">${escHtml(d.emisor || d.instrumento)}</span>
+      ${cal ? `<span class="dash-row-cal" style="font-size:9px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:1px 6px;">${escHtml(cal)}</span>` : ''}
       ${n ? `<span class="dash-row-holders">👤${n}</span>` : ''}
       <span class="dash-row-pct up">${(d.tir*100).toFixed(2)}%</span>
     </div>`;
   }).join('');
+  const cap = document.getElementById('dash-rf-oportunidades-cap');
+  if (cap) cap.textContent = 'ONs corporativas filtradas a calificación AA- o mejor · soberanos y provinciales se muestran igual';
 }
 
 function renderDashRFRotar(monitor, tenencia) {
@@ -2302,6 +2395,148 @@ function abrirHolders(ticker) {
 function cerrarHolders() { document.getElementById('holdersOverlay').classList.remove('open'); }
 
 // ══════════════════════════════════════════════════════════════
+//  VALUACIÓN POR MÚLTIPLOS — port del veredicto "Qué hacer" (Sumar / Mantener /
+//  Atención / Reducir) de Valuacion_Multiplos_FCN.html, para usarlo como señal de
+//  renta variable en la Vista 360. Las funciones son un calco 1:1 de esa herramienta
+//  (misma fórmula de tendencia / fundamental / valuación) — si se toca allá el criterio,
+//  hay que replicarlo acá. Prefijo vm* / VM_ para no chocar con nada del Suite.
+// ══════════════════════════════════════════════════════════════
+const VM_SECTOR_MULTIPLOS = {
+  'Financial Services': ['PB','PE'],
+  'Technology': ['PS','EVEBITDA','PFCF','PE'],
+  'Communication Services': ['PS','EVEBITDA','PFCF','PE'],
+  'Consumer Cyclical': ['PE','EVEBITDA','PFCF'],
+  'Consumer Defensive': ['PE','EVEBITDA','PFCF'],
+  'Healthcare': ['PE','EVEBITDA','PFCF'],
+  'Industrials': ['PE','EVEBITDA','PB'],
+  'Energy': ['EVEBITDA','PB','PFCF'],
+  'Basic Materials': ['EVEBITDA','PB','PFCF'],
+  'Utilities': ['PE','EVEBITDA','PB'],
+  'Real Estate': [],
+};
+const VM_DEFAULT_MULTIPLOS = ['PE','EVEBITDA','PS'];
+const VM_MULT_ORDER = ['PE','PS','EVEBITDA','PFCF','PB'];
+function vmMultPrimario(sector) {
+  const p = (sector && sector in VM_SECTOR_MULTIPLOS) ? VM_SECTOR_MULTIPLOS[sector] : VM_DEFAULT_MULTIPLOS;
+  return p.length ? p[0] : null;
+}
+const vmClamp = (x, a, b) => Math.max(a, Math.min(b, x));
+function vmNum(v) { if (v === null || v === undefined || v === '') return null; const n = Number(v); return isNaN(n) ? null : n; }
+function vmMult(v) { const n = vmNum(v); return (n === null || n <= 0) ? null : n; }
+function vmCorr(actual, prom) { return (actual === null || prom === null) ? null : prom / actual - 1; }
+
+// fuerza relativa: percentil del retorno 6m contra toda la lista (solo tickers USD)
+function vmCalcFuerzaRelativa(rows) {
+  const vals = rows.filter(r => r.moneda !== 'ARS').map(r => r.ret6m).filter(v => v !== null && v !== undefined).sort((a, b) => a - b);
+  rows.forEach(r => {
+    if (r.moneda === 'ARS' || r.ret6m === null || r.ret6m === undefined || !vals.length) { r._rs = null; return; }
+    let lo = 0; while (lo < vals.length && vals[lo] < r.ret6m) lo++;
+    r._rs = vals.length > 1 ? lo / (vals.length - 1) : 0.5;
+  });
+}
+function vmTendencia(r) {
+  if (r.moneda === 'ARS') return null;
+  const c = [];
+  if (r.precio !== null && r.mm200) c.push([vmClamp((r.precio / r.mm200 - 1) / 0.25, -1, 1), 0.25]);
+  if (r.mm21 && r.mm50 && r.mm200) c.push([(r.mm21 > r.mm50 ? 0.5 : -0.5) + (r.mm50 > r.mm200 ? 0.5 : -0.5), 0.20]);
+  if (r.ret3m !== null && r.ret3m !== undefined) c.push([vmClamp(r.ret3m / 0.20, -1, 1), 0.20]);
+  if (r._rs !== null && r._rs !== undefined) c.push([r._rs * 2 - 1, 0.20]);
+  if (r.dist52 !== null && r.dist52 !== undefined) c.push([vmClamp((r.dist52 + 0.15) / 0.15, -1, 1), 0.15]);
+  if (c.length < 3) return null;
+  const w = c.reduce((a, x) => a + x[1], 0);
+  return Math.round(100 * c.reduce((a, x) => a + x[0] * x[1], 0) / w);
+}
+function vmValuacion5y(r) {
+  const k = vmMultPrimario(r.sector);
+  const mm = k && r.m[k];
+  return (mm && mm.actual !== null && mm.p5 !== null) ? vmCorr(mm.actual, mm.p5) : null;
+}
+function vmFundamental(r) {
+  const f = r.f || {};
+  const c = [];
+  if (f.revCagr !== null && f.revCagr !== undefined) c.push([vmClamp(f.revCagr / 0.15, -1, 1), 0.30]);
+  if (f.niPos !== null && f.niPos !== undefined) c.push([f.niPos * 2 - 1, 0.25]);
+  if (f.margenTrend !== null && f.margenTrend !== undefined) c.push([vmClamp(f.margenTrend / 0.05, -1, 1), 0.20]);
+  if (f.fcfPos !== null && f.fcfPos !== undefined) c.push([f.fcfPos * 2 - 1, 0.15]);
+  if (f.ndEbitda !== null && f.ndEbitda !== undefined) c.push([vmClamp((2.5 - f.ndEbitda) / 2.5, -1, 1), 0.10]);
+  if (c.length < 3) return null;
+  const w = c.reduce((a, x) => a + x[1], 0);
+  return Math.round(100 * c.reduce((a, x) => a + x[0] * x[1], 0) / w);
+}
+function vmQueHacer(r) {
+  const t = vmTendencia(r), n = vmFundamental(r), v = vmValuacion5y(r);
+  const up = t !== null && t >= 25, down = t !== null && t <= -20;
+  const solido = n !== null && n >= 20, flojo = n !== null && n <= -15;
+  const caro = v !== null && v <= -0.40;
+  if (n === null) {
+    if (t === null) return { v: 'Sin señal', por: 'Faltan datos para dar una lectura.' };
+    if (t >= 25) return { v: 'Mantener', por: 'Viene subiendo. Es un ETF o papel sin datos del negocio — se sigue por la tendencia.' };
+    if (t <= -25) return { v: 'Atención', por: 'Viene bajando sostenido. Revisá si sigue teniendo sentido en la cartera.' };
+    return { v: 'Mantener', por: 'Sin una tendencia marcada.' };
+  }
+  if (t === null) return { v: 'Sin señal', por: 'Faltan datos de precio para dar una lectura.' };
+  if (flojo) {
+    return up
+      ? { v: 'Atención', por: 'El precio sube pero la empresa viene floja (ventas o márgenes en baja). Rebote sin sustento: no conviene sumar, y si tenés ganancia puede ser momento de tomarla.' }
+      : { v: 'Reducir', por: 'Cae el precio y la empresa está peor que antes. El sesgo es a reducir o salir — confirmalo con tu análisis.' };
+  }
+  if (up && solido) {
+    return caro
+      ? { v: 'Mantener', por: 'Sube y la empresa acompaña, pero ya está cara frente a su historia. Buen lugar para estar, no para sumar.' }
+      : { v: 'Sumar', por: 'Sube y la empresa acompaña. Buen momento para tener o agregar.' };
+  }
+  if (down && solido) {
+    return { v: 'Mantener', por: 'Cae el precio pero la empresa está sólida — el mercado la está castigando. Si ya la tenés, aguantá; para sumar, esperá que frene la caída.' };
+  }
+  return { v: 'Mantener', por: 'Sin una tendencia marcada y el negocio va bien. Nada urgente por ahora.' };
+}
+
+// veredicto → color de badge de la Vista 360. "Mantener"/"Sin señal" no pintan badge
+// (la Vista 360 solo resalta lo accionable), igual que hace hoy la señal de renta fija.
+const VM_QH_COLOR = { 'Sumar': 'jade', 'Atención': 'ambar', 'Reducir': 'danger' };
+
+function parseValuacionMultiplos(entry) {
+  if (!entry || !entry.data) return { rows: [], byTicker: {} };
+  try {
+    const wb = XLSX.read(entry.data, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const rows = raw.map(r => {
+      const g = (m, h) => vmMult(r[`${m}_${h}`]);
+      const m = {};
+      VM_MULT_ORDER.forEach(k => { m[k] = { actual: g(k, 'actual'), p3: g(k, 'prom_3y'), p5: g(k, 'prom_5y'), p10: g(k, 'prom_10y') }; });
+      return {
+        ticker: String(r['Ticker'] || r['Ticker_usado'] || '').trim(),
+        tickerUsado: String(r['Ticker_usado'] || '').trim(),
+        empresa: String(r['Empresa'] || '').trim(),
+        sector: String(r['Sector'] || '').trim(),
+        moneda: String(r['Moneda'] || '').trim(),
+        precio: vmNum(r['Precio_actual']), m,
+        mm21: vmNum(r['MM21_sem']), mm50: vmNum(r['MM50_sem']), mm200: vmNum(r['MM200_sem']),
+        ret3m: vmNum(r['Ret_3m']), ret6m: vmNum(r['Ret_6m']), ret12m: vmNum(r['Ret_12m']), dist52: vmNum(r['Dist_max_52s']),
+        f: { revCagr: vmNum(r['Rev_CAGR']), niPos: vmNum(r['NI_pos']), fcfPos: vmNum(r['FCF_pos']), margenTrend: vmNum(r['Margen_trend']), ndEbitda: vmNum(r['ND_EBITDA']) },
+        actualizado: String(r['Actualizado'] || '').trim(),
+      };
+    }).filter(r => r.ticker);
+    vmCalcFuerzaRelativa(rows);
+    const byTicker = {};
+    rows.forEach(r => {
+      const qh = vmQueHacer(r);
+      const rec = { qh, empresa: r.empresa, sector: r.sector, tendencia: vmTendencia(r), fundamental: vmFundamental(r), val: vmValuacion5y(r), actualizado: r.actualizado };
+      byTicker[r.ticker.toUpperCase()] = rec;
+      if (r.tickerUsado && r.tickerUsado.toUpperCase() !== r.ticker.toUpperCase()) byTicker[r.tickerUsado.toUpperCase()] = rec;
+    });
+    return { rows, byTicker };
+  } catch (e) { console.warn('[Dashboard] error leyendo valuacion_multiplos', e); return { rows: [], byTicker: {} }; }
+}
+
+function vmVeredictoDeTicker(ticker) {
+  const vm = dashData.valuacion && dashData.valuacion.byTicker;
+  if (!vm || !ticker) return null;
+  return vm[String(ticker).trim().toUpperCase()] || null;
+}
+
+// ══════════════════════════════════════════════════════════════
 //  VISTA 360 POR CLIENTE — señal de venta/rotación por posición, reusando los mismos
 //  datos y umbrales que ya usan las cajas del dashboard y Rotador RV, sin fetch en vivo
 //  a Yahoo (para no pegarle a la API por cada posición de cada cliente — usa el precio
@@ -2324,9 +2559,24 @@ function calcularSenalPosicion(item) {
     return null;
   }
   if (item.grupo === 'Renta Variable') {
-    if (!(item.ppc > 0) || !(item.nominales > 0)) return null;
-    const precioImplicito = item.tenencia / item.nominales;
-    const rent = (precioImplicito / item.ppc - 1) * 100;
+    const rent = (item.ppc > 0 && item.nominales > 0) ? (item.tenencia / item.nominales / item.ppc - 1) * 100 : null;
+    // Nota de ganancia/pérdida del cliente en ESE papel — es el otro eje (cómo venís vos),
+    // distinto de cómo viene el papel en el mercado. Va como texto chico al lado del veredicto.
+    let nota = null;
+    if (rent != null) {
+      if (rent >= V360_RV_TP) nota = `vos +${rent.toFixed(0)}% — podés tomar ganancia`;
+      else if (rent < 0 && item.dias > V360_RV_STOP) nota = `vos ${rent.toFixed(0)}% en ${item.dias}d`;
+      else if (rent >= V360_RV_ACUM) nota = `vos +${rent.toFixed(0)}%`;
+    }
+    // Señal principal = veredicto de Valuación por Múltiplos (Sumar / Atención / Reducir).
+    const ver = vmVeredictoDeTicker(item.ticker);
+    if (ver && ver.qh && VM_QH_COLOR[ver.qh.v]) {
+      return { senal: ver.qh.v.toUpperCase(), colorKey: VM_QH_COLOR[ver.qh.v], detalle: ver.qh.por, nota, fuente: 'multiplos' };
+    }
+    if (ver) return nota ? { senal: 'MANTENER', colorKey: null, detalle: ver.qh ? ver.qh.por : '', nota, fuente: 'multiplos', suave: true } : null;
+    // Sin dato de Múltiplos para este ticker → se cae a la heurística vieja por ganancia/pérdida,
+    // así no se pierde señal para papeles que no están en el archivo de Valuación.
+    if (rent == null) return null;
     if (rent >= V360_RV_TP) return { senal: 'VENDER', colorKey: 'danger', detalle: `+${rent.toFixed(1)}% — tomar ganancia` };
     if (rent < 0 && item.dias > V360_RV_STOP) return { senal: 'STOP', colorKey: 'danger', detalle: `${rent.toFixed(1)}% en ${item.dias}d — evaluar salida` };
     if (rent >= V360_RV_ACUM) return { senal: 'ACUMULAR', colorKey: 'jade', detalle: `+${rent.toFixed(1)}% — zona de momentum` };
@@ -2341,7 +2591,7 @@ function calcularSenalPosicion(item) {
 function mejorAlternativaRF(tickerActual, mActual) {
   if (!dashData.monitor) return null;
   const candidatos = Object.entries(dashData.monitor)
-    .filter(([tk, d]) => tk !== tickerActual && d.tir != null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX)
+    .filter(([tk, d]) => tk !== tickerActual && d.tir != null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX && rfAptaComoOportunidad(d))
     .filter(([, d]) => mActual.duration == null || d.duration == null || Math.abs(d.duration - mActual.duration) <= 2)
     .sort((a, b) => b[1].tir - a[1].tir);
   if (!candidatos.length) return null;
@@ -2352,8 +2602,13 @@ function mejorAlternativaRF(tickerActual, mActual) {
 const V360_COLOR = { danger: ['var(--danger)', 'var(--danger-d)'], jade: ['var(--jade)', 'var(--jade-d)'], ambar: ['var(--ambar)', 'var(--ambar-d)'] };
 function badgeSenalHtml(s) {
   if (!s) return `<span style="color:var(--muted);font-size:10px;">—</span>`;
+  const notaHtml = s.nota ? `<div style="font-size:9px;color:var(--muted);margin-top:3px;">${escHtml(s.nota)}</div>` : '';
+  if (!s.colorKey) {
+    // veredicto "Mantener" suave — sin badge fuerte, solo la nota de ganancia/pérdida del cliente
+    return `<span style="font-family:var(--font-m);font-size:9px;color:var(--muted);" title="${escHtml(s.detalle || '')}">mantener</span>${notaHtml}`;
+  }
   const [fg, bg] = V360_COLOR[s.colorKey] || V360_COLOR.ambar;
-  return `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:${fg};background:${bg};padding:2px 8px;border-radius:10px;" title="${escHtml(s.detalle)}">${s.senal}</span>`;
+  return `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:${fg};background:${bg};padding:2px 8px;border-radius:10px;" title="${escHtml(s.detalle)}">${s.senal}</span>${notaHtml}`;
 }
 
 function abrirCarteraCliente(cliente) {
@@ -2367,10 +2622,12 @@ function abrirCarteraCliente(cliente) {
   } else {
     const tenTotal = items.reduce((a, i) => a + i.tenencia, 0);
     const conSenal = items.map(i => ({ i, s: calcularSenalPosicion(i) }));
-    const nAlertas = conSenal.filter(({s}) => s).length;
+    const nAlertas = conSenal.filter(({s}) => s && !s.suave).length;
     document.getElementById('ccSub').textContent = `${items.length} posición(es) · Tenencia total USD ${fmtK(tenTotal)}` + (nAlertas ? ` · ${nAlertas} con señal` : '');
-    // Las que tienen señal van primero (lo más urgente arriba), después por tenencia desc.
-    const rows = conSenal.sort((a, b) => (b.s ? 1 : 0) - (a.s ? 1 : 0) || b.i.tenencia - a.i.tenencia).map(({i, s}) => {
+    // Las que tienen señal fuerte van primero (lo más urgente arriba), después las "suaves"
+    // (solo nota de ganancia/pérdida), después por tenencia desc.
+    const prio = s => s ? (s.suave ? 1 : 2) : 0;
+    const rows = conSenal.sort((a, b) => prio(b.s) - prio(a.s) || b.i.tenencia - a.i.tenencia).map(({i, s}) => {
       // Rentabilidad ya obtenida: precio implícito (tenencia/nominales) vs. precio promedio de
       // compra — mismo cálculo que ya usan Rotador RV y Scanner ONs, para que quede consistente
       // en toda la Suite. Si hace poco que lo tiene, capaz no conviene tocarlo todavía aunque
@@ -2418,15 +2675,17 @@ function renderCliente360() {
   }
   let clientes = Object.keys(tenencia.carteraPorCliente).map(cliente => {
     const items = tenencia.carteraPorCliente[cliente];
-    let rf = 0, rv = 0;
+    let rf = 0, rvSumar = 0, rvRiesgo = 0;
     items.forEach(i => {
       const s = calcularSenalPosicion(i);
-      if (!s) return;
-      if (i.grupo === 'Renta Fija') rf++; else if (i.grupo === 'Renta Variable') rv++;
+      if (!s || s.suave) return;
+      if (i.grupo === 'Renta Fija') rf++;
+      else if (i.grupo === 'Renta Variable') { if (s.senal === 'SUMAR') rvSumar++; else rvRiesgo++; }
     });
+    const rv = rvSumar + rvRiesgo;
     const liq = (tenencia.porClienteMoneda[cliente] && tenencia.porClienteMoneda[cliente].USD) || 0;
     const liqAlerta = liq >= V360_LIQ_MIN;
-    return { cliente, aum: tenencia.porCliente[cliente] || 0, rf, rv, liq, liqAlerta, total: rf + rv + (liqAlerta ? 1 : 0) };
+    return { cliente, aum: tenencia.porCliente[cliente] || 0, rf, rv, rvSumar, rvRiesgo, liq, liqAlerta, total: rf + rv + (liqAlerta ? 1 : 0) };
   });
   if (topClientesFiltro) clientes = clientes.filter(c => topClientesFiltro.set.has(c.cliente));
   if (v360Search) clientes = clientes.filter(c => c.cliente.toLowerCase().includes(v360Search));
@@ -2444,7 +2703,10 @@ function renderCliente360() {
         <td>${escHtml(c.cliente)}</td>
         <td>USD ${fmtK(c.aum)}</td>
         <td>${c.rf ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--danger);background:var(--danger-d);padding:2px 8px;border-radius:10px;">${c.rf} rotar</span>` : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
-        <td>${c.rv ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--danger);background:var(--danger-d);padding:2px 8px;border-radius:10px;">${c.rv} señal(es)</span>` : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
+        <td>${(c.rvRiesgo || c.rvSumar)
+          ? [c.rvRiesgo ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--danger);background:var(--danger-d);padding:2px 8px;border-radius:10px;">${c.rvRiesgo} atención</span>` : '',
+             c.rvSumar ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--jade);background:var(--jade-d);padding:2px 8px;border-radius:10px;margin-left:4px;">${c.rvSumar} sumar</span>` : ''].join('')
+          : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
         <td>${c.liqAlerta ? `<span style="font-family:var(--font-m);font-size:9px;font-weight:700;color:var(--ambar);background:var(--ambar-d);padding:2px 8px;border-radius:10px;">USD ${fmtK(c.liq)}</span>` : '<span style="color:var(--muted);font-size:10px;">—</span>'}</td>
       </tr>`).join('')}
     </tbody></table>`;
@@ -2716,9 +2978,9 @@ function maybeShowStaleReminder(list) {
 // refreshDashboardForKey(key), que solo reparsea ese — Tenencia y Monitor pueden tener miles
 // de filas y el XLSX.read+sheet_to_json no es gratis, no tiene sentido repetirlo por un
 // archivo chico (ej. Stock) que no tiene nada que ver.
-const dashData = { tenencia: null, precios: null, monitor: null, stock: null };
-const DASH_KEY_TO_FIELD = { tenencia: 'tenencia', precios_objetivo: 'precios', monitor: 'monitor', stock: 'stock' };
-const DASH_PARSERS = { tenencia: parseTenencia, precios_objetivo: parsePreciosObjetivo, monitor: parseMonitorTIR, stock: parseStockFCN };
+const dashData = { tenencia: null, precios: null, monitor: null, stock: null, valuacion: { rows: [], byTicker: {} } };
+const DASH_KEY_TO_FIELD = { tenencia: 'tenencia', precios_objetivo: 'precios', monitor: 'monitor', stock: 'stock', valuacion_multiplos: 'valuacion' };
+const DASH_PARSERS = { tenencia: parseTenencia, precios_objetivo: parsePreciosObjetivo, monitor: parseMonitorTIR, stock: parseStockFCN, valuacion_multiplos: parseValuacionMultiplos };
 
 // Tenencia se parsea acá Y en refreshClienteList() (necesitan el mismo dato pero cada uno
 // vive en su propio flujo) — antes cada uno hacía su propio fetch+parse por separado, pagando
@@ -2980,7 +3242,8 @@ function buildFileCard(sf, entry) {
 async function publicarManual(key) {
   const entry = await getSharedFile(userKey(key));
   if (!entry || !entry.data) { showToast('❌ No encontré el archivo guardado para "' + key + '".'); return; }
-  downloadForPublish(key, entry.data);
+  const data = key === 'monitor' ? slimMonitorArrayBuffer(entry.data) : entry.data;
+  downloadForPublish(key, data);
 }
 
 // Lee los 4 archivos en paralelo (antes era secuencial con un await por archivo, y encima
