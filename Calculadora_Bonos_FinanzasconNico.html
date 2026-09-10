@@ -486,35 +486,48 @@ function parseSoberanos(wb){
     || wb.SheetNames.find(function(n){return n.toLowerCase().includes('sobera');});
   if(!shName) return 0;
   var rows = XLSX.utils.sheet_to_json(wb.Sheets[shName], {header:1, defval:'', raw:true});
-  var headerRows=[];
-  for(var hi=0;hi<rows.length;hi++){ if(String(rows[hi][1]||'').trim()==='Ticker') headerRows.push(hi); }
+  // La hoja "Soberanos" de Balanz arranca en la columna B, así que sheet_to_json la indexa
+  // desde ahí: la columna "Ticker" cae en el índice 0, no 1. Se busca en qué columna está
+  // "Ticker" en cada fila de header (hay varios bloques: Soberanos, Provinciales, BOPREAL…) y
+  // se lee todo por offset fijo desde esa columna — mismo criterio que Scanner de ONs y
+  // Calculadora de Rotaciones. Bug real (arreglado 2026-09): antes leía todo +1 columna
+  // corrido y no cargaba NINGÚN soberano; funcionaba de rebote solo por el caché compartido
+  // fcn-sov-db de Armador/Scanner.
+  var findTickerCol = function(row){
+    row = row || [];
+    for(var j=0;j<row.length;j++){ if(String(row[j]||'').trim()==='Ticker') return j; }
+    return -1;
+  };
   var count=0;
-  for(var hIdx=0; hIdx<headerRows.length; hIdx++){
-    var dataStart=headerRows[hIdx]+1;
-    var dataEnd=hIdx+1<headerRows.length?headerRows[hIdx+1]:rows.length;
-    for(var sr=dataStart; sr<dataEnd; sr++){
-      var srow=rows[sr];
-      var ticker=String(srow[1]||'').trim().toUpperCase();
-      var emisor=String(srow[2]||'').trim();
+  for(var hi=0; hi<rows.length; hi++){
+    var tCol = findTickerCol(rows[hi]);
+    if(tCol<0) continue;
+    var dataEnd = rows.length;
+    for(var k=hi+1; k<rows.length; k++){ if(findTickerCol(rows[k])>=0){ dataEnd=k; break; } }
+    for(var sr=hi+1; sr<dataEnd; sr++){
+      var srow = rows[sr] || [];
+      var ticker = String(srow[tCol]||'').trim().toUpperCase();
+      var emisor = String(srow[tCol+1]||'').trim();
       if(!ticker||!emisor) continue;
       if(!/^[A-Z0-9]{2,8}$/.test(ticker)) continue;
       if(ticker.includes('/')) continue;
-      var tirRaw=parseFloat(srow[5]);
+      var tirRaw = parseFloat(srow[tCol+4]);
       if(isNaN(tirRaw)||tirRaw<=0) continue;
-      if(bonoVencidoISO(excelDateToISO(srow[4]))) continue;
-      var cuponRaw=parseFloat(srow[8]);
+      var vencISO = excelDateToISO(srow[tCol+3]);
+      if(bonoVencidoISO(vencISO)) continue;
+      var cuponRaw = parseFloat(srow[tCol+7]);
       BOND_DB[ticker]={
         ticker:ticker, emisor:emisor, categoria:'Soberano',
         cupon_anual: isNaN(cuponRaw)?null:Math.round(cuponRaw*10000)/100,
-        meses_cupon: String(srow[9]||'').trim(),
-        vencimiento: excelDateToISO(srow[4]),
-        amortizacion: String(srow[7]||'').trim(),
-        moneda: String(srow[10]||'').trim(),
-        ley: String(srow[11]||'').trim(),
-        calificacion: String(srow[12]||'').trim(),
+        meses_cupon: String(srow[tCol+8]||'').trim(),
+        vencimiento: vencISO,
+        amortizacion: String(srow[tCol+6]||'').trim(),
+        moneda: String(srow[tCol+9]||'').trim(),
+        ley: String(srow[tCol+10]||'').trim(),
+        calificacion: String(srow[tCol+11]||'').trim(),
         tir_ref: Math.round(tirRaw*10000)/100,
-        precio_ref: parseFloat(srow[3])||null,
-        dur_ref: parseFloat(srow[6])||null
+        precio_ref: parseFloat(srow[tCol+2])||null,
+        dur_ref: parseFloat(srow[tCol+5])||null
       };
       count++;
     }
