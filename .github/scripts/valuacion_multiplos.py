@@ -377,7 +377,13 @@ def build_entry(ticker):
             mm["Ret_12m"] = ret(52)
             win = close.iloc[-52:] if len(close) >= 52 else close
             hi = float(win.max())
-            mm["Dist_max_52s"] = round(last / hi - 1, 4) if hi > 0 else None
+            # el maximo intradiario real (info) es mas preciso que el max de cierres
+            # semanales, que se pierde los picos -> subestima las caidas ~3-6 pp
+            hi_info = num(info.get("fiftyTwoWeekHigh"))
+            if hi_info and hi_info > hi:
+                hi = hi_info
+            live = num(info.get("currentPrice") or info.get("regularMarketPrice")) or last
+            mm["Dist_max_52s"] = round(live / hi - 1, 4) if hi > 0 else None
 
         return {
             "ticker_usado": sym,
