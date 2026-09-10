@@ -431,6 +431,15 @@ function excelDateToISO(v){
   return '';
 }
 
+// Un bono con vencimiento ya pasado no es una opción — el Monitor lo sigue trayendo unos días
+// con TIR basura. Se descarta del autocompletado. Margen 3 días.
+function bonoVencidoISO(iso){
+  if(!iso) return false;
+  var t=Date.parse(iso);
+  if(isNaN(t) || t < 946684800000) return false; // < 2000: fecha vacía / epoch de Excel = "sin dato", no "vencido"
+  return t < Date.now()-3*86400000;
+}
+
 function parseCorporativos(wb){
   var shName = wb.SheetNames.find(function(n){return n==='Corporativos';})
     || wb.SheetNames.find(function(n){return n.toLowerCase().includes('corporativ');});
@@ -453,6 +462,7 @@ function parseCorporativos(wb){
     var cuponRaw=parseFloat(row[c+7]);
     if(isNaN(tirRaw)||tirRaw<=0) continue;
     var vencDate=excelDateToISO(row[c+3]);
+    if(bonoVencidoISO(vencDate)) continue;
     var moneda=String(row[c+9]||'').trim();
     var ley=String(row[c+10]||'').trim();
     var calif=String(row[c+11]||'').trim();
@@ -491,6 +501,7 @@ function parseSoberanos(wb){
       if(ticker.includes('/')) continue;
       var tirRaw=parseFloat(srow[5]);
       if(isNaN(tirRaw)||tirRaw<=0) continue;
+      if(bonoVencidoISO(excelDateToISO(srow[4]))) continue;
       var cuponRaw=parseFloat(srow[8]);
       BOND_DB[ticker]={
         ticker:ticker, emisor:emisor, categoria:'Soberano',
@@ -518,7 +529,11 @@ function loadDBFromStorage(){
   // 1) intenta la base propia de esta calculadora
   try{
     var raw = localStorage.getItem('fcn-bond-calc-db');
-    if(raw){ Object.assign(BOND_DB, JSON.parse(raw)); }
+    if(raw){
+      var propia = JSON.parse(raw);
+      // Sacar bonos ya vencidos de una corrida vieja guardada (se auto-corrige al recargar el Monitor).
+      Object.keys(propia).forEach(function(tk){ if(!bonoVencidoISO(propia[tk] && propia[tk].vencimiento)) BOND_DB[tk] = propia[tk]; });
+    }
   }catch(e){}
   // 2) además, aprovecha lo que ya haya cargado en Scanner_ONs / Armador_Carteras en este navegador
   try{
@@ -528,6 +543,7 @@ function loadDBFromStorage(){
       Object.keys(parsed).forEach(function(tk){
         if(BOND_DB[tk]) return;
         var o = parsed[tk];
+        if(bonoVencidoISO(o.vencimiento)) return;
         BOND_DB[tk] = {ticker:tk, emisor:o.emisor, categoria:'ON', cupon_anual:o.cupon_anual,
           meses_cupon:o.meses_cupon, vencimiento:o.vencimiento, amortizacion:o.amortizacion,
           moneda:o.moneda, ley:o.ley, calificacion:o.calificacion, tir_ref:o.tir, precio_ref:null, dur_ref:null};
@@ -541,6 +557,7 @@ function loadDBFromStorage(){
       Object.keys(parsedS).forEach(function(tk){
         if(BOND_DB[tk]) return;
         var o = parsedS[tk];
+        if(bonoVencidoISO(o.venc)) return;
         BOND_DB[tk] = {ticker:tk, emisor:o.emisor, categoria:o.categoria||'Soberano', cupon_anual:o.cupon,
           meses_cupon:o.meses, vencimiento:o.venc, amortizacion:o.amort,
           moneda:o.moneda, ley:o.ley, calificacion:o.calif, tir_ref:o.tir, precio_ref:o.precio, dur_ref:o.dur};

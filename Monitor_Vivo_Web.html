@@ -677,6 +677,16 @@ function parseExcelBlock(ws, fieldOffsets) {
     const rec = {};
     for (const key in fieldOffsets) rec[key] = row[tIdx + fieldOffsets[key]] !== undefined ? row[tIdx + fieldOffsets[key]] : null;
     rec.ticker = tk.toUpperCase();
+    // Un bono/ON con vencimiento ya pasado no es una posición ni una oportunidad — el Monitor
+    // lo sigue trayendo unos días con TIR basura. Se descarta. Margen 3 días.
+    if ('vencimiento' in fieldOffsets) {
+      const vRaw = rec.vencimiento;
+      let ms = null;
+      if (vRaw instanceof Date) ms = vRaw.getTime();
+      else if (typeof vRaw === 'number' && vRaw > 20000) ms = Math.round((vRaw - 25569) * 86400 * 1000);
+      else if (vRaw) { const d = new Date(String(vRaw)); if (!isNaN(d.getTime())) ms = d.getTime(); }
+      if (ms != null && ms > 946684800000 && ms < Date.now() - 3 * 86400000) continue; // > 2000: descarta fecha vacía / epoch
+    }
     out.push(rec);
   }
   return out;

@@ -923,7 +923,11 @@ function slimSheetValores(ws) {
     for (let C = range.s.c; C <= range.e.c; C++) {
       const addr = XLSX.utils.encode_cell({ r: R, c: C });
       const cell = ws[addr];
-      if (!cell || cell.v === undefined || cell.v === null || cell.v === '') continue;
+      // Se descarta una celda solo si NO tiene valor (ni siquiera cadena vacía). Ojo: una celda
+      // presente con v:'' NO es lo mismo que una celda ausente — varias hojas de detalle por
+      // ticker recorren el cronograma con `if (cell === null) break; if (v === '') continue;`,
+      // así que borrar las v:'' cortaría la tabla antes de tiempo (bug real, 2026-09).
+      if (!cell || cell.v === undefined || cell.v === null) continue;
       out[addr] = { t: cell.t, v: cell.v };
       if (R > maxR) maxR = R;
       if (C > maxC) maxC = C;
@@ -1726,7 +1730,7 @@ function parseMonitorTIR(entry) {
       let ms = null;
       if (typeof vtoRaw === 'number' && vtoRaw > 20000) ms = Math.round((vtoRaw - 25569) * 86400 * 1000);
       else if (vtoRaw) { const d = new Date(String(vtoRaw)); if (!isNaN(d.getTime())) ms = d.getTime(); }
-      return ms != null && ms < nowMs - 3 * 86400000;
+      return ms != null && ms > 946684800000 && ms < nowMs - 3 * 86400000; // > 2000: descarta fecha vacía / epoch
     };
     let vencidosCnt = 0;
     // Busca una columna por nombre de header (variantes conocidas) y si no la encuentra

@@ -812,10 +812,16 @@ function cargarMonitor(input) {
         const yrs=(ms-Date.now())/(365.25*86400*1000);
         return yrs>0?Math.round(yrs*100)/100:null;
       };
+      // Un bono/ON con vencimiento ya pasado no es una posición ni una oportunidad — el Monitor
+      // lo sigue trayendo unos días con TIR basura. Se descarta de todo el Scanner. Margen 3 días.
+      const _nowMs=Date.now();
+      const yaVencio=vtoRaw=>{let ms=null;if(typeof vtoRaw==='number'&&vtoRaw>20000)ms=Math.round((vtoRaw-25569)*86400*1000);else if(vtoRaw){const d=new Date(String(vtoRaw));if(!isNaN(d.getTime()))ms=d.getTime();}return ms!=null&&ms>946684800000&&ms<_nowMs-3*86400000;};
+      let vencidosCnt=0;
       for(let i=hIdx+1;i<raw.length;i++){
         const row=raw[i];const tk=String(row[iT]||'').trim();
         if(!tk||!/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
         const vtoRaw=row[iVto];
+        if(yaVencio(vtoRaw)){vencidosCnt++;continue;}
         const vencimiento=typeof vtoRaw==='number'?excelSerialToDate(vtoRaw):(String(vtoRaw||'').trim());
         const durFromExcel=parseNum(iDur>=0?row[iDur]:null);
         const duration=durFromExcel!==null&&durFromExcel>0?durFromExcel:calcDurFromVto(vtoRaw);
@@ -861,9 +867,10 @@ function cargarMonitor(input) {
             const tir=Math.abs(tirRaw)>1?tirRaw/100:tirRaw;
             if(tir>1.5||tir<-0.5) continue;
             if(dataMonitor[tk]) continue;
+            const vRaw=dr[3];
+            if(yaVencio(vRaw)){vencidosCnt++;continue;}
             const cupRaw=parseFloat(dr[7]);
             const cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
-            const vRaw=dr[3];
             const vencimiento=vRaw?(typeof vRaw==='number'?excelSerialToDate(vRaw):String(vRaw).trim()):'';
             const sovDur=calcDurFromVto(vRaw);
             dataMonitor[tk]={tipo:currentCat,tir,cupon:cup,vencimiento,
@@ -880,6 +887,7 @@ function cargarMonitor(input) {
 
       const total=corpCnt+sovCnt;
       if(total===0) throw new Error('No se encontraron tickers válidos.');
+      if(vencidosCnt) logMsg(`${vencidosCnt} instrumento(s) descartado(s) por vencimiento pasado`,'');
       logMsg(`✓ Monitor: ${corpCnt} ONs + ${sovCnt} Soberanos/Sub-sober.`,'ok');
       marcarCardCargado('monitor', `${corpCnt} ONs · ${sovCnt} Sob. · clic para actualizar`);
       checkReady();

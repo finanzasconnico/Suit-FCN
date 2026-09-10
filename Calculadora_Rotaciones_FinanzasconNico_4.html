@@ -840,6 +840,14 @@ function excelDateToISO(v){
   if(typeof v==='string' && v.length>=10) return v.slice(0,10);
   return '';
 }
+// Un bono con vencimiento ya pasado no es una opción para rotar — el Monitor lo sigue trayendo
+// unos días con TIR basura. Se descarta de BOND_DB y FLUJO_DB. Margen 3 días.
+function bonoVencidoISO(iso){
+  if(!iso) return false;
+  var t=Date.parse(iso);
+  if(isNaN(t) || t < 946684800000) return false; // < 2000: fecha vacía / epoch de Excel = "sin dato", no "vencido"
+  return t < Date.now()-3*86400000;
+}
 // Nombres de encabezado candidatos por campo — si el header de la fila coincide con alguno
 // (sin importar mayúsculas), se usa ESA columna en vez del offset fijo de FIELDS_CORP/FIELDS_SOB.
 // Si no matchea ninguno, cae al offset fijo (comportamiento de siempre) — esto es puramente
@@ -908,6 +916,7 @@ function ingestRows(rows, categoria){
   rows.forEach(function(r){
     var tirMep = parseFloat(r.tir); var tirCable = parseFloat(r.tirCable);
     if((isNaN(tirMep)||tirMep<=0) && (isNaN(tirCable)||tirCable<=0)) return;
+    if(bonoVencidoISO(excelDateToISO(r.vencimiento))) return;
     var durationExcel = parseFloat(r.duration);
     BOND_DB[r.ticker] = {
       ticker:r.ticker, emisor:r.emisor||'', categoria:categoria,
@@ -968,6 +977,7 @@ function parseTickerSheets(wb){
     var duration = cellVal('I9');
 
     if(!fechaVenc || !nominalBase || isNaN(parseFloat(nominalBase)) || parseFloat(nominalBase)<=0) return;
+    if(bonoVencidoISO(fechaVenc)) return; // bono ya vencido — fuera de la calculadora
 
     var freqMap = {'anual':1,'semestral':2,'trimestral':4,'mensual':12};
     var freqTxt = String(freqTexto||'').toLowerCase();
@@ -1090,7 +1100,9 @@ function loadFlujoDBFromStorage(){
     var raw = localStorage.getItem(LS_KEY_FLUJO);
     if(!raw) return;
     var parsed = JSON.parse(raw);
-    Object.keys(parsed).forEach(function(tk){ FLUJO_DB[tk] = parsed[tk]; });
+    // No re-cargar bonos ya vencidos de una corrida vieja guardada en localStorage — si no,
+    // nunca se limpiaban (se re-guardaban en cada save). Se auto-corrige en la próxima carga.
+    Object.keys(parsed).forEach(function(tk){ if(!bonoVencidoISO(parsed[tk] && parsed[tk].fechaVenc)) FLUJO_DB[tk] = parsed[tk]; });
   }catch(e){}
 }
 function loadDBFromStorage(){
@@ -1102,6 +1114,7 @@ function loadDBFromStorage(){
       Object.keys(parsed).forEach(function(tk){
         if(BOND_DB[tk]) return;
         var o = parsed[tk];
+        if(bonoVencidoISO(o.vencimiento || o.venc)) return; // bono vencido de una corrida vieja — no re-cargar
         BOND_DB[tk] = {
           ticker:tk, emisor:o.emisor||'', categoria:o.categoria||'ON',
           cuponAnual: o.cuponAnual!==undefined?o.cuponAnual:o.cupon_anual,

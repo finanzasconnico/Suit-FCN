@@ -690,6 +690,17 @@ function excelSerial(v){
   return String(v).slice(0,10);
 }
 
+// Un bono/ON con vencimiento ya pasado no es una opción para armar cartera — el Monitor lo
+// sigue trayendo unos días con TIR basura. Se descarta. Margen 3 días. Recibe el valor crudo
+// de la celda (serial de Excel o texto).
+function bonoVencido(vRaw){
+  var iso=excelSerial(vRaw);
+  if(!iso) return false;
+  var t=Date.parse(iso);
+  if(isNaN(t) || t < 946684800000) return false; // < 2000: fecha vacía / epoch de Excel = "sin dato", no "vencido"
+  return t < Date.now()-3*86400000;
+}
+
 function findSheetCI(names,kws){
   for(var k of kws){var f=names.find(function(s){return s.toLowerCase()===k.toLowerCase();});if(f)return f;}
   for(var k of kws){var f=names.find(function(s){return s.toLowerCase().includes(k.toLowerCase());});if(f)return f;}
@@ -768,6 +779,7 @@ function loadMonitorFull(input){
           if(!tk||!em||tk==='Ticker'||tk==='Bonos'||tk==='Actualizado'||tk==='NaN')continue;
           if(!/^[A-Z0-9]{3,10}O$/.test(tk)&&!/^[A-Z0-9]{3,8}$/.test(tk))continue;
           if(em.length>60||em==='NaN')continue;
+          if(bonoVencido(dr[iVto]))continue;
           var tir=parseFloat(dr[iTIR]);
           if(isNaN(tir))continue;
           if(newON[tk])continue;
@@ -842,6 +854,7 @@ function loadMonitorFull(input){
             if(isNaN(tirRaw)){console.log('[SOV] skip '+tk+': TIR NaN, dr[4]=',dr[4]);continue;}
             var tir=Math.abs(tirRaw)>1?tirRaw/100:tirRaw;
             if(tir>1.5||tir<-0.5)continue; // skip obvious errors
+            if(bonoVencido(dr[3]))continue;
             if(newSOV[tk])continue;
             var cupRaw=parseFloat(dr[7]); // col[7] = Cupón
             var cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
@@ -896,6 +909,7 @@ function loadMonitorFull(input){
             // Skip carry trade rows (they are NaN in col 0)
             var dias=parseFloat(dr[4]);
             if(!isNaN(dias)&&dias<-5)continue; // very expired
+            if(bonoVencido(dr[3]))continue;    // vencimiento ya pasado
             var tna=parseFloat(dr[7]);
             var tir=parseFloat(dr[6]);
             if(isNaN(tna)&&isNaN(tir))continue;
@@ -1009,9 +1023,12 @@ async function loadMonitorFromCloud(){
   try{
     var o=localStorage.getItem('fcn-on-db'),s=localStorage.getItem('fcn-sov-db'),l=localStorage.getItem('fcn-let-db'),ts=localStorage.getItem('fcn-monitor-ts')||'';
     var loaded=false;
-    if(o){var p=JSON.parse(o);if(Object.keys(p).length){ON_DB=normalizeDB(p);loaded=true;}}
-    if(s){var p=JSON.parse(s);if(Object.keys(p).length){SOV_DB=normalizeDB(p);loaded=true;}}
-    if(l){var p=JSON.parse(l);if(Object.keys(p).length){LET_DB=normalizeDB(p);loaded=true;}}
+    // Sacar bonos ya vencidos de una corrida vieja guardada en localStorage (se auto-corrige
+    // en la próxima carga del Monitor, que ya no los ingesta).
+    var pruneVenc=function(db,k){Object.keys(db).forEach(function(tk){if(bonoVencido(db[tk]&&db[tk][k]))delete db[tk];});return db;};
+    if(o){var p=JSON.parse(o);if(Object.keys(p).length){ON_DB=pruneVenc(normalizeDB(p),'vencimiento');loaded=true;}}
+    if(s){var p=JSON.parse(s);if(Object.keys(p).length){SOV_DB=pruneVenc(normalizeDB(p),'vencimiento');loaded=true;}}
+    if(l){var p=JSON.parse(l);if(Object.keys(p).length){LET_DB=pruneVenc(normalizeDB(p),'venc');loaded=true;}}
     if(loaded){rebuildBYMAFromDB();updateMonitorBadge(ts);document.getElementById('monitor-stats').style.display='grid';monStat('corp',Object.keys(ON_DB).length,Object.keys(ON_DB).length>0?'ok':'warn');monStat('sov',Object.keys(SOV_DB).length,Object.keys(SOV_DB).length>0?'ok':'warn');monStat('let',Object.keys(LET_DB).length,Object.keys(LET_DB).length>0?'ok':'warn');monLog('✓ Monitor cargado (local)','ok');}
   }catch(e){}
 }
