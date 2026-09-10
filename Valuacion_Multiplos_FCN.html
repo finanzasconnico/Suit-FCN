@@ -100,6 +100,7 @@ tbody tr:hover{filter:brightness(1.35);}
 .guia-body li{margin:4px 0;}
 .guia-mult>div{margin:10px 0;padding-left:10px;border-left:2px solid var(--border);}
 .guia-mult>div>b{color:var(--jade);}
+.gm-ref{font-size:11px;background:rgba(28,140,95,.07);padding:6px 9px;border-radius:5px;color:var(--text);}
 .gm-use{font-size:11.5px;}
 .guia-tabla{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;}
 .guia-tabla td{padding:5px 8px;border-bottom:1px solid rgba(30,58,52,.5);}
@@ -196,6 +197,27 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .hm-table td{padding:7px 0;border-top:1px solid rgba(30,58,52,.5);color:var(--text);}
 .hm-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
 .hm-total b{color:var(--jade);}
+/* ── FICHA DE EMPRESA ── */
+.ficha-modal{max-width:560px;}
+.fs-verd{margin:2px 0 6px;font-size:13px;}
+.fs-por{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 12px;}
+.fs-chips{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--dim);padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.fs-chips span{display:flex;align-items:center;gap:6px;}
+.fs-sec{margin:14px 0;}
+.fs-sec h5{font-family:var(--font-d);font-size:13.5px;font-weight:600;color:var(--text);margin:0 0 5px;}
+.fs-p{font-size:12px;color:var(--muted);line-height:1.55;margin:4px 0;}
+.fs-p b{color:var(--text);}
+.fs-cli-link{cursor:pointer;color:var(--text);text-decoration:underline;text-decoration-color:var(--dim);}
+.fs-cli-link:hover{text-decoration-color:var(--ambar);}
+/* ── LISTA DE CLIENTES ── */
+.cli-modal{max-width:520px;}
+.cli-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(30,58,52,.5);cursor:pointer;}
+.cli-row:hover{background:var(--surface);}
+.cli-nom{flex:1;font-size:12.5px;color:var(--text);font-weight:500;}
+.cli-usd{font-family:var(--font-m);font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.cli-badges{display:flex;gap:4px;}
+.cli-b{font-size:9.5px;font-family:var(--font-m);padding:1px 5px;border-radius:3px;}
+.cli-b.add{background:rgba(28,140,95,.16);color:#4ade80;} .cli-b.cut{background:rgba(192,69,59,.16);color:#E8837E;} .cli-b.watch{background:rgba(219,160,60,.14);color:var(--ambar);}
 
 /* ── NOTA PIE ── */
 .foot-note{flex-shrink:0;padding:7px 20px;background:var(--surface);border-top:1px solid var(--border);font-size:10px;color:var(--dim);line-height:1.5;}
@@ -233,6 +255,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </label>
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
+    <button class="chip chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
     <button class="chip chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
@@ -304,21 +327,27 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         </ul>
 
         <h4>Qué es cada múltiplo</h4>
+        <p>En todos, <b>más bajo = más barato</b>. Los rangos de abajo son una referencia general del mercado (S&amp;P 500) para tener una idea — pero lo que de verdad importa es cómo está la empresa <b>contra su propia historia</b> y contra sus pares del mismo rubro (eso es lo que mide el semáforo "Precio").</p>
         <div class="guia-mult">
           <div><b>P/E — Precio sobre Ganancias</b>
             <p>Cuántos años de la ganancia actual pagás por la acción. P/E 20 = pagás 20 veces lo que la empresa gana en un año.</p>
+            <p class="gm-ref">Referencia: &lt;12 barato · 15–20 normal · &gt;25 caro · &gt;40 muy caro (o con mucho crecimiento ya descontado). Bancos suelen estar en 8–13, utilities 15–20, tecnología de crecimiento 30–50.</p>
             <p class="gm-use"><b>Sirve para:</b> empresas rentables y con ganancias estables — bancos, consumo, salud, industria. <b>No sirve</b> cuando la empresa pierde plata o sus ganancias son muy volátiles (mineras, tecnológicas jóvenes).</p></div>
           <div><b>P/S — Precio sobre Ventas</b>
             <p>Cuánto pagás por cada dólar de ventas de la empresa.</p>
+            <p class="gm-ref">Referencia: &lt;1 muy barato (negocios de margen bajo) · 1–3 normal · &gt;5 premium · &gt;10 caro. Cuanto mayor el margen de la empresa, más alto puede estar "justificado".</p>
             <p class="gm-use"><b>Sirve para:</b> empresas que todavía no ganan plata o tienen márgenes cambiantes — software, e-commerce, tecnológicas en crecimiento. Ojo: una empresa con 30% de margen "vale" más P/S que una con 5%.</p></div>
           <div><b>EV/EBITDA — Valor de empresa sobre ganancia operativa</b>
             <p>Como el P/E pero mirando toda la empresa (con la deuda incluida) y la ganancia operativa "limpia", antes de intereses y amortizaciones.</p>
+            <p class="gm-ref">Referencia: &lt;8 barato · 10–14 normal · &gt;18 caro. Energía y materiales suelen estar más bajo (5–8), software más alto (20+).</p>
             <p class="gm-use"><b>Sirve para:</b> comparar empresas con distinto nivel de deuda — energía, telecomunicaciones, industria pesada, cable.</p></div>
           <div><b>P/FCF — Precio sobre Flujo de Caja Libre</b>
             <p>Cuánto pagás por el efectivo real que le queda a la empresa después de invertir en mantenerse funcionando. El más difícil de maquillar.</p>
+            <p class="gm-ref">Referencia: &lt;15 atractivo · 15–25 normal · &gt;30 caro. Cuidado: si la empresa está invirtiendo fuerte para crecer, el FCF baja y el múltiplo se dispara sin ser "caro" de verdad.</p>
             <p class="gm-use"><b>Sirve para:</b> empresas maduras que generan caja — consumo, tecnología establecida, salud.</p></div>
           <div><b>P/B — Precio sobre Valor Libros</b>
             <p>Cuánto pagás sobre el patrimonio contable. P/B 1 = pagás exactamente el patrimonio; 2 = el doble.</p>
+            <p class="gm-ref">Referencia: &lt;1 por debajo del patrimonio (valor profundo o problemas) · 1–3 normal · &gt;3 premium. En bancos: 1–1,5 normal, &gt;2 caro, &lt;0,8 barato (o el mercado desconfía del balance).</p>
             <p class="gm-use"><b>Sirve para:</b> bancos y aseguradoras, casi exclusivamente — donde los activos son plata y préstamos, fáciles de valuar.</p></div>
         </div>
 
@@ -341,6 +370,36 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
           <li>Otras empresas del <b>mismo rubro</b> (¿está cara o barata contra sus pares?).</li>
         </ol>
         <p>Nunca compares el P/E de un banco con el de una tecnológica, ni el P/S de un software con el de un supermercado. Son negocios distintos y los números no significan lo mismo.</p>
+
+        <h4>Cómo se calculan los puntajes (−100 a +100)</h4>
+        <p>Cada componente se lleva a una escala de −1 (malo) a +1 (bueno), se multiplica por su peso y se suma. Necesita al menos 3 de los 5 componentes para dar un puntaje.</p>
+        <p><b>Tendencia</b> — dirección del precio:</p>
+        <table class="guia-tabla">
+          <tr><td>Precio vs. media de 200 semanas</td><td>25%</td></tr>
+          <tr><td>Orden de las medias (21 &gt; 50 &gt; 200 = alcista)</td><td>20%</td></tr>
+          <tr><td>Rendimiento de los últimos 3 meses</td><td>20%</td></tr>
+          <tr><td>Fuerza relativa (cómo rindió a 6 meses vs. toda la lista)</td><td>20%</td></tr>
+          <tr><td>Distancia al máximo de 52 semanas</td><td>15%</td></tr>
+        </table>
+        <p><b>Negocio</b> — salud de la empresa (últimos 5 balances):</p>
+        <table class="guia-tabla">
+          <tr><td>Crecimiento de ventas anualizado (+15%/año = tope)</td><td>30%</td></tr>
+          <tr><td>Rentabilidad (en cuántos de los 5 años ganó plata)</td><td>25%</td></tr>
+          <tr><td>Tendencia del margen neto (se expande o se comprime)</td><td>20%</td></tr>
+          <tr><td>Generación de caja (años con flujo de caja libre positivo)</td><td>15%</td></tr>
+          <tr><td>Deuda neta / EBITDA (menos de 1× suma, más de 5× resta)</td><td>10%</td></tr>
+        </table>
+        <p class="guia-nota">En pesos no se calculan "crecimiento de ventas" ni "tendencia del margen" — la contabilidad ajustada por inflación los distorsiona. Los tickers en ARS puntúan solo con rentabilidad, caja y deuda.</p>
+        <p><b>Precio</b> — el semáforo compara el múltiplo primario del sector (P/E para bancos, P/S para tecnología, etc.) contra su promedio de 5 años: <b>+5% o más barato</b> → Barato, <b>−30% o más caro</b> → Caro, en el medio → En precio.</p>
+
+        <h4>Qué hacer — cómo se arma el veredicto</h4>
+        <ul>
+          <li><b>Sumar</b>: Tendencia alcista (≥ +25) <b>y</b> Negocio sólido (≥ +20) <b>y</b> no muy cara.</li>
+          <li><b>Mantener</b>: lo mismo pero cara; o bajista con Negocio sólido (castigada); o sin tendencia marcada.</li>
+          <li><b>Atención</b>: Tendencia alcista pero Negocio flojo (≤ −15) — rebote sin sustento.</li>
+          <li><b>Reducir</b>: Tendencia bajista (≤ −20) <b>y</b> Negocio flojo.</li>
+        </ul>
+        <p>Los analistas <b>no</b> entran en el veredicto — van al lado, para que veas si coinciden.</p>
 
         <h4>Precio objetivo de analistas</h4>
         <p>La columna "Analistas" sale del archivo de Precios Objetivo que cargás una vez por mes. Muestra la recomendación de consenso (Compra / Mantener / Venta), el precio objetivo promedio y cuánta suba le ven desde el precio de hoy. El "coinciden / difieren" te avisa si los analistas están de acuerdo con la lectura de la fila — cuando difieren, vale la pena mirar por qué.</p>
@@ -381,6 +440,16 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         </div>
         <p class="msg-nota">Revisá el texto antes de enviar — es un borrador armado con la lectura de la pantalla, no un mensaje listo.</p>
       </div>
+    </div>
+  </div>
+
+  <div class="holders-overlay" id="clientesOverlay" onclick="if(event.target===this) cerrarClientes()">
+    <div class="holders-modal cli-modal">
+      <div class="hm-head">
+        <div><div class="hm-title">Tus clientes</div><div class="hm-sub" id="cli-sub"></div></div>
+        <button class="hm-close" onclick="cerrarClientes()">✕</button>
+      </div>
+      <div class="hm-body" id="cli-body"></div>
     </div>
   </div>
 
@@ -899,32 +968,120 @@ function holdersFor(r){
   return holdersByTicker[String(r.ticker||'').toUpperCase()]
       || holdersByTicker[String(r.tickerUsado||'').toUpperCase()] || [];
 }
-function abrirHolders(ticker){
-  if(!ticker) return;
+// ── FICHA COMPLETA DE LA EMPRESA (click en el ticker) ──
+function _fichaHolders(ticker){
   const holders=holdersByTicker[String(ticker).toUpperCase()]||[];
-  document.getElementById('hmTicker').textContent=ticker;
-  document.getElementById('hmSub').textContent=holders.length
-    ? `${holders.length} cliente(s) posicionado(s)` : 'Ningún cliente tuyo lo tiene en cartera';
-  const body=document.getElementById('hmBody');
   if(!holders.length){
-    body.innerHTML=`<div class="hm-empty">Ningún cliente tuyo tiene <b>${ticker}</b> en cartera actualmente.`
-      +(dataTenencia.length?'':' (Subí "Tenencia por Ticker" una vez en el FCN Suite para ver esto acá.)')+`</div>`;
-  }else{
-    const rows=holders.slice().sort((a,b)=>b.tenencia-a.tenencia).map(h=>`
-      <tr><td>${h.cliente}</td><td>${h.asesor||'—'}</td>
-      <td>US$ ${h.tenencia.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
-      <td>${h.nominales.toLocaleString('es-AR')}</td></tr>`).join('');
-    const total=holders.reduce((a,h)=>a+h.tenencia,0);
-    body.innerHTML=`<table class="hm-table"><thead><tr><th>Cliente</th><th>Asesor</th><th>Tenencia</th><th>Nominales</th></tr></thead>`
-      +`<tbody>${rows}</tbody></table>`
-      +`<div class="hm-total">Total en cartera: <b>US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</b></div>`;
+    return `<div class="fs-sec"><h5>Clientes</h5><p class="fs-p">`
+      + (dataTenencia.length?`Ningún cliente tuyo lo tiene en cartera.`:`Subí "Tenencia por Ticker" en el FCN Suite para ver esto.`)+`</p></div>`;
   }
-  document.getElementById('holdersOverlay').classList.add('open');
+  const rows=holders.slice().sort((a,b)=>b.tenencia-a.tenencia).map(h=>`
+    <tr><td><span class="fs-cli-link" onclick="focoDesdeFicha('${String(h.cliente).replace(/'/g,"\\'")}')">${h.cliente}</span></td>
+    <td>US$ ${h.tenencia.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
+    <td>${h.nominales.toLocaleString('es-AR')}</td></tr>`).join('');
+  const total=holders.reduce((a,h)=>a+h.tenencia,0);
+  return `<div class="fs-sec"><h5>Clientes (${holders.length})</h5>
+    <table class="hm-table"><thead><tr><th>Cliente</th><th>Tenencia</th><th>Nominales</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="hm-total">Total: <b>US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</b></div></div>`;
 }
-function cerrarHolders(){ document.getElementById('holdersOverlay').classList.remove('open'); }
+function focoDesdeFicha(cli){ cerrarHolders(); clienteActivo=cli; _carteraTocado=false; soloCartera=false; activeTab='Panorama'; buildTabs(); render(); }
+
+function abrirFicha(ticker){
+  if(!ticker) return;
+  const r=allRows.find(x=>x.ticker.toUpperCase()===String(ticker).toUpperCase()||x.tickerUsado.toUpperCase()===String(ticker).toUpperCase());
+  document.getElementById('holdersOverlay').classList.add('open');
+  document.getElementById('holdersOverlay').querySelector('.holders-modal').classList.add('ficha-modal');
+  document.getElementById('hmTicker').textContent=r?`${r.ticker} · ${r.empresa||''}`:ticker;
+  document.getElementById('hmSub').textContent=r?`${r.sector||'Sin sector'}${r.precio!=null?` · ${r.moneda||''} ${fmtN(r.precio)}`:''}`:'';
+  const body=document.getElementById('hmBody');
+  if(!r){ body.innerHTML='<div class="hm-empty">Sin datos para este ticker.</div>'; return; }
+
+  const q=queHacer(r), an=analistasDe(r), f=r.f||{};
+  const pct=(x,d)=>x==null?'—':`${x>=0?'+':''}${fmtN(x*100,d??0)}%`;
+  const st=sigTendencia(r), sn=sigNegocio(r), sp=sigPrecio(r);
+  const chip=s=>s?`<span class="sig ${s.cls}">${s.txt}</span>`:'<span class="dash">—</span>';
+
+  // El precio (técnico)
+  const tec=[];
+  if(r.precio!=null&&r.mm200){const d=r.precio/r.mm200-1;
+    tec.push(`El precio está <b>${pct(d)}</b> ${d>=0?'por encima':'por debajo'} de su media de 200 semanas — ${d>=0?'tendencia alcista de fondo':'tendencia bajista de fondo'}.`);}
+  if(r.mm21&&r.mm50&&r.mm200){
+    const ok=r.mm21>r.mm50&&r.mm50>r.mm200, bad=r.mm21<r.mm50&&r.mm50<r.mm200;
+    tec.push(ok?'Las medias están ordenadas (corto sobre mediano sobre largo): la tendencia está sana.'
+      :bad?'Las medias están invertidas: tendencia bajista confirmada.'
+      :'Las medias están cruzadas: sin una dirección clara.');}
+  if(r.ret3m!=null||r.ret6m!=null) tec.push(`Rendimiento: <b>${pct(r.ret3m)}</b> en 3 meses, <b>${pct(r.ret6m)}</b> en 6.`);
+  if(r.dist52!=null) tec.push(`Está a <b>${pct(r.dist52)}</b> de su máximo del último año.`);
+
+  // El negocio (fundamental)
+  const neg=[];
+  if(f.revCagr!=null) neg.push(`Las ventas ${f.revCagr>=0?'crecen':'caen'} al <b>${pct(f.revCagr)}/año</b> (últimos 5 años).`);
+  if(f.niPos!=null) neg.push(`Ganó plata en <b>${Math.round(f.niPos*5)} de los últimos 5 años</b>.`);
+  if(f.margenTrend!=null) neg.push(`El margen neto se ${f.margenTrend>=0?'expandió':'comprimió'} <b>${fmtN(f.margenTrend*100,1)} pp</b> en ese período.`);
+  if(f.fcfPos!=null) neg.push(`Generó caja libre en <b>${Math.round(f.fcfPos*5)} de 5 años</b>.`);
+  if(f.ndEbitda!=null) neg.push(f.ndEbitda<=0?`Tiene <b>más caja que deuda</b>.`:`Deuda neta de <b>${fmtN(f.ndEbitda,1)}×</b> su ganancia operativa anual ${f.ndEbitda<=1?'(cómodo)':f.ndEbitda<=3?'(manejable)':'(alto)'}.`);
+  if(!neg.length) neg.push('Sin datos de balances (ETF, o empresa sin balances públicos accesibles).');
+
+  // La valuación
+  const val=[];
+  const k=multPrimario(r.sector), mm=r.m[k];
+  if(mm&&mm.actual!=null){
+    val.push(`Su <b>${MULT[k]?.label||k}</b> es <b>${fmtN(mm.actual)}</b>${mm.p5!=null?`, contra un promedio de 5 años de <b>${fmtN(mm.p5)}</b>`:''}.`);
+    const c=corr(mm.actual,mm.p5);
+    if(c!=null) val.push(c>=0?`Está <b>${pct(c)}</b> más barata que lo normal para la empresa.`:`Está <b>${pct(-c)}</b> más cara que su promedio histórico.`);
+    const o=precioObj(r.precio,mm.actual,mm.p5);
+    if(o!=null) val.push(`Si volviera a su múltiplo promedio, el precio estaría cerca de <b>${r.moneda||''} ${fmtN(o)}</b>.`);
+  } else val.push('Sin múltiplos (ETF, o papel argentino sin cobertura).');
+
+  // Analistas
+  const anl=an ? [
+    `${an.n?`<b>${an.n} analistas</b> siguen la acción. `:''}Recomendación de consenso: <b>${REC_LABEL[an.rec]||'sin dato'}</b>.`,
+    an.target!=null?`Precio objetivo promedio: <b>${an.moneda||'US$'} ${fmtN(an.target,an.target>100?0:2)}</b>${an.upside!=null?` (${pct(an.upside)} ${an.upside>=0?'de suba':'de baja'})`:''}${an.min!=null&&an.max!=null?`, rango ${fmtN(an.min,an.min>100?0:1)}–${fmtN(an.max,an.max>100?0:1)}`:''}.`:'',
+  ].filter(Boolean) : ['Sin cobertura de analistas en el archivo de Precios Objetivo.'];
+
+  const sec=(t,items)=>`<div class="fs-sec"><h5>${t}</h5>${items.map(x=>`<p class="fs-p">${x}</p>`).join('')}</div>`;
+  body.innerHTML=`
+    <div class="fs-verd qh ${q.cls}">${q.v}</div><p class="fs-por">${q.por}</p>
+    <div class="fs-chips"><span>Tendencia ${chip(st)}</span><span>Negocio ${chip(sn)}</span><span>Precio ${chip(sp)}</span></div>
+    ${sec('📈 El precio', tec.length?tec:['Sin datos de precio.'])}
+    ${sec('🏭 El negocio', neg)}
+    ${sec('⚖️ La valuación', val)}
+    ${sec('👔 Analistas', anl)}
+    ${_fichaHolders(ticker)}`;
+}
+function cerrarHolders(){
+  const ov=document.getElementById('holdersOverlay');
+  ov.classList.remove('open');
+  ov.querySelector('.holders-modal').classList.remove('ficha-modal');
+}
+// ── LISTA DE CLIENTES: cada uno con su total y el estado de su cartera ──
+function abrirClientes(){
+  const cls=clientesConCartera();
+  document.getElementById('cli-sub').textContent=`${cls.length} clientes · ordenados por tenencia`;
+  const body=document.getElementById('cli-body');
+  if(!cls.length){ body.innerHTML='<div class="hm-empty">Subí "Tenencia por Ticker" en el FCN Suite.</div>'; }
+  else body.innerHTML=cls.map(c=>{
+    const cart=carteraDeCliente(c);
+    const tot=cart.reduce((a,x)=>a+x.ten,0);
+    const cnt={Sumar:0,Atención:0,Reducir:0};
+    cart.forEach(x=>{ if(cnt[x.q.v]!==undefined) cnt[x.q.v]++; });
+    const b=[];
+    if(cnt.Sumar) b.push(`<span class="cli-b add">${cnt.Sumar} sumar</span>`);
+    if(cnt.Atención) b.push(`<span class="cli-b watch">${cnt.Atención} atención</span>`);
+    if(cnt.Reducir) b.push(`<span class="cli-b cut">${cnt.Reducir} reducir</span>`);
+    const nom=datosCliente(c).nombre||c;
+    return `<div class="cli-row" onclick="focoDesdeFicha('${String(c).replace(/'/g,"\\'")}');cerrarClientes()">
+      <span class="cli-nom">${nom}</span>
+      <span class="cli-badges">${b.join('')}</span>
+      <span class="cli-usd">${fmtUsd(tot)} · ${cart.length} pos.</span></div>`;
+  }).join('');
+  document.getElementById('clientesOverlay').classList.add('open');
+}
+function cerrarClientes(){ document.getElementById('clientesOverlay').classList.remove('open'); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); } });
+function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
 const REC_LABEL={strongbuy:'Compra fuerte',buy:'Compra',hold:'Mantener',sell:'Venta',strongsell:'Venta fuerte',underperform:'Venta',outperform:'Compra',none:''};
@@ -968,6 +1125,7 @@ async function loadTenencia(){
     if(chip && dataTenencia.length){
       chip.style.display='';
       const cm=document.getElementById('chip-msg'); if(cm) cm.style.display='';
+      const cc=document.getElementById('chip-clientes'); if(cc) cc.style.display='';
       // por defecto arranca filtrado a lo que realmente tenemos en cartera
       if(!_carteraTocado){ soloCartera=true; chip.classList.add('active'); }
     }
@@ -1165,7 +1323,7 @@ function tkCell(r){
   const holders=holdersFor(r);
   const badge=holders.length?` <span class="tk-badge">👤${holders.length}</span>`:'';
   const esc=String(r.ticker).replace(/'/g,"\\'");
-  return `<td class="td-ticker" onclick="abrirHolders('${esc}')" title="Ver qué clientes lo tienen">${r.ticker}${badge}</td>`;
+  return `<td class="td-ticker" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}${badge}</td>`;
 }
 
 // Debounce del buscador — antes cada tecla tipeada reconstruía la tabla entera de +300
@@ -1213,7 +1371,7 @@ function render(){
         : `<span class="dash">—</span>`;
       const esc=String(r.ticker).replace(/'/g,"\\'");
       return `<tr style="background:${bg}">
-        <td class="pa-activo"><div class="pa-tk" onclick="abrirHolders('${esc}')" title="Ver qué clientes lo tienen">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
+        <td class="pa-activo"><div class="pa-tk" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
         <td class="pa-cartera">${carteraCell}</td>
         <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span><div class="pa-por">${q.por}</div></td>
         <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
@@ -1292,8 +1450,8 @@ function render(){
   tbody.innerHTML=bodyHtml || `<tr><td colspan="${ncols}" style="padding:30px;text-align:center;color:var(--muted);">Sin filas para este filtro.</td></tr>`;
 
   // contador
-  const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo}</span>`
-    : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes</span>` : '';
+  const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo} <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>`
+    : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>` : '';
   const cmsg=document.getElementById('chip-msg');
   if(cmsg) cmsg.textContent = clienteActivo ? `✉ Mensaje a ${String(clienteActivo).split(' ')[0]}` : '✉ Mensajes';
   let conDato, unidad='tickers';
