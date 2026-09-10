@@ -2804,16 +2804,15 @@ function abrirArmadorConCartera(cliente) {
   const assets = inv.slice().sort((a, b) => b.tenencia - a.tenencia).map(i => {
     const ver = vmVeredictoDeTicker(i.ticker);
     const rent = (i.ppc > 0 && i.nominales > 0) ? (i.tenencia / i.nominales / i.ppc - 1) * 100 : null;
-    const nota = [];
-    if (rent != null) nota.push(`Rent. actual ${rent >= 0 ? '+' : ''}${rent.toFixed(1)}%`);
-    if (ver && ver.qh && ['Sumar', 'Atención', 'Reducir'].includes(ver.qh.v)) nota.push('Múltiplos: ' + ver.qh.v);
+    const nota = (ver && ver.qh && ['Sumar', 'Atención', 'Reducir'].includes(ver.qh.v)) ? 'Múltiplos: ' + ver.qh.v : '';
     return {
       n: (ver && ver.empresa) || i.instrumento || i.ticker,
       t: i.ticker,
       p: +(i.tenencia / tot * 100).toFixed(1),
       c: 'USD',
       ty: _ARM_TIPO[String(i.tipo || '').toLowerCase().trim()] || 'Otro',
-      no: nota.join(' · '),
+      no: nota,
+      ra: rent != null ? +rent.toFixed(1) : undefined,
     };
   });
   const payload = { cn: cliente, ps: Math.round(tot), pc: 'USD', assets };

@@ -1277,7 +1277,11 @@ function addAsset(){
       if(ok) pctVal=pctMin;
     }
   }
-  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC};
+  // rentAct = rendimiento actual del cliente en ese papel (viene del import desde la Vista 360
+  // de la Suite; no se edita en el form). Se preserva al editar el resto del activo.
+  var prevRentAct=null;
+  if(editingId!==null){var pa=assets.find(function(a){return a.id===editingId;});if(pa&&pa.rentAct!=null)prevRentAct=pa.rentAct;}
+  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC,rentAct:prevRentAct};
   if(editingId!==null){assets=assets.map(function(a){return a.id===editingId?obj:a;});cancelEdit();}
   else{
     assets.push(obj);
@@ -1375,6 +1379,7 @@ function render(){
       '<div class="asset-meta">'+a.type.replace(' | ',' · ')+' · '+a.curr+metaExtra+'</div>'+
       (yStr?'<div class="asset-meta" style="color:#1C8C5F;font-size:9px;">'+yStr+'</div>':'')+
       lamWarn+
+      (a.rentAct!=null?'<div class="asset-meta" style="font-size:9px;font-weight:600;color:'+(a.rentAct>=0?'#1C8C5F':'#E8837E')+';">Rend. actual del cliente: '+(a.rentAct>=0?'+':'')+a.rentAct.toFixed(1)+'%</div>':'')+
       (a.nota?'<div class="asset-meta" style="font-style:italic;color:rgba(255,255,255,.3)">'+a.nota+'</div>':'')+
       '</div>'+
       '<div class="asset-right"><div class="asset-pct">'+a.pct+'%</div>'+(amt?'<div class="asset-amount">'+amt+'</div>':'')+' </div>'+
@@ -1936,7 +1941,7 @@ window.addEventListener('load',function(){
     if(data.risk)document.getElementById('client-risk').value=data.risk;if(data.horiz)document.getElementById('client-horizon').value=data.horiz;
     if(data.ps)document.getElementById('port-size').value=data.ps;if(data.pc)document.getElementById('port-curr').value=data.pc;
     if(data.note)document.getElementById('strategy-note').value=data.note;
-    if(Array.isArray(data.assets))assets=data.assets.map(function(a,i){return{id:Date.now()+i,name:a.n||'',ticker:a.t||'',pct:a.p||0,ret:a.r||'',curr:a.c||'USD',type:a.ty||'',color:a.col||'#0F3A34',venc:a.v||'',meses:a.m||'',ley:a.l||'',calif:a.q||'',nota:a.no||'',dias:a.d||null,papel:a.pp||null};});
+    if(Array.isArray(data.assets))assets=data.assets.map(function(a,i){return{id:Date.now()+i,name:a.n||'',ticker:a.t||'',pct:a.p||0,ret:a.r||'',curr:a.c||'USD',type:a.ty||'',color:a.col||'#0F3A34',venc:a.v||'',meses:a.m||'',ley:a.l||'',calif:a.q||'',nota:a.no||'',dias:a.d||null,papel:a.pp||null,rentAct:(typeof a.ra==='number')?a.ra:null};});
     render();updateDoc();updateYield();
     var b=document.createElement('div');b.textContent='✓ Cartera compartida cargada';b.style.cssText='position:fixed;top:0;left:0;width:100%;padding:10px;background:#1C8C5F;color:#fff;text-align:center;font-size:13px;font-weight:500;z-index:9999;';document.body.appendChild(b);setTimeout(function(){b.remove();},3000);
   }catch(e){console.warn('URL decode:',e);}
