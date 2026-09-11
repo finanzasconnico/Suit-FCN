@@ -282,6 +282,33 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         <option value="PB">P/B</option>
       </select>
     </label>
+    <label class="mult-pick" id="sig-pick">Señal
+      <select id="sig-sel" onchange="onSigChange()">
+        <option value="">Todas</option>
+        <optgroup label="Precio (vs. su historia)">
+          <option value="precio:Barato">Barato</option>
+          <option value="precio:En precio">En precio</option>
+          <option value="precio:Caro">Caro</option>
+        </optgroup>
+        <optgroup label="Tendencia">
+          <option value="tend:Alcista">Alcista</option>
+          <option value="tend:Lateral">Lateral</option>
+          <option value="tend:Bajista">Bajista</option>
+        </optgroup>
+        <optgroup label="Negocio">
+          <option value="neg:Sólido">Sólido</option>
+          <option value="neg:Regular">Regular</option>
+          <option value="neg:Flojo">Flojo</option>
+        </optgroup>
+        <optgroup label="Qué hacer">
+          <option value="qh:Sumar">Sumar</option>
+          <option value="qh:Mantener">Mantener</option>
+          <option value="qh:Atención">Atención</option>
+          <option value="qh:Reducir">Reducir</option>
+          <option value="qh:Sin señal">Sin señal</option>
+        </optgroup>
+      </select>
+    </label>
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
     <div class="ten-min-wrap" id="ten-min-wrap" style="display:none">
@@ -311,7 +338,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       </div>
       <div><b>Tendencia</b><p>¿El precio viene subiendo o bajando? Mira las medias móviles y el rendimiento de los últimos meses. <b>Alcista</b> / Lateral / <b>Bajista</b>.</p></div>
       <div><b>Negocio</b><p>¿La empresa crece, gana plata y genera caja? Sale de los últimos 5 balances. <b>Sólido</b> / Regular / <b>Flojo</b>.</p></div>
-      <div><b>Precio</b><p>¿Está cara o barata comparada con su propia historia? Compara los múltiplos de hoy contra su promedio de 5 años. <b>Barato</b> / En precio / <b>Caro</b>.</p></div>
+      <div><b>Precio</b><p>¿Está cara o barata comparada con su propia historia? Compara los múltiplos de hoy contra su promedio de 5 años. <b>Barato</b> / En precio / <b>Caro</b>. El selector <b>"Señal"</b> de la barra de arriba filtra por cualquiera de estas tres lecturas (o por "Qué hacer") en toda la lista — por ejemplo, elegí Precio → Caro para ver todo lo que está caro, tengas o no tenencia.</p></div>
       <div><b>Analistas</b><p>Qué recomiendan los analistas que siguen la acción, su precio objetivo promedio y cuánta suba le ven. Sale del archivo de Precios Objetivo (lo subís una vez por mes). El "coinciden / difieren" te dice si los analistas están de acuerdo con la lectura.</p></div>
       <div><b>📖 Guía de múltiplos</b><p>Tocá el botón <b>"Guía"</b> arriba para el detalle de qué es P/E, P/S, EV/EBITDA, etc., qué sectores usa cada uno y cómo comparar activos dentro de un rubro.</p></div>
       <div><b>🔔 Novedades</b><p>Qué activos cambiaron de lectura desde la actualización anterior (ej. "MELI pasó de Mantener a Reducir"), ordenados por cuánta plata de clientes hay en juego. Tu lista de llamados de la semana.</p></div>
@@ -650,6 +677,7 @@ let activeSector='todos';
 let multSel='auto';                 // 'auto' (según sector) | 'PE' | 'PS' | 'EVEBITDA' | 'PFCF' | 'PB'
 let soloCartera=false, _carteraTocado=false;
 let tenMin=0, soloPrioridad=false;   // filtro de monto mínimo + "avisame qué vender, por plata en juego"
+let sigFiltro='';   // filtro por señal, ej. 'precio:Caro' — ver onSigChange()
 let sortState={};   // { tabName: {col, asc} }
 let dataTenencia=[], holdersByTicker={};
 let FOOT_BASE='';
@@ -1684,6 +1712,17 @@ function toggleCartera(){
   document.getElementById('chip-cartera').classList.toggle('active',soloCartera);
   render();
 }
+// filtro genérico por señal — 'precio:Caro', 'tend:Alcista', 'neg:Flojo', 'qh:Reducir'...
+function cumpleSenal(r,filtro){
+  const [eje,val]=filtro.split(':');
+  if(eje==='qh') return queHacer(r).v===val;
+  const sig = eje==='precio' ? sigPrecio(r) : eje==='tend' ? sigTendencia(r) : eje==='neg' ? sigNegocio(r) : null;
+  return !!sig && sig.txt===val;
+}
+function onSigChange(){
+  sigFiltro=document.getElementById('sig-sel').value;
+  render();
+}
 function onTenMinChange(){
   tenMin=Math.max(0, parseFloat(document.getElementById('ten-min-input').value)||0);
   renderDebounced();
@@ -1711,6 +1750,7 @@ function visibleRows(){
     if(soloCartera && !holdersFor(r).length) return false;
     if(tenMin>0 && tenenciaTotal(r)<tenMin) return false;
     if(soloPrioridad && !['Reducir','Atención'].includes(queHacer(r).v)) return false;
+    if(sigFiltro && !cumpleSenal(r,sigFiltro)) return false;
     if(clienteActivo || topClientesSet){
       const hs=holdersFor(r);
       if(clienteActivo && !hs.some(h=>h.cliente===clienteActivo)) return false;
