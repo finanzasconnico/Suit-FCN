@@ -350,6 +350,15 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
         <div class="yield-breakdown" id="yield-breakdown"></div>
         <div class="yield-missing" id="yield-missing" style="display:none;"></div>
       </div>
+      <!-- Objetivo de precio ponderado de la pata de Renta Variable — mismo patrón visual que
+           el rendimiento de Renta Fija de arriba, cruzando cada CEDEAR/acción con el precio
+           objetivo de analistas (archivo Precios Objetivo). Ver updateTarget(). -->
+      <div class="yield-bar" id="target-bar" style="display:none;">
+        <div class="yield-bar-title">Objetivo de precio ponderado (Renta Variable)</div>
+        <div class="yield-main"><div class="yield-number" id="target-total">—</div><div class="yield-label">upside a precio objetivo</div></div>
+        <div class="yield-breakdown" id="target-breakdown"></div>
+        <div class="yield-missing" id="target-missing" style="display:none;"></div>
+      </div>
       <div class="asset-list" id="asset-list" style="margin-top:10px;"></div>
     </div>
   </div>
@@ -577,6 +586,15 @@ var _preciosObjReady = (function loadPreciosObjetivo() {
   }
   var ready = new Promise(function(resolve){
     window.addEventListener('DOMContentLoaded', function(){ load().then(resolve).catch(resolve); });
+  });
+  // Si ya hay activos cargados cuando termina de llegar el archivo (ej. una cartera importada
+  // en bloque desde la Vista 360 de la Suite, que llega antes de que esto resuelva), completar
+  // precio objetivo de los CEDEARs/acciones ahora y refrescar. Ver enrichPreciosObjetivoActivos().
+  ready.then(function(){
+    if (typeof assets !== 'undefined' && assets.length && typeof enrichPreciosObjetivoActivos === 'function') {
+      if (enrichPreciosObjetivoActivos()) updateDoc(); // updateDoc() ya llama a render()
+      updateYield(); // recalcula también la barra de objetivo de precio (updateTarget)
+    }
   });
   if (typeof BroadcastChannel !== 'undefined') {
     new BroadcastChannel('fcn_shared').onmessage = function(e) {
@@ -932,6 +950,12 @@ function loadMonitorFull(input){
       }
 
       ON_DB=newON; SOV_DB=newSOV; LET_DB=newLET;
+      // Si ya hay activos cargados cuando termina de cargar el Monitor (bug real, 2026-09:
+      // una cartera importada en bloque desde la Vista 360 de la Suite se renderizaba ANTES
+      // de que este parseo asincrónico terminara, así que el TIR/duration/calificación de cada
+      // ON/soberano quedaba en "Sin rendimiento" para siempre — el Monitor sí tenía el dato,
+      // pero nunca se volvía a pintar). Refrescar ahora que ON_DB/SOV_DB/LET_DB ya están.
+      if (typeof assets !== 'undefined' && assets.length) { updateDoc(); updateYield(); }
       rebuildBYMAFromDB(newBC,newBS,newBL);
       var ts=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
       try{localStorage.setItem('fcn-on-db',JSON.stringify(ON_DB));localStorage.setItem('fcn-sov-db',JSON.stringify(SOV_DB));localStorage.setItem('fcn-let-db',JSON.stringify(LET_DB));localStorage.setItem('fcn-monitor-ts',ts);}catch(e){}
@@ -1391,7 +1415,7 @@ function render(){
 // ═══ YIELD UPDATE ═══
 function updateYield(){
   var bar=document.getElementById('yield-bar');
-  if(!assets||!assets.length){bar.style.display='none';return;}
+  if(!assets||!assets.length){bar.style.display='none';updateTarget();return;}
   var totalAlloc=assets.reduce(function(s,a){return s+a.pct;},0);
   var wVal=0,breakdown=[],missing=[];
   assets.forEach(function(a){
@@ -1409,6 +1433,58 @@ function updateYield(){
   if(missing.length){mis.textContent='⚠ Sin rendimiento: '+missing.join(', ');mis.style.display='';}else mis.style.display='none';
   var lbl=document.getElementById('yield-label-text');
   if(lbl){var hL=breakdown.some(function(b){return b.label==='TNA';});var hT=breakdown.some(function(b){return b.label==='TIR';});lbl.textContent=hL&&hT?'TIR/TNA ponderada':hL?'TNA ponderada':'TIR ponderada';}
+  updateTarget();
+}
+
+// Objetivo de precio ponderado de la pata de Renta Variable — mismo cálculo que
+// updateYield() pero con upside a precio objetivo en vez de TIR/TNA. Antes esto no existía:
+// los activos de Renta Variable importados en bloque (ej. desde la Vista 360 de la Suite,
+// vía abrirArmadorConCartera) nunca tenían priceCur/priceTgt cargados — esos campos solo se
+// llenaban a mano, uno por uno, al tipear el ticker en el form (onTickerBlur). Ver
+// enrichPreciosObjetivoActivos(), que llena esos campos en bloque para toda la cartera.
+function updateTarget(){
+  var bar=document.getElementById('target-bar');
+  if(!bar)return;
+  var rv=(assets||[]).filter(function(a){return a.type&&a.type.indexOf('Variable')>=0;});
+  if(!rv.length){bar.style.display='none';return;}
+  var totalAlloc=rv.reduce(function(s,a){return s+a.pct;},0);
+  var wUp=0,breakdown=[],missing=[];
+  rv.forEach(function(a){
+    var w=totalAlloc>0?a.pct/totalAlloc:0;
+    if(a.priceCur>0&&a.priceTgt>0){
+      var up=(a.priceTgt/a.priceCur-1)*100;
+      wUp+=w*up;
+      breakdown.push({name:a.ticker||a.name.split(' ')[0],pct:a.pct,up:up});
+    } else missing.push(a.ticker||a.name.split(' ')[0]);
+  });
+  bar.style.display='block';
+  var tot=document.getElementById('target-total');
+  var hayDato=breakdown.length>0;
+  tot.textContent=hayDato?(wUp>=0?'+':'')+wUp.toFixed(1)+'%':'—';
+  tot.style.color=wUp>=10?'#1C8C5F':wUp>=0?'#DBA03C':'#e86a6a';
+  document.getElementById('target-breakdown').innerHTML=breakdown.map(function(b){return'<div class="yield-row"><span>'+b.name+' ('+b.pct+'%)</span><span>'+(b.up>=0?'+':'')+b.up.toFixed(1)+'%</span></div>';}).join('');
+  var mis=document.getElementById('target-missing');
+  if(missing.length){mis.textContent='⚠ Sin precio objetivo: '+missing.join(', ');mis.style.display='';}else mis.style.display='none';
+}
+
+// Completa priceCur/priceTgt de los activos de Renta Variable que todavía no lo tienen,
+// cruzando el ticker con el archivo Precios Objetivo (_preciosObjMap) — SIN pegarle a Yahoo
+// por cada uno (a diferencia de onTickerBlur, que es para un ticker a la vez tipeado a mano;
+// acá puede haber muchos activos de golpe). Devuelve true si completó algo (para saber si
+// hace falta volver a renderizar). El precio objetivo curado (archivo Precios Objetivo) tiene
+// prioridad — mismo criterio que el resto de la Suite.
+function enrichPreciosObjetivoActivos(){
+  var changed=false;
+  (assets||[]).forEach(function(a){
+    if(!a.ticker||!a.type||a.type.indexOf('Variable')<0)return;
+    if(a.priceCur>0&&a.priceTgt>0)return;
+    var o=_preciosObjMap[a.ticker.toUpperCase()];
+    if(!o||!o.target)return;
+    a.priceCur=a.priceCur||o.precio||null;
+    a.priceTgt=o.target;
+    changed=true;
+  });
+  return changed;
 }
 
 // ═══ DOCUMENT BUILD ═══
@@ -1941,7 +2017,16 @@ window.addEventListener('load',function(){
     if(data.risk)document.getElementById('client-risk').value=data.risk;if(data.horiz)document.getElementById('client-horizon').value=data.horiz;
     if(data.ps)document.getElementById('port-size').value=data.ps;if(data.pc)document.getElementById('port-curr').value=data.pc;
     if(data.note)document.getElementById('strategy-note').value=data.note;
-    if(Array.isArray(data.assets))assets=data.assets.map(function(a,i){return{id:Date.now()+i,name:a.n||'',ticker:a.t||'',pct:a.p||0,ret:a.r||'',curr:a.c||'USD',type:a.ty||'',color:a.col||'#0F3A34',venc:a.v||'',meses:a.m||'',ley:a.l||'',calif:a.q||'',nota:a.no||'',dias:a.d||null,papel:a.pp||null,rentAct:(typeof a.ra==='number')?a.ra:null};});
+    // Sin "col" en el asset (el caso normal — nada de lo que arma el payload hoy lo manda), se
+    // asigna un color distinto de la MISMA paleta que usa "+ Agregar Activo" — antes todos
+    // caían al mismo default (#0F3A34) y el gráfico de torta salía de un solo color, ilegible.
+    // Bug real, 2026-09.
+    if(Array.isArray(data.assets))assets=data.assets.map(function(a,i){return{id:Date.now()+i,name:a.n||'',ticker:a.t||'',pct:a.p||0,ret:a.r||'',curr:a.c||'USD',type:a.ty||'',color:a.col||PALETTE[i%PALETTE.length],venc:a.v||'',meses:a.m||'',ley:a.l||'',calif:a.q||'',nota:a.no||'',dias:a.d||null,papel:a.pp||null,rentAct:(typeof a.ra==='number')?a.ra:null,priceCur:(typeof a.pCur==='number')?a.pCur:null,priceTgt:(typeof a.pTgt==='number')?a.pTgt:null};});
+    // Si quien nos pasó la cartera (Vista 360 de la Suite) ya resolvió precio actual/objetivo
+    // por ticker, se respeta eso (viene del mismo archivo Precios Objetivo, ya cruzado en
+    // origen). Para lo que no vino con precio objetivo, se intenta completar con el propio
+    // archivo de Precios Objetivo de este navegador en cuanto termine de cargar (ver el
+    // .then() de _preciosObjReady, más arriba) — no se dispara Yahoo por cada ticker.
     render();updateDoc();updateYield();
     var b=document.createElement('div');b.textContent='✓ Cartera compartida cargada';b.style.cssText='position:fixed;top:0;left:0;width:100%;padding:10px;background:#1C8C5F;color:#fff;text-align:center;font-size:13px;font-weight:500;z-index:9999;';document.body.appendChild(b);setTimeout(function(){b.remove();},3000);
   }catch(e){console.warn('URL decode:',e);}

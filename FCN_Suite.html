@@ -2789,7 +2789,9 @@ function _nombreClienteFCN(cliente) {
 }
 
 // ── LOTE 3: abrir el Armador de Carteras con la cartera del cliente ya cargada ──
-// El Armador acepta ?c=<base64(encodeURIComponent(json))> con {cn, ps, pc, assets:[{n,t,p,c,ty,no}]}.
+// El Armador acepta ?c=<base64(encodeURIComponent(json))> con {cn, ps, pc, assets:[{n,t,p,c,ty,no,ra,pCur,pTgt}]}
+// (pCur/pTgt en el asset = precio actual/objetivo de analistas — nombres distintos del "pc" de
+// nivel raíz, que es la moneda de la cartera, para no confundirlos).
 const _ARM_TIPO = {
   cedears: 'Renta Variable | CEDEARs', acciones: 'Renta Variable | Argentina',
   corporativos: 'Renta Fija | Corporativos (ONs)', bonos: 'Renta Fija | Soberanos',
@@ -2801,10 +2803,17 @@ function abrirArmadorConCartera(cliente) {
   const inv = items.filter(i => i.grupo !== 'Liquidez');
   const tot = inv.reduce((a, i) => a + i.tenencia, 0);
   if (!tot) { alert('Este cliente no tiene posiciones invertidas para armar una cartera.'); return; }
+  // Precio objetivo de analistas por ticker, ya resuelto acá (Precios Objetivo) — se lo
+  // pasamos al Armador en el propio payload en vez de confiar en que él lo vuelva a buscar:
+  // así el "objetivo de precio ponderado" de la cartera importada sale correcto de una, sin
+  // depender del archivo de Precios Objetivo que tenga cargado ESE navegador en particular.
+  const preciosPorTk = {};
+  if (dashData.precios && dashData.precios.items) dashData.precios.items.forEach(it => { preciosPorTk[it.ticker] = it; });
   const assets = inv.slice().sort((a, b) => b.tenencia - a.tenencia).map(i => {
     const ver = vmVeredictoDeTicker(i.ticker);
     const rent = (i.ppc > 0 && i.nominales > 0) ? (i.tenencia / i.nominales / i.ppc - 1) * 100 : null;
     const nota = (ver && ver.qh && ['Sumar', 'Atención', 'Reducir'].includes(ver.qh.v)) ? 'Múltiplos: ' + ver.qh.v : '';
+    const pObj = preciosPorTk[String(i.ticker).toUpperCase()];
     return {
       n: (ver && ver.empresa) || i.instrumento || i.ticker,
       t: i.ticker,
@@ -2813,6 +2822,8 @@ function abrirArmadorConCartera(cliente) {
       ty: _ARM_TIPO[String(i.tipo || '').toLowerCase().trim()] || 'Otro',
       no: nota,
       ra: rent != null ? +rent.toFixed(1) : undefined,
+      pCur: (pObj && pObj.precio) || undefined,
+      pTgt: (pObj && pObj.target) || undefined,
     };
   });
   const payload = { cn: cliente, ps: Math.round(tot), pc: 'USD', assets };
