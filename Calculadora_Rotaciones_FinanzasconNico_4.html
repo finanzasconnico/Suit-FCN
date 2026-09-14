@@ -244,6 +244,24 @@ details.cond-details summary:hover{color:#fff;}
 .wpp-rot-btn-send:hover{filter:brightness(1.08);}
 .wpp-rot-btn-send svg{width:13px;height:13px;fill:#08381f;}
 
+/* ── REVISIÓN DE RENTA FIJA DEL CLIENTE (botón junto a los chips) ── */
+#btn-revisar-rf-cliente{margin-top:10px;}
+.rfrev-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:20px;}
+.rfrev-overlay.open{display:flex;}
+.rfrev-modal{background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:760px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.rfrev-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.rfrev-body{padding:16px 20px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+.rfrev-horiz-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--cream-dim);}
+.rfrev-horiz-row input{width:52px;padding:5px 7px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:6px;color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:11px;}
+.rfrev-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+.rfrev-table-wrap table.compare-table td, .rfrev-table-wrap table.compare-table th{white-space:nowrap;}
+.rfrev-table-wrap input[type="text"]{padding:5px 7px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:6px;color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:11px;text-transform:uppercase;}
+.rfrev-resumen{font-size:11.5px;color:var(--cream-dim);}
+.rfrev-resumen b{color:#fff;}
+.rfrev-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.rfrev-msg-box{display:none;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:12px;}
+.rfrev-msg-box.open{display:flex;}
+
 /* ── LICITACIÓN / OPORTUNIDAD MASIVA ── */
 .lic-toggle-head{display:flex;flex-direction:column;align-items:center;cursor:pointer;padding:2px 0;transition:opacity .15s ease;}
 .lic-toggle-head:hover{opacity:.85;}
@@ -435,6 +453,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
           Marcar en rojo si TIR &lt; <input type="number" step="0.5" id="umbral-tir-cliente" value="5" oninput="onCambioUmbralTirCliente()">%
         </div>
         <div class="chip-row" id="cliente-ticker-chips"></div>
+        <button class="btn btn-outline small" id="btn-revisar-rf-cliente" style="display:none;" onclick="abrirRevisionRFCliente()">📋 Revisar toda la renta fija de este cliente</button>
       </div>
 
       <div class="field ac-wrap advisor-only">
@@ -3568,18 +3587,25 @@ function onCambioUmbralTirCliente(){
 
 function renderClienteTickerChips(){
   var wrap = document.getElementById('cliente-ticker-chips');
+  var btnRevisar = document.getElementById('btn-revisar-rf-cliente');
   var items = clienteActivoNombre ? (TENENCIA_POR_CLIENTE[clienteActivoNombre]||[]) : [];
   if(!items.length){
     wrap.innerHTML = clienteActivoNombre ? '<span class="chip">No tiene renta fija cargada en la Tenencia.</span>' : '';
+    if(btnRevisar) btnRevisar.style.display = 'none';
     return;
   }
+  var hayBajas = false;
   wrap.innerHTML = items.map(function(it){
     var tir = tirActualDeTicker(it.ticker);
     var esBaja = umbralTirCliente!=null && tir!=null && tir < umbralTirCliente;
+    if(esBaja) hayBajas = true;
     var tirTxt = tir!=null ? ' · TIR '+fmtNum(tir)+'%' : '';
     return '<span class="chip chip-cliente-ticker'+(esBaja?' tir-baja':'')+'" onclick="autofillClienteBono(\''+it.ticker.replace(/'/g,"\\'")+'\','+it.nominales+','+it.tenencia+')" title="Clic para cargarlo como bono a VENDER">'+
       '<b>'+it.ticker+'</b> · '+fmtNum(it.nominales,0)+' nom.'+tirTxt+'</span>';
   }).join('');
+  // Botón de revisión completa: solo tiene sentido ofrecerlo cuando hay al menos un chip en
+  // rojo (algo por debajo del umbral) — si no, "revisar" no tendría nada para mostrar.
+  if(btnRevisar) btnRevisar.style.display = hayBajas ? '' : 'none';
 }
 
 function autofillClienteBono(ticker, nominales, tenenciaUSD){
@@ -3597,6 +3623,363 @@ function autofillClienteBono(ticker, nominales, tenenciaUSD){
     precioEl.value = (tenenciaUSD/nominales).toFixed(4);
   }
   onCondChange('venta');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REVISIÓN COMPLETA DE RENTA FIJA DEL CLIENTE — pedido de Nico (11/09): en vez de rotar UN
+//  bono a la vez, escanear TODA la renta fija de un cliente, marcar lo que rinde menos del
+//  umbral (mismo input "Marcar en rojo si TIR <" que ya usan los chips) y sugerir una
+//  alternativa para cada uno — seleccionable/editable — antes de armar un solo informe
+//  consolidado (PDF o mensaje). Reutiliza el mismo motor de cálculo que ya usa la rotación
+//  1 a 1 (bondDesdeUniverso/pctRetornoAHorizonte) — nada nuevo en la matemática, solo se
+//  aplica fila por fila en vez de a un solo par.
+// ══════════════════════════════════════════════════════════════
+var revisionRFFilas = [];       // [{ticker, emisorActual, tirActual, tenencia, nominales, candidatoTicker, candidatoEmisor, candidatoTir, incluir, calc}]
+var revisionRFHorizonte = 3;    // años — un solo horizonte para todo el informe, editable en el modal
+var RF_CORP_MIN_RANK = 3;       // AA- en ESCALA_CALIF (0=AAA) — mismo piso de calidad que usa el resto de la Suite
+
+// Mejor alternativa para UN bono flojo, dentro de TODO el universo cargado (BOND_DB) — no solo
+// del ticker que se esté mirando en el formulario de arriba. Corporativas (categoria==='ON')
+// se filtran a calificación AA- o mejor (una TIR alta con calificación baja casi siempre es
+// riesgo de pago, no oportunidad — mismo criterio que ya aplican el dashboard de Inicio y la
+// Vista 360 de FCN Suite); soberanos pasan siempre (escala global, deuda ARG a propósito).
+// Duration parecida (±2 años, permisivo si falta el dato) para no cambiarle el perfil de plazo
+// al cliente sin que se lo pida. excluirTickers = lo que el cliente ya tiene (no tiene sentido
+// "rotar" a algo que ya está en su cartera). TIR con tirActualDeTicker() — el mismo tipo de
+// precio (MEP/Cable) que ya está elegido en el selector global de la calculadora, para que
+// coincida exactamente con lo que muestran los chips en rojo (si no, un bono podía aparecer
+// "flojo" en el chip con un tipo de precio y "sano" acá con otro).
+function candidatoParaRotar(tickerActual, excluirTickers){
+  var baseRaw = BOND_DB[tickerActual];
+  var tirBase = tirActualDeTicker(tickerActual);
+  var durBase = baseRaw ? durationBond(baseRaw) : null;
+  var mejorTk = null, mejorTir = -Infinity;
+  Object.keys(BOND_DB).forEach(function(tk){
+    if(tk===tickerActual) return;
+    if(excluirTickers && excluirTickers[tk]) return;
+    var b = BOND_DB[tk];
+    if(b.categoria==='ON'){
+      var rk = calificacionRank(b.calif);
+      if(rk==null || rk>RF_CORP_MIN_RANK) return;
+    }
+    var tir = tirActualDeTicker(tk);
+    // Techo de sanidad (mismo criterio que "Mejores TIR" del dashboard de Inicio): una TIR por
+    // encima de esto casi siempre es un dato roto (precio mal cargado, bono a días de vencer)
+    // más que una oportunidad real — sin este techo, "elegí la TIR más alta" terminaba
+    // sugiriendo bonos con TIR de 200%+ por un dato sucio. Bug real, 2026-09.
+    if(tir==null || tirBase==null || tir<=tirBase || tir>20) return;
+    var dur = durationBond(b);
+    // Un bono a semanas de vencer no es un destino razonable para "rotar" (y su TIR
+    // recalculada del precio se vuelve inestable/enorme cerca del vencimiento — la causa real
+    // de las TIR de 200%+ que se filtraban arriba). Igual se descarta, aunque el techo de TIR
+    // ya lo tape casi siempre.
+    if(dur!=null && dur<0.25) return;
+    if(durBase!=null && dur!=null && Math.abs(dur-durBase)>2) return;
+    if(tir>mejorTir){ mejorTir=tir; mejorTk=tk; }
+  });
+  if(!mejorTk) return null;
+  var b = BOND_DB[mejorTk];
+  return { ticker:mejorTk, emisor:b.emisor||'', calif:b.calif||'', tir:mejorTir, duration:durationBond(b) };
+}
+
+// Ganancia estimada de UNA fila (vender ticker actual, comprar el candidato) al horizonte
+// elegido — mismo cálculo que ya usa la rotación 1 a 1 (retCompra.pct - retVenta.pct), aplicado
+// sobre la tenencia real de esa posición para dar un número en USD, no solo en puntos.
+function calcularGananciaFilaRF(fila, hoy, comisionPct){
+  if(!fila.candidatoTicker) return null;
+  var venta = bondDesdeUniverso(fila.ticker);
+  var compra = bondDesdeUniverso(fila.candidatoTicker);
+  if(!venta || !compra) return null;
+  var anios = revisionRFHorizonte;
+  var retV = pctRetornoAHorizonte(Object.assign({}, venta, {nominales:100}), hoy, comisionPct, anios);
+  var retC = pctRetornoAHorizonte(Object.assign({}, compra, {nominales:100}), hoy, comisionPct, anios);
+  if(!retV || !retC) return null;
+  var diffPct = retC.pct - retV.pct;
+  return { diffPct: diffPct, gananciaUSD: fila.tenencia*diffPct/100, tirVenta:retV.tir, tirCompra:retC.tir };
+}
+
+function abrirRevisionRFCliente(){
+  if(!clienteActivoNombre) return;
+  var items = TENENCIA_POR_CLIENTE[clienteActivoNombre]||[];
+  var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+  var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
+  var excluir = {};
+  items.forEach(function(it){ excluir[it.ticker]=true; });
+  revisionRFFilas = items.filter(function(it){
+    var tir = tirActualDeTicker(it.ticker);
+    return umbralTirCliente!=null && tir!=null && tir<umbralTirCliente;
+  }).map(function(it){
+    var raw = BOND_DB[it.ticker]; var real = FLUJO_DB[it.ticker];
+    var cand = candidatoParaRotar(it.ticker, excluir);
+    var fila = {
+      ticker: it.ticker, tenencia: it.tenencia, nominales: it.nominales,
+      emisorActual: (real?real.emisor:(raw?raw.emisor:''))||'',
+      tirActual: tirActualDeTicker(it.ticker),
+      candidatoTicker: cand?cand.ticker:null,
+      candidatoEmisor: cand?cand.emisor:null,
+      candidatoTir: cand?cand.tir:null,
+      incluir: !!cand
+    };
+    fila.calc = calcularGananciaFilaRF(fila, hoy, comisionPct);
+    return fila;
+  }).sort(function(a,b){ return b.tenencia-a.tenencia; });
+  document.getElementById('rfrev-cliente-nombre').textContent = clienteActivoNombre;
+  document.getElementById('rfrev-umbral-txt').textContent = umbralTirCliente;
+  document.getElementById('rfrev-horizonte').value = revisionRFHorizonte;
+  document.getElementById('rfrev-msg-box').classList.remove('open');
+  renderRevisionRFTabla();
+  document.getElementById('rfrev-overlay').classList.add('open');
+}
+function cerrarRevisionRFCliente(){ document.getElementById('rfrev-overlay').classList.remove('open'); }
+
+function onCambioRevisionRFHorizonte(){
+  var v = parseFloat(document.getElementById('rfrev-horizonte').value);
+  revisionRFHorizonte = (isNaN(v)||v<=0) ? 3 : v;
+  var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+  var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
+  revisionRFFilas.forEach(function(f){ f.calc = calcularGananciaFilaRF(f, hoy, comisionPct); });
+  renderRevisionRFTabla();
+}
+
+function toggleRevisionRFFila(i){
+  if(!revisionRFFilas[i]) return;
+  revisionRFFilas[i].incluir = !revisionRFFilas[i].incluir;
+  renderRevisionRFTabla();
+}
+
+// El campo de "Comprar" es editable a mano: si la sugerencia automática no convence, Nico
+// tipea otro ticker del Monitor y esa fila se recalcula sola con el nuevo candidato.
+function editarCandidatoRevisionRF(i, nuevoTicker){
+  var f = revisionRFFilas[i]; if(!f) return;
+  nuevoTicker = String(nuevoTicker||'').trim().toUpperCase();
+  if(!nuevoTicker){
+    f.candidatoTicker=null; f.candidatoEmisor=null; f.candidatoTir=null; f.calc=null; f.incluir=false;
+    renderRevisionRFTabla(); return;
+  }
+  if(!BOND_DB[nuevoTicker] && !FLUJO_DB[nuevoTicker]){
+    alert('No encontré "'+nuevoTicker+'" en el Monitor cargado.');
+    renderRevisionRFTabla(); return;
+  }
+  var raw = BOND_DB[nuevoTicker]; var real = FLUJO_DB[nuevoTicker];
+  f.candidatoTicker = nuevoTicker;
+  f.candidatoEmisor = (real?real.emisor:(raw?raw.emisor:''))||'';
+  f.candidatoTir = tirActualDeTicker(nuevoTicker);
+  var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
+  var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
+  f.calc = calcularGananciaFilaRF(f, hoy, comisionPct);
+  f.incluir = !!f.calc;
+  renderRevisionRFTabla();
+}
+
+function renderRevisionRFTabla(){
+  var body = document.getElementById('rfrev-tbody');
+  if(!revisionRFFilas.length){
+    body.innerHTML = '<tr><td colspan="7" class="rot-comp-empty">Ningún bono de este cliente está por debajo del '+umbralTirCliente+'% de TIR ahora mismo. 👍</td></tr>';
+    document.getElementById('rfrev-resumen').textContent = '';
+    return;
+  }
+  body.innerHTML = revisionRFFilas.map(function(f,i){
+    var candCell = '<input type="text" value="'+(f.candidatoTicker||'')+'" placeholder="tipeá un ticker" onchange="editarCandidatoRevisionRF('+i+',this.value)">'+
+      (f.candidatoEmisor ? '<div style="font-size:9px;color:var(--cream-dim);text-transform:none;margin-top:2px;">'+f.candidatoEmisor+'</div>' : (f.candidatoTicker?'':'<div style="font-size:9px;color:var(--cream-dim);text-transform:none;margin-top:2px;">sin alternativa clara con calificación/duration parecida</div>'));
+    var gananciaTxt = f.calc
+      ? (f.calc.gananciaUSD>=0?'+':'-')+'$'+Math.round(Math.abs(f.calc.gananciaUSD)).toLocaleString('es-AR')+' <span style="color:var(--cream-dim);">('+(f.calc.diffPct>=0?'+':'')+fmtNum(f.calc.diffPct)+'%)</span>'
+      : '—';
+    return '<tr style="'+(!f.incluir?'opacity:.45;':'')+'">'+
+      '<td><input type="checkbox" '+(f.incluir?'checked':'')+' '+(f.candidatoTicker?'':'disabled')+' onchange="toggleRevisionRFFila('+i+')"></td>'+
+      '<td><b>'+f.ticker+'</b><div style="font-size:9px;color:var(--cream-dim);text-transform:none;">'+(f.emisorActual||'')+'</div></td>'+
+      '<td class="rc-tir">'+(f.tirActual!=null?fmtNum(f.tirActual)+'%':'—')+'</td>'+
+      '<td>$'+Math.round(f.tenencia).toLocaleString('es-AR')+'</td>'+
+      '<td>'+candCell+'</td>'+
+      '<td class="rc-tir">'+(f.candidatoTir!=null?fmtNum(f.candidatoTir)+'%':'—')+'</td>'+
+      '<td>'+gananciaTxt+'</td>'+
+    '</tr>';
+  }).join('');
+  var incluidas = revisionRFFilas.filter(function(f){ return f.incluir; });
+  var totalGan = incluidas.reduce(function(a,f){ return a+(f.calc?f.calc.gananciaUSD:0); }, 0);
+  document.getElementById('rfrev-resumen').innerHTML = '<b>'+incluidas.length+'</b> de '+revisionRFFilas.length+' rotación(es) seleccionada(s) · ganancia estimada total a '+revisionRFHorizonte+' año(s): <b style="color:'+(totalGan>=0?'var(--good)':'#e07a5f')+';">'+(totalGan>=0?'+':'-')+'$'+Math.round(Math.abs(totalGan)).toLocaleString('es-AR')+'</b>';
+}
+
+// ── Mensaje para WhatsApp/mail — un solo texto con todas las rotaciones incluidas ──
+function textoRevisionRF(){
+  var incluidas = revisionRFFilas.filter(function(f){ return f.incluir && f.candidatoTicker; });
+  if(!incluidas.length) return '';
+  var lineas = incluidas.map(function(f){
+    var gan = f.calc ? (f.calc.gananciaUSD>=0?'+':'-')+'$'+Math.round(Math.abs(f.calc.gananciaUSD)).toLocaleString('es-AR') : null;
+    return '🔁 '+f.ticker+' (TIR '+fmtNum(f.tirActual)+'%) → '+f.candidatoTicker+' (TIR '+fmtNum(f.candidatoTir)+'%)'+(gan?' — ganancia estimada '+gan+' a '+revisionRFHorizonte+' año(s)':'');
+  });
+  var totalGan = incluidas.reduce(function(a,f){ return a+(f.calc?f.calc.gananciaUSD:0); }, 0);
+  return 'Hola'+_nomSaludoLic(clienteActivoNombre)+', revisando tu cartera de renta fija encontré '+incluidas.length+' posición'+(incluidas.length===1?'':'es')+' que hoy '+(incluidas.length===1?'rinde':'rinden')+' poco y '+(incluidas.length===1?'conviene':'convienen')+' rotar:\n\n'+
+    lineas.join('\n\n')+
+    '\n\nEn conjunto, esto representa una mejora estimada de '+(totalGan>=0?'+':'-')+'$'+Math.round(Math.abs(totalGan)).toLocaleString('es-AR')+' a '+revisionRFHorizonte+' año(s). Cualquier duda, avisame y lo coordinamos.';
+}
+function toggleMensajeRevisionRF(){
+  var box = document.getElementById('rfrev-msg-box');
+  var abrir = !box.classList.contains('open');
+  if(abrir){
+    var texto = textoRevisionRF();
+    if(!texto){ alert('No hay ninguna rotación tildada para mandar — marcá al menos una fila.'); return; }
+    document.getElementById('rfrev-msg-texto').value = texto;
+    var comitente = COMITENTE_POR_CLIENTE[clienteActivoNombre];
+    var stock = comitente ? stockMap[comitente] : null;
+    document.getElementById('rfrev-msg-tel').textContent = (stock && stock.tel) ? stock.tel : '—';
+    document.getElementById('rfrev-msg-mail').textContent = (stock && stock.mail) ? stock.mail : '—';
+  }
+  box.classList.toggle('open', abrir);
+}
+function copiarMensajeRevisionRF(){
+  var ta = document.getElementById('rfrev-msg-texto');
+  ta.select();
+  try{ document.execCommand('copy'); showToastRF('Texto copiado.'); }
+  catch(e){ if(navigator.clipboard) navigator.clipboard.writeText(ta.value); }
+}
+function abrirWhatsAppRevisionRF(){
+  var tel = telParaCliente(clienteActivoNombre);
+  var texto = document.getElementById('rfrev-msg-texto').value;
+  if(!tel){ alert('No tengo el teléfono de este cliente cargado en Stock de cuentas — copiá el texto y mandalo a mano.'); return; }
+  window.open('https://wa.me/'+tel.replace(/\D/g,'')+'?text='+encodeURIComponent(texto), '_blank');
+}
+function abrirMailRevisionRF(){
+  var comitente = COMITENTE_POR_CLIENTE[clienteActivoNombre];
+  var mail = comitente ? (stockMap[comitente]||{}).mail : null;
+  var texto = document.getElementById('rfrev-msg-texto').value;
+  if(!mail){ alert('No tengo el mail de este cliente cargado en Stock de cuentas — copiá el texto y mandalo a mano.'); return; }
+  window.location.href = 'mailto:'+mail+'?subject='+encodeURIComponent('Revisión de tu cartera de renta fija')+'&body='+encodeURIComponent(texto);
+}
+// Toast chico reusable acá (evita depender de uno global que no exista en este archivo).
+function showToastRF(msg){
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--good);color:#08381f;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;z-index:900;box-shadow:0 8px 20px rgba(0,0,0,.35);';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 2200);
+}
+
+// ── Informe consolidado en PDF — misma familia visual que el informe 1 a 1 (descargarReportePDF),
+// pero como TABLA resumen (una fila compacta por rotación) en vez de un bloque completo por
+// par: para 4-6 bonos de golpe, un gráfico + ficha comparativa por cada uno sería un mamotreto.
+// Si en algún momento se quiere el detalle completo de UNA fila puntual, esa rotación se puede
+// cargar en el formulario de arriba (autofillClienteBono + seleccionar el candidato como compra)
+// y bajar el informe 1 a 1 de siempre — no se duplica ese diseño acá.
+async function descargarInformeRFClientePDF(modo){
+  var incluidas = revisionRFFilas.filter(function(f){ return f.incluir && f.candidatoTicker; });
+  if(!incluidas.length){ alert('No hay ninguna rotación tildada para incluir en el informe.'); return; }
+  var modoUnica = modo==='unica';
+  var btnA4 = document.getElementById('rfrev-btn-pdf-a4');
+  var btnUnica = document.getElementById('rfrev-btn-pdf-unica');
+  var cliente = clienteActivoNombre || '';
+  var fecha = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'});
+
+  var root = document.createElement('div');
+  root.id = 'pdf-rfrev-root';
+  root.style.cssText = 'width:740px;background:var(--navy);color:var(--cream);font-family:"Hanken Grotesk",sans-serif;padding:36px 40px;';
+
+  var asesorPdf = (new URLSearchParams(location.search).get('u') || '').trim();
+  var esNico = /nico/i.test(asesorPdf);
+  var tituloInforme = esNico ? 'finanzasconnico · <span style="color:#fff;font-weight:600;">Revisión de renta fija</span>' : 'Revisión de renta fija';
+  var lineaAsesor = esNico ? 'Preparado por Nicolás Strijland — Asesor financiero, Balanz'
+    : asesorPdf ? ('Preparado por '+asesorPdf+' — Asesor financiero, Balanz')
+    : 'Asesor financiero, Balanz';
+  var header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:2px solid var(--balanz);margin-bottom:18px;';
+  header.innerHTML =
+    '<div class="topbar-logo" style="width:44px;height:44px;font-size:20px;flex-shrink:0;">B</div>'+
+    '<div>'+
+      '<div style="font-family:\'Spectral\',serif;font-size:21px;font-weight:300;color:var(--cream);">'+tituloInforme+'</div>'+
+      '<div style="font-size:10.5px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;">'+lineaAsesor+'</div>'+
+    '</div>';
+  root.appendChild(header);
+
+  var meta = document.createElement('div');
+  meta.style.cssText = 'display:flex;gap:26px;flex-wrap:wrap;margin-bottom:22px;font-size:11.5px;color:var(--cream-dim);';
+  meta.innerHTML =
+    (cliente ? '<div>Cliente: <b style="color:#fff;">'+cliente+'</b></div>' : '')+
+    '<div>Fecha: <b style="color:#fff;">'+fecha+'</b></div>'+
+    '<div>Horizonte analizado: <b style="color:#fff;">'+revisionRFHorizonte+' año(s)</b></div>'+
+    '<div>Umbral de TIR: <b style="color:#fff;">'+umbralTirCliente+'%</b></div>';
+  root.appendChild(meta);
+
+  var totalGan = incluidas.reduce(function(a,f){ return a+(f.calc?f.calc.gananciaUSD:0); }, 0);
+  var verdictWrap = document.createElement('div');
+  verdictWrap.className = 'verdict-banner-wrap';
+  verdictWrap.style.cssText = 'background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.35);border-radius:12px;padding:16px 18px;margin-bottom:20px;';
+  verdictWrap.innerHTML = '<div style="font-family:\'Spectral\',serif;font-size:16px;color:#fff;margin-bottom:4px;">'+incluidas.length+' rotación'+(incluidas.length===1?'':'es')+' sugerida'+(incluidas.length===1?'':'s')+'</div>'+
+    '<div style="font-size:12.5px;color:var(--cream-dim);">Ganancia estimada en conjunto: <b style="color:#fff;">'+(totalGan>=0?'+':'-')+'$'+Math.round(Math.abs(totalGan)).toLocaleString('es-AR')+'</b> a '+revisionRFHorizonte+' año(s), sobre lo que hoy está invertido en los bonos de tasa baja.</div>';
+  root.appendChild(verdictWrap);
+
+  var tablaSection = document.createElement('div');
+  tablaSection.className = 'section-block';
+  var hTabla = document.createElement('h3'); hTabla.textContent = 'Detalle de cada rotación';
+  tablaSection.appendChild(hTabla);
+  var tabla = document.createElement('table');
+  tabla.className = 'compare-table';
+  tabla.innerHTML = '<thead><tr><th>Vender</th><th>TIR hoy</th><th>Tenencia</th><th>Comprar</th><th>TIR nueva</th><th>Ganancia estimada</th></tr></thead><tbody>'+
+    incluidas.map(function(f){
+      var gan = f.calc ? (f.calc.gananciaUSD>=0?'+':'-')+'$'+Math.round(Math.abs(f.calc.gananciaUSD)).toLocaleString('es-AR')+' ('+(f.calc.diffPct>=0?'+':'')+fmtNum(f.calc.diffPct)+'%)' : '—';
+      return '<tr>'+
+        '<td><b>'+f.ticker+'</b><div style="font-size:9.5px;color:var(--cream-dim);">'+(f.emisorActual||'')+'</div></td>'+
+        '<td>'+(f.tirActual!=null?fmtNum(f.tirActual)+'%':'—')+'</td>'+
+        '<td>$'+Math.round(f.tenencia).toLocaleString('es-AR')+'</td>'+
+        '<td><b>'+f.candidatoTicker+'</b><div style="font-size:9.5px;color:var(--cream-dim);">'+(f.candidatoEmisor||'')+'</div></td>'+
+        '<td>'+(f.candidatoTir!=null?fmtNum(f.candidatoTir)+'%':'—')+'</td>'+
+        '<td>'+gan+'</td>'+
+      '</tr>';
+    }).join('')+
+  '</tbody>';
+  tablaSection.appendChild(tabla);
+  root.appendChild(tablaSection);
+
+  var footer = document.createElement('div');
+  footer.style.cssText = 'margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:9.5px;color:var(--cream-dim);line-height:1.7;';
+  footer.textContent = 'Este informe es a título informativo y fue generado a partir de condiciones de mercado, TIR y cronogramas de flujos vigentes al '+fecha+', con supuestos de reinversión a la TIR de cada bono hasta el horizonte elegido. No constituye una recomendación de inversión ni garantiza rendimientos futuros — los precios y tasas de mercado varían. Verificá las condiciones finales antes de operar.';
+  root.appendChild(footer);
+
+  document.body.appendChild(root);
+  if(btnA4){ btnA4.disabled = true; btnA4.textContent = modoUnica?'🖨 Informe para imprimir (A4)':'Generando PDF…'; }
+  if(btnUnica){ btnUnica.disabled = true; btnUnica.textContent = modoUnica?'Generando PDF…':'📄 Informe en una sola página'; }
+
+  var scrollYPrevio = window.scrollY || window.pageYOffset || 0;
+  window.scrollTo(0, 0);
+  var navyColor = getComputedStyle(document.documentElement).getPropertyValue('--navy').trim() || '#081917';
+  var nombreArchivo = 'RevisionRF_'+(cliente?cliente.replace(/\s+/g,''):'cliente')+'.pdf';
+
+  // Mismo par de configuraciones ya verificadas para el informe 1 a 1 (descargarReportePDF) —
+  // ver el comentario extenso ahí para el porqué de cada valor. Acá solo cambia la lista
+  // "avoid" (esta tabla no tiene .verdict-banner-wrap partido por secciones sueltas, pero sí
+  // queremos que cada <tr> quede entera en una hoja).
+  // Este informe suele salir MÁS ANCHO que ALTO (una sola fila o dos) — con orientation
+  // 'portrait' fijo, html2pdf recorta el lado derecho (bug real, arreglado 14/09/2026 — ver el
+  // comentario largo en descargarReportePDF). 'landscape' cuando el contenido es más ancho que
+  // alto, +4px de alto para evitar una hoja en blanco de más por redondeo del canvas.
+  var anchoUnica = Math.ceil(root.getBoundingClientRect().width);
+  var altoUnica = Math.ceil(root.scrollHeight) + 4;
+  var htmlOpts = modoUnica ? {
+    margin: 0,
+    filename: nombreArchivo,
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
+    jsPDF: { unit:'px', format:[anchoUnica, altoUnica], orientation: altoUnica>=anchoUnica?'portrait':'landscape' },
+    pagebreak: { mode:['avoid-all'] }
+  } : {
+    margin: [12,8,12,8],
+    filename: nombreArchivo,
+    image: { type:'jpeg', quality:0.98 },
+    html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    pagebreak: { mode:['css','legacy'], avoid: ['.section-block','.verdict-banner-wrap','tr'] }
+  };
+  html2pdf().set(htmlOpts).from(root).save().then(function(){
+    window.scrollTo(0, scrollYPrevio);
+    document.body.removeChild(root);
+    if(btnA4){ btnA4.disabled = false; btnA4.textContent = '🖨 Informe para imprimir (A4)'; }
+    if(btnUnica){ btnUnica.disabled = false; btnUnica.textContent = '📄 Informe en una sola página'; }
+  }).catch(function(err){
+    console.error('[Revisión RF] error PDF', err);
+    window.scrollTo(0, scrollYPrevio);
+    if(root.parentNode) document.body.removeChild(root);
+    if(btnA4){ btnA4.disabled = false; btnA4.textContent = '🖨 Informe para imprimir (A4)'; }
+    if(btnUnica){ btnUnica.disabled = false; btnUnica.textContent = '📄 Informe en una sola página'; }
+    alert('No se pudo generar el PDF. Probá de nuevo — si sigue fallando, avisale a Nico.');
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4117,14 +4500,23 @@ async function descargarReportePDF(modo){
   // windowWidth/windowHeight y dejar que html2canvas mida root directamente tal como está en el
   // documento real; el format:[w,h] de la página sigue usando esas mismas medidas para que la
   // hoja quede del tamaño justo del contenido, sin sobrar ni cortar. Bug real arreglado 09/09/2026.
-  var anchoUnica = root.getBoundingClientRect().width;
-  var altoUnica = root.scrollHeight;
+  //
+  // Segundo bug real (arreglado 14/09/2026, al construir la Revisión de RF de más abajo, que
+  // reusa este mismo patrón con contenido más corto): con orientation:'portrait' fijo, si el
+  // contenido queda MÁS ANCHO que ALTO (un informe corto, ej. una sola fila) jsPDF/html2pdf
+  // recortan el lado derecho — el mismo síntoma "cortado" de los bugs de arriba, pero el
+  // mecanismo es el choque entre una hoja angosta-y-alta (lo que implica 'portrait') y un
+  // contenido ancho-y-bajo. Se soluciona eligiendo 'landscape' cuando el contenido es más
+  // ancho que alto. Un +4px de margen en el alto evita además una segunda hoja en blanco al
+  // final (redondeo del canvas a scale:2 quedando 1-2px más alto que el format declarado).
+  var anchoUnica = Math.ceil(root.getBoundingClientRect().width);
+  var altoUnica = Math.ceil(root.scrollHeight) + 4;
   var htmlOpts = modoUnica ? {
     margin: 0,
     filename: nombreArchivo,
     image: { type:'jpeg', quality:0.98 },
     html2canvas: { scale:2, backgroundColor:navyColor, useCORS:true },
-    jsPDF: { unit:'px', format:[anchoUnica, altoUnica], orientation:'portrait' },
+    jsPDF: { unit:'px', format:[anchoUnica, altoUnica], orientation: altoUnica>=anchoUnica?'portrait':'landscape' },
     pagebreak: { mode:['avoid-all'] }
   } : {
     margin: [12,8,12,8],
@@ -4294,6 +4686,55 @@ async function descargarReportePDF(modo){
           <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
           Abrir WhatsApp
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL REVISIÓN COMPLETA DE RENTA FIJA DEL CLIENTE ── -->
+<div class="rfrev-overlay" id="rfrev-overlay" onclick="if(event.target===this) cerrarRevisionRFCliente()">
+  <div class="rfrev-modal">
+    <div class="rfrev-head">
+      <div>
+        <div class="wpp-rot-title">📋 Revisión de renta fija — <span id="rfrev-cliente-nombre">—</span></div>
+        <div class="wpp-rot-sub">Todo lo que rinde menos del <span id="rfrev-umbral-txt">5</span>% de TIR, con una alternativa sugerida para cada uno</div>
+      </div>
+      <button class="wpp-rot-close" onclick="cerrarRevisionRFCliente()">✕</button>
+    </div>
+    <div class="rfrev-body">
+      <div class="rfrev-horiz-row">
+        Ganancia estimada a
+        <input type="number" step="0.5" min="0.5" id="rfrev-horizonte" value="3" oninput="onCambioRevisionRFHorizonte()">
+        años
+      </div>
+      <div class="rfrev-table-wrap">
+        <table class="compare-table">
+          <thead><tr>
+            <th></th><th>Vender</th><th>TIR hoy</th><th>Tenencia</th><th>Comprar (editable)</th><th>TIR nueva</th><th>Ganancia estimada</th>
+          </tr></thead>
+          <tbody id="rfrev-tbody"></tbody>
+        </table>
+      </div>
+      <div class="rfrev-resumen" id="rfrev-resumen"></div>
+      <div class="rfrev-actions">
+        <button class="btn btn-primary" onclick="descargarInformeRFClientePDF('a4')" id="rfrev-btn-pdf-a4">🖨 Informe para imprimir (A4)</button>
+        <button class="btn btn-outline" onclick="descargarInformeRFClientePDF('unica')" id="rfrev-btn-pdf-unica">📄 Informe en una sola página</button>
+        <button class="btn btn-outline" onclick="toggleMensajeRevisionRF()">✉ Ver mensaje para WhatsApp/mail</button>
+      </div>
+      <div class="rfrev-msg-box" id="rfrev-msg-box">
+        <textarea class="wpp-rot-textarea" id="rfrev-msg-texto" style="min-height:170px;"></textarea>
+        <div class="wpp-rot-tel-row">
+          <span>Teléfono:</span><span id="rfrev-msg-tel">—</span>
+          <span style="margin-left:14px;">Mail:</span><span id="rfrev-msg-mail">—</span>
+        </div>
+        <div class="wpp-rot-actions">
+          <button class="wpp-rot-btn-cancel" onclick="copiarMensajeRevisionRF()">Copiar texto</button>
+          <button class="wpp-rot-btn-cancel" onclick="abrirMailRevisionRF()">✉ Abrir mail</button>
+          <button class="wpp-rot-btn-send" onclick="abrirWhatsAppRevisionRF()">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+            Abrir WhatsApp
+          </button>
+        </div>
       </div>
     </div>
   </div>
