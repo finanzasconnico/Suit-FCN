@@ -55,11 +55,17 @@ Movimientos_test.xlsx
 # (Calculadora de Rotaciones). Misma lógica: @@placeholders@@ del asesor + campos de
 # combinación «Nombre»/«Detalle», sin datos de clientes. La Suite la personaliza y descarga.
 !plantillas-mail/plantilla-licitacion.docx
+# Excepción: plantilla base de "Avisar rotación a todos los tenedores" (Calculadora de
+# Rotaciones). Misma lógica que Licitación: @@ROT_*@@ del bono/asesor + campos «Saludo»/
+# «Detalle», sin datos de clientes.
+!plantillas-mail/plantilla-rotacion-masiva.docx
 plantillas-mail/_*
 plantillas-mail/aviso-liquidez*.csv
 plantillas-mail/Aviso-liquidez*
 plantillas-mail/licitacion*.csv
 plantillas-mail/Licitacion-*
+plantillas-mail/rotacion-*.csv
+plantillas-mail/Rotacion-*.docx
 plantillas-mail/*.docm
 plantillas-mail/*.vba
 

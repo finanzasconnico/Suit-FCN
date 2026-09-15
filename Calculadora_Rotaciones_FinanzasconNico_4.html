@@ -468,6 +468,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       </div>
       <div class="chip-row" id="v-chips"></div>
       <div class="ticker-holders" id="v-holders"></div>
+      <div id="v-rotmas-btn-wrap"></div>
 
       <details class="cond-details" id="v-details">
         <summary>Condiciones (autocompletadas) — editar si hace falta</summary>
@@ -1486,6 +1487,7 @@ function renderAll(){
   renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, schedC, currentHorizonAnios, comisionPct, hoy, tMax);
 
   lastCtx = {venta:venta, compra:compra, difCash:difCash, hoy:hoy, comisionPct:comisionPct, tMax:tMax, retV:retV, retC:retC};
+  renderRotacionMasivaBtn();
 }
 
 function renderChips(p, bond){
@@ -3854,6 +3856,281 @@ function showToastRF(msg){
   setTimeout(function(){ t.remove(); }, 2200);
 }
 
+// ══════════════════════════════════════════════════════════════
+// AVISAR ESTA ROTACIÓN A TODOS SUS TENEDORES — pedido de Nico (15/09): la Revisión de RF de
+// arriba es "un cliente, todos sus bonos flojos"; esto es la versión espejada — "la rotación
+// puntual que está cargada en Vender/Comprar, para TODOS los clientes que tienen ese bono".
+// pctRetornoAHorizonte ya está pensado por cada 100 invertidos (ver el comentario en su
+// definición), así que la mejora en puntos porcentuales es la MISMA para cualquier tenedor del
+// ticker a vender — lo único que cambia por cliente es escalarla a su tenencia real, igual
+// criterio que calcularGananciaFilaRF() de la Revisión de RF.
+// ══════════════════════════════════════════════════════════════
+var rotMasFilas = [];            // [{cliente, comitente, nombre, mail, tel, nominales, tenencia, tirVenta, tirCompra, diffPct, gananciaUSD, incluir}]
+var rotMasClienteActivo = null;  // índice en rotMasFilas con el mensaje abierto en el box de abajo
+
+// Botón junto a "Clientes con este bono" (pata VENTA) — vive en su propio wrapper aparte
+// (v-rotmas-btn-wrap) porque renderHolders() reescribe v-holders entero en cada render y acá
+// no dependemos de esa pata sino de que la pata de COMPRA también esté cargada.
+function renderRotacionMasivaBtn(){
+  var wrap = document.getElementById('v-rotmas-btn-wrap');
+  if(!wrap) return;
+  if(!lastCtx || !lastCtx.venta || !lastCtx.compra){ wrap.innerHTML = ''; return; }
+  var holders = TENENCIA_POR_TICKER[lastCtx.venta.ticker] || [];
+  if(!holders.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = '<button class="btn btn-outline small" style="margin-top:6px;width:100%;" onclick="abrirRotacionMasiva()">📣 Avisar esta rotación a los '+holders.length+' tenedor'+(holders.length===1?'':'es')+' de '+lastCtx.venta.ticker+'</button>';
+}
+
+function calcularFilasRotacionMasiva(){
+  var venta = lastCtx.venta, compra = lastCtx.compra;
+  var holders = TENENCIA_POR_TICKER[venta.ticker] || [];
+  var anios = currentHorizonAnios;
+  var retV = pctRetornoAHorizonte(Object.assign({}, venta, {nominales:100}), lastCtx.hoy, lastCtx.comisionPct, anios);
+  var retC = pctRetornoAHorizonte(Object.assign({}, compra, {nominales:100}), lastCtx.hoy, lastCtx.comisionPct, anios);
+  if(!retV || !retC) return [];
+  var diffPct = retC.pct - retV.pct;
+  return holders.map(function(h){
+    var comitente = COMITENTE_POR_CLIENTE[h.cliente];
+    var stock = comitente ? stockMap[comitente] : null;
+    return {
+      cliente: h.cliente, comitente: comitente,
+      nombre: (stock && stock.nombre) ? String(stock.nombre).trim() : '',
+      mail: (stock && stock.mail) ? String(stock.mail).trim() : '',
+      tel: (stock && stock.tel) ? String(stock.tel).trim() : '',
+      nominales: h.nominales, tenencia: h.tenencia,
+      tirVenta: retV.tir, tirCompra: retC.tir, diffPct: diffPct,
+      gananciaUSD: h.tenencia*diffPct/100,
+      incluir: true
+    };
+  });
+}
+
+function abrirRotacionMasiva(){
+  if(!lastCtx || !lastCtx.venta || !lastCtx.compra) return;
+  rotMasFilas = calcularFilasRotacionMasiva();
+  if(!rotMasFilas.length){ alert('No se pudo calcular la mejora — revisá que ambos bonos tengan TIR válida.'); return; }
+  document.getElementById('rotmas-titulo').textContent = '📣 Avisar rotación '+lastCtx.venta.ticker+' → '+lastCtx.compra.ticker;
+  document.getElementById('rotmas-sub').textContent = rotMasFilas.length+' cliente'+(rotMasFilas.length===1?'':'s')+' con '+lastCtx.venta.ticker+' en cartera — mejora estimada a '+currentHorizonAnios+' año(s): '+(rotMasFilas[0].diffPct>=0?'+':'')+fmtNum(rotMasFilas[0].diffPct)+' p.p. para todos por igual';
+  document.getElementById('rotmas-msg-box').classList.remove('open');
+  rotMasClienteActivo = null;
+  renderRotacionMasivaTabla();
+  document.getElementById('rotmas-overlay').classList.add('open');
+}
+function cerrarRotacionMasiva(){ document.getElementById('rotmas-overlay').classList.remove('open'); }
+
+function toggleRotacionMasivaFila(i){ rotMasFilas[i].incluir = !rotMasFilas[i].incluir; renderRotacionMasivaTabla(); }
+
+function renderRotacionMasivaTabla(){
+  var body = document.getElementById('rotmas-tbody');
+  body.innerHTML = rotMasFilas.map(function(f,i){
+    var gananciaTxt = (f.gananciaUSD>=0?'+':'-')+'$'+Math.round(Math.abs(f.gananciaUSD)).toLocaleString('es-AR')+' <span style="color:var(--cream-dim);">('+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct)+'%)</span>';
+    return '<tr style="'+(!f.incluir?'opacity:.45;':'')+'">'+
+      '<td><input type="checkbox" '+(f.incluir?'checked':'')+' onchange="toggleRotacionMasivaFila('+i+')"></td>'+
+      '<td><b>'+f.cliente+'</b></td>'+
+      '<td>'+Math.round(f.nominales).toLocaleString('es-AR')+'</td>'+
+      '<td>$'+Math.round(f.tenencia).toLocaleString('es-AR')+'</td>'+
+      '<td>'+gananciaTxt+'</td>'+
+      '<td><button class="btn btn-outline small" style="width:auto;padding:5px 10px;" onclick="verMensajeRotacionMasiva('+i+')">✉ Ver mensaje</button></td>'+
+    '</tr>';
+  }).join('');
+  var incluidas = rotMasFilas.filter(function(f){ return f.incluir; });
+  var totalGan = incluidas.reduce(function(a,f){ return a+f.gananciaUSD; }, 0);
+  document.getElementById('rotmas-resumen').innerHTML = '<b>'+incluidas.length+'</b> de '+rotMasFilas.length+' cliente(s) seleccionado(s) · ganancia estimada total a '+currentHorizonAnios+' año(s): <b style="color:'+(totalGan>=0?'var(--good)':'#e07a5f')+';">'+(totalGan>=0?'+':'-')+'$'+Math.round(Math.abs(totalGan)).toLocaleString('es-AR')+'</b>';
+}
+
+// Texto individual (WhatsApp/mail uno-por-uno) — formato pedido por Nico: "tenés X nominales de
+// A, cambiando a B estarías ganando Y p.p. y USD Z más para el horizonte estimado".
+function textoRotacionMasivaFila(f){
+  var venta = lastCtx.venta, compra = lastCtx.compra;
+  var ganTxt = (f.gananciaUSD>=0?'+':'-')+'USD '+Math.round(Math.abs(f.gananciaUSD)).toLocaleString('es-AR');
+  return 'Hola'+_nomSaludoLic(f.cliente)+', estaba revisando tu cartera y vi que tenés '+Math.round(f.nominales).toLocaleString('es-AR')+' nominales de '+venta.ticker+' (TIR actual ~'+fmtNum(f.tirVenta,1)+'% anual). Rotando a '+compra.ticker+' estarías ganando alrededor de '+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct,1)+' puntos de retorno — unos '+ganTxt+' más de acá a '+currentHorizonAnios+' año(s). Si te interesa, avisame y lo coordinamos.';
+}
+function verMensajeRotacionMasiva(i){
+  rotMasClienteActivo = i;
+  var f = rotMasFilas[i];
+  document.getElementById('rotmas-msg-texto').value = textoRotacionMasivaFila(f);
+  document.getElementById('rotmas-msg-nombre').textContent = f.cliente;
+  document.getElementById('rotmas-msg-tel').textContent = f.tel || '—';
+  document.getElementById('rotmas-msg-mail').textContent = f.mail || '—';
+  document.getElementById('rotmas-msg-box').classList.add('open');
+  document.getElementById('rotmas-msg-box').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function copiarMensajeRotacionMasiva(){
+  var ta = document.getElementById('rotmas-msg-texto');
+  ta.select();
+  try{ document.execCommand('copy'); showToastRF('Texto copiado.'); }
+  catch(e){ if(navigator.clipboard) navigator.clipboard.writeText(ta.value); }
+}
+function abrirWhatsAppRotacionMasiva(){
+  if(rotMasClienteActivo==null) return;
+  var f = rotMasFilas[rotMasClienteActivo];
+  var tel = (f.tel||'').replace(/\D/g,'');
+  var texto = document.getElementById('rotmas-msg-texto').value;
+  if(!tel){ alert('No tengo el teléfono de '+f.cliente+' cargado en Stock de cuentas — copiá el texto y mandalo a mano.'); return; }
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(texto), '_blank');
+}
+function abrirMailRotacionMasiva(){
+  if(rotMasClienteActivo==null) return;
+  var f = rotMasFilas[rotMasClienteActivo];
+  var texto = document.getElementById('rotmas-msg-texto').value;
+  if(!f.mail){ alert('No tengo el mail de '+f.cliente+' cargado en Stock de cuentas — copiá el texto y mandalo a mano.'); return; }
+  window.location.href = 'mailto:'+f.mail+'?subject='+encodeURIComponent('Una rotación que te conviene mirar')+'&body='+encodeURIComponent(texto);
+}
+
+// ── Envío masivo por mail (Word + CSV) — misma mecánica que Licitación (_lic* zip/bajas/perfil
+// son genéricos, se reutilizan tal cual), plantilla propia sin el marco de "un solo día". ──
+var ROT_MAIL_PLANTILLA_URL = 'plantillas-mail/plantilla-rotacion-masiva.docx';
+var _rotBajasSet = null, _rotBajasError = false;
+
+function _rotNombreCompra(compra){
+  return (compra.emisor && compra.emisor !== compra.ticker) ? (compra.ticker+' ('+compra.emisor+')') : compra.ticker;
+}
+// Bloque «Detalle» por cliente — mismo criterio que _licDetalleCliente (tono mail, sin
+// *asteriscos* de WhatsApp), pero acá SIEMPRE con números: a diferencia de la Licitación (donde
+// mostrar la tasa nominal del bono nuevo puede confundir si es más baja que la vieja), acá el
+// pedido explícito de Nico es mostrar el p.p. y el USD de mejora.
+function _rotDetalleCliente(f){
+  var venta = lastCtx.venta, compra = lastCtx.compra;
+  var ganTxt = (f.gananciaUSD>=0?'+':'-')+'USD '+Math.round(Math.abs(f.gananciaUSD)).toLocaleString('es-AR');
+  return 'Tenés '+Math.round(f.nominales).toLocaleString('es-AR')+' nominales de '+venta.ticker+' (TIR actual ~'+fmtNum(f.tirVenta,1)+'% anual).\nRotando a '+compra.ticker+' vendrías ganando alrededor de '+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct,1)+' puntos de retorno — unos '+ganTxt+' más de acá a '+currentHorizonAnios+' año(s).';
+}
+// { rows:[{Saludo,Email,Detalle}], excl:{sinMail,baja} } — mismas columnas que LIC_MAIL_COLS,
+// así _licToCSV() se reutiliza sin cambios.
+function _rotMailRows(){
+  var out = { rows: [], excl: { sinMail: 0, baja: 0 } };
+  rotMasFilas.filter(function(f){ return f.incluir; }).forEach(function(f){
+    var mail = (f.mail||'').split(/[\s,;]+/).map(function(x){ return x.trim().toLowerCase(); })
+      .filter(function(x){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); })[0] || '';
+    if(!mail){ out.excl.sinMail++; return; }
+    if(_rotBajasSet && _rotBajasSet.has(mail)){ out.excl.baja++; return; }
+    out.rows.push({ Saludo: f.nombre ? 'Hola '+f.nombre+',' : 'Hola,', Email: mail, Detalle: _rotDetalleCliente(f) });
+  });
+  return out;
+}
+function _rotFilasPrueba(perfil){
+  var dest = (perfil.testMail||'').split(/[\s,;]+/).map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean);
+  if(!dest.length || !rotMasFilas.length) return [];
+  var det = _rotDetalleCliente(rotMasFilas[0]);
+  var nombres = ['Juan','María José','Carlos'];
+  return dest.map(function(m,i){ return { Saludo:'Hola '+nombres[i%3]+',', Email:m, Detalle:det }; });
+}
+async function _rotDocxPersonalizado(perfil, venta, compra){
+  var r = await fetch(ROT_MAIL_PLANTILLA_URL, { cache: 'no-store' });
+  if(!r.ok) throw new Error('No se pudo bajar la plantilla base (' + r.status + ')');
+  var z = _licZipRead(await r.arrayBuffer());
+  var dec = new TextDecoder(), enc = new TextEncoder();
+  var doc = dec.decode(z.files['word/document.xml']);
+  var repl = {
+    '@@ROT_COMPRA_NOMBRE@@': _rotNombreCompra(compra),
+    '@@ROT_COMPRA_TICKER@@': compra.ticker,
+    '@@ROT_COMPRA_TASA@@': (compra.cuponAnual!=null ? fmtNum(compra.cuponAnual,2)+'%' : '—'),
+    '@@ROT_COMPRA_VENC@@': fmtDateAR(compra.fechaVenc),
+    '@@ROT_COMPRA_CALIF_TXT@@': compra.calif ? (' · calificación ' + compra.calif) : '',
+    '@@ROT_FECHA@@': fmtDateAR(lastCtx.hoy),
+    '@@WHATSAPP@@': perfil.wpp || '',
+    '@@ASESOR@@': perfil.firma || ''
+  };
+  Object.keys(repl).forEach(function(k){ doc = doc.split(k).join(_licXmlEsc(repl[k])); });
+  z.files['word/document.xml'] = enc.encode(doc);
+  var rels = dec.decode(z.files['word/_rels/document.xml.rels']);
+  rels = rels.split('@@INSTAGRAM_URL@@').join(_licXmlEsc(_licIg(perfil)));
+  z.files['word/_rels/document.xml.rels'] = enc.encode(rels);
+  return _licZipWrite(z.files, z.order);
+}
+
+async function abrirMailMasivoRotacion(){
+  if(!rotMasFilas.length) return;
+  document.getElementById('rotmas-mail-test').checked = false;
+  _rotMailMostrarPaso('form');
+  document.getElementById('rotmas-mail-overlay').classList.add('open');
+  document.getElementById('rotmas-mail-preview').textContent = 'Verificando lista de bajas…';
+  document.getElementById('rotmas-mail-gen').disabled = true;
+  _rotBajasSet = await _licFetchBajas();
+  _rotBajasError = _rotBajasSet === null;
+  renderMailMasivoRotacionPreview();
+}
+function cerrarMailMasivoRotacion(){ document.getElementById('rotmas-mail-overlay').classList.remove('open'); }
+function _rotMailMostrarPaso(p){
+  document.getElementById('rotmas-mail-form').style.display = p === 'form' ? '' : 'none';
+  document.getElementById('rotmas-mail-done').style.display = p === 'done' ? '' : 'none';
+}
+function _rotCopiarAsunto(btn){
+  var el = document.getElementById('rotmas-mail-asunto');
+  el.select();
+  var done = function(){ var t = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(function(){ btn.textContent = t; }, 1400); };
+  if(navigator.clipboard) navigator.clipboard.writeText(el.value).then(done).catch(function(){ try{ document.execCommand('copy'); done(); }catch(e){} });
+  else { try{ document.execCommand('copy'); done(); }catch(e){} }
+}
+function renderMailMasivoRotacionPreview(){
+  var el = document.getElementById('rotmas-mail-preview');
+  var btn = document.getElementById('rotmas-mail-gen');
+  if(!el) return;
+  var perfil = getLicPerfil();
+  var prueba = document.getElementById('rotmas-mail-test').checked;
+  var html, canGen;
+  if(prueba){
+    var dest = (perfil.testMail || '').split(/[\s,;]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    html = '🧪 Archivo de <b>prueba</b>: ' + dest.length + ' fila(s) de ejemplo (no son tus clientes).';
+    html += dest.length ? '<br>Van a: <b>' + dest.join(', ') + '</b>.' : '<br><span style="color:#e57373;">⚠ Cargá al menos un mail de prueba en "Tu perfil" del Aviso de liquidez (Suite).</span>';
+    canGen = dest.length > 0;
+  } else {
+    var res = _rotMailRows();
+    var n = res.rows.length;
+    html = '<span style="font-size:20px;font-weight:700;">' + n + '</span> cliente' + (n === 1 ? '' : 's') + ' con mail ' + (n === 1 ? 'va' : 'van') + ' a recibir el aviso.';
+    var exc = [];
+    if(res.excl.baja) exc.push(res.excl.baja + ' dado/s de baja');
+    if(res.excl.sinMail) exc.push(res.excl.sinMail + ' sin mail en el Stock');
+    if(exc.length) html += '<br>Excluidos: ' + exc.join(' · ') + '.';
+    canGen = n > 0;
+  }
+  var faltan = [];
+  if(!perfil.firma) faltan.push('tu <b>nombre y apellido</b>');
+  if(!perfil.wpp) faltan.push('tu <b>WhatsApp</b>');
+  if(faltan.length){
+    html += '<br><span style="color:#e57373;">⚠ Configurá ' + faltan.join(' y ') + ' en la Suite → Inicio → <b>✉ Notificar a todos por mail</b> → "Tu perfil" (se comparte con esta herramienta).</span>';
+    canGen = false;
+  }
+  if(_rotBajasError) html += '<br><span style="color:#e57373;">⚠ No se pudo verificar la lista de bajas — revisá tu conexión antes de generar.</span>';
+  el.innerHTML = html;
+  if(btn){ btn.disabled = !canGen; btn.textContent = prueba ? '⬇ Descargar Word + CSV de prueba' : '⬇ Descargar Word + CSV'; }
+}
+async function generarMailMasivoRotacion(){
+  if(!lastCtx || !lastCtx.venta || !lastCtx.compra) return;
+  var perfil = getLicPerfil();
+  if(!perfil.firma || !perfil.wpp){ mostrarToastPanorama('Configurá tu nombre y WhatsApp en el Aviso de liquidez de la Suite.'); return; }
+  var prueba = document.getElementById('rotmas-mail-test').checked;
+  var venta = lastCtx.venta, compra = lastCtx.compra;
+  var rows;
+  if(prueba){
+    rows = _rotFilasPrueba(perfil);
+    if(!rows.length){ mostrarToastPanorama('Cargá al menos un mail de prueba en tu perfil.'); return; }
+  } else {
+    if(_rotBajasError && !confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi generás igual, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Generar de todos modos?')) return;
+    var res = _rotMailRows();
+    if(!res.rows.length){ mostrarToastPanorama('Ningún cliente incluido tiene mail en el Stock.'); return; }
+    rows = res.rows;
+  }
+  var btn = document.getElementById('rotmas-mail-gen');
+  btn.disabled = true; btn.textContent = 'Armando el Word…';
+  var slug = _licSlug(venta.ticker) + '-a-' + _licSlug(compra.ticker), suf = prueba ? '-PRUEBA' : '';
+  try {
+    var docx = await _rotDocxPersonalizado(perfil, venta, compra);
+    _licDescargar(docx, 'Rotacion-' + slug + suf + '.docx');
+    _licDescargar(new Blob([_licToCSV(rows)], { type: 'text/csv;charset=utf-8' }), 'rotacion-' + slug + suf + '.csv');
+  } catch(e){
+    console.error('[Rotación masiva mail]', e);
+    btn.disabled = false; btn.textContent = prueba ? '⬇ Descargar Word + CSV de prueba' : '⬇ Descargar Word + CSV';
+    mostrarToastPanorama('No se pudo armar el Word: ' + e.message);
+    return;
+  }
+  var n = rows.length;
+  document.getElementById('rotmas-mail-asunto').value = 'Una rotación que te conviene mirar — ' + venta.ticker + ' → ' + compra.ticker;
+  document.getElementById('rotmas-mail-done-files').innerHTML = 'Se descargaron <b>Rotacion-' + slug + suf + '.docx</b> y <b>rotacion-' + slug + suf + '.csv</b> a tu carpeta de Descargas.';
+  document.getElementById('rotmas-mail-done-n').textContent = prueba
+    ? ('Word + CSV de prueba listos (' + n + ' fila' + (n === 1 ? '' : 's') + ')')
+    : ('Word + CSV descargados — ' + n + ' cliente' + (n === 1 ? '' : 's'));
+  _rotMailMostrarPaso('done');
+}
+
 // ── Informe consolidado en PDF — misma familia visual que el informe 1 a 1 (descargarReportePDF),
 // pero como TABLA resumen (una fila compacta por rotación) en vez de un bloque completo por
 // par: para 4-6 bonos de golpe, un gráfico + ficha comparativa por cada uno sería un mamotreto.
@@ -4735,6 +5012,97 @@ async function descargarReportePDF(modo){
             Abrir WhatsApp
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL AVISAR ROTACIÓN A TODOS LOS TENEDORES DEL TICKER A VENDER ── -->
+<div class="rfrev-overlay" id="rotmas-overlay" onclick="if(event.target===this) cerrarRotacionMasiva()">
+  <div class="rfrev-modal">
+    <div class="rfrev-head">
+      <div>
+        <div class="wpp-rot-title" id="rotmas-titulo">📣 Avisar rotación</div>
+        <div class="wpp-rot-sub" id="rotmas-sub">—</div>
+      </div>
+      <button class="wpp-rot-close" onclick="cerrarRotacionMasiva()">✕</button>
+    </div>
+    <div class="rfrev-body">
+      <div class="rfrev-table-wrap">
+        <table class="compare-table">
+          <thead><tr>
+            <th></th><th>Cliente</th><th>Nominales</th><th>Tenencia</th><th>Ganancia estimada</th><th></th>
+          </tr></thead>
+          <tbody id="rotmas-tbody"></tbody>
+        </table>
+      </div>
+      <div class="rfrev-resumen" id="rotmas-resumen"></div>
+      <div class="rfrev-actions">
+        <button class="btn btn-primary" onclick="abrirMailMasivoRotacion()">📧 Envío masivo por mail (Word + CSV)</button>
+      </div>
+      <div class="rfrev-msg-box" id="rotmas-msg-box">
+        <div style="font-size:11px;color:var(--cream-dim);margin-bottom:6px;">Mensaje para: <b id="rotmas-msg-nombre" style="color:var(--cream);">—</b></div>
+        <textarea class="wpp-rot-textarea" id="rotmas-msg-texto" style="min-height:150px;"></textarea>
+        <div class="wpp-rot-tel-row">
+          <span>Teléfono:</span><span id="rotmas-msg-tel">—</span>
+          <span style="margin-left:14px;">Mail:</span><span id="rotmas-msg-mail">—</span>
+        </div>
+        <div class="wpp-rot-actions">
+          <button class="wpp-rot-btn-cancel" onclick="copiarMensajeRotacionMasiva()">Copiar texto</button>
+          <button class="wpp-rot-btn-cancel" onclick="abrirMailRotacionMasiva()">✉ Abrir mail</button>
+          <button class="wpp-rot-btn-send" onclick="abrirWhatsAppRotacionMasiva()">
+            <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+            Abrir WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL ENVÍO MASIVO POR MAIL — ROTACIÓN ── -->
+<div class="lic-drafts-overlay" id="rotmas-mail-overlay" onclick="if(event.target===this) cerrarMailMasivoRotacion()">
+  <div class="lic-drafts-modal">
+    <div class="wpp-rot-head">
+      <div>
+        <div class="wpp-rot-title">📧 Envío masivo por mail</div>
+        <div class="wpp-rot-sub">Un mail por cliente, combinando Word + CSV desde tu Outlook — mismo flujo que el Aviso de liquidez</div>
+      </div>
+      <button class="wpp-rot-close" onclick="cerrarMailMasivoRotacion()">✕</button>
+    </div>
+    <div class="lic-drafts-body">
+      <div id="rotmas-mail-form">
+        <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:12px;cursor:pointer;">
+          <input type="checkbox" id="rotmas-mail-test" onchange="renderMailMasivoRotacionPreview()"> Modo prueba (filas de ejemplo a tu casilla, no a clientes)
+        </label>
+        <div id="rotmas-mail-preview" class="rot-comp-empty">…</div>
+        <button class="btn btn-primary" id="rotmas-mail-gen" style="width:100%;margin-top:12px;" onclick="generarMailMasivoRotacion()">⬇ Descargar Word + CSV</button>
+        <div style="font-size:10px;color:var(--cream-dim);margin-top:8px;line-height:1.5;">
+          El mail sale de tu Outlook, uno por cliente (nunca en copia). La alternativa de compra y tu firma ya van dentro del Word;
+          el CSV lleva solo el saludo, el mail y el detalle personalizado por cliente (nominales, TIR y ganancia estimada).
+        </div>
+      </div>
+      <div id="rotmas-mail-done" style="display:none;">
+        <div class="lic-nueva-on-card" style="margin-bottom:12px;">
+          <div style="font-weight:700;" id="rotmas-mail-done-n">—</div>
+          <div style="font-size:11px;color:var(--cream-dim);margin-top:4px;" id="rotmas-mail-done-files">—</div>
+        </div>
+        <div class="field">
+          <label>Asunto del mail (copialo y pegalo en el paso de Word)</label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="rotmas-mail-asunto" readonly style="flex:1;">
+            <button class="btn btn-outline" style="width:auto;white-space:nowrap;" onclick="_rotCopiarAsunto(this)">Copiar</button>
+          </div>
+        </div>
+        <ol style="font-size:12px;line-height:1.75;padding-left:18px;margin-top:12px;">
+          <li>Abrí <b>Outlook clásico</b> y esperá a que diga «Conectado a: Microsoft Exchange». Dejalo abierto.</li>
+          <li>Abrí el <b>.docx</b> descargado → pestaña <b>Correspondencia</b>.</li>
+          <li><b>Seleccionar destinatarios</b> → <b>Usar una lista existente</b> → elegí el <b>.csv</b> de Descargas (si pregunta la codificación, <b>Unicode UTF-8</b>).</li>
+          <li><b>Vista previa de resultados</b> → revisá 2 o 3 que estén bien.</li>
+          <li><b>Finalizar y combinar</b> → <b>Enviar mensajes de correo electrónico</b>: Para <code>Email</code> · Asunto: el de arriba · Formato <b>HTML</b> · Enviar <b>Todos</b> (o «Desde 1 Hasta 3» para probar).</li>
+        </ol>
+        <p style="font-size:11px;color:var(--cream-dim);margin-top:4px;">Mismo mecanismo que Licitación — instructivo completo: <b>plantillas-mail/INSTRUCCIONES-licitacion.md</b> en el repo.</p>
+        <button class="btn btn-outline" style="width:100%;margin-top:6px;" onclick="cerrarMailMasivoRotacion()">Cerrar</button>
       </div>
     </div>
   </div>

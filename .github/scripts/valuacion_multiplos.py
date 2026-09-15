@@ -24,6 +24,21 @@ COMO SE ARMA CADA DATO
   vacio (el panel lo muestra como "—").
 * Medias moviles -> promedio del cierre semanal de las ultimas 21/50/200 semanas,
   de la misma serie de precios que ya se baja para reconstruir los multiplos.
+* Medias de "rebote" (swing trading, pedido de Nico 15/09) -> el bot SOLO baja los
+  numeros crudos; el panel decide que tan "cerca" es cerca (umbrales ajustables sin
+  correr el bot de nuevo):
+    MM200_dia   = media de cierres DIARIOS de las ultimas 200 ruedas (corto plazo)
+    MM20_sem    = media de cierres semanales de las ultimas 20 semanas (mediano plazo)
+    MM20_mes / MM50_mes = media de cierres MENSUALES (largo plazo) -- se resamplean
+      de la MISMA serie semanal que ya se baja, no hace falta pedirle nada nuevo a
+      Yahoo para esto.
+    Max_52s / Min_52s = maximo/minimo de las ultimas 52 semanas (ya se usaba el
+      maximo para Dist_max_52s; ahora se guardan los dos valores para que el panel
+      arme los niveles de Fibonacci (38,2% / 50% / 61,8%) sin tener que volver a
+      pedirle nada a Yahoo tampoco.
+  La UNICA llamada nueva a Yahoo por ticker es el historico diario (para MM200_dia).
+  No hace falta correr esto mas seguido que 1 vez por semana: ninguna de estas
+  medias se mueve de un dia para el otro.
 
 Un multiplo negativo, cero o absurdo (>1000) se descarta (perdidas, dato faltante).
 
@@ -74,7 +89,8 @@ RETRIES    = 3
 
 # version del esquema de cache. Al subirla, todo dato viejo se re-baja (aunque
 # tenga menos de FRESH_DAYS). v2 = serie historica de EDGAR + 10y + media recortada.
-CACHE_VER = 2
+# v3 = medias de rebote (MM200 diaria, MM20 semanal, MM20/50 mensual) + Max/Min 52s.
+CACHE_VER = 3
 
 MULTS = ("PE", "PS", "EVEBITDA", "PFCF", "PB")
 
@@ -215,7 +231,7 @@ def price_near(hist_close, when):
 
 
 def yf_get(sym):
-    """(info, income_stmt, balance_sheet, cashflow, weekly_close, splits) o None."""
+    """(info, income_stmt, balance_sheet, cashflow, weekly_close, splits, daily_close) o None."""
     last_err = None
     for attempt in range(RETRIES):
         try:
@@ -234,7 +250,14 @@ def yf_get(sym):
                 splits = t.splits
             except Exception:
                 splits = None
-            return info, fin, bs, cf, close, splits
+            # historico diario -> solo para la MM200 de corto plazo (grafico diario).
+            # 2 años de buffer de sobra para 200 ruedas habiles incluso con feriados.
+            try:
+                hist_d = t.history(period="2y", interval="1d", auto_adjust=True)
+                close_d = hist_d["Close"].dropna() if hist_d is not None and not hist_d.empty else None
+            except Exception:
+                close_d = None
+            return info, fin, bs, cf, close, splits, close_d
         except Exception as e:
             last_err = e
             msg = str(e).lower()
@@ -256,7 +279,7 @@ def build_entry(ticker):
         time.sleep(THROTTLE)
         if not got:
             continue
-        info, fin, bs, cf, close, splits = got
+        info, fin, bs, cf, close, splits, close_d = got
 
         price = num(info.get("currentPrice") or info.get("regularMarketPrice"))
         mcap  = num(info.get("marketCap"))
@@ -446,6 +469,39 @@ def build_entry(ticker):
             live = num(info.get("currentPrice") or info.get("regularMarketPrice")) or last
             mm["Dist_max_52s"] = round(live / hi - 1, 4) if hi > 0 else None
 
+            # minimo de 52 semanas (mismo criterio que el maximo: el low intradiario
+            # real, si Yahoo lo tiene, es mas extremo que el minimo de cierres semanales)
+            lo = float(win.min())
+            lo_info = num(info.get("fiftyTwoWeekLow"))
+            if lo_info and lo_info < lo:
+                lo = lo_info
+            mm["Max_52s"] = round(hi, 2)
+            mm["Min_52s"] = round(lo, 2)
+
+            # media de 20 semanas (swing trading -> "mediano plazo"). MM21_sem de
+            # arriba se sigue usando para el score de tendencia, esta es la que pidio
+            # Nico puntualmente para el rebote.
+            if len(close) >= 20:
+                mm["MM20_sem"] = round(float(close.rolling(20).mean().iloc[-1]), 2)
+
+            # media MENSUAL -> se resamplea la MISMA serie semanal, sin pedirle nada
+            # nuevo a Yahoo (llamada aparte solo hace falta para la diaria, abajo).
+            try:
+                close_m = close.copy()
+                if close_m.index.tz is not None:
+                    close_m.index = close_m.index.tz_localize(None)
+                close_m = close_m.resample("ME").last().dropna()
+                if len(close_m) >= 20:
+                    mm["MM20_mes"] = round(float(close_m.rolling(20).mean().iloc[-1]), 2)
+                if len(close_m) >= 50:
+                    mm["MM50_mes"] = round(float(close_m.rolling(50).mean().iloc[-1]), 2)
+            except Exception:
+                pass
+
+        # media DIARIA (corto plazo, grafico diario) -> unica llamada nueva a Yahoo
+        if close_d is not None and len(close_d) >= 200:
+            mm["MM200_dia"] = round(float(close_d.rolling(200).mean().iloc[-1]), 2)
+
         return {
             "ticker_usado": sym,
             "empresa": info.get("longName") or info.get("shortName") or "",
@@ -467,6 +523,7 @@ for k in MULTS:
     COLS += [f"{k}_actual", f"{k}_prom_3y", f"{k}_prom_5y", f"{k}_prom_10y"]
 COLS += ["MM21_sem", "MM50_sem", "MM200_sem",
          "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s",
+         "MM200_dia", "MM20_sem", "MM20_mes", "MM50_mes", "Max_52s", "Min_52s",
          "Rev_CAGR", "NI_pos", "FCF_pos", "Margen_trend", "ND_EBITDA",
          "Estado", "Fuente", "Actualizado"]
 
@@ -509,7 +566,8 @@ def row_from_cache(ticker, e):
         if a is not None or p5 is not None:
             any_mult = True
     mm = e.get("mm", {})
-    for k in ("MM21_sem", "MM50_sem", "MM200_sem", "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s"):
+    for k in ("MM21_sem", "MM50_sem", "MM200_sem", "Ret_3m", "Ret_6m", "Ret_12m", "Dist_max_52s",
+              "MM200_dia", "MM20_sem", "MM20_mes", "MM50_mes", "Max_52s", "Min_52s"):
         r[k] = mm.get(k)
     fund = e.get("fund", {})
     for k in ("Rev_CAGR", "NI_pos", "FCF_pos", "Margen_trend", "ND_EBITDA"):

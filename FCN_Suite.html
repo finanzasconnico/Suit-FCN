@@ -252,6 +252,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .dash-row.clickable:hover .dash-row-ticker{text-decoration:underline;text-decoration-color:var(--ambar);}
 .dash-row-holders{font-family:var(--font-m);font-size:9px;color:var(--ambar);flex-shrink:0;}
 
+/* ── RV agrupado por ticker — lista de clientes desplegable debajo de cada fila ── */
+.dash-rv-clientes{padding:2px 0 6px 20px;border-left:1px dashed var(--border);margin:0 0 2px 6px;}
+.dash-rv-cliente-row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:10.5px;}
+.drc-nombre{flex:1;color:var(--muted);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.drc-nombre:hover{color:var(--text);text-decoration:underline;}
+.drc-monto{font-family:var(--font-m);color:var(--muted);flex-shrink:0;}
+.drc-btn{flex-shrink:0;width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.drc-btn:hover{border-color:var(--ambar);color:var(--ambar);}
+
 /* ── LIQUIDEZ POR CLIENTE (mismo estilo fino que el resto de las cajas — dbar-row) ── */
 .liq-toggle{display:flex;gap:6px;margin-bottom:10px;}
 .liq-toggle-btn{padding:3px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-m);font-size:10px;cursor:pointer;transition:all .15s;}
@@ -537,7 +546,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
         <div class="dash-two-col">
           <div class="dash-card">
-            <div class="dash-section-title">📈 Renta Variable — momento de sumar <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(clic en una fila para ver la cartera del cliente)</span></div>
+            <div class="dash-section-title">📈 Renta Variable — momento de sumar <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(clic en un papel para ver qué clientes lo tienen)</span></div>
             <div id="dash-oportunidades" class="dash-scrollbox"></div>
             <div id="dash-oportunidades-cap" style="font-size:10px;color:var(--muted);margin-top:6px;"></div>
           </div>
@@ -556,6 +565,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <div class="dash-card">
             <div class="dash-section-title">🔁 Conviene rotar — TIR baja, en tenencia de clientes (Renta Fija)</div>
             <div id="dash-rf-rotar" class="dash-scrollbox"></div>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px;">Solo ONs corporativas con calificación AAA — sin soberanos ni provinciales</div>
           </div>
         </div>
         <div class="dash-two-col">
@@ -616,6 +626,34 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <div class="wpp-liq-actions">
             <button class="wpp-liq-btn-cancel" onclick="cerrarWppLiquidez()">Cancelar</button>
             <button class="wpp-liq-btn-send" id="wppLiqSendBtn" onclick="enviarWppLiquidez()">
+              <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+              Abrir WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MODAL: MENSAJE POR ACCIÓN DE RENTA VARIABLE (cajas "momento de sumar" / "revisar con clientes") ── -->
+    <div class="wpp-liq-overlay" id="rvMsgOverlay" onclick="if(event.target===this) cerrarRvMsg()">
+      <div class="wpp-liq-modal">
+        <div class="wpp-liq-head">
+          <div>
+            <div class="wpp-liq-title">✉ Mensaje al cliente</div>
+            <div class="wpp-liq-sub" id="rvMsgSub">—</div>
+          </div>
+          <button class="wpp-liq-close" onclick="cerrarRvMsg()">✕</button>
+        </div>
+        <div class="wpp-liq-body">
+          <textarea class="wpp-liq-textarea" id="rvMsgTexto"></textarea>
+          <div class="wpp-liq-tel-row">
+            <span>Teléfono:</span><span id="rvMsgTel">—</span>
+            <span style="margin-left:14px;">Mail:</span><span id="rvMsgMail">—</span>
+          </div>
+          <div class="wpp-liq-actions">
+            <button class="wpp-liq-btn-cancel" onclick="copiarRvMsg()">Copiar texto</button>
+            <button class="wpp-liq-btn-cancel" id="rvMsgMailBtn" onclick="abrirMailRvMsg()">✉ Abrir mail</button>
+            <button class="wpp-liq-btn-send" id="rvMsgWppBtn" onclick="abrirWhatsAppRvMsg()">
               <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.121 1.524 5.853L.057 23.784a.5.5 0 0 0 .64.64l5.931-1.467A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.883 0-3.647-.51-5.164-1.4l-.37-.221-3.527.874.873-3.527-.22-.37A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
               Abrir WhatsApp
             </button>
@@ -1156,7 +1194,7 @@ function showApp() {
   buildFilesPanel();
   initClientePicker();
   initFilesStatusPicker();
-  showHome();
+  _abrirVistaDesdeUrl();
   setupTopbarScroll();
 }
 
@@ -1670,14 +1708,103 @@ function construirAccionesRV() {
   return { sumar, revisar };
 }
 
-function dashRVRow(r) {
-  const [fg, bg] = V360_COLOR[r.color] || V360_COLOR.ambar;
-  return `<div class="dash-row clickable" onclick="abrirCarteraCliente('${escHtml(r.cliente).replace(/'/g,"\\'")}')" title="${escHtml(r.por || '')}">
-    <span class="dash-row-ticker">${escHtml(r.ticker)}</span>
-    <span style="font-family:var(--font-m);font-size:8px;font-weight:700;color:${fg};background:${bg};padding:1px 6px;border-radius:9px;white-space:nowrap;">${escHtml(r.senal)}</span>${r.anChip || ''}
-    <span class="dash-row-name">${escHtml(r.cliente)}</span>
-    <span class="dash-row-amt">USD ${fmtK(r.tenencia)}</span>
-  </div>`;
+// ══════════════════════════════════════════════════════════════
+// Agrupado por TICKER, no por (cliente,papel) — pedido de Nico (15/09): antes un papel con 5
+// clientes ocupaba 5 filas seguidas repitiendo ticker/señal. Ahora una fila por ticker (tenencia
+// sumada), clic para desplegar qué clientes lo tienen, y desde cada cliente ir directo a
+// mandarle un mensaje puntual o a ver su cartera completa (Vista 360, ya existente vía
+// abrirCarteraCliente). _dashRVPorTicker guarda el último cálculo para que
+// abrirMensajeAccionRV() no tenga que recalcular nada al abrir el mensaje.
+// ══════════════════════════════════════════════════════════════
+let _dashRVPorTicker = {}; // ticker -> grupo de la última corrida de sumar/revisar
+
+function agruparAccionesRVPorTicker(lista, prefijo) {
+  const porTicker = {};
+  lista.forEach(r => {
+    const key = prefijo + '-' + r.ticker;
+    if (!porTicker[key]) porTicker[key] = { key, ticker: r.ticker, empresa: r.empresa, senal: r.senal, color: r.color, por: r.por, fuente: r.fuente, anChip: r.anChip, prio: r.prio || 0, tenencia: 0, clientes: [] };
+    porTicker[key].tenencia += r.tenencia;
+    porTicker[key].clientes.push({ cliente: r.cliente, tenencia: r.tenencia });
+  });
+  const grupos = Object.values(porTicker);
+  grupos.forEach(g => { g.clientes.sort((a, b) => b.tenencia - a.tenencia); _dashRVPorTicker[g.ticker] = g; });
+  grupos.sort((a, b) => (b.prio || 0) - (a.prio || 0) || b.tenencia - a.tenencia);
+  return grupos;
+}
+
+function dashRVGrupoRow(g) {
+  const [fg, bg] = V360_COLOR[g.color] || V360_COLOR.ambar;
+  const cliRows = g.clientes.map(c => `
+    <div class="dash-rv-cliente-row">
+      <span class="drc-nombre" onclick="event.stopPropagation();abrirCarteraCliente('${escHtml(c.cliente).replace(/'/g,"\\'")}')" title="Ver cartera completa (Vista 360)">${escHtml(c.cliente)}</span>
+      <span class="drc-monto">USD ${fmtK(c.tenencia)}</span>
+      <button class="drc-btn" onclick="event.stopPropagation();abrirMensajeAccionRV('${escHtml(c.cliente).replace(/'/g,"\\'")}','${escHtml(g.ticker).replace(/'/g,"\\'")}')" title="Mandar mensaje sobre esta posición">✉</button>
+      <button class="drc-btn" onclick="event.stopPropagation();abrirCarteraCliente('${escHtml(c.cliente).replace(/'/g,"\\'")}')" title="Ver cartera completa (Vista 360)">👁</button>
+    </div>`).join('');
+  return `<div class="dash-row clickable" onclick="toggleDashRVGrupo('${escHtml(g.key).replace(/'/g,"\\'")}')" title="${escHtml(g.por || '')}">
+    <span class="dash-row-ticker">${escHtml(g.ticker)}</span>
+    <span style="font-family:var(--font-m);font-size:8px;font-weight:700;color:${fg};background:${bg};padding:1px 6px;border-radius:9px;white-space:nowrap;">${escHtml(g.senal)}</span>${g.anChip || ''}
+    <span class="dash-row-name">${escHtml(g.empresa)}</span>
+    <span class="dash-row-holders">👤${g.clientes.length}</span>
+    <span class="dash-row-amt">USD ${fmtK(g.tenencia)}</span>
+  </div>
+  <div class="dash-rv-clientes" id="dash-rv-clientes-${escHtml(g.key)}" style="display:none;">${cliRows}</div>`;
+}
+function toggleDashRVGrupo(key) {
+  const el = document.getElementById('dash-rv-clientes-' + key);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+// Frase client-facing según la señal del papel — el "por" que ya trae el veredicto (ver
+// vmQueHacer) está escrito en segunda persona PARA EL ASESOR ("revisá si...", "confirmalo con
+// tu análisis"), no sirve para pegar directo en un mensaje al cliente. Esto es una traducción
+// corta a tono de cliente, mismo criterio de las otras herramientas de la Suite.
+function _fraseClienteAccionRV(g) {
+  const emp = g.empresa || g.ticker;
+  if (g.fuente === 'multiplos') {
+    if (g.senal === 'SUMAR') return `Según nuestro análisis, ${emp} está en buen momento: la valuación acompaña la tendencia. Es un buen momento para mantenerla o sumar.`;
+    if (g.senal === 'REDUCIR') return `Estuve mirando ${emp} y viene cayendo con el negocio más débil que antes. Te propongo que lo charlemos — puede ser momento de reducir la posición.`;
+    return `Quería comentarte que ${emp} está en una zona que conviene mirar de cerca. No es nada urgente, pero prefiero que lo tengas en el radar.`;
+  }
+  if (g.color === 'jade') return `Los analistas le ven upside a ${emp} frente al precio actual — puede ser un buen momento para sumar o mantener.`;
+  return `El precio de ${emp} ya superó el objetivo promedio de los analistas — puede ser un buen momento para evaluar tomar ganancia.`;
+}
+
+let rvMsgCtx = null; // { tel, mail }
+function abrirMensajeAccionRV(cliente, ticker) {
+  const g = _dashRVPorTicker[ticker];
+  if (!g) return;
+  const c = g.clientes.find(x => x.cliente === cliente);
+  const tel = telParaClienteFCN(cliente);
+  const comitente = currentTenencia && currentTenencia.comitentePorCliente ? currentTenencia.comitentePorCliente[cliente] : null;
+  const mail = comitente && currentStockMap && currentStockMap[comitente] ? currentStockMap[comitente].mail : null;
+  rvMsgCtx = { tel, mail };
+  document.getElementById('rvMsgSub').textContent = `${ticker} · ${cliente}${c ? ' · USD ' + fmtK(c.tenencia) : ''}`;
+  const texto = `Hola${_nomSaludoFCN(cliente)},\n\n${_fraseClienteAccionRV(g)}\n\nCualquier duda, avisame y lo charlamos.\n\n${nombreAsesorFirma()}`;
+  document.getElementById('rvMsgTexto').value = texto;
+  document.getElementById('rvMsgTel').textContent = tel || 'Sin teléfono — cargá el Stock de cuentas';
+  document.getElementById('rvMsgMail').textContent = mail || 'Sin mail — cargá el Stock de cuentas';
+  document.getElementById('rvMsgWppBtn').disabled = !tel;
+  document.getElementById('rvMsgMailBtn').disabled = !mail;
+  document.getElementById('rvMsgOverlay').classList.add('open');
+}
+function cerrarRvMsg() { document.getElementById('rvMsgOverlay').classList.remove('open'); }
+function copiarRvMsg() {
+  const ta = document.getElementById('rvMsgTexto');
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) { if (navigator.clipboard) navigator.clipboard.writeText(ta.value); }
+}
+function abrirWhatsAppRvMsg() {
+  if (!rvMsgCtx || !rvMsgCtx.tel) { alertaSinStockFCN(); return; }
+  const texto = document.getElementById('rvMsgTexto').value.trim();
+  const tel = rvMsgCtx.tel.replace(/\D/g, '');
+  window.open(`whatsapp://send?phone=${tel}&text=${encodeURIComponent(texto)}`, '_blank');
+  setTimeout(() => window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank'), 1500);
+}
+function abrirMailRvMsg() {
+  if (!rvMsgCtx || !rvMsgCtx.mail) { alert('No tengo el mail de este cliente cargado en Stock de cuentas.'); return; }
+  const texto = document.getElementById('rvMsgTexto').value;
+  window.location.href = `mailto:${rvMsgCtx.mail}?subject=${encodeURIComponent('Repaso de tu cartera')}&body=${encodeURIComponent(texto)}`;
 }
 
 function renderDashOportunidades() {
@@ -1696,8 +1823,9 @@ function renderDashOportunidades() {
     if (cap) cap.textContent = '';
     return;
   }
-  el.innerHTML = sumar.slice(0, 40).map(dashRVRow).join('');
-  if (cap) cap.textContent = `${sumar.length} par(es) cliente-papel · veredicto "Sumar" de Múltiplos; papeles fuera de ese archivo, upside ≥ +${DASH_RV_ANALISTA_SUMAR}% vs analistas`;
+  const grupos = agruparAccionesRVPorTicker(sumar, 'sumar');
+  el.innerHTML = grupos.slice(0, 40).map(dashRVGrupoRow).join('');
+  if (cap) cap.textContent = `${grupos.length} papel(es) con señal de sumar (${sumar.length} posición(es) de cliente) · veredicto "Sumar" de Múltiplos; papeles fuera de ese archivo, upside ≥ +${DASH_RV_ANALISTA_SUMAR}% vs analistas`;
 }
 
 function renderDashVentaSugerida() {
@@ -1716,8 +1844,9 @@ function renderDashVentaSugerida() {
     if (cap) cap.textContent = '';
     return;
   }
-  el.innerHTML = revisar.slice(0, 40).map(dashRVRow).join('');
-  if (cap) cap.textContent = `${revisar.length} par(es) cliente-papel · veredicto Reducir/Atención de Múltiplos; papeles fuera de ese archivo, precio arriba del objetivo de analistas`;
+  const grupos = agruparAccionesRVPorTicker(revisar, 'revisar');
+  el.innerHTML = grupos.slice(0, 40).map(dashRVGrupoRow).join('');
+  if (cap) cap.textContent = `${grupos.length} papel(es) con señal de atención/reducir (${revisar.length} posición(es) de cliente) · veredicto Reducir/Atención de Múltiplos; papeles fuera de ese archivo, precio arriba del objetivo de analistas`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1751,6 +1880,15 @@ function rfAptaComoOportunidad(d) {
   if (d.tipo !== 'corporativo') return true;
   const rk = rfRatingRank(d.calificacion);
   return rk != null && rk >= DASH_RF_CORP_MIN_RANK;
+}
+// Filtro específico de la caja "Mejores TIR disponibles" (pedido de Nico 15/09): a diferencia
+// de rfAptaComoOportunidad de arriba (AA- o mejor, y deja pasar soberanos/provinciales/Tesoro
+// sin filtrar — se sigue usando tal cual para la alternativa de rotación de la Vista 360), esta
+// caja puntual del dashboard pasa a mostrar SOLO ONs corporativas con calificación AAA. Nada de
+// soberanos/Tesoro Nacional acá, aunque sigan apareciendo sin cambios en el resto de la Suite.
+function rfAptaComoOportunidadDashboard(d) {
+  if (d.tipo !== 'corporativo') return false;
+  return rfRatingRank(d.calificacion) === RF_RATING_RANK['AAA'];
 }
 
 // Adaptado de Scanner_ONs_FCN.html → cargarMonitor(), sin las llamadas de UI propias de esa herramienta.
@@ -1892,11 +2030,11 @@ function renderDashRFOportunidades(monitor) {
     return;
   }
   const top = Object.entries(monitor)
-    .filter(([tk, d]) => d.tir !== null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX && rfAptaComoOportunidad(d))
+    .filter(([tk, d]) => d.tir !== null && d.tir >= DASH_RF_TIR_MIN && d.tir <= DASH_RF_TIR_MAX && rfAptaComoOportunidadDashboard(d))
     .sort((a, b) => b[1].tir - a[1].tir)
     .slice(0, 30);
   if (!top.length) {
-    el.innerHTML = `<div class="dash-empty">No hay tickers con TIR entre ${(DASH_RF_TIR_MIN*100).toFixed(0)}% y ${(DASH_RF_TIR_MAX*100).toFixed(0)}% y calificación suficiente ahora mismo.</div>`;
+    el.innerHTML = `<div class="dash-empty">No hay ONs corporativas con calificación AAA y TIR entre ${(DASH_RF_TIR_MIN*100).toFixed(0)}% y ${(DASH_RF_TIR_MAX*100).toFixed(0)}% ahora mismo.</div>`;
     return;
   }
   el.innerHTML = top.map(([tk, d]) => {
@@ -1912,7 +2050,7 @@ function renderDashRFOportunidades(monitor) {
     </div>`;
   }).join('');
   const cap = document.getElementById('dash-rf-oportunidades-cap');
-  if (cap) cap.textContent = 'ONs corporativas filtradas a calificación AA- o mejor · soberanos y provinciales se muestran igual';
+  if (cap) cap.textContent = 'Solo ONs corporativas con calificación AAA — sin soberanos ni provinciales';
 }
 
 function renderDashRFRotar(monitor, tenencia) {
@@ -1923,11 +2061,11 @@ function renderDashRFRotar(monitor, tenencia) {
     return;
   }
   const candidatos = Object.entries(monitor)
-    .filter(([tk, d]) => tenencia.porTicker[tk] && d.tir !== null && d.tir < DASH_RF_TIR_BAJA)
+    .filter(([tk, d]) => tenencia.porTicker[tk] && d.tir !== null && d.tir < DASH_RF_TIR_BAJA && rfAptaComoOportunidadDashboard(d))
     .sort((a, b) => a[1].tir - b[1].tir)
     .slice(0, 30);
   if (!candidatos.length) {
-    el.innerHTML = `<div class="dash-empty">Ninguna posición de Renta Fija en cartera está por debajo del ${(DASH_RF_TIR_BAJA*100).toFixed(0)}% de TIR ahora mismo. 👍</div>`;
+    el.innerHTML = `<div class="dash-empty">Ninguna ON corporativa AAA en cartera está por debajo del ${(DASH_RF_TIR_BAJA*100).toFixed(0)}% de TIR ahora mismo. 👍</div>`;
     return;
   }
   el.innerHTML = candidatos.map(([tk, d]) => {
@@ -3650,10 +3788,40 @@ function hideAllPanels() {
   activeToolId = null;
 }
 
+// ── URL profunda por herramienta/panel — pedido de Nico (15/09): "cuando entro al Suite y
+// elijo una herramienta, no cambia el link — poder guardarme un acceso directo". El iframe de
+// la herramienta nunca cambia la URL del padre solo, así que la actualizamos a mano con la
+// History API (?tool=<id> / ?panel=<id>) cada vez que se cambia de vista desde ADENTRO del
+// Suite, y al abrir ese link (o pegarlo directo) se reabre esa misma vista. _suiteUrlSuprimir
+// evita el caso contrario: cuando la URL es la que DISPARA la vista (carga inicial o
+// atrás/adelante del navegador), no hay que volver a pushear la misma URL sobre sí misma.
+var _suiteUrlSuprimir = false;
+function _setSuiteUrl(kind, id){
+  if(_suiteUrlSuprimir) return;
+  var qs = (kind==='tool') ? ('tool=' + encodeURIComponent(id)) : (id!=='home' ? ('panel=' + encodeURIComponent(id)) : '');
+  var nueva = location.pathname + (qs ? '?' + qs : '');
+  if(nueva === location.pathname + location.search) return;
+  history.pushState({kind:kind, id:id}, '', nueva);
+}
+function _abrirVistaDesdeUrl(){
+  _suiteUrlSuprimir = true;
+  try {
+    var params = new URLSearchParams(location.search);
+    var tool = params.get('tool'), panel = params.get('panel');
+    if(tool && getUserTools().find(function(t){ return t.id===tool; })) openTool(tool);
+    else if(panel==='files') showFiles();
+    else if(panel==='cliente360') showCliente360();
+    else if(panel==='ranking') showRanking();
+    else showHome();
+  } finally { _suiteUrlSuprimir = false; }
+}
+window.addEventListener('popstate', _abrirVistaDesdeUrl);
+
 function showHome() {
   setActiveTab('home');
   hideAllPanels();
   document.getElementById('home-panel').classList.add('active');
+  _setSuiteUrl('panel', 'home');
 }
 
 function showFiles() {
@@ -3661,6 +3829,7 @@ function showFiles() {
   hideAllPanels();
   document.getElementById('files-panel').classList.add('active');
   refreshFilesStatus();
+  _setSuiteUrl('panel', 'files');
 }
 
 function showCliente360() {
@@ -3668,6 +3837,7 @@ function showCliente360() {
   hideAllPanels();
   document.getElementById('cliente360-panel').classList.add('active');
   renderCliente360();
+  _setSuiteUrl('panel', 'cliente360');
 }
 
 function showRanking() {
@@ -3675,6 +3845,7 @@ function showRanking() {
   hideAllPanels();
   document.getElementById('ranking-panel').classList.add('active');
   renderRanking();
+  _setSuiteUrl('panel', 'ranking');
 }
 
 function openTool(toolId) {
@@ -3701,6 +3872,7 @@ function openTool(toolId) {
     frameCache[toolId] = iframe;
   }
   activeToolId = toolId;
+  _setSuiteUrl('tool', toolId);
 }
 
 function setActiveTab(toolId) {

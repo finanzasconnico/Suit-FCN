@@ -307,6 +307,10 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
           <option value="qh:Reducir">Reducir</option>
           <option value="qh:Sin señal">Sin señal</option>
         </optgroup>
+        <optgroup label="Técnico (rebote)">
+          <option value="reb:compra">Posible rebote (compra)</option>
+          <option value="reb:venta">Posible techo (venta)</option>
+        </optgroup>
       </select>
     </label>
     <div class="filter-chips" id="sector-chips"></div>
@@ -345,6 +349,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>👤 Clientes</b><p>Todos tus clientes ordenados por tenencia, con cuántos activos tiene cada uno para sumar / atención / reducir, y aviso si la cartera está muy concentrada en un ticker o sector. Click para enfocar su cartera.</p></div>
       <div><b>📝 Registro</b><p>Dentro de la ficha de cada empresa (con un cliente enfocado) podés anotar qué le propusiste y si aceptó o rechazó. Si ya rechazó algo, te lo marca en Panorama para que no lo vuelvas a plantear. Se guarda solo en esta compu.</p></div>
       <div><b>✉ Avisar a los que lo tienen</b><p>En la ficha de una empresa, si tus clientes la tienen en cartera, el botón <b>"Avisar a los N"</b> arma un mensaje por cada tenedor: los primeros por tenencia como borrador de WhatsApp 1×1, el resto como mail masivo (CSV + Word, igual que Licitaciones). El texto compara su múltiplo contra su historia y contra los pares del sector, y podés elegir una alternativa del mismo rubro para proponer la rotación. Queda anotado en el Registro. Si el papel hoy no se ve caro, te avisa antes de mandar.</p></div>
+      <div><b>Rebote (pestaña Técnico)</b><p>Puntos de análisis técnico clásico: cuando el precio se acerca a una media clave, suele rebotar ahí. Arriba de la media y acercándose = está testeando un <b>soporte</b> (posible compra). Abajo de la media y acercándose = está testeando una <b>resistencia</b> (posible venta). Se mira en 3 plazos — corto (media de 200 ruedas diarias), mediano (media de 20 semanas) y largo (media de 20 y 50 meses) — más los niveles de Fibonacci entre el máximo y el mínimo del último año. Si el rebote técnico no tiene el negocio detrás (o el techo aparece con el negocio sólido), te lo marca con un aviso ámbar al lado. Filtrable desde el selector <b>"Señal" → Técnico (rebote)</b>.</p></div>
     </div>
     <p class="help-foot">La pestaña <b>Panorama</b> junta todo. Para ver cada análisis por separado y con más detalle: <b>Técnico</b> (el precio y las medias), <b>Negocio</b> (crecimiento, rentabilidad, deuda) y <b>Múltiplos</b> (caro o barato vs. su historia). La opinión de los analistas tiene su propia herramienta, "Precios Objetivo".<br><br>Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b>. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
   </div>
@@ -820,6 +825,68 @@ function sigPrecio(r){
   if(v>=0.05)  return {txt:'Barato',    cls:'sig-ok',  num:v};
   if(v<=-0.30) return {txt:'Caro',      cls:'sig-bad', num:v};
   return {txt:'En precio', cls:'sig-mid', num:v};
+}
+
+// ══════════════════════════════════════════
+//  PUNTOS DE REBOTE (swing trading) — corto (MM200 diaria) / mediano (MM20 semanal) /
+//  largo (MM20-50 mensual) / Fibonacci (retroceso entre máx. y mín. de 52 semanas).
+//  El bot SOLO baja los precios crudos de cada media — la banda de "cerca" vive acá,
+//  así se puede ajustar sin correr el bot de nuevo.
+//  Lógica (la misma que usa Nico con su análisis): precio ARRIBA de la media y
+//  acercándose = está testeando un SOPORTE -> posible rebote/compra. Precio ABAJO
+//  de la media y acercándose = está testeando una RESISTENCIA -> posible techo/venta.
+//  Es observación de análisis técnico, no dice nada de si el negocio o el precio
+//  de fondo (Tendencia/Negocio/Precio, arriba) acompañan.
+// ══════════════════════════════════════════
+const REBOTE_BANDAS={corto:0.03, mediano:0.04, largo:0.05, fibo:0.02};
+function nivelesFibo(hi,lo){
+  if(hi==null||lo==null||hi<=lo) return null;
+  const rango=hi-lo;
+  return [23.6,38.2,50,61.8].map(pct=>({pct, nivel:hi-rango*pct/100}));
+}
+function puntosRebote(r){
+  if(r.precio==null) return [];
+  const out=[];
+  const chk=(plazo,label,ma)=>{
+    if(ma==null||ma<=0) return;
+    const dist=r.precio/ma-1;
+    if(Math.abs(dist)<=REBOTE_BANDAS[plazo]) out.push({plazo,label,dist,tipo:dist>=0?'soporte':'resistencia'});
+  };
+  chk('corto','MM200 diaria',r.mm200d);
+  chk('mediano','MM20 semanal',r.mm20s);
+  chk('largo','MM20 mensual',r.mm20m);
+  chk('largo','MM50 mensual',r.mm50m);
+  const fibs=nivelesFibo(r.max52,r.min52);
+  if(fibs){
+    let mejor=null;
+    fibs.forEach(f=>{
+      const dist=r.precio/f.nivel-1;
+      if(Math.abs(dist)<=REBOTE_BANDAS.fibo && (!mejor||Math.abs(dist)<Math.abs(mejor.dist)))
+        mejor={plazo:'fibo', label:`Fibonacci ${f.pct}%`, dist, tipo:dist>=0?'soporte':'resistencia'};
+    });
+    if(mejor) out.push(mejor);
+  }
+  return out;
+}
+function lecturaRebote(r){
+  const pts=puntosRebote(r);
+  if(!pts.length) return null;
+  const soporte=pts.some(p=>p.tipo==='soporte'), resistencia=pts.some(p=>p.tipo==='resistencia');
+  let base;
+  if(soporte&&!resistencia) base={txt:'Posible rebote', cls:'sig-ok',  tipo:'compra'};
+  else if(resistencia&&!soporte) base={txt:'Posible techo',  cls:'sig-bad', tipo:'venta'};
+  else base={txt:'Señal mixta', cls:'sig-mid', tipo:'mixta'};
+  // cruce con el negocio (Nico, 15/09): un rebote técnico sin sustento de fondo pesa
+  // menos — y al revés, un techo con el negocio sólido puede terminar perforándose
+  // en vez de aguantar. Es un aviso, no cambia el tipo de señal.
+  const n=fundamental(r);
+  let alerta=null;
+  if(base.tipo==='compra' && n!=null && n<=-15){
+    alerta={txt:'⚠ negocio flojo', detalle:'el rebote es solo técnico — el negocio viene débil, el soporte podría no aguantar.'};
+  } else if(base.tipo==='venta' && n!=null && n>=20){
+    alerta={txt:'⚠ negocio sólido', detalle:'el negocio acompaña — la resistencia podría perforarse en vez de frenar la suba.'};
+  }
+  return {...base, pts, alerta};
 }
 
 // ── QUÉ HACER: veredicto simple (observación, NO recomendación) ──
@@ -1454,6 +1521,18 @@ function abrirFicha(ticker){
       :'Las medias están cruzadas: sin una dirección clara.');}
   if(r.ret3m!=null||r.ret6m!=null) tec.push(`Rendimiento: <b>${pct(r.ret3m)}</b> en 3 meses, <b>${pct(r.ret6m)}</b> en 6.`);
   if(r.dist52!=null) tec.push(`Está a <b>${pct(r.dist52)}</b> de su máximo del último año.`);
+  const lr=lecturaRebote(r);
+  if(lr){
+    const frases=lr.pts.map(p=>{
+      const zona = p.tipo==='soporte' ? 'testeando como <b>soporte</b>' : 'testeando como <b>resistencia</b>';
+      return `${p.plazo==='fibo'?p.label:`la ${p.label} (${p.plazo} plazo)`} — ${zona}, a <b>${pct(p.dist)}</b>`;
+    });
+    const veredicto = lr.tipo==='compra' ? 'Posible zona de rebote — si aguanta, punto de compra técnico.'
+      : lr.tipo==='venta' ? 'Posible techo — si lo rechaza, punto de venta o toma de ganancia técnica.'
+      : 'Señales técnicas mixtas — un plazo marca soporte y otro resistencia.';
+    const avisoNeg = lr.alerta ? ` <span style="color:var(--ambar)">${lr.alerta.txt}:</span> ${lr.alerta.detalle}` : '';
+    tec.push(`<b>${lr.txt}:</b> el precio está cerca de ${frases.join(' y de ')}. ${veredicto}${avisoNeg}`);
+  }
 
   // El negocio (fundamental)
   const neg=[];
@@ -1653,6 +1732,10 @@ function parseBuffer(entry){
       m,
       mm21:num(r['MM21_sem']), mm50:num(r['MM50_sem']), mm200:num(r['MM200_sem']),
       ret3m:num(r['Ret_3m']), ret6m:num(r['Ret_6m']), ret12m:num(r['Ret_12m']), dist52:num(r['Dist_max_52s']),
+      // medias de rebote (swing trading): corto = diaria, mediano = semanal, largo = mensual
+      mm200d:num(r['MM200_dia']), mm20s:num(r['MM20_sem']),
+      mm20m:num(r['MM20_mes']), mm50m:num(r['MM50_mes']),
+      max52:num(r['Max_52s']), min52:num(r['Min_52s']),
       f:{ revCagr:num(r['Rev_CAGR']), niPos:num(r['NI_pos']), fcfPos:num(r['FCF_pos']),
           margenTrend:num(r['Margen_trend']), ndEbitda:num(r['ND_EBITDA']) },
       estado:String(r['Estado']||'').trim(),
@@ -1712,10 +1795,11 @@ function toggleCartera(){
   document.getElementById('chip-cartera').classList.toggle('active',soloCartera);
   render();
 }
-// filtro genérico por señal — 'precio:Caro', 'tend:Alcista', 'neg:Flojo', 'qh:Reducir'...
+// filtro genérico por señal — 'precio:Caro', 'tend:Alcista', 'neg:Flojo', 'qh:Reducir', 'reb:compra'...
 function cumpleSenal(r,filtro){
   const [eje,val]=filtro.split(':');
   if(eje==='qh') return queHacer(r).v===val;
+  if(eje==='reb'){ const lr=lecturaRebote(r); return !!lr && lr.tipo===val; }
   const sig = eje==='precio' ? sigPrecio(r) : eje==='tend' ? sigTendencia(r) : eje==='neg' ? sigNegocio(r) : null;
   return !!sig && sig.txt===val;
 }
@@ -1784,6 +1868,7 @@ function sortGetters(){
       v21:r=>(r.precio!==null&&r.mm21)?r.precio/r.mm21-1:null,
       v50:r=>(r.precio!==null&&r.mm50)?r.precio/r.mm50-1:null,
       v200:r=>(r.precio!==null&&r.mm200)?r.precio/r.mm200-1:null,
+      rebote:r=>{ const p=puntosRebote(r); return p.length?Math.min(...p.map(x=>Math.abs(x.dist))):null; },
     };
   }
   if(activeTab==='Negocio'){
@@ -1908,17 +1993,26 @@ function render(){
     }).join('');
 
   }else if(activeTab==='Técnico'){
-    ncols=11;
+    ncols=12;
     headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('precio','Precio',1)}${th('tend','Tend.',1)}
       ${th('mm21','MM 21s',1)}${th('mm50','MM 50s',1)}${th('mm200','MM 200s',1)}
-      ${th('v50','vs 50s',1)}${th('v200','vs 200s',1)}${th('ret3m','Ret. 3m',1)}${th('ret6m','Ret. 6m',1)}</tr>`;
-    bodyHtml=rows.map(r=>tr(r,`${tkCell(r)}
+      ${th('v50','vs 50s',1)}${th('v200','vs 200s',1)}${th('ret3m','Ret. 3m',1)}${th('ret6m','Ret. 6m',1)}
+      ${th('rebote','Rebote')}</tr>`;
+    bodyHtml=rows.map(r=>{
+      const lr=lecturaRebote(r);
+      const rebTitle = lr ? lr.pts.map(p=>`${p.plazo} (${p.label}): ${p.dist>=0?'+':''}${fmtN(p.dist*100,1)}%`).join(' · ') : '';
+      const rebCell = lr
+        ? `<span class="sig ${lr.cls}" title="${rebTitle}">${lr.txt}</span>${lr.alerta?` <span class="sig sig-mid" title="${lr.alerta.detalle}">${lr.alerta.txt}</span>`:''}`
+        : '<span class="dash">—</span>';
+      return tr(r,`${tkCell(r)}
       <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
       <td class="num">${nCell(r.precio)}</td>
       <td class="td-tend">${tendCell(tendencia(r))}</td>
       <td class="num">${nCell(r.mm21)}</td><td class="num">${nCell(r.mm50)}</td><td class="num">${nCell(r.mm200)}</td>
       <td class="num">${vs(r.precio,r.mm50)}</td><td class="num">${vs(r.precio,r.mm200)}</td>
-      <td class="num">${pctCell(r.ret3m)}</td><td class="num">${pctCell(r.ret6m)}</td>`)).join('');
+      <td class="num">${pctCell(r.ret3m)}</td><td class="num">${pctCell(r.ret6m)}</td>
+      <td class="td-tend">${rebCell}</td>`);
+    }).join('');
 
   }else if(activeTab==='Negocio'){
     ncols=8;

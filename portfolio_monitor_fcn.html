@@ -144,6 +144,25 @@ tr:hover td{background:rgba(33,38,45,.5);}
 .sec-t{font-size:15px;font-weight:700;color:#fff;}
 #xlsxErr{display:none;color:var(--rd);font-size:12px;padding:8px;background:rgba(248,81,73,.1);border-radius:6px;margin-bottom:10px;}
 .hint{font-size:11px;color:var(--mu);}
+/* ── Rentabilidad estimada tab ── */
+.rent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px;}
+.rent-card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:16px;}
+.rent-card-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mu);margin-bottom:6px;}
+.rent-main{font-size:28px;font-weight:700;font-family:'Courier New',monospace;margin-bottom:4px;}
+.rent-sub{font-size:11px;color:var(--mu);}
+.rent-disclaimer{font-size:10.5px;color:var(--ye);margin-top:6px;padding:5px 8px;background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.25);border-radius:5px;}
+.rent-breakdown{margin-top:10px;display:flex;flex-direction:column;gap:3px;}
+.rent-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:1px solid var(--sf2);}
+.rent-missing{font-size:10.5px;color:var(--ye);margin-top:5px;}
+/* ── Flujos futuros ── */
+.flujo-title{font-size:15px;font-weight:700;color:#fff;margin:20px 0 4px;}
+.flujo-sub{font-size:11px;color:var(--mu);margin-bottom:14px;}
+.flujo-table{width:100%;border-collapse:collapse;font-size:12px;}
+.flujo-table th{text-align:left;color:var(--mu);font-weight:600;padding:4px 8px;border-bottom:1px solid var(--bd);font-size:11px;}
+.flujo-table td{padding:5px 8px;border-bottom:1px solid var(--sf2);}
+.flujo-bar-wrap{display:flex;align-items:center;gap:8px;min-width:120px;}
+.flujo-bar-fill{height:10px;border-radius:3px;background:var(--ac);min-width:2px;}
+.flujo-total-row td{font-weight:700;color:var(--ac);border-top:1px solid var(--bd);border-bottom:none;}
 </style>
 </head>
 <body>
@@ -235,6 +254,7 @@ tr:hover td{background:rgba(33,38,45,.5);}
     <div class="tab" onclick="showTab('rendimiento')">Rendimiento por período</div>
     <div class="tab" onclick="showTab('income')">Cupones &amp; Dividendos</div>
     <div class="tab" onclick="showTab('flujos')">Flujos de capital</div>
+    <div class="tab" onclick="showTab('rentabilidad')">Rentabilidad est.</div>
     <div class="tab" onclick="showTab('operaciones')">Operaciones cerradas</div>
     <div class="tab" onclick="showTab('debug')" style="color:var(--ye);">🔍 Debug</div>
   </div>
@@ -276,6 +296,10 @@ tr:hover td{background:rgba(33,38,45,.5);}
 
   <div id="tab-flujos" style="display:none;">
     <div id="flPanel"></div>
+  </div>
+
+  <div id="tab-rentabilidad" style="display:none;">
+    <div id="rentPanel"></div>
   </div>
 
   <div id="tab-operaciones" style="display:none;">
@@ -1766,6 +1790,7 @@ async function generate(forceLivePrices){
     renderPeriod();
     renderIncome(movData);
     renderFlujos(movData);
+    renderRentabilidad();
     renderOperaciones(movData);
     renderTransferWarning();
     document.getElementById('glosario').style.display='';
@@ -3134,15 +3159,16 @@ function td(id){var el=document.getElementById(id);if(el)el.classList.toggle('op
 function sf(f){S.catFilter=f;renderPositions(S.positions,S.tenData);}
 function showTab(name){
   S.activeTab=name;
-  ['posicion','rendimiento','income','flujos','operaciones','debug'].forEach(function(t){
+  ['posicion','rendimiento','income','flujos','rentabilidad','operaciones','debug'].forEach(function(t){
     var el=document.getElementById('tab-'+t);
     if(el)el.style.display=t===name?'':'none';
   });
   document.querySelectorAll('.tab').forEach(function(el,i){
-    var names=['posicion','rendimiento','income','flujos','operaciones','debug'];
+    var names=['posicion','rendimiento','income','flujos','rentabilidad','operaciones','debug'];
     el.classList.toggle('on',names[i]===name);
   });
   if(name==='rendimiento')renderPeriod();
+  if(name==='rentabilidad')renderRentabilidad();
   if(name==='operaciones'&&S.movData)renderOperaciones(S.movData);
   if(name==='debug')renderDebug();
 }
@@ -3433,6 +3459,274 @@ function fmt(n,dec){dec=dec===undefined?2:dec;if(n===undefined||n===null||isNaN(
 // INTEGRACIÓN CON FCN SUITE — auto-carga la Tenencia por Ticker que ya subiste una vez en
 // Archivos (sin pedirte que la exportes de nuevo cada vez), y se sincroniza con el picker
 // "Cliente: ..." del Suite: si ya elegiste un cliente ahí, este monitor lo toma solo. Mismo
+// ══════════════════════════════════════════════════════════════
+// RENTABILIDAD ESTIMADA + FLUJOS FUTUROS
+// ══════════════════════════════════════════════════════════════
+var _rOnDB = {}, _rSovDB = {};   // bond TIR + coupon data (from IndexedDB monitor key or localStorage)
+var _rPreciosMap = {};           // ticker → {precio, target, moneda, rec} (from precios_objetivo)
+var _rDataLoaded = false;
+
+function _rNormTir(v){return (v!=null&&Math.abs(v)>1)?v/100:v;}
+function _rNormCupon(v){return (v!=null&&Math.abs(v)>1)?v/100:v;}
+
+function _rLoadFromStorage(){
+  try{
+    var o=localStorage.getItem('fcn-on-db');
+    var s=localStorage.getItem('fcn-sov-db');
+    if(o){var p=JSON.parse(o);if(Object.keys(p).length){Object.assign(_rOnDB,p);}}
+    if(s){var p2=JSON.parse(s);if(Object.keys(p2).length){Object.assign(_rSovDB,p2);}}
+  }catch(e){}
+}
+
+function _rParsePreciosXlsx(buf){
+  try{
+    var wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    rows.forEach(function(r){
+      var t=String(r['Ticker']||r['ticker']||'').trim().toUpperCase();
+      if(!t)return;
+      var precio=parseFloat(r['Precio_actual']||r['Precio actual'])||null;
+      var target=parseFloat(r['Precio_objetivo_promedio']||r['Precio objetivo'])||null;
+      _rPreciosMap[t]={precio:precio,target:target,
+        moneda:String(r['Moneda']||'USD').trim(),
+        rec:String(r['Recomendacion']||'').trim()};
+    });
+  }catch(e){console.warn('[Rent] precios parse error',e);}
+}
+
+// Proyección de flujos futuros para bonos de renta fija.
+// Devuelve array de {mes:'YYYY-MM', total:$, items:[{ticker,tipo,monto}]}
+function _rProyectarFlujos(positions){
+  var hoy=new Date();
+  var hoyMs=hoy.getTime();
+  var horizon=new Date(hoy);
+  horizon.setMonth(horizon.getMonth()+24);
+  var byMes={};
+  function addFlow(mesKey,ticker,tipo,monto){
+    if(!byMes[mesKey])byMes[mesKey]={mes:mesKey,total:0,items:[]};
+    byMes[mesKey].total+=monto;
+    var ex=byMes[mesKey].items.find(function(x){return x.ticker===ticker&&x.tipo===tipo;});
+    if(ex)ex.monto+=monto;
+    else byMes[mesKey].items.push({ticker:ticker,tipo:tipo,monto:monto});
+  }
+  Object.values(positions).forEach(function(pos){
+    var tk=pos.ticker;
+    var db=_rOnDB[tk]||_rSovDB[tk];
+    if(!db)return;
+    var cupon=_rNormCupon(db.cupon);
+    var vencStr=db.vencimiento||'';
+    if(!cupon||cupon<=0||!vencStr)return;
+    var vencDate=new Date(vencStr+'T00:00:00');
+    if(isNaN(vencDate)||vencDate<=hoy)return;
+    // Determine coupon months from meses_cupon field (e.g. "3,9" or "4,10" or "1,4,7,10")
+    var mesesStr=String(db.meses_cupon||'').trim();
+    var mesesArr=[];
+    if(mesesStr){
+      mesesArr=mesesStr.split(',').map(function(x){return parseInt(x.trim(),10);}).filter(function(x){return x>=1&&x<=12;});
+    }
+    if(!mesesArr.length){
+      // fallback: semi-annual (months 4 and 10 — typical Argentine sovereign)
+      mesesArr=[4,10];
+    }
+    var qty=pos.totalQty||0;
+    if(qty<=0)return;
+    // Annual coupon per nominal unit
+    var annualCoupon=cupon*qty;  // total annual coupon for this position
+    var paymentsPerYear=mesesArr.length;
+    var couponPerPayment=paymentsPerYear>0?annualCoupon/paymentsPerYear:0;
+    // Iterate months from today to horizon
+    var cur=new Date(hoy);
+    cur.setDate(1);
+    while(cur<=horizon){
+      var m=cur.getMonth()+1; // 1-12
+      var y=cur.getFullYear();
+      if(mesesArr.indexOf(m)>=0){
+        var payDate=new Date(y,m-1,15); // mid-month approximation
+        if(payDate>hoy&&payDate<=vencDate&&payDate<=horizon){
+          var mesKey=y+'-'+(m<10?'0':'')+m;
+          addFlow(mesKey,tk,'Cupón',couponPerPayment);
+        }
+      }
+      cur.setMonth(cur.getMonth()+1);
+    }
+    // Amortization at maturity (if within horizon)
+    if(vencDate<=horizon&&vencDate>hoy){
+      var vm=vencDate.getMonth()+1, vy=vencDate.getFullYear();
+      var vKey=vy+'-'+(vm<10?'0':'')+vm;
+      // For simplicity, assume bullet (full principal at maturity)
+      // qty in nominals = USD face value
+      addFlow(vKey,tk,'Amort.',qty);
+    }
+  });
+  // Sort by month key
+  return Object.values(byMes).sort(function(a,b){return a.mes<b.mes?-1:1;});
+}
+
+function renderRentabilidad(){
+  var el=document.getElementById('rentPanel');
+  if(!el)return;
+  var positions=S.positions||{};
+  if(!Object.keys(positions).length){
+    el.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--mu);">Cargá la cartera primero para ver la rentabilidad estimada.</div>';
+    return;
+  }
+
+  // ── Classify positions ──
+  var RF_CATS=['Bonos Soberanos','Corporativos','Bonos ARS'];
+  var RV_CATS=['Acciones','Cedears','Internacionales'];
+  var rfItems=[], rvItems=[], rfTotal=0, rvTotal=0, grandTotal=0;
+
+  Object.values(positions).forEach(function(p){
+    var v=getVal(p);
+    if(!v||v<=0)return;
+    grandTotal+=v;
+    if(RF_CATS.indexOf(p.cat)>=0)rfTotal+=v;
+    else if(RV_CATS.indexOf(p.cat)>=0)rvTotal+=v;
+  });
+
+  // RF: weighted TIR
+  var rfWTir=0, rfMissing=[];
+  if(rfTotal>0){
+    Object.values(positions).forEach(function(p){
+      if(RF_CATS.indexOf(p.cat)<0)return;
+      var v=getVal(p);if(!v||v<=0)return;
+      var db=_rOnDB[p.ticker]||_rSovDB[p.ticker];
+      var tir=db?_rNormTir(db.tir):null;
+      if(tir!=null&&!isNaN(tir)&&tir>0){
+        var w=v/rfTotal;
+        rfWTir+=w*(tir*100);
+        rfItems.push({ticker:p.ticker,pct:(v/rfTotal*100),tir:tir*100,contrib:w*tir*100});
+      } else rfMissing.push(p.ticker);
+    });
+  }
+
+  // RV: weighted upside to precio objetivo
+  var rvWUp=0, rvMissing=[];
+  if(rvTotal>0){
+    Object.values(positions).forEach(function(p){
+      if(RV_CATS.indexOf(p.cat)<0)return;
+      var v=getVal(p);if(!v||v<=0)return;
+      var obj=_rPreciosMap[p.ticker.toUpperCase()];
+      if(obj&&obj.precio>0&&obj.target>0){
+        var up=(obj.target/obj.precio-1)*100;
+        var w=v/rvTotal;
+        rvWUp+=w*up;
+        rvItems.push({ticker:p.ticker,pct:(v/rvTotal*100),precio:obj.precio,target:obj.target,up:up,rec:obj.rec});
+      } else rvMissing.push(p.ticker);
+    });
+  }
+
+  // Combined: weight RF and RV by their share of grandTotal
+  var rfShare=grandTotal>0?rfTotal/grandTotal:0;
+  var rvShare=grandTotal>0?rvTotal/grandTotal:0;
+  var combined=rfWTir*rfShare+rvWUp*rvShare;
+
+  // ── Render ──
+  var h='';
+
+  // RF card
+  var rfColor=rfWTir>=10?'var(--gr)':rfWTir>=6?'#DBA03C':'var(--rd)';
+  h+='<div class="rent-grid">';
+  h+='<div class="rent-card">';
+  h+='<div class="rent-card-title">Renta Fija — TIR ponderada</div>';
+  if(rfTotal>0&&rfItems.length){
+    h+='<div class="rent-main" style="color:'+rfColor+'">'+rfWTir.toFixed(2)+'%</div>';
+    h+='<div class="rent-sub">'+pct(rfTotal/grandTotal*100,1)+' del portfolio · USD '+N(rfTotal,0)+'</div>';
+    h+='<div class="rent-breakdown">';
+    rfItems.sort(function(a,b){return b.pct-a.pct;});
+    rfItems.forEach(function(x){
+      h+='<div class="rent-row"><span>'+x.ticker+' ('+x.pct.toFixed(1)+'%)</span><span>TIR '+x.tir.toFixed(2)+'% → '+x.contrib.toFixed(2)+'%</span></div>';
+    });
+    h+='</div>';
+    if(rfMissing.length)h+='<div class="rent-missing">⚠ Sin TIR: '+rfMissing.join(', ')+'</div>';
+  } else {
+    h+='<div class="rent-main" style="color:var(--mu)">—</div>';
+    h+='<div class="rent-sub">'+(rfTotal>0?'Sin datos de TIR en el Monitor de Bonos':'No hay posiciones de renta fija')+'</div>';
+    if(_rDataLoaded&&rfTotal>0&&!Object.keys(_rOnDB).length&&!Object.keys(_rSovDB).length)
+      h+='<div class="rent-missing">Abrí el Armador de Carteras para cargar los datos del Monitor de Bonos.</div>';
+  }
+  h+='</div>';
+
+  // RV card
+  var rvColor=rvWUp>=15?'var(--gr)':rvWUp>=5?'#DBA03C':rvWUp>=0?'var(--tx)':'var(--rd)';
+  h+='<div class="rent-card">';
+  h+='<div class="rent-card-title">Renta Variable — Upside estimado</div>';
+  if(rvTotal>0&&rvItems.length){
+    h+='<div class="rent-main" style="color:'+rvColor+'">'+(rvWUp>=0?'+':'')+rvWUp.toFixed(1)+'%</div>';
+    h+='<div class="rent-sub">'+pct(rvTotal/grandTotal*100,1)+' del portfolio · USD '+N(rvTotal,0)+'</div>';
+    h+='<div class="rent-disclaimer">⚠ Estimativo basado en precio objetivo de analistas — no es un retorno garantizado.</div>';
+    h+='<div class="rent-breakdown">';
+    rvItems.sort(function(a,b){return b.pct-a.pct;});
+    rvItems.forEach(function(x){
+      h+='<div class="rent-row"><span>'+x.ticker+' ('+x.pct.toFixed(1)+'%)'+(x.rec?' · <span style="font-size:10px;color:var(--mu)">'+x.rec.replace(/_/g,' ')+'</span>':'')+'</span><span style="color:'+(x.up>=0?'var(--gr)':'var(--rd)')+'">'+(x.up>=0?'+':'')+x.up.toFixed(1)+'%</span></div>';
+    });
+    h+='</div>';
+    if(rvMissing.length)h+='<div class="rent-missing">⚠ Sin precio objetivo: '+rvMissing.join(', ')+'</div>';
+  } else {
+    h+='<div class="rent-main" style="color:var(--mu)">—</div>';
+    h+='<div class="rent-sub">'+(rvTotal>0?'Sin datos de precios objetivo cargados':'No hay posiciones de renta variable')+'</div>';
+  }
+  h+='</div>';
+
+  // Combined card
+  var combColor=combined>=8?'var(--gr)':combined>=4?'#DBA03C':'var(--rd)';
+  h+='<div class="rent-card">';
+  h+='<div class="rent-card-title">Retorno combinado estimado</div>';
+  var hasCombined=(rfItems.length>0||rvItems.length>0)&&grandTotal>0;
+  if(hasCombined){
+    h+='<div class="rent-main" style="color:'+combColor+'">'+(combined>=0?'+':'')+combined.toFixed(2)+'%</div>';
+    h+='<div class="rent-sub">Ponderado por asignación de la cartera</div>';
+    h+='<div class="rent-breakdown">';
+    if(rfItems.length)h+='<div class="rent-row"><span>RF ('+Math.round(rfShare*100)+'% del portfolio)</span><span>TIR '+rfWTir.toFixed(2)+'% → +'+(rfWTir*rfShare).toFixed(2)+'%</span></div>';
+    if(rvItems.length)h+='<div class="rent-row"><span>RV ('+Math.round(rvShare*100)+'% del portfolio)</span><span>'+(rvWUp>=0?'+':'')+rvWUp.toFixed(1)+'% → '+(rvWUp*rvShare>=0?'+':'')+(rvWUp*rvShare).toFixed(2)+'%</span></div>';
+    h+='</div>';
+    h+='<div class="rent-disclaimer">⚠ La pata de RV es un estimativo de analistas. El retorno real depende de mercado, timing y costos.</div>';
+  } else {
+    h+='<div class="rent-main" style="color:var(--mu)">—</div>';
+    h+='<div class="rent-sub">Cargá el Armador de Carteras o Precios Objetivo para ver este cálculo.</div>';
+  }
+  h+='</div>';
+  h+='</div>'; // end rent-grid
+
+  // ── Flujos futuros ──
+  h+='<div class="flujo-title">Flujos futuros proyectados (24 meses)</div>';
+  h+='<div class="flujo-sub">Cupones y amortizaciones esperados para las posiciones de Renta Fija. Los montos son estimativos — dependen del cronograma vigente del bono.</div>';
+
+  var rfBondPositions={};
+  Object.values(positions).forEach(function(p){
+    if(RF_CATS.indexOf(p.cat)>=0&&(_rOnDB[p.ticker]||_rSovDB[p.ticker]))rfBondPositions[p.ticker]=p;
+  });
+
+  if(!Object.keys(rfBondPositions).length){
+    h+='<div style="padding:20px;text-align:center;color:var(--mu);font-size:12px;">Sin posiciones de RF con datos de cupón disponibles.'+(rfTotal>0?' Abrí el Armador de Carteras para cargar los datos del Monitor de Bonos.':'')+'</div>';
+  } else {
+    var flujos=_rProyectarFlujos(rfBondPositions);
+    if(!flujos.length){
+      h+='<div style="padding:20px;text-align:center;color:var(--mu);font-size:12px;">No hay flujos proyectados en los próximos 24 meses (bonos vencidos o sin fecha de cupón).</div>';
+    } else {
+      var maxFlow=Math.max.apply(null,flujos.map(function(f){return f.total;}));
+      h+='<table class="flujo-table"><thead><tr><th>Mes</th><th>Cupones / Amort.</th><th>Total estimado</th><th>Detalle</th></tr></thead><tbody>';
+      var grandFluj=0;
+      flujos.forEach(function(f){
+        grandFluj+=f.total;
+        var barPct=maxFlow>0?Math.max(2,Math.round(f.total/maxFlow*100)):2;
+        var detalle=f.items.map(function(x){return x.ticker+' '+x.tipo+' $'+N(x.monto,0);}).join('; ');
+        h+='<tr>';
+        h+='<td><b>'+f.mes+'</b></td>';
+        h+='<td><div class="flujo-bar-wrap"><div class="flujo-bar-fill" style="width:'+barPct+'px;"></div></div></td>';
+        h+='<td style="color:var(--gr);font-family:\'Courier New\',monospace;font-weight:700;">USD '+N(f.total,0)+'</td>';
+        h+='<td style="color:var(--mu);font-size:11px;">'+detalle+'</td>';
+        h+='</tr>';
+      });
+      h+='<tr class="flujo-total-row"><td>Total proyectado</td><td></td><td>USD '+N(grandFluj,0)+'</td><td style="font-size:10.5px;color:var(--mu);">Suma de todos los flujos estimados</td></tr>';
+      h+='</tbody></table>';
+    }
+  }
+
+  el.innerHTML=h;
+}
+
 // patrón (IndexedDB fcn_shared_v1 + BroadcastChannel) que ya usa el resto de la Suite.
 function seleccionarClienteActivoPM(nombre){
   if(!S.tenClients||!nombre)return false;
@@ -3482,6 +3776,34 @@ function seleccionarClienteActivoPM(nombre){
       if(sub&&n)sub.textContent=n+' cliente(s) disponibles — elegí uno arriba o pegá el PDF (Paso 1)';
     });
   }
+  function loadSharedRentData(){
+    // Load bond TIR data (monitor key) + precios objetivo for rentabilidad tab
+    _rLoadFromStorage(); // localStorage fallback (fast, sync)
+    getShared('monitor').then(function(entry){
+      if(entry&&entry.ons_db&&Object.keys(entry.ons_db).length){
+        Object.assign(_rOnDB,entry.ons_db);
+        _rDataLoaded=true;
+        if(S.activeTab==='rentabilidad')renderRentabilidad();
+      }
+      if(entry&&entry.sov_db&&Object.keys(entry.sov_db).length){
+        Object.assign(_rSovDB,entry.sov_db);
+        _rDataLoaded=true;
+        if(S.activeTab==='rentabilidad')renderRentabilidad();
+      }
+    }).catch(function(){});
+    getShared('precios_objetivo').then(function(entry){
+      if(entry&&entry.data&&entry.data.byteLength){
+        _rParsePreciosXlsx(entry.data);
+        _rDataLoaded=true;
+        if(S.activeTab==='rentabilidad')renderRentabilidad();
+      } else {
+        // Static fallback (public file — ok per CLAUDE.md privacy rules)
+        fetch('data/precios_objetivo.xlsx').then(function(r){return r.ok?r.arrayBuffer():null;})
+          .then(function(buf){if(buf){_rParsePreciosXlsx(buf);_rDataLoaded=true;if(S.activeTab==='rentabilidad')renderRentabilidad();}})
+          .catch(function(){});
+      }
+    }).catch(function(){});
+  }
   function init(){
     loadSharedTenencia().then(function(){
       var params=new URLSearchParams(location.search);
@@ -3491,6 +3813,7 @@ function seleccionarClienteActivoPM(nombre){
         if(entry&&entry.cliente)waitForClientsAndApply(entry.cliente);
       });
     });
+    loadSharedRentData();
   }
   window.addEventListener('DOMContentLoaded',init);
   if(typeof BroadcastChannel!=='undefined'){
@@ -3499,6 +3822,9 @@ function seleccionarClienteActivoPM(nombre){
       if(e.data.type==='client_selected'&&e.data.cliente){seleccionarClienteActivoPM(e.data.cliente);return;}
       if(e.data.type==='file_updated'&&(e.data.rawKey||e.data.key)==='tenencia'){
         setTimeout(loadSharedTenencia,800);
+      }
+      if(e.data.type==='file_updated'&&((e.data.rawKey||e.data.key)==='monitor'||(e.data.rawKey||e.data.key)==='precios_objetivo')){
+        setTimeout(loadSharedRentData,800);
       }
     };
   }

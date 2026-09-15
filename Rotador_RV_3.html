@@ -604,6 +604,30 @@ function saveTargetToCache(ticker, target) {
   } catch {}
 }
 
+// ── DÓLAR MEP (para convertir a USD los targets de acciones argentinas locales, que
+// vienen en ARS en precios_objetivo.xlsx) — mismo proveedor que ya usa portfolio_monitor_fcn.html
+// (DolarAPI, gratis, sin key, con CORS directo — no necesita proxy como los fetches de Yahoo). ──
+let MEP_RV = null;
+async function fetchMepRV(){
+  try{
+    const r = await (await fetch('https://dolarapi.com/v1/dolares/bolsa', {signal: AbortSignal.timeout(5000)})).json();
+    if (r && r.compra && r.venta) MEP_RV = (r.compra + r.venta) / 2;
+  } catch(e) { /* sin conexión o API caída -> los targets en ARS se muestran "sin cobertura" */ }
+  if (typeof renderTabPrecios === 'function' && tabActiva === 't-precios') renderTabPrecios();
+}
+fetchMepRV();
+
+// Normaliza un renglón de PRECIOS_OBJETIVO_DB a USD. Si ya está en USD, se devuelve tal cual
+// (mep:null = no hizo falta convertir). Si está en ARS, convierte precio Y target con el MISMO
+// MEP (para que el upside dé igual, la conversión se cancela salvo que uno de los dos sea
+// null). Sin MEP todavía -> null, no se inventa nada.
+function mensualEnUsd(mensual){
+  if(!mensual || mensual.target==null || mensual.precio==null) return null;
+  if(mensual.moneda!=='ARS') return {precio:mensual.precio, target:mensual.target, mep:null};
+  if(!MEP_RV) return null;
+  return {precio: mensual.precio/MEP_RV, target: mensual.target/MEP_RV, mep: MEP_RV};
+}
+
 // ── YAHOO FINANCE HELPERS ──
 const TICKERS_AR = new Set(['GGAL','YPFD','TECO2','BBAR','SUPV','BYMA','TGSU2','TGNO4','CEPU','EDN','TRAN','HARG','MOLI','MIRG','GCLA','AGRO','RICH']);
 
@@ -800,7 +824,7 @@ function parsePreciosObjetivo(file) {
         const ticker = String(r['Ticker_original'] || r['Ticker_usado'] || '').trim().toUpperCase();
         const target = nOrNull(r['Precio_objetivo_promedio']);
         if (!ticker || target===null) return;
-        db[ticker] = { target, precio: nOrNull(r['Precio_actual']), analistas: nOrNull(r['N_analistas']), rec: String(r['Recomendacion']||'').trim() };
+        db[ticker] = { target, precio: nOrNull(r['Precio_actual']), analistas: nOrNull(r['N_analistas']), rec: String(r['Recomendacion']||'').trim(), moneda: String(r['Moneda']||'USD').trim().toUpperCase() };
       });
       PRECIOS_OBJETIVO_DB = db;
       if (posiciones.length) { renderTabPrecios(); renderResultados(); }
@@ -965,6 +989,7 @@ async function fetchPrecios() {
   const log=document.getElementById('fetch-log');
   const bar=document.getElementById('fetch-progress');
   btn.disabled=true; ic.textContent='⟳'; lbl.textContent='Obteniendo...'; log.innerHTML='';
+  fetchMepRV();  // refresca el dólar MEP junto con los precios (targets en ARS lo necesitan)
   let done=0;
   const addLog=(msg,cls='')=>{const d=document.createElement('div');d.className='log-line '+cls;d.textContent=msg;log.appendChild(d);log.scrollTop=log.scrollHeight;};
   for(const ticker of tickers){
@@ -1758,17 +1783,28 @@ function renderTabPrecios(){
     // Cadena de targets: live de Yahoo > Precios Objetivo (archivo mensual compartido de la
     // Suite) > caché local de esta compu (targets ya vistos en sesiones anteriores).
     const mensual = PRECIOS_OBJETIVO_DB[ticker.toUpperCase()] || null;
+    // BUG real (Nico, 15/09/2026): el target del archivo mensual NO se puede comparar contra
+    // el precio implícito de Tenencia (tenencia/nominales) — para un CEDEAR eso da el valor
+    // de UN NOMINAL, que es una fracción del papel real (ej. AMZN: ~USD 1,86 el nominal vs.
+    // ~USD 254 la acción real), y para una acción argentina el target del archivo puede venir
+    // en ARS. Mezclarlos daba upsides de miles de % . El precio y el target de "mensual"
+    // vienen del MISMO renglón del archivo (mismo instrumento, misma moneda) — hay que usar
+    // ESE precio, no el de Tenencia, para que la comparación sea real. Si vienen en ARS, se
+    // convierten los dos con el mismo MEP (mensualEnUsd) — si no hay MEP todavía, se descarta.
+    const mensualUsd = mensualEnUsd(mensual);
+    const mensualUsable = !!mensualUsd;
+    const arsSinCobertura = !!(mensual && mensual.moneda==='ARS' && mensual.target!=null && !mensualUsd);
     const cachedTarget = targetCache[ticker.toUpperCase()] ?? null;
-    const effectiveTarget = base.targetPrice ?? mensual?.target ?? cachedTarget;
+    const fromMensual = base.targetPrice==null && mensualUsable;
+    const effectiveTarget = base.targetPrice ?? (mensualUsable ? mensualUsd.target : null) ?? cachedTarget;
     const precioTenencia = base.precio==null ? precioTenenciaImplicito(ticker) : null;
-    const precioEfectivo = base.precio ?? precioTenencia;
+    const precioEfectivo = base.precio ?? (fromMensual ? mensualUsd.precio : precioTenencia);
     const upsideFromCache = (effectiveTarget!=null && precioEfectivo) ? ((effectiveTarget/precioEfectivo)-1)*100 : base.upsideAnalistas;
-    const fromMensual = base.targetPrice==null && mensual?.target!=null;
     const posTicker = porTicker[ticker] || [];
-    const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromMensual: fromMensual, _fromCache: base.targetPrice==null && !fromMensual && cachedTarget!=null, _fromTenencia: precioTenencia!=null};
+    const px = {...base, precio: precioEfectivo, targetPrice: effectiveTarget, upsideAnalistas: (base.targetPrice!=null ? base.upsideAnalistas : upsideFromCache), _fromMensual: fromMensual, _fromCache: base.targetPrice==null && !fromMensual && cachedTarget!=null, _fromTenencia: precioEfectivo!=null && precioEfectivo===precioTenencia, _arsSinCobertura: base.targetPrice==null && !fromMensual && !cachedTarget && arsSinCobertura, _mepUsado: fromMensual && mensual.moneda==='ARS' ? mensualUsd.mep : null};
     return {
       ticker, precio: px.precio, targetPrice: px.targetPrice, upside: px.upsideAnalistas,
-      source: px.source, _fromTenencia: px._fromTenencia, _fromMensual: px._fromMensual, _fromCache: px._fromCache,
+      source: px.source, _fromTenencia: px._fromTenencia, _fromMensual: px._fromMensual, _fromCache: px._fromCache, _arsSinCobertura: px._arsSinCobertura, _mepUsado: px._mepUsado,
       tenenciaTicker: posTicker.reduce((a,p)=>a+p.tenencia,0), nHolders: posTicker.length,
     };
   });
@@ -1789,18 +1825,22 @@ function renderTabPrecios(){
   tbody.innerHTML=filas.map(px=>{
     const ticker=px.ticker;
     const upside=px.upside;
-    const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="Sin cobertura en Yahoo Finance">—</span>`;
+    const sinCoberturaTitle = px._arsSinCobertura ? 'Hay precio objetivo en ARS, pero todavía no se cargó la cotización del dólar MEP para convertirlo — probá de nuevo en unos segundos o apretá "Obtener cotizaciones"' : 'Sin cobertura en Yahoo Finance';
+    const upsideStr=upside!=null?`<span class="${upside>=0?'px-upside-pos':'px-upside-neg'}">${upside>=0?'+':''}${upside.toFixed(1)}%</span>`:`<span style="color:var(--ink-muted)" title="${sinCoberturaTitle}">—</span>`;
+    const mensualTitle = px._mepUsado
+      ? `Precio y target del archivo mensual, originalmente en ARS — convertidos a USD con el dólar MEP de hoy ($${px._mepUsado.toFixed(2)})`
+      : 'Precio y target del archivo mensual compartido de la Suite (mismo renglón, misma moneda)';
     const badge=px.source==='manual'?'<span class="px-badge-manual">manual</span>'
       :px._fromTenencia?'<span class="px-badge-manual" title="Precio implícito de la Tenencia (no es cotización en vivo) — Yahoo no respondió, puede estar desactualizado">tenencia</span>'
-      :px._fromMensual?'<span class="px-badge-manual" title="Precio Objetivo del archivo mensual compartido de la Suite">mensual</span>'
+      :px._fromMensual?`<span class="px-badge-manual" title="${mensualTitle}">mensual${px._mepUsado?' · MEP':''}</span>`
       :px._fromCache?'<span class="px-badge-manual" title="Target guardado de sesiones anteriores">caché</span>'
       :px.precio?'<span class="px-badge-live">live</span>':'<span class="px-badge-none">sin datos</span>';
     const nHolders=px.nHolders;
     const clientesCell=nHolders?`<button class="btn-sm" onclick="abrirHoldersTicker('${ticker}')" title="Ver qué clientes tienen ${ticker}">👤 ${nHolders}</button>`:`<span style="color:var(--ink-muted);font-size:10px;">—</span>`;
     return `<tr>
       <td class="td-tick">${ticker}</td>
-      <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" title="${px._fromTenencia?'Precio implícito de la Tenencia, no en vivo — editalo si tenés uno mejor':''}" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
-      <td><input class="px-input" type="number" value="${px.targetPrice!=null?px.targetPrice.toFixed(2):''}" placeholder="—" title="${px.targetPrice==null?'Sin cobertura en Yahoo Finance':''}" onchange="editPrecio('${ticker}','target',this.value)" onfocus="this.select()"></td>
+      <td><input class="px-input" type="number" value="${px.precio!=null?px.precio.toFixed(2):''}" placeholder="—" title="${px._fromTenencia?'Precio implícito de la Tenencia, no en vivo — editalo si tenés uno mejor':(px._fromMensual?'Precio del archivo mensual de Precios Objetivo (no el precio por nominal de tu Tenencia)':'')}" onchange="editPrecio('${ticker}','precio',this.value)" onfocus="this.select()"></td>
+      <td><input class="px-input" type="number" value="${px.targetPrice!=null?px.targetPrice.toFixed(2):''}" placeholder="—" title="${px.targetPrice==null?sinCoberturaTitle:''}" onchange="editPrecio('${ticker}','target',this.value)" onfocus="this.select()"></td>
       <td id="upside-${ticker}">${upsideStr}</td>
       <td style="font-family:var(--font-mono);font-size:11px;">USD ${fmtN(px.tenenciaTicker)}</td>
       <td id="badge-${ticker}">${badge}</td>
@@ -1812,11 +1852,17 @@ function renderTabPrecios(){
 
 // Upside vs. precio objetivo (live o cacheado), sin la lógica extra de renderTabPrecios de
 // distinguir badge live/caché/manual — se usa en "Por cliente" para no ir a otra pestaña.
+// Mismo cuidado que renderTabPrecios: el target "mensual" solo vale contra el PRECIO de esa
+// misma fila del archivo (mismo instrumento, misma moneda) — nunca contra el precio implícito
+// de Tenencia (fracción de nominal en CEDEARs). Si viene en ARS, se convierte con el MEP en
+// vivo (mensualEnUsd); sin MEP todavía, no se inventa nada.
 function getUpsideEfectivo(ticker) {
   const base = precios[ticker];
   if (base?.upsideAnalistas != null) return base.upsideAnalistas;
-  const mensualTarget = PRECIOS_OBJETIVO_DB[ticker.toUpperCase()]?.target ?? null;
-  const cachedTarget = mensualTarget ?? (loadTargetCache()[ticker.toUpperCase()] ?? null);
+  const mensual = PRECIOS_OBJETIVO_DB[ticker.toUpperCase()] || null;
+  const mensualUsd = mensualEnUsd(mensual);
+  if (mensualUsd) return (mensualUsd.target / mensualUsd.precio - 1) * 100;
+  const cachedTarget = loadTargetCache()[ticker.toUpperCase()] ?? null;
   const precioRef = base?.precio ?? precioTenenciaImplicito(ticker);
   if (cachedTarget != null && precioRef) return (cachedTarget / precioRef - 1) * 100;
   return null;

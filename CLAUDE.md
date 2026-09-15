@@ -53,14 +53,19 @@ sin abrir cada HTML de 200 KB.
 - **Cómo está armado:** graphify no tiene gramática de HTML, así que
   `.github/scripts/graphify_extraer_scripts.py` extrae el JS de los `<script>` de cada
   `.html` de producción (usa `git ls-files`, respeta `.gitignore` → sin datos de clientes)
-  a `graphify-src/*.js`, y `graphify` corre AST sobre eso.
+  a `graphify-src/*.js`, y `graphify` corre AST sobre eso con `--out .` para que
+  `graphify-out/` quede en la **raíz del repo** — la ruta default que el skill `/graphify`
+  busca solo en cualquier chat de Claude Code abierto acá (`graphify-out/graph.json`
+  relativo al cwd), sin que haga falta pasarle `--graph` a mano ni reconstruir nada.
 - **Regenerar** (después de tocar el JS de cualquier tool): `regenerar-grafo.bat`.
   Todo local, sin API key, sin costo.
-- **Salida:** `graphify-src/graphify-out/` (`graph.html` interactivo, `GRAPH_REPORT.md`,
-  `graph.json`). `graphify-src/` y `graphify-out/` están en `.gitignore` y `.netlifyignore`
-  (derivado, no se versiona ni se publica).
-- **Consultar:** `python -m graphify query "<pregunta>" --graph graphify-src/graphify-out/graph.json`
-  (también `explain`, `affected`, `god-nodes`, `path`).
+- **Salida:** `graphify-out/` en la raíz (`graph.html` interactivo, `GRAPH_REPORT.md`,
+  `graph.json`). Tanto `graphify-src/` como `graphify-out/` están en `.gitignore` y
+  `.netlifyignore` (derivado, no se versiona ni se publica).
+- **Consultar:** cualquier chat en este repo puede simplemente pedir `/graphify` con una
+  pregunta en lenguaje natural, o correr `python -m graphify query "<pregunta>"` directo
+  (toma `graphify-out/graph.json` por default; también `explain`, `affected`, `god-nodes`,
+  `path`).
 - **Limitación:** los números de línea del grafo mapean al `.js` extraído, alineado al
   primer bloque `<script>` del HTML — exacto para tools de un solo `<script>`, con drift
   después del primer bloque en las que tienen varios (Calculadora de Rotaciones). Las

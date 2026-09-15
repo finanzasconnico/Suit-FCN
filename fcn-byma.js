@@ -267,9 +267,13 @@
       fuente: 'BYMA'
     };
 
-    // precio sospechoso Y sin operar hoy => no confiamos el número, pero sí
-    // reportamos la (falta de) liquidez.
-    if (sospechoso && !leg.operoHoy) {
+    // Precio sospechoso (>RATIO_TOL vs el Monitor) => no lo usamos, punto — antes esto
+    // solo descartaba si ADEMÁS no había operado hoy, pero un pase real de hoy a un precio
+    // raro (poco volumen, error de carga) es tan poco confiable como uno viejo: un ratio
+    // 8%+ fuera de rango dispara TIR absurdas (casos reales de ~18% en ONs que deberían
+    // rendir la mitad — ver memoria project-byma-ons-vivo). Igual reportamos la (falta de)
+    // liquidez — eso no depende del precio.
+    if (sospechoso) {
       base.precio = null;
       base.descartadoPorEscala = true;
       return base;
