@@ -174,6 +174,22 @@ tr:hover td{background:rgba(33,38,45,.5);}
 .flujo-legend span{display:flex;align-items:center;gap:4px;}
 .flujo-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;}
 .flujo-total-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ac);padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;margin-top:8px;}
+/* ── RF override controls ── */
+.rf-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--sf2);gap:8px;flex-wrap:wrap;}
+.rf-row-left{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
+.rf-ticker{font-weight:700;font-size:12px;white-space:nowrap;}
+.rf-pct{font-size:11px;color:var(--mu);}
+.rf-row-right{display:flex;align-items:center;gap:6px;}
+.rf-tir-input{width:72px;background:var(--sf2);border:1px solid var(--bd);border-radius:5px;color:var(--tx);padding:3px 6px;font-size:11px;text-align:right;}
+.rf-tir-input.custom{border-color:var(--ye);color:var(--ye);}
+.rf-contrib{font-size:11px;color:var(--mu);min-width:70px;text-align:right;}
+.rf-excl-btn{font-size:10px;padding:3px 8px;border-radius:12px;border:none;cursor:pointer;font-weight:700;transition:all .15s;}
+.rf-excl-btn.active{background:rgba(239,68,68,.15);color:#f87171;}
+.rf-excl-btn.inactive{background:var(--sf2);color:var(--mu);}
+.rf-excluded-section{margin-top:10px;padding:8px 12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;}
+.rf-excluded-title{font-size:10px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+.rf-excluded-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;}
+.rf-hint{font-size:10px;color:var(--mu);margin:6px 0 10px;}
 </style>
 </head>
 <body>
@@ -384,6 +400,7 @@ var S={
   catFilter:'all', activeTab:'posicion',
   periodFrom:null, periodTo:null,
   pagosData:null,
+  rfOverrides:{}, // {ticker: {excluded:bool, customTir:number|null}}
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -1723,7 +1740,7 @@ function nuevoCliente(){
 
   S.positions={}; S.movData=null; S.posData=null;
   S.closedTrades=null; S.hasPosData=false; S.bolData=null; S.realizadoData=null;
-  S.manualCosts={};
+  S.manualCosts={}; S.rfOverrides={};
   S.catFilter='all'; S.activeTab='posicion';
   S.periodFrom=null; S.periodTo=null;
   S.comitente='';
@@ -3184,10 +3201,13 @@ function downloadReport(modo){
         out+='<div style="margin-top:12px;"><div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Desglose Renta Fija</div>'+
           '<table style="max-width:480px;"><thead><tr><th>Ticker</th><th class="num">Peso RF</th><th class="num">TIR</th><th class="num">Aporte</th></tr></thead><tbody>';
         r.rfItems.sort(function(a,b){return b.pct-a.pct;}).forEach(function(x){
-          out+='<tr><td>'+x.ticker+'</td><td class="num">'+x.pct.toFixed(1)+'%</td>'+
+          out+='<tr><td>'+x.ticker+(x.custom?' *':'')+'</td><td class="num">'+x.pct.toFixed(1)+'%</td>'+
             '<td class="num">'+x.tir.toFixed(2)+'%</td><td class="num">'+x.contrib.toFixed(2)+'%</td></tr>';
         });
-        out+='</tbody></table></div>';
+        out+='</tbody></table>';
+        if(r.rfItems.some(function(x){return x.custom;}))out+='<div style="font-size:8px;color:#d97706;margin-top:3px;">* TIR ajustada manualmente.</div>';
+        if(r.rfExcluded&&r.rfExcluded.length)out+='<div style="font-size:8px;color:#dc2626;margin-top:3px;">Excluidos del cálculo (defaulteados): '+r.rfExcluded.map(function(e){return e.ticker;}).join(', ')+'.</div>';
+        out+='</div>';
       }
       if(r.rvItems.length){
         out+='<div style="margin-top:10px;"><div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Desglose Renta Variable</div>'+
@@ -3676,6 +3696,27 @@ function _rParsePreciosXlsx(buf){
 
 // Proyección de flujos futuros para bonos de renta fija.
 // Devuelve array de {mes:'YYYY-MM', total:$, items:[{ticker,tipo,monto}]}
+// Toggle exclude state for a RF bond; re-renders Rentabilidad tab
+function _rfToggleExclude(btn){
+  var tk=btn.getAttribute('data-ticker');
+  if(!S.rfOverrides)S.rfOverrides={};
+  var ov=S.rfOverrides[tk]||{};
+  ov.excluded=!ov.excluded;
+  S.rfOverrides[tk]=ov;
+  renderRentabilidad();
+}
+
+// Apply manual TIR edit for a RF bond; re-renders on blur or Enter
+function _rfApplyTir(inp){
+  var tk=inp.getAttribute('data-ticker');
+  if(!S.rfOverrides)S.rfOverrides={};
+  var ov=S.rfOverrides[tk]||{};
+  var v=parseFloat(inp.value);
+  ov.customTir=(isNaN(v)||inp.value.trim()==='')?null:v;
+  S.rfOverrides[tk]=ov;
+  renderRentabilidad();
+}
+
 // Returns flujos array from pagosData (if loaded) or calculated from ON_DB/SOV_DB
 function _rGetFlujos(positions, RF_CATS){
   if(S.pagosData&&S.pagosData.length){
@@ -3852,27 +3893,46 @@ function aplicarCostosEditados(){
 }
 
 // Shared computation for Rentabilidad tab and PDF report
+// Respects S.rfOverrides: {ticker: {excluded:bool, customTir:number|null}}
 function _rCalcRentabilidad(positions){
   var RF_CATS=['Bonos Soberanos','Corporativos','Bonos ARS'];
   var RV_CATS=['Acciones','Cedears','Internacionales'];
-  var rfItems=[], rvItems=[], rfTotal=0, rvTotal=0, grandTotal=0, rfMissing=[], rvMissing=[];
+  var overrides=S.rfOverrides||{};
+  var rfItems=[], rvItems=[], rfTotal=0, rvTotal=0, grandTotal=0, rfMissing=[], rvMissing=[], rfExcluded=[];
+  // First pass: totals (excluded bonds still count for grandTotal but NOT for rfTotal — they don't contribute yield)
   Object.values(positions).forEach(function(p){
     var v=getVal(p);if(!v||v<=0)return;
     grandTotal+=v;
-    if(RF_CATS.indexOf(p.cat)>=0)rfTotal+=v;
-    else if(RV_CATS.indexOf(p.cat)>=0)rvTotal+=v;
+    if(RF_CATS.indexOf(p.cat)>=0){
+      var ov=overrides[p.ticker];
+      if(!ov||!ov.excluded)rfTotal+=v;
+    } else if(RV_CATS.indexOf(p.cat)>=0)rvTotal+=v;
   });
   var rfWTir=0;
   if(rfTotal>0){
     Object.values(positions).forEach(function(p){
       if(RF_CATS.indexOf(p.cat)<0)return;
       var v=getVal(p);if(!v||v<=0)return;
+      var ov=overrides[p.ticker];
+      if(ov&&ov.excluded){
+        rfExcluded.push({ticker:p.ticker,val:v});
+        return;
+      }
       var db=_rOnDB[p.ticker]||_rSovDB[p.ticker];
-      var tir=db?_rNormTir(db.tir):null;
+      var tirRaw=db?_rNormTir(db.tir):null;
+      var tir=(ov&&ov.customTir!=null)?ov.customTir/100:tirRaw;
       if(tir!=null&&!isNaN(tir)&&tir>0){
         var w=v/rfTotal;rfWTir+=w*(tir*100);
-        rfItems.push({ticker:p.ticker,pct:(v/rfTotal*100),tir:tir*100,contrib:w*tir*100});
+        rfItems.push({ticker:p.ticker,pct:(v/rfTotal*100),tir:tir*100,contrib:w*tir*100,custom:!!(ov&&ov.customTir!=null)});
       } else rfMissing.push(p.ticker);
+    });
+  } else {
+    // All excluded — still collect excluded list
+    Object.values(positions).forEach(function(p){
+      if(RF_CATS.indexOf(p.cat)<0)return;
+      var v=getVal(p);if(!v||v<=0)return;
+      var ov=overrides[p.ticker];
+      if(ov&&ov.excluded)rfExcluded.push({ticker:p.ticker,val:v});
     });
   }
   var rvWUp=0;
@@ -3889,7 +3949,7 @@ function _rCalcRentabilidad(positions){
   }
   var rfShare=grandTotal>0?rfTotal/grandTotal:0;
   var rvShare=grandTotal>0?rvTotal/grandTotal:0;
-  return {rfItems:rfItems,rvItems:rvItems,rfMissing:rfMissing,rvMissing:rvMissing,
+  return {rfItems:rfItems,rvItems:rvItems,rfMissing:rfMissing,rvMissing:rvMissing,rfExcluded:rfExcluded,
     rfWTir:rfWTir,rvWUp:rvWUp,rfTotal:rfTotal,rvTotal:rvTotal,grandTotal:grandTotal,
     rfShare:rfShare,rvShare:rvShare,combined:rfWTir*rfShare+rvWUp*rvShare,
     RF_CATS:RF_CATS};
@@ -3903,6 +3963,7 @@ function renderRentabilidad(){
     el.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--mu);">Cargá la cartera primero para ver la rentabilidad estimada.</div>';
     return;
   }
+  var overrides=S.rfOverrides||{};
   var r=_rCalcRentabilidad(positions);
   var rfItems=r.rfItems, rvItems=r.rvItems, rfMissing=r.rfMissing, rvMissing=r.rvMissing;
   var rfWTir=r.rfWTir, rvWUp=r.rvWUp, rfTotal=r.rfTotal, rvTotal=r.rvTotal;
@@ -3912,26 +3973,67 @@ function renderRentabilidad(){
   // ── Render ──
   var h='';
 
-  // RF card
+  // RF card — with inline override controls
   var rfColor=rfWTir>=10?'var(--gr)':rfWTir>=6?'#DBA03C':'var(--rd)';
+  var allRfTickers=Object.values(positions).filter(function(p){return RF_CATS.indexOf(p.cat)>=0&&getVal(p)>0;}).map(function(p){return p.ticker;});
   h+='<div class="rent-grid">';
-  h+='<div class="rent-card">';
+  h+='<div class="rent-card" style="grid-column:1/-1;">';
   h+='<div class="rent-card-title">Renta Fija — TIR ponderada</div>';
   if(rfTotal>0&&rfItems.length){
     h+='<div class="rent-main" style="color:'+rfColor+'">'+rfWTir.toFixed(2)+'%</div>';
-    h+='<div class="rent-sub">'+pct(rfTotal/grandTotal*100,1)+' del portfolio · USD '+N(rfTotal,0)+'</div>';
+    h+='<div class="rent-sub">'+pct(rfTotal/grandTotal*100,1)+' del portfolio (sin excluidos) · USD '+N(rfTotal,0)+'</div>';
+    h+='<div class="rf-hint">Editá la TIR o marcá como "defaulteado" para excluirlo del cálculo.</div>';
     h+='<div class="rent-breakdown">';
     rfItems.sort(function(a,b){return b.pct-a.pct;});
     rfItems.forEach(function(x){
-      h+='<div class="rent-row"><span>'+x.ticker+' ('+x.pct.toFixed(1)+'%)</span><span>TIR '+x.tir.toFixed(2)+'% → '+x.contrib.toFixed(2)+'%</span></div>';
+      var ov=overrides[x.ticker]||{};
+      var tirVal=ov.customTir!=null?ov.customTir.toFixed(2):x.tir.toFixed(2);
+      h+='<div class="rf-row">';
+      h+='<div class="rf-row-left">';
+      h+='<span class="rf-ticker">'+x.ticker+'</span>';
+      h+='<span class="rf-pct">('+x.pct.toFixed(1)+'%)</span>';
+      h+=(x.custom?'<span style="font-size:9px;color:var(--ye);padding:1px 5px;background:rgba(251,191,36,.1);border-radius:8px;">editado</span>':'');
+      h+='</div>';
+      h+='<div class="rf-row-right">';
+      h+='TIR <input type="number" class="rf-tir-input'+(x.custom?' custom':'')+'" data-ticker="'+x.ticker+'" value="'+tirVal+'" step="0.01" min="0" oninput="_rfApplyTir(this)" title="Editá la TIR para este bono">';
+      h+='% <span class="rf-contrib">→ '+x.contrib.toFixed(2)+'%</span>';
+      h+='<button class="rf-excl-btn inactive" data-ticker="'+x.ticker+'" onclick="_rfToggleExclude(this)" title="Marcar como defaulteado / excluir del cálculo">⚠ Defaulteado</button>';
+      h+='</div>';
+      h+='</div>';
     });
     h+='</div>';
-    if(rfMissing.length)h+='<div class="rent-missing">⚠ Sin TIR: '+rfMissing.join(', ')+'</div>';
+    if(rfMissing.length)h+='<div class="rent-missing">⚠ Sin TIR en Monitor de Bonos: '+rfMissing.join(', ')+' — podés excluirlos si están en default.</div>';
+  } else if(allRfTickers.length&&!rfItems.length){
+    // All excluded
+    h+='<div class="rent-main" style="color:var(--mu)">—</div>';
+    h+='<div class="rent-sub">Todos los bonos excluidos del cálculo</div>';
   } else {
     h+='<div class="rent-main" style="color:var(--mu)">—</div>';
-    h+='<div class="rent-sub">'+(rfTotal>0?'Sin datos de TIR en el Monitor de Bonos':'No hay posiciones de renta fija')+'</div>';
-    if(_rDataLoaded&&rfTotal>0&&!Object.keys(_rOnDB).length&&!Object.keys(_rSovDB).length)
+    h+='<div class="rent-sub">'+(Object.values(positions).some(function(p){return RF_CATS.indexOf(p.cat)>=0;})?'Sin datos de TIR en el Monitor de Bonos':'No hay posiciones de renta fija')+'</div>';
+    if(_rDataLoaded&&!Object.keys(_rOnDB).length&&!Object.keys(_rSovDB).length)
       h+='<div class="rent-missing">Abrí el Armador de Carteras para cargar los datos del Monitor de Bonos.</div>';
+  }
+  // Excluded bonds section
+  var excludedInPanel=r.rfExcluded||[];
+  // Also include missing tickers that are excluded
+  allRfTickers.forEach(function(tk){
+    var ov=overrides[tk];
+    if(ov&&ov.excluded&&!excludedInPanel.find(function(e){return e.ticker===tk;})){
+      var pos=positions[tk];var v=pos?getVal(pos):0;
+      excludedInPanel.push({ticker:tk,val:v});
+    }
+  });
+  if(excludedInPanel.length){
+    h+='<div class="rf-excluded-section">';
+    h+='<div class="rf-excluded-title">🔴 Excluidos del cálculo (defaulteados / irrelevantes)</div>';
+    excludedInPanel.forEach(function(e){
+      h+='<div class="rf-excluded-row">';
+      h+='<span style="font-weight:700;">'+e.ticker+'</span>';
+      h+='<span style="color:var(--mu);">USD '+N(e.val,0)+'</span>';
+      h+='<button class="rf-excl-btn active" data-ticker="'+e.ticker+'" onclick="_rfToggleExclude(this)" title="Volver a incluir en el cálculo">✕ Volver a incluir</button>';
+      h+='</div>';
+    });
+    h+='</div>';
   }
   h+='</div>';
 

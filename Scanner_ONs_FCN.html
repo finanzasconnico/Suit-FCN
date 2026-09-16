@@ -46,10 +46,36 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-hei
 .topbar-title span{color:var(--text);font-weight:500;}
 .topbar-subtitle{font-size:10px;color:var(--ink-muted);letter-spacing:.08em;text-transform:uppercase;margin-top:1px;font-family:var(--font-sans);}
 .main{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 58px);overflow:hidden;}
-.left-panel{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:16px;}
+.sidebar-shell{position:relative;overflow:visible;height:100%;}
+.left-panel{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:20px 18px;display:flex;flex-direction:column;gap:16px;height:100%;}
 .left-panel::-webkit-scrollbar{width:3px;}
 .left-panel::-webkit-scrollbar-thumb{background:var(--jade);}
 .right-panel{overflow-y:auto;padding:22px 28px;}
+
+/* ── SIDEBAR COLAPSABLE — pedido de Nico (16/09): con los 6 bloques de filtros abiertos, la
+   sidebar ocupa tanto que sobra poco lugar para la tabla al analizar. Colapsada, queda un riel
+   angosto (solo el botón ▸); "pinear" (clic) la deja así hasta que se vuelva a tocar (persistido);
+   pasar el mouse por el riel ("peek") la despliega entera flotando SOBRE la tabla, sin correrla
+   de lugar (mismo patrón que la barra de filtros de Valuación por Múltiplos). ── */
+.sb-toggle{background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--ink-muted);font-size:13px;padding:6px 8px;cursor:pointer;align-self:flex-start;flex-shrink:0;transition:border-color .15s,color .15s;}
+.sb-toggle:hover{border-color:rgba(28,140,95,.4);color:var(--text);}
+.main.sb-collapsed{grid-template-columns:46px 1fr;}
+.left-panel.collapsed:not(.peeking) > *:not(.sb-toggle){display:none !important;}
+.left-panel.collapsed{padding:14px 6px;align-items:center;}
+.left-panel.collapsed .sb-toggle{align-self:center;}
+.left-panel.collapsed.peeking{
+  position:absolute;top:0;left:0;bottom:0;width:340px;z-index:60;
+  padding:20px 18px;align-items:stretch;
+  box-shadow:12px 0 36px rgba(0,0,0,.55);
+  border-right:1px solid rgba(28,140,95,.4);
+  opacity:1;transform:translateX(0);
+  transition:opacity 160ms cubic-bezier(0.23,1,0.32,1),transform 160ms cubic-bezier(0.23,1,0.32,1);
+}
+.left-panel.collapsed.peeking .sb-toggle{align-self:flex-start;}
+.left-panel.collapsed.peeking.leaving{opacity:0;transform:translateX(-8px);}
+@starting-style{
+  .left-panel.collapsed.peeking{opacity:0;transform:translateX(-8px);}
+}
 .right-panel::-webkit-scrollbar{width:3px;}
 .right-panel::-webkit-scrollbar-thumb{background:var(--jade);}
 .section-title{font-size:9px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:8px;font-family:var(--font-sans);}
@@ -310,8 +336,10 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
   </div>
 </div>
 
-<div class="main">
-  <div class="left-panel">
+<div class="main" id="main">
+  <div class="sidebar-shell" id="sidebar-shell">
+  <div class="left-panel" id="left-panel" onmouseenter="fcnSidebarPeekIn()" onmouseleave="fcnSidebarPeekOut()">
+    <button class="sb-toggle" id="sb-toggle" onclick="fcnToggleSidebarPin()" title="Mostrar u ocultar filtros">▸</button>
     <button class="btn btn-primary" id="btn-analizar" onclick="iniciarAnalisis()" disabled>🔍 Analizar carteras</button>
     <div>
       <div class="section-title">1 · Cargar archivos</div>
@@ -472,6 +500,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       <div class="section-title">Estado</div>
       <div id="log-lines"></div>
     </div>
+  </div>
   </div>
 
   <div class="right-panel">
@@ -992,6 +1021,61 @@ function actualizarInstructivo() {
       <div class="empty-sub">Tenencia cargada ✅<br>Subí el Monitor de Individuos (.xlsm directo desde Balanz) para poder analizar.</div>`;
   }
 }
+
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR COLAPSABLE — pedido de Nico (16/09): mismo patrón que la barra de filtros de
+// Valuación por Múltiplos. Colapsada, la sidebar queda como un riel angosto (solo el botón ▸).
+// "Pinear" (clic) la deja así hasta que se vuelva a tocar (persistido en localStorage). "Peek"
+// (pasar el mouse por el riel) la despliega entera flotando SOBRE la tabla de la derecha, sin
+// correrla de lugar — con foco en un input adentro no se cierra sola al mover el mouse.
+// ══════════════════════════════════════════════════════════════
+var SB_COLLAPSE_KEY='fcn_scanner_sidebar_collapsed';
+var _sbPeekTimer=null;
+
+function fcnSbEstaPineadaAbierta(){
+  return !document.getElementById('left-panel').classList.contains('collapsed');
+}
+function fcnAplicarSidebarPineada(pineada, persistir){
+  var lp=document.getElementById('left-panel'), main=document.getElementById('main');
+  clearTimeout(_sbPeekTimer);
+  lp.classList.remove('peeking','leaving');
+  lp.classList.toggle('collapsed', !pineada);
+  main.classList.toggle('sb-collapsed', !pineada);
+  if(persistir){ try{ localStorage.setItem(SB_COLLAPSE_KEY, pineada?'0':'1'); }catch(e){} }
+  fcnUpdateSidebarToggleIcon();
+}
+function fcnInitSidebarCollapse(){
+  var collapsed; try{ collapsed=localStorage.getItem(SB_COLLAPSE_KEY)==='1'; }catch(e){ collapsed=false; }
+  fcnAplicarSidebarPineada(!collapsed, false);
+}
+function fcnUpdateSidebarToggleIcon(){
+  var lp=document.getElementById('left-panel'), btn=document.getElementById('sb-toggle');
+  if(!lp||!btn) return;
+  var miniState = lp.classList.contains('collapsed') && !lp.classList.contains('peeking');
+  btn.textContent = miniState ? '▸' : '◂ Ocultar filtros';
+}
+function fcnToggleSidebarPin(){
+  fcnAplicarSidebarPineada(!fcnSbEstaPineadaAbierta(), true);
+}
+function fcnSidebarPeekIn(){
+  var lp=document.getElementById('left-panel');
+  if(!lp.classList.contains('collapsed')) return;
+  clearTimeout(_sbPeekTimer);
+  lp.classList.remove('leaving');
+  lp.classList.add('peeking');
+  fcnUpdateSidebarToggleIcon();
+}
+function fcnSidebarPeekOut(){
+  var lp=document.getElementById('left-panel');
+  if(!lp.classList.contains('peeking')) return;
+  if(lp.contains(document.activeElement)) return; // no cerrar con un input/select con foco adentro
+  lp.classList.add('leaving');
+  _sbPeekTimer=setTimeout(function(){
+    lp.classList.remove('peeking','leaving');
+    fcnUpdateSidebarToggleIcon();
+  }, 150);
+}
+fcnInitSidebarCollapse();
 
 // =================== ANALYSIS ===================
 

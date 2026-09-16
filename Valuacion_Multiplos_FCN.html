@@ -47,7 +47,36 @@ body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:
 
 /* ── LAYOUT ── */
 .page{display:flex;flex-direction:column;height:100vh;}
+.toolbar-shell{flex-shrink:0;position:relative;}
 .toolbar{flex-shrink:0;padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
+
+/* ── TOOLBAR COLECTABLE — pedido de Nico (16/09): con muchos filtros la barra ocupaba tanto
+   que quedaba poco lugar para la tabla, que es lo que importa al analizar. Colapsada, el mismo
+   <div id="toolbar"> se reduce a una sola fila (chevron + resumen de filtros activos + contador,
+   los demás hijos se ocultan por CSS) sin sacar nada del DOM ni duplicar el contador. "Pineado"
+   (clic) vuelve al layout normal de siempre, en el flujo del documento. "Peek" (hover) muestra
+   TODO otra vez pero como overlay posicionado sobre la tabla (no empuja el layout — el
+   .toolbar-shell mantiene la altura chica de abajo), para que un vistazo rápido no haga saltar
+   ninguna fila de la tabla. ── */
+.tb-toggle{background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:var(--font-s);font-size:11px;padding:5px 10px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s;}
+.tb-toggle:hover{border-color:rgba(28,140,95,.4);color:var(--text);}
+.tb-summary{display:flex;gap:5px;flex-wrap:wrap;overflow:hidden;}
+.tb-tag{font-size:10.5px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:20px;padding:2px 9px;white-space:nowrap;}
+.tb-tag-off{opacity:.6;}
+.toolbar.collapsed{padding:7px 20px;}
+.toolbar.collapsed:not(.peeking) > *:not(.tb-toggle):not(.counter):not(.tb-summary){display:none !important;}
+.toolbar.collapsed.peeking{
+  position:absolute;top:0;left:0;right:0;z-index:60;
+  box-shadow:0 16px 36px rgba(0,0,0,.5);
+  border-bottom:1px solid rgba(28,140,95,.4);
+  padding:12px 20px;
+  opacity:1;transform:translateY(0);
+  transition:opacity 160ms cubic-bezier(0.23,1,0.32,1),transform 160ms cubic-bezier(0.23,1,0.32,1);
+}
+.toolbar.collapsed.peeking.leaving{opacity:0;transform:translateY(-4px);}
+@starting-style{
+  .toolbar.collapsed.peeking{opacity:0;transform:translateY(-4px);}
+}
 .search-wrap{position:relative;flex:1;min-width:160px;max-width:280px;}
 .search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px 7px 30px;color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;transition:border-color .2s;}
 .search-wrap input:focus{border-color:var(--jade);}
@@ -267,7 +296,10 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 
   <div class="tabs" id="tabs" style="display:none"></div>
 
-  <div class="toolbar" id="toolbar" style="display:none">
+  <div class="toolbar-shell" id="toolbar-shell">
+  <div class="toolbar" id="toolbar" style="display:none" onmouseenter="fcnToolbarPeekIn()" onmouseleave="fcnToolbarPeekOut()">
+    <button class="tb-toggle" id="tb-toggle" onclick="fcnToggleToolbarPin()" title="Mostrar u ocultar los filtros">▾ Ocultar</button>
+    <div class="tb-summary" id="tb-summary"></div>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
       <input type="text" id="search-input" placeholder="Buscar ticker o empresa…" oninput="renderDebounced()">
@@ -323,8 +355,10 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     <button class="chip chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
+    <button class="chip chip-msg" onclick="abrirComparar()" title="Comparar dos activos y armar un mensaje simple si conviene rotar">⇄ Comparar</button>
     <button class="chip chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
     <span class="counter" id="counter"></span>
+  </div>
   </div>
 
   <div class="foco-banner" id="foco-banner" hidden></div>
@@ -350,6 +384,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>📝 Registro</b><p>Dentro de la ficha de cada empresa (con un cliente enfocado) podés anotar qué le propusiste y si aceptó o rechazó. Si ya rechazó algo, te lo marca en Panorama para que no lo vuelvas a plantear. Se guarda solo en esta compu.</p></div>
       <div><b>✉ Avisar a los que lo tienen</b><p>En la ficha de una empresa, si tus clientes la tienen en cartera, el botón <b>"Avisar a los N"</b> arma un mensaje por cada tenedor: los primeros por tenencia como borrador de WhatsApp 1×1, el resto como mail masivo (CSV + Word, igual que Licitaciones). El texto compara su múltiplo contra su historia y contra los pares del sector, y podés elegir una alternativa del mismo rubro para proponer la rotación. Queda anotado en el Registro. Si el papel hoy no se ve caro, te avisa antes de mandar.</p></div>
       <div><b>Rebote (pestaña Técnico)</b><p>Puntos de análisis técnico clásico: cuando el precio se acerca a una media clave, suele rebotar ahí. Arriba de la media y acercándose = está testeando un <b>soporte</b> (posible compra). Abajo de la media y acercándose = está testeando una <b>resistencia</b> (posible venta). Se mira en 3 plazos — corto (media de 200 ruedas diarias), mediano (media de 20 semanas) y largo (media de 20 y 50 meses) — más los niveles de Fibonacci entre el máximo y el mínimo del último año. Si el rebote técnico no tiene el negocio detrás (o el techo aparece con el negocio sólido), te lo marca con un aviso ámbar al lado. Filtrable desde el selector <b>"Señal" → Técnico (rebote)</b>.</p></div>
+      <div><b>⇄ Comparar</b><p>Elegí dos activos (desde el botón de arriba o "Comparar con otro activo" en la ficha) y te arma una tabla lado a lado con todo — múltiplo, tendencia, negocio, valuación, analistas, rebote — y un veredicto según la misma lectura de "Qué hacer" que ya usás en el resto de la herramienta. Si conviene rotar, un botón arma el mensaje simple para el cliente (mail o WhatsApp); si hay un cliente enfocado y tiene la posición, se completa solo con su ganancia real.</p></div>
     </div>
     <p class="help-foot">La pestaña <b>Panorama</b> junta todo. Para ver cada análisis por separado y con más detalle: <b>Técnico</b> (el precio y las medias), <b>Negocio</b> (crecimiento, rentabilidad, deuda) y <b>Múltiplos</b> (caro o barato vs. su historia). La opinión de los analistas tiene su propia herramienta, "Precios Objetivo".<br><br>Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b>. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
   </div>
@@ -576,6 +611,52 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
           <button class="btn-msg" id="av-d-copiar" onclick="avDCopiar()">Copiar</button>
         </div>
         <p class="msg-nota">Es un borrador armado con la lectura de la pantalla — revisalo y ajustalo antes de enviar.</p>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="ticker-datalist"></datalist>
+
+  <div class="holders-overlay" id="compararOverlay" onclick="if(event.target===this) cerrarComparar()">
+    <div class="msg-modal" style="max-width:640px;">
+      <div class="hm-head">
+        <div><div class="hm-title">Comparar dos activos</div><div class="hm-sub" id="cmp-sub">¿Conviene rotar de uno al otro?</div></div>
+        <button class="hm-close" onclick="cerrarComparar()">✕</button>
+      </div>
+
+      <div class="msg-body" id="cmp-main">
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div style="flex:1;">
+            <label class="msg-lbl">Tenés (vender)</label>
+            <input type="text" id="cmp-a" class="msg-input" list="ticker-datalist" placeholder="Ej: KO" oninput="onCmpChange()" style="text-transform:uppercase;">
+          </div>
+          <div style="flex:1;">
+            <label class="msg-lbl">Candidato (comprar)</label>
+            <input type="text" id="cmp-b" class="msg-input" list="ticker-datalist" placeholder="Ej: PEP" oninput="onCmpChange()" style="text-transform:uppercase;">
+          </div>
+        </div>
+        <p class="msg-nota" id="cmp-error" style="color:var(--danger);display:none;"></p>
+        <div id="cmp-resultado"></div>
+      </div>
+
+      <div class="msg-body" id="cmp-draft" hidden>
+        <button class="btn-sm" onclick="cmpVolver()">← volver a la comparación</button>
+        <label class="msg-lbl" style="margin-top:12px;">Para (opcional — se completa solo si hay un cliente enfocado)</label>
+        <input type="text" id="cmp-d-nombre" class="msg-input" placeholder="Nombre del cliente" oninput="cmpDActualizar()">
+        <div style="display:flex;gap:10px;">
+          <input type="text" id="cmp-d-mail" class="msg-input" placeholder="Mail (opcional)" style="flex:1;">
+          <input type="text" id="cmp-d-tel" class="msg-input" placeholder="WhatsApp con código país (opcional)" style="flex:1;">
+        </div>
+        <label class="msg-lbl" id="cmp-d-asunto-lbl">Asunto</label>
+        <input type="text" id="cmp-d-asunto" class="msg-input">
+        <label class="msg-lbl">Mensaje</label>
+        <textarea id="cmp-d-texto" class="msg-input" rows="12"></textarea>
+        <div class="msg-actions">
+          <button class="btn-msg" onclick="cmpDMail()">✉ Abrir en mail</button>
+          <button class="btn-msg btn-wa" onclick="cmpDWpp()">📱 WhatsApp</button>
+          <button class="btn-msg" id="cmp-d-copiar" onclick="cmpDCopiar()">Copiar</button>
+        </div>
+        <p class="msg-nota">Es un borrador — revisalo antes de enviar. Si no completaste mail o WhatsApp, usá "Copiar" y pegalo donde corresponda.</p>
       </div>
     </div>
   </div>
@@ -1471,6 +1552,251 @@ function avRegistrar(){
 }
 function cerrarAviso(){ document.getElementById('avisoOverlay').classList.remove('open'); avVolver(); avCtx=null; avD=null; }
 
+// ══════════════════════════════════════════
+//  COMPARAR DOS ACTIVOS — "¿me conviene vender A y comprar B?" (Nico, 16/09/2026).
+//  Reusa TODAS las mismas lecturas que ya existen (tendencia/negocio/valuación/qué
+//  hacer/analistas/rebote) — no inventa un puntaje nuevo, arma la comparación con lo
+//  mismo que ya ve en la ficha de cada uno por separado. El veredicto ("conviene
+//  rotar" o no) sale de QH_BONDAD — el mismo ranking que ya usa Novedades — así no
+//  hay dos criterios de "qué es mejor" compitiendo en la herramienta.
+// ══════════════════════════════════════════
+function snapshotTicker(r){
+  const k=multPrimario(r.sector), mm=r.m[k]||{};
+  return { r, k, mm, med:medianaSector(r.sector,k),
+    t:tendencia(r), n:fundamental(r), v:valuacion5y(r),
+    st:sigTendencia(r), sn:sigNegocio(r), sp:sigPrecio(r),
+    q:queHacer(r), an:analistasDe(r), reb:lecturaRebote(r) };
+}
+function veredictoComparacion(sa, sb){
+  const partesHtml=[];
+  if(sa.t!=null && sb.t!=null){
+    const dif=sb.t-sa.t;
+    partesHtml.push(Math.abs(dif)>=15
+      ? `En tendencia, <b>${dif>0?sb.r.ticker:sa.r.ticker}</b> viene mejor (${dif>0?sb.t:sa.t} contra ${dif>0?sa.t:sb.t}).`
+      : 'En tendencia están parejas.');
+  }
+  if(sa.n!=null && sb.n!=null){
+    const dif=sb.n-sa.n;
+    partesHtml.push(Math.abs(dif)>=15
+      ? `En negocio, <b>${dif>0?sb.r.ticker:sa.r.ticker}</b> está mejor parada (${dif>0?sb.n:sa.n} contra ${dif>0?sa.n:sb.n}).`
+      : 'En negocio están parejas.');
+  }
+  if(sa.k===sb.k && sa.mm.actual!=null && sb.mm.actual!=null){
+    const label=MULT[sa.k]?.label||sa.k;
+    const dif=(sb.mm.actual/sa.mm.actual)-1;
+    partesHtml.push(Math.abs(dif)>=0.10
+      ? `En precio, <b>${dif<0?sb.r.ticker:sa.r.ticker}</b> está más barata en ${label} (${fmtN(sa.mm.actual,1)} vs ${fmtN(sb.mm.actual,1)}).`
+      : `Pagan un ${label} parecido (${fmtN(sa.mm.actual,1)} vs ${fmtN(sb.mm.actual,1)}).`);
+  } else {
+    if(sa.sp) partesHtml.push(`${sa.r.ticker} está <b>${sa.sp.txt.toLowerCase()}</b> frente a su propia historia.`);
+    if(sb.sp) partesHtml.push(`${sb.r.ticker} está <b>${sb.sp.txt.toLowerCase()}</b> frente a su propia historia.`);
+  }
+  if(sa.an?.upside!=null && sb.an?.upside!=null){
+    const dif=sb.an.upside-sa.an.upside;
+    if(Math.abs(dif)>=0.05) partesHtml.push(`Los analistas le ven más recorrido a <b>${dif>0?sb.r.ticker:sa.r.ticker}</b> (${fmtN((dif>0?sb.an.upside:sa.an.upside)*100,0)}% contra ${fmtN((dif>0?sa.an.upside:sb.an.upside)*100,0)}%).`);
+  }
+  const bondadA=QH_BONDAD[sa.q.v]||0, bondadB=QH_BONDAD[sb.q.v]||0;
+  let ganador=null, cierre;
+  if(bondadB>bondadA){
+    ganador='B';
+    cierre=`Con la lectura de hoy (${sa.r.ticker}: ${sa.q.v} · ${sb.r.ticker}: ${sb.q.v}), rotar de ${sa.r.ticker} a ${sb.r.ticker} tiene sentido para evaluar.`;
+  } else if(bondadA>bondadB){
+    ganador='A';
+    cierre=`Con la lectura de hoy (${sa.r.ticker}: ${sa.q.v} · ${sb.r.ticker}: ${sb.q.v}), no hay ventaja clara en rotar — ${sa.r.ticker} sigue mejor parada.`;
+  } else {
+    cierre=`Las dos están en "${sa.q.v}" — no hay una ventaja clara de una sobre la otra hoy.`;
+  }
+  return {ganador, partesHtml, cierre};
+}
+function resolverTicker(str){
+  str=String(str||'').trim().toUpperCase();
+  if(!str) return null;
+  return allRows.find(r=>r.ticker.toUpperCase()===str || r.tickerUsado.toUpperCase()===str) || null;
+}
+function poblarTickerDatalist(){
+  const dl=document.getElementById('ticker-datalist');
+  if(!dl) return;
+  const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  dl.innerHTML = allRows.map(r=>`<option value="${esc(r.ticker)}">${esc(r.ticker)} — ${esc(r.empresa)}</option>`).join('');
+}
+
+let cmpCtx=null, cmpMsgDir=null, cmpGanPct=null, cmpDCanal='mail';
+function abrirComparar(tickerA){
+  document.getElementById('cmp-a').value = tickerA ? String(tickerA).toUpperCase() : '';
+  document.getElementById('cmp-b').value = '';
+  document.getElementById('cmp-resultado').innerHTML='';
+  document.getElementById('cmp-error').style.display='none';
+  cmpCtx=null;
+  cmpVolver();
+  document.getElementById('compararOverlay').classList.add('open');
+  if(tickerA) renderComparacion();
+  setTimeout(()=>document.getElementById('cmp-b').focus(), 60);
+}
+function cerrarComparar(){ document.getElementById('compararOverlay').classList.remove('open'); }
+let _cmpTimer=null;
+function onCmpChange(){ clearTimeout(_cmpTimer); _cmpTimer=setTimeout(renderComparacion,250); }
+function renderComparacion(){
+  const taRaw=document.getElementById('cmp-a').value, tbRaw=document.getElementById('cmp-b').value;
+  const errEl=document.getElementById('cmp-error'), resEl=document.getElementById('cmp-resultado');
+  cmpCtx=null;
+  if(!taRaw.trim()||!tbRaw.trim()){ errEl.style.display='none'; resEl.innerHTML=''; return; }
+  if(taRaw.trim().toUpperCase()===tbRaw.trim().toUpperCase()){
+    errEl.textContent='Elegí dos activos distintos.'; errEl.style.display=''; resEl.innerHTML=''; return;
+  }
+  const a=resolverTicker(taRaw), b=resolverTicker(tbRaw);
+  if(!a || !b){
+    const falt=[!a?taRaw.trim():null, !b?tbRaw.trim():null].filter(Boolean).join(' y ');
+    errEl.textContent=`No encontré "${falt}" en la lista.`;
+    errEl.style.display=''; resEl.innerHTML=''; return;
+  }
+  errEl.style.display='none';
+  const sa=snapshotTicker(a), sb=snapshotTicker(b);
+  const ver=veredictoComparacion(sa,sb);
+  cmpCtx={a,b,sa,sb,ver};
+
+  const chip=s=>s?`<span class="sig ${s.cls}">${s.txt}</span>`:'<span class="dash">—</span>';
+  const row=(lbl,va,vb)=>`<tr><td>${lbl}</td><td>${va}</td><td>${vb}</td></tr>`;
+  const mLabel=s=>MULT[s.k]?.label||s.k||'—';
+  const multCell=s=>{
+    if(!s.mm||s.mm.actual==null) return 'Sin dato';
+    return `${mLabel(s)} <b>${fmtN(s.mm.actual,1)}</b>${s.mm.p5!=null?` <span class="dash">(prom.5a ${fmtN(s.mm.p5,1)})</span>`:''}`;
+  };
+  const anCell=s=> s.an ? `${REC_LABEL[s.an.rec]||'—'}${s.an.upside!=null?` · ${s.an.upside>=0?'+':''}${fmtN(s.an.upside*100,0)}%`:''}` : '<span class="dash">sin cobertura</span>';
+  const rebCell=s=> s.reb ? `<span class="sig ${s.reb.cls}">${s.reb.txt}</span>` : '<span class="dash">—</span>';
+
+  const ganTxt = ver.ganador==='B' ? `Conviene evaluar rotar ${a.ticker} → ${b.ticker}` : ver.ganador==='A' ? `${a.ticker} sigue mejor parada — no rotaría a ${b.ticker}` : 'Sin ventaja clara entre las dos';
+  const ganCls = ver.ganador==='B' ? 'qh-add' : ver.ganador==='A' ? 'qh-hold' : 'qh-none';
+
+  resEl.innerHTML = `
+    <div class="fs-verd qh ${ganCls}" style="margin-top:14px;">${ganTxt}</div>
+    <div style="overflow-x:auto;"><table class="hm-table"><thead><tr><th></th><th>${a.ticker}</th><th>${b.ticker}</th></tr></thead><tbody>
+      ${row('Empresa', nombreCorto(a), nombreCorto(b))}
+      ${row('Sector', a.sector||'—', b.sector||'—')}
+      ${row('Precio', a.precio!=null?`${a.moneda||''} ${fmtN(a.precio)}`:'—', b.precio!=null?`${b.moneda||''} ${fmtN(b.precio)}`:'—')}
+      ${row('Múltiplo primario', multCell(sa), multCell(sb))}
+      ${row('vs. pares del sector', sa.med!=null?fmtN(sa.med,1):'—', sb.med!=null?fmtN(sb.med,1):'—')}
+      ${row('Tendencia', chip(sa.st), chip(sb.st))}
+      ${row('Negocio', chip(sa.sn), chip(sb.sn))}
+      ${row('Precio (vs. historia)', chip(sa.sp), chip(sb.sp))}
+      ${row('Qué hacer', `<span class="qh ${sa.q.cls}">${sa.q.v}</span>`, `<span class="qh ${sb.q.cls}">${sb.q.v}</span>`)}
+      ${row('Analistas', anCell(sa), anCell(sb))}
+      ${row('Rebote técnico', rebCell(sa), rebCell(sb))}
+    </tbody></table></div>
+    <div class="fs-sec"><h5>Lectura</h5>${ver.partesHtml.map(p=>`<p class="fs-p">${p}</p>`).join('')}<p class="fs-p"><b>${ver.cierre}</b></p></div>
+    <div class="msg-actions"><button class="btn-msg" onclick="cmpAbrirMensaje()">✉ Armar mensaje para el cliente</button></div>
+    <p class="msg-nota">Observación cuantitativa con los datos de hoy — no reemplaza tu análisis ni es una recomendación general de mercado.</p>
+  `;
+}
+// mensaje simple para el cliente. canal: 'mail'|'wpp'. ganPct = ganancia del cliente
+// en "vender" (siempre lo que el cliente YA tiene) si se conoce. modo: 'rotar' (B se ve
+// mejor, tiene sentido evaluar el cambio) | 'quedate' (A sigue mejor parada — NUNCA se
+// invierte a "vendé lo que no tenés": se avisa que no conviene moverse, nomás).
+function mensajeComparacion(vender, comprar, canal, nombreCliente, ganPct, link, modo){
+  modo = modo || 'rotar';
+  const nombre = nombreCliente ? nombreCliente.trim().split(' ')[0] : '';
+  const empV=nombreCorto(vender), empC=nombreCorto(comprar);
+  const ganMail = ganPct!=null ? `, que venís ${ganPct>=0?'con una ganancia de +':'con una baja de '}${fmtN(Math.abs(ganPct)*100,0)}% desde que la compraste,` : '';
+  const ganWpp  = ganPct!=null ? ` (la tenés ${ganPct>=0?'+':'−'}${fmtN(Math.abs(ganPct)*100,0)}%)` : '';
+  const sV=snapshotTicker(vender), sC=snapshotTicker(comprar);
+
+  if(modo==='quedate'){
+    const porque = sV.q.por.charAt(0).toLowerCase()+sV.q.por.slice(1);
+    if(canal==='wpp'){
+      const cuerpo=`Hola${nombre?' '+nombre:''}, ¿cómo va? Te cuento algo rápido.\n\n`
+        + `Estuve comparando ${empV} (${vender.ticker})${ganWpp} con ${empC} (${comprar.ticker}) para ver si convenía rotar, y por ahora ${empV} sigue mejor parada — no encontré una ventaja clara en pasarte a ${empC}.\n\n`
+        + `No hace falta que hagas nada. Cualquier cosa te aviso si eso cambia 👍`;
+      return {asunto:'', cuerpo};
+    }
+    const asunto=`${nombre||'Hola'}, comparé ${vender.ticker} con ${comprar.ticker} — por ahora seguimos igual`;
+    const cuerpo=`Hola${nombre?' '+nombre:''},\n\n`
+      + `Estuve comparando tu posición en ${empV} (${vender.ticker})${ganMail} contra ${empC} (${comprar.ticker}), porque a veces vale la pena revisar alternativas del mismo sector.\n\n`
+      + `Con los datos de hoy, ${empV} sigue mejor parada: ${porque} No encontré una ventaja clara en rotar a ${empC}, así que no hace falta que hagas nada por ahora.\n\n`
+      + `Te aviso si la comparación cambia.\n\n`
+      + `Un abrazo,\n${nombreAsesor()}\n\n`
+      + `— Es una observación de seguimiento sobre tu cartera puntual, no una recomendación general de mercado.`;
+    return {asunto, cuerpo};
+  }
+
+  const razon = (sV.k===sC.k && sV.mm.actual!=null && sC.mm.actual!=null && sC.mm.actual<sV.mm.actual)
+    ? `hoy está más barata (${MULT[sC.k]?.label||sC.k} ${fmtN(sC.mm.actual,1)} contra ${fmtN(sV.mm.actual,1)} de ${vender.ticker})`
+    : (sC.sn && sC.sn.txt==='Sólido' ? 'tiene números más sólidos ahora mismo' : 'se ve mejor parada en la comparación de hoy');
+
+  if(canal==='wpp'){
+    const cuerpo=`Hola${nombre?' '+nombre:''}, ¿cómo va? Estuve comparando ${empV} con ${empC}.\n\n`
+      + `Hoy tenés ${empV} (${vender.ticker})${ganWpp}, y mirando los números, ${empC} (${comprar.ticker}) ${razon}.\n\n`
+      + `No es urgente, pero si querés lo charlamos y evaluamos rotar. ¿Te copa?`;
+    return {asunto:'', cuerpo};
+  }
+  const asunto=`${nombre||'Hola'}, comparé ${vender.ticker} con ${comprar.ticker} para vos`;
+  const linkFrase = link ? ` Si preferís avanzar vos, operá ${comprar.ticker} acá: ${link}` : '';
+  const cuerpo=`Hola${nombre?' '+nombre:''},\n\n`
+    + `Estuve comparando tu posición en ${empV} (${vender.ticker})${ganMail} contra ${empC} (${comprar.ticker}).\n\n`
+    + `En criollo: ${empC} ${razon} que ${empV}, así que rotar podría tener sentido para asegurar lo bueno y quedar en un lugar más cómodo.\n\n`
+    + `No es una urgencia. Si te interesa, respondeme este mail o escribime por WhatsApp y lo charlamos.${linkFrase}\n\n`
+    + `Un abrazo,\n${nombreAsesor()}\n\n`
+    + `— Es una observación de seguimiento sobre tu cartera puntual, no una recomendación general de mercado. Cualquier movimiento lo definimos juntos según tus objetivos y tu horizonte.`;
+  return {asunto, cuerpo};
+}
+function cmpAbrirMensaje(){
+  if(!cmpCtx) return;
+  const {a,b,ver}=cmpCtx;
+  // "vender" es SIEMPRE A (lo que el cliente ya tiene, según el propio marco del
+  // formulario) — nunca se invierte. Lo único que cambia es el modo del mensaje.
+  cmpMsgDir = {vender:a, comprar:b, modo: ver.ganador==='B' ? 'rotar' : 'quedate'};
+  cmpDCanal='mail';
+  cmpGanPct=null;
+  const nombreEl=document.getElementById('cmp-d-nombre'), mailEl=document.getElementById('cmp-d-mail'), telEl=document.getElementById('cmp-d-tel');
+  nombreEl.value=''; mailEl.value=''; telEl.value='';
+  if(clienteActivo){
+    const d=datosCliente(clienteActivo);
+    nombreEl.value=d.nombre||clienteActivo;
+    mailEl.value=d.mail||'';
+    telEl.value=d.tel||'';
+    const h=holdersFor(cmpMsgDir.vender).find(x=>x.cliente===clienteActivo);
+    if(h && h.precCompra && cmpMsgDir.vender.precio) cmpGanPct=cmpMsgDir.vender.precio/h.precCompra-1;
+  }
+  document.getElementById('cmp-main').hidden=true;
+  document.getElementById('cmp-draft').hidden=false;
+  cmpDActualizar();
+}
+function cmpDFormato(canal){ cmpDCanal=canal; cmpDActualizar(); }
+function cmpDActualizar(){
+  if(!cmpMsgDir) return;
+  const nombre=document.getElementById('cmp-d-nombre').value;
+  const link=linkBalanz(cmpMsgDir.comprar.ticker);
+  const m=mensajeComparacion(cmpMsgDir.vender, cmpMsgDir.comprar, cmpDCanal, nombre, cmpGanPct, link, cmpMsgDir.modo);
+  document.getElementById('cmp-d-asunto').value=m.asunto;
+  document.getElementById('cmp-d-texto').value=m.cuerpo;
+  const isWpp=cmpDCanal==='wpp';
+  document.getElementById('cmp-d-asunto').style.display=isWpp?'none':'';
+  document.getElementById('cmp-d-asunto-lbl').style.display=isWpp?'none':'';
+  document.getElementById('cmp-sub').textContent = cmpMsgDir.modo==='rotar'
+    ? `${cmpMsgDir.vender.ticker} → ${cmpMsgDir.comprar.ticker}`
+    : `${cmpMsgDir.vender.ticker} (seguís igual, comparado con ${cmpMsgDir.comprar.ticker})`;
+}
+function cmpVolver(){
+  document.getElementById('cmp-draft').hidden=true;
+  document.getElementById('cmp-main').hidden=false;
+  document.getElementById('cmp-sub').textContent='¿Conviene rotar de uno al otro?';
+}
+function cmpDMail(){
+  const mail=document.getElementById('cmp-d-mail').value.trim();
+  if(!mail){ alert('Completá el mail del cliente (o usá "Copiar" y pegalo vos).'); return; }
+  location.href=`mailto:${mail}?subject=${encodeURIComponent(document.getElementById('cmp-d-asunto').value)}&body=${encodeURIComponent(document.getElementById('cmp-d-texto').value)}`;
+}
+function cmpDWpp(){
+  if(cmpDCanal!=='wpp') cmpDFormato('wpp');
+  const t=encodeURIComponent(document.getElementById('cmp-d-texto').value);
+  const tel=(document.getElementById('cmp-d-tel').value||'').replace(/[^0-9]/g,'');
+  window.open(tel?`https://wa.me/${tel}?text=${t}`:`https://wa.me/?text=${t}`,'_blank');
+}
+function cmpDCopiar(){
+  const a=document.getElementById('cmp-d-asunto').value;
+  const t=(a?a+'\n\n':'')+document.getElementById('cmp-d-texto').value;
+  navigator.clipboard?.writeText(t);
+  const b=document.getElementById('cmp-d-copiar'), o=b.textContent; b.textContent='✓ copiado'; setTimeout(()=>b.textContent=o,1500);
+}
+
 function holdersFor(r){
   return holdersByTicker[String(r.ticker||'').toUpperCase()]
       || holdersByTicker[String(r.tickerUsado||'').toUpperCase()] || [];
@@ -1569,6 +1895,7 @@ function abrirFicha(ticker){
   body.innerHTML=`
     <div class="fs-verd qh ${q.cls}">${q.v}</div><p class="fs-por">${q.por}</p>
     <div class="fs-chips"><span>Tendencia ${chip(st)}</span><span>Negocio ${chip(sn)}</span><span>Precio ${chip(sp)}</span></div>
+    <button class="btn-msg" style="margin:10px 0 2px;" onclick="cerrarHolders();abrirComparar('${String(r.ticker).replace(/'/g,"\\'")}')">⇄ Comparar con otro activo</button>
     ${sec('📈 El precio', tec.length?tec:['Sin datos de precio.'])}
     ${sec('🏭 El negocio', neg)}
     ${sec('⚖️ La valuación', val)}
@@ -1609,7 +1936,7 @@ function abrirClientes(){
 function cerrarClientes(){ document.getElementById('clientesOverlay').classList.remove('open'); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); cerrarNovedades(); cerrarAviso(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); } });
 function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
@@ -1782,6 +2109,91 @@ function buildSectorChips(){
     + secs.map(s=>`<button class="chip ${activeSector===s?'active':''}" onclick="setSector(${JSON.stringify(s).replace(/"/g,'&quot;')})">${s}</button>`).join('');
 }
 function setSector(s){ activeSector=s; buildSectorChips(); render(); }
+// ══════════════════════════════════════════════════════════════
+// TOOLBAR COLAPSABLE — pedido de Nico (16/09): con todos los filtros abiertos, la barra ocupaba
+// tanto que quedaba poco lugar para la tabla al momento de analizar. Colapsada, el propio
+// #toolbar se reduce a chevron + resumen de filtros activos + contador (el resto se oculta por
+// CSS, ver .toolbar.collapsed). "Pineado" (clic en el chevron) queda así hasta que se vuelva a
+// tocar — se guarda en localStorage. "Peek" (pasar el mouse por arriba, mientras está colapsado)
+// muestra todo de nuevo como overlay flotante sobre la tabla, sin correrla de lugar — con foco
+// en un input adentro no se cierra solo al mover el mouse.
+// ══════════════════════════════════════════════════════════════
+var TB_COLLAPSE_KEY='fcn_vm_toolbar_collapsed';
+var _tbPeekTimer=null;
+
+// Estado derivado de una sola fuente de verdad (la clase 'collapsed'): "pineado abierto" es
+// simplemente "no collapsed". 'peeking' es un estado transitorio de hover que se superpone
+// arriba de 'collapsed' sin cambiarlo — por eso el toggle NUNCA debe mirar 'peeking' para
+// decidir a dónde ir, solo para decidir qué ÍCONO mostrar. (Bug real encontrado en la
+// verificación: mirar 'peeking' en el toggle hacía que un clic durante un peek colapsara en vez
+// de pinear abierto — justo al revés de lo esperado.)
+function fcnTbEstaPineadoAbierto(){
+  return !document.getElementById('toolbar').classList.contains('collapsed');
+}
+function fcnAplicarPineado(pineado, persistir){
+  var tb=document.getElementById('toolbar');
+  clearTimeout(_tbPeekTimer);
+  tb.classList.remove('peeking','leaving');
+  tb.classList.toggle('collapsed', !pineado);
+  if(persistir){ try{ localStorage.setItem(TB_COLLAPSE_KEY, pineado?'0':'1'); }catch(e){} }
+  fcnUpdateToolbarToggleIcon();
+}
+function fcnInitToolbarCollapse(){
+  var collapsed; try{ collapsed=localStorage.getItem(TB_COLLAPSE_KEY)==='1'; }catch(e){ collapsed=false; }
+  fcnAplicarPineado(!collapsed, false);
+}
+function fcnUpdateToolbarToggleIcon(){
+  var tb=document.getElementById('toolbar'), btn=document.getElementById('tb-toggle');
+  if(!tb||!btn) return;
+  var miniState = tb.classList.contains('collapsed') && !tb.classList.contains('peeking');
+  btn.textContent = miniState ? '▸ Filtros' : '▾ Ocultar';
+}
+function fcnToggleToolbarPin(){
+  fcnAplicarPineado(!fcnTbEstaPineadoAbierto(), true);
+}
+function fcnToolbarPeekIn(){
+  var tb=document.getElementById('toolbar');
+  if(!tb.classList.contains('collapsed')) return; // ya está pineado abierto, nada que desplegar
+  clearTimeout(_tbPeekTimer);
+  tb.classList.remove('leaving');
+  tb.classList.add('peeking');
+  fcnUpdateToolbarToggleIcon();
+}
+function fcnToolbarPeekOut(){
+  var tb=document.getElementById('toolbar');
+  if(!tb.classList.contains('peeking')) return;
+  if(tb.contains(document.activeElement)) return; // no cerrar con un input/select con foco adentro
+  tb.classList.add('leaving');
+  _tbPeekTimer=setTimeout(function(){
+    tb.classList.remove('peeking','leaving');
+    fcnUpdateToolbarToggleIcon();
+  }, 150);
+}
+// Resumen de filtros activos — para que colapsada, la barra siga diciendo qué hay filtrado sin
+// tener que abrirla. Se recalcula cada render() (ver el final de esa función).
+function fcnActualizarResumenToolbar(){
+  var el=document.getElementById('tb-summary');
+  if(!el) return;
+  var partes=[];
+  var q=(document.getElementById('search-input')||{}).value;
+  if(q) partes.push('"'+q+'"');
+  if(typeof activeSector!=='undefined' && activeSector && activeSector!=='todos') partes.push(activeSector);
+  if(typeof sigFiltro!=='undefined' && sigFiltro){
+    var selEl=document.getElementById('sig-sel');
+    var txt=(selEl && selEl.selectedOptions && selEl.selectedOptions[0]) ? selEl.selectedOptions[0].textContent : sigFiltro;
+    partes.push(txt);
+  }
+  if(typeof soloCartera!=='undefined' && soloCartera) partes.push('en cartera');
+  if(typeof tenMin!=='undefined' && tenMin) partes.push('mín. '+fmtUsd(tenMin));
+  if(typeof soloPrioridad!=='undefined' && soloPrioridad) partes.push('prioridad venta');
+  el.innerHTML = partes.length
+    ? partes.map(function(p){ return '<span class="tb-tag">'+escHtmlVM(p)+'</span>'; }).join('')
+    : '<span class="tb-tag tb-tag-off">sin filtros</span>';
+}
+// Mini-escape propio (el archivo puede no tener un escHtml genérico expuesto en este punto del
+// script) — mismo patrón de siempre, nada más que &<>" para texto de UI, no HTML de verdad.
+function escHtmlVM(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 function setMult(v){ multSel=v; render(); }
 function toggleHelp(){
   const p=document.getElementById('help-panel'), open=p.hidden;
@@ -2115,6 +2527,7 @@ function render(){
     document.getElementById('counter').innerHTML=
       `<strong>${rows.length}</strong> tickers · <strong>${conDato}</strong> con datos${foco}`;
   }
+  fcnActualizarResumenToolbar();
 
   // nota al pie
   let note=FOOT_BASE;
@@ -2169,7 +2582,7 @@ async function loadAndRender(){
     show('empty-state','flex'); show('table-wrap','none'); show('toolbar','none'); show('tabs','none'); show('foot-note','none');
     return;
   }
-  try{ allRows=parseBuffer(entry); }
+  try{ allRows=parseBuffer(entry); poblarTickerDatalist(); }
   catch(e){
     // Antes esto solo logueaba a consola y dejaba la página en blanco, sin ningún estado
     // visible — un Excel corrupto o con columnas cambiadas no daba ninguna pista de qué pasó.
@@ -2185,6 +2598,7 @@ async function loadAndRender(){
   }
 
   show('empty-state','none'); show('table-wrap','block'); show('toolbar','flex'); show('tabs','flex'); show('foot-note','block');
+  fcnInitToolbarCollapse();
   calcularFuerzaRelativa();
   try{ if(localStorage.getItem('vm_help_open')==='1'){ document.getElementById('help-panel').hidden=false; document.getElementById('chip-help').classList.add('active'); } }catch(e){}
 
