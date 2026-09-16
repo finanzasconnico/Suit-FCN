@@ -3545,7 +3545,13 @@ function buscarClienteInput(q){
   var matches = CLIENTE_LIST.filter(function(c){ return c.toLowerCase().indexOf(lq)>=0; }).slice(0,12);
   if(!matches.length){ dd.classList.remove('open'); return; }
   dd.innerHTML = matches.map(function(c){
-    var n = TENENCIA_POR_CLIENTE[c].length;
+    // TENENCIA_POR_CLIENTE solo tiene RENTA FIJA — un cliente con nada más que liquidez está en
+    // CLIENTE_LIST (unión con liquidezPorCliente, ver parseTenenciaParaClientes) pero nunca tuvo
+    // entrada acá. Sin el `||[]`, listarlo en el buscador tiraba "Cannot read properties of
+    // undefined (reading 'length')" y rompía el dropdown ENTERO apenas ese cliente aparecía
+    // entre los resultados — no solo su fila, el .map() completo abortaba antes de asignar
+    // dd.innerHTML. Bug real reportado por Nico (16/09), encontrado con el log de consola.
+    var n = (TENENCIA_POR_CLIENTE[c] || []).length;
     return '<div class="ac-item" onmousedown="seleccionarClienteActivo(\''+c.replace(/'/g,"\\'")+'\')">'+
       '<span class="ac-name">'+c+'</span>'+
       '<span class="ac-tir">'+n+' bono'+(n===1?'':'s')+'</span>'+
