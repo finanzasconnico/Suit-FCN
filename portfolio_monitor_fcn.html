@@ -182,12 +182,26 @@ tr:hover td{background:rgba(33,38,45,.5);}
     <label id="modoAsesorLbl" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;" title="En Operaciones Cerradas, cada ticker aparece agrupado en una sola fila — este modo agrega un desplegable para ver el detalle de cada operación. No se incluye si el reporte es para el cliente.">
       <input type="checkbox" id="modoAsesorChk" style="accent-color:var(--ac);">Modo asesor (detalle desglosable)
     </label>
+    <button class="btn" id="btnEditCostos" onclick="toggleEditCostos()" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--ye);" title="Ajustá el precio de compra de cualquier instrumento antes de generar el reporte — útil cuando hay transferencias de títulos o diferencias con el resumen de Balanz.">✏ Precios de compra</button>
     <button class="btn" onclick="iniciarDescargaReporte('unica')" id="btnReport" style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">📄 Descargar Reporte</button>
     <button class="btn" onclick="iniciarDescargaReporte('a4')" id="btnReportA4" title="Para clientes que quieren imprimirlo y analizarlo en papel: mismo reporte, pero en hojas A4 normales (tamaño de letra normal, tantas hojas como haga falta) en vez de una sola hoja continua." style="display:none;background:var(--sf);border:1px solid var(--bd);color:var(--tx);">🖨 Imprimir en A4 (varias hojas)</button>
   </div>
 </div>
 
 <div id="xlsxErr">⚠ Error cargando librería Excel. Verificá tu conexión a internet y recargá la página.</div>
+
+<!-- Panel de edición de precios de compra — solo visible para el asesor, antes del reporte -->
+<div id="editCostosPanel" style="display:none;background:var(--sf);border:1px solid var(--ye);border-radius:10px;padding:14px 18px;margin-bottom:14px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div>
+      <span style="font-weight:700;color:var(--ye);">✏ Ajustar precios de compra</span>
+      <span style="font-size:11px;color:var(--mu);margin-left:8px;">Los cambios se reflejan en el reporte. El precio original de Balanz aparece a la derecha para referencia.</span>
+    </div>
+    <button onclick="aplicarCostosEditados()" style="background:var(--ac);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">✓ Aplicar y cerrar</button>
+  </div>
+  <div id="editCostosTable"></div>
+  <div style="margin-top:8px;font-size:10.5px;color:var(--mu);">Dejá vacío para mantener el valor calculado. Ingresá el precio promedio de compra en USD por unidad nominal (ej.: 1.02 para bonos, 25.00 para acciones).</div>
+</div>
 
 <!-- 3 pasos: cada uno habilita algo distinto de la cartera. La cartera se genera SOLA apenas
      hay al menos PDF (o Tenencia auto-cargada) — no hace falta tocar ningún botón. -->
@@ -1649,6 +1663,8 @@ function nuevoCliente(){
 
   document.getElementById('btnReport').style.display='none';
   document.getElementById('btnReportA4').style.display='none';
+  document.getElementById('btnEditCostos').style.display='none';
+  document.getElementById('editCostosPanel').style.display='none';
   document.getElementById('out').style.display='none';
   document.getElementById('subEl').textContent='Cargá los archivos para ver la cartera';
 }
@@ -1796,6 +1812,7 @@ async function generate(forceLivePrices){
     document.getElementById('glosario').style.display='';
     document.getElementById('btnReport').style.display='';
     document.getElementById('btnReportA4').style.display='';
+    document.getElementById('btnEditCostos').style.display='';
     document.getElementById('modoAsesorLbl').style.display='flex';
   }catch(err){
     document.getElementById('heroEl').innerHTML=
@@ -3063,6 +3080,83 @@ function downloadReport(modo){
     '<th class="num">Valor actual</th><th class="num">G/P USD</th><th class="num">G/P %</th></tr></thead>'+
     '<tbody>'+topTableRows+'</tbody></table></section>'+
 
+    // ── RENTABILIDAD ESTIMADA ──
+    (function(){
+      var r=_rCalcRentabilidad(pos);
+      if(!r.rfItems.length&&!r.rvItems.length)return '';
+      var rfColor=r.rfWTir>=10?'#16a34a':r.rfWTir>=6?'#d97706':'#dc2626';
+      var rvColor=r.rvWUp>=15?'#16a34a':r.rvWUp>=5?'#d97706':r.rvWUp>=0?'#0f172a':'#dc2626';
+      var combColor=r.combined>=8?'#16a34a':r.combined>=4?'#d97706':'#dc2626';
+      var out='<section class="compact"><h2>Rentabilidad estimada</h2><div class="cards">';
+      if(r.rfItems.length){
+        out+='<div class="card"><div class="lbl">Renta Fija — TIR ponderada</div>'+
+          '<div class="val" style="color:'+rfColor+';">'+r.rfWTir.toFixed(2)+'%</div>'+
+          '<div class="sub">'+Math.round(r.rfShare*100)+'% del portfolio · '+r.rfItems.length+' instrumentos</div></div>';
+      }
+      if(r.rvItems.length){
+        out+='<div class="card"><div class="lbl">Renta Variable — upside estimado</div>'+
+          '<div class="val" style="color:'+rvColor+';">'+(r.rvWUp>=0?'+':'')+r.rvWUp.toFixed(1)+'%</div>'+
+          '<div class="sub">'+Math.round(r.rvShare*100)+'% del portfolio · estimativo de analistas</div></div>';
+      }
+      if(r.rfItems.length||r.rvItems.length){
+        out+='<div class="card"><div class="lbl">Retorno combinado estimado</div>'+
+          '<div class="val" style="color:'+combColor+';">'+(r.combined>=0?'+':'')+r.combined.toFixed(2)+'%</div>'+
+          '<div class="sub">Ponderado por asignación de cartera</div></div>';
+      }
+      out+='</div>';
+      // Breakdown table
+      if(r.rfItems.length){
+        out+='<div style="margin-top:12px;"><div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Desglose Renta Fija</div>'+
+          '<table style="max-width:480px;"><thead><tr><th>Ticker</th><th class="num">Peso RF</th><th class="num">TIR</th><th class="num">Aporte</th></tr></thead><tbody>';
+        r.rfItems.sort(function(a,b){return b.pct-a.pct;}).forEach(function(x){
+          out+='<tr><td>'+x.ticker+'</td><td class="num">'+x.pct.toFixed(1)+'%</td>'+
+            '<td class="num">'+x.tir.toFixed(2)+'%</td><td class="num">'+x.contrib.toFixed(2)+'%</td></tr>';
+        });
+        out+='</tbody></table></div>';
+      }
+      if(r.rvItems.length){
+        out+='<div style="margin-top:10px;"><div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Desglose Renta Variable</div>'+
+          '<table style="max-width:480px;"><thead><tr><th>Ticker</th><th class="num">Peso RV</th><th class="num">Precio actual</th><th class="num">Precio objetivo</th><th class="num">Upside</th></tr></thead><tbody>';
+        r.rvItems.sort(function(a,b){return b.pct-a.pct;}).forEach(function(x){
+          var cls=x.up>=0?'green':'red';
+          out+='<tr><td>'+x.ticker+'</td><td class="num">'+x.pct.toFixed(1)+'%</td>'+
+            '<td class="num">'+x.precio.toFixed(2)+'</td><td class="num">'+x.target.toFixed(2)+'</td>'+
+            '<td class="num '+cls+'">'+(x.up>=0?'+':'')+x.up.toFixed(1)+'%</td></tr>';
+        });
+        out+='</tbody></table></div>';
+      }
+      out+='<div style="margin-top:8px;font-size:8.5px;color:#94a3b8;font-style:italic;">⚠ Los datos de Renta Variable son estimativos basados en precios objetivo de analistas. No constituyen una garantía de rentabilidad futura.</div>';
+      out+='</section>';
+      return out;
+    })()+
+
+    // ── FLUJOS FUTUROS ──
+    (function(){
+      var rfBondPos={};
+      Object.values(pos).forEach(function(p){
+        if(['Bonos Soberanos','Corporativos','Bonos ARS'].indexOf(p.cat)>=0&&(_rOnDB[p.ticker]||_rSovDB[p.ticker]))rfBondPos[p.ticker]=p;
+      });
+      var flujos=_rProyectarFlujos(rfBondPos);
+      if(!flujos.length)return '';
+      var grandFluj=flujos.reduce(function(s,f){return s+f.total;},0);
+      var maxF=Math.max.apply(null,flujos.map(function(f){return f.total;}));
+      var rows=flujos.map(function(f){
+        var barW=maxF>0?Math.max(2,Math.round(f.total/maxF*80)):2;
+        var det=f.items.map(function(x){return x.ticker+' '+x.tipo;}).join(', ');
+        return '<tr><td><strong>'+f.mes+'</strong></td>'+
+          '<td><div style="display:inline-block;height:8px;width:'+barW+'px;background:#3b82f6;border-radius:2px;vertical-align:middle;"></div></td>'+
+          '<td class="num" style="color:#16a34a;font-weight:700;">USD '+N(Math.round(f.total),0)+'</td>'+
+          '<td class="desc">'+det+'</td></tr>';
+      }).join('');
+      return '<section><h2>Flujos futuros proyectados (próximos 24 meses)</h2>'+
+        '<div style="font-size:9px;color:#94a3b8;margin-bottom:10px;">Cupones y amortizaciones esperados de las posiciones de Renta Fija. Montos estimativos basados en cronograma vigente.</div>'+
+        '<table><thead><tr><th>Mes</th><th>Proporción</th><th class="num">Total estimado</th><th>Detalle</th></tr></thead>'+
+        '<tbody>'+rows+
+        '<tr class="tot-r"><td colspan="2"><strong>Total proyectado</strong></td>'+
+        '<td class="num"><strong>USD '+N(Math.round(grandFluj),0)+'</strong></td><td></td></tr>'+
+        '</tbody></table></section>';
+    })()+
+
     // (La sección "Rendimiento real vs. capital aportado" se movió al Resumen, al principio del
     // reporte — ver arriba, justo después de la portada.)
 
@@ -3563,6 +3657,132 @@ function _rProyectarFlujos(positions){
   return Object.values(byMes).sort(function(a,b){return a.mes<b.mes?-1:1;});
 }
 
+// ── Edición de precios de compra antes del reporte ──
+function toggleEditCostos(){
+  var panel=document.getElementById('editCostosPanel');
+  var open=panel.style.display==='none'||panel.style.display==='';
+  if(open){
+    renderEditCostosTable();
+    panel.style.display='';
+    document.getElementById('btnEditCostos').style.color='var(--ac)';
+  } else {
+    panel.style.display='none';
+    document.getElementById('btnEditCostos').style.color='var(--ye)';
+  }
+}
+
+function renderEditCostosTable(){
+  var positions=S.positions||{};
+  if(!Object.keys(positions).length){
+    document.getElementById('editCostosTable').innerHTML='<p style="color:var(--mu);font-size:12px;">Cargá la cartera primero.</p>';
+    return;
+  }
+  var CAT_ORDER=['Acciones','Bonos Soberanos','Corporativos','Bonos ARS','Cedears','Internacionales','Fondos','Otros'];
+  var grouped={};
+  Object.values(positions).forEach(function(p){
+    var c=p.cat||'Otros';if(!grouped[c])grouped[c]=[];grouped[c].push(p);
+  });
+  var h='<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  h+='<thead><tr style="border-bottom:1px solid var(--bd);">';
+  h+='<th style="text-align:left;padding:5px 8px;color:var(--mu);font-size:10px;">Ticker</th>';
+  h+='<th style="text-align:left;padding:5px 8px;color:var(--mu);font-size:10px;">Instrumento</th>';
+  h+='<th style="text-align:right;padding:5px 8px;color:var(--mu);font-size:10px;">PPP actual (USD/u)</th>';
+  h+='<th style="text-align:right;padding:5px 8px;color:var(--mu);font-size:10px;">PPP corregido (USD/u)</th>';
+  h+='<th style="text-align:right;padding:5px 8px;color:var(--mu);font-size:10px;">Cantidad</th>';
+  h+='</tr></thead><tbody>';
+  CAT_ORDER.forEach(function(cat){
+    if(!grouped[cat])return;
+    h+='<tr><td colspan="5" style="padding:6px 8px 2px;font-size:9px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--sf2);">'+cat+'</td></tr>';
+    grouped[cat].sort(function(a,b){return getVal(b)-getVal(a);}).forEach(function(p){
+      var currentPPP=S.manualCosts&&S.manualCosts[p.ticker]!=null?S.manualCosts[p.ticker]:p.pppUSD||0;
+      var originalPPP=p.pppUSD||0;
+      var qty=p.totalQty||0;
+      h+='<tr style="border-bottom:1px solid var(--sf2);">';
+      h+='<td style="padding:5px 8px;font-weight:700;">'+p.ticker+'</td>';
+      h+='<td style="padding:5px 8px;color:var(--mu);font-size:11px;">'+(CAT_DESC&&CAT_DESC[p.ticker]?CAT_DESC[p.ticker]:p.desc||p.ticker)+'</td>';
+      h+='<td style="padding:5px 8px;text-align:right;font-family:\'Courier New\',monospace;font-size:11px;">'+(originalPPP>0?'USD '+(originalPPP<5?originalPPP.toFixed(4):originalPPP.toFixed(2)):'—')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right;">';
+      h+='<input type="number" data-ticker="'+p.ticker+'" class="cost-edit-input" ';
+      h+='value="'+(currentPPP>0?currentPPP.toFixed(currentPPP<5?4:2):'')+'" ';
+      h+='placeholder="'+(originalPPP>0?(originalPPP<5?originalPPP.toFixed(4):originalPPP.toFixed(2)):'')+'" ';
+      h+='step="0.0001" min="0" ';
+      h+='style="width:120px;background:var(--sf2);border:1px solid var(--bd);border-radius:5px;color:var(--tx);padding:4px 8px;font-size:12px;text-align:right;">';
+      h+='</td>';
+      h+='<td style="padding:5px 8px;text-align:right;color:var(--mu);font-size:11px;">'+(qty>=1000?qty.toLocaleString('es-AR',{maximumFractionDigits:0}):qty.toFixed(2))+'</td>';
+      h+='</tr>';
+    });
+  });
+  h+='</tbody></table>';
+  document.getElementById('editCostosTable').innerHTML=h;
+}
+
+function aplicarCostosEditados(){
+  if(!S.manualCosts)S.manualCosts={};
+  document.querySelectorAll('.cost-edit-input').forEach(function(inp){
+    var tk=inp.getAttribute('data-ticker');
+    var v=parseFloat(inp.value);
+    if(!isNaN(v)&&v>0){
+      S.manualCosts[tk]=v;
+      if(S.positions&&S.positions[tk]){
+        S.positions[tk].pppUSD=v;
+        S.positions[tk].totalCostUSD=(S.positions[tk].totalQty||0)*v;
+      }
+    } else if(!inp.value.trim()&&S.manualCosts[tk]!=null){
+      // Campo vacío = restaurar al valor original de Balanz
+      delete S.manualCosts[tk];
+    }
+  });
+  // Re-render the positions view and hero cards
+  if(S.positions)renderPositions(S.positions,S.tenData);
+  renderHero(S.positions,S.movData,S.tenData);
+  document.getElementById('editCostosPanel').style.display='none';
+  document.getElementById('btnEditCostos').style.color='var(--ye)';
+}
+
+// Shared computation for Rentabilidad tab and PDF report
+function _rCalcRentabilidad(positions){
+  var RF_CATS=['Bonos Soberanos','Corporativos','Bonos ARS'];
+  var RV_CATS=['Acciones','Cedears','Internacionales'];
+  var rfItems=[], rvItems=[], rfTotal=0, rvTotal=0, grandTotal=0, rfMissing=[], rvMissing=[];
+  Object.values(positions).forEach(function(p){
+    var v=getVal(p);if(!v||v<=0)return;
+    grandTotal+=v;
+    if(RF_CATS.indexOf(p.cat)>=0)rfTotal+=v;
+    else if(RV_CATS.indexOf(p.cat)>=0)rvTotal+=v;
+  });
+  var rfWTir=0;
+  if(rfTotal>0){
+    Object.values(positions).forEach(function(p){
+      if(RF_CATS.indexOf(p.cat)<0)return;
+      var v=getVal(p);if(!v||v<=0)return;
+      var db=_rOnDB[p.ticker]||_rSovDB[p.ticker];
+      var tir=db?_rNormTir(db.tir):null;
+      if(tir!=null&&!isNaN(tir)&&tir>0){
+        var w=v/rfTotal;rfWTir+=w*(tir*100);
+        rfItems.push({ticker:p.ticker,pct:(v/rfTotal*100),tir:tir*100,contrib:w*tir*100});
+      } else rfMissing.push(p.ticker);
+    });
+  }
+  var rvWUp=0;
+  if(rvTotal>0){
+    Object.values(positions).forEach(function(p){
+      if(RV_CATS.indexOf(p.cat)<0)return;
+      var v=getVal(p);if(!v||v<=0)return;
+      var obj=_rPreciosMap[p.ticker.toUpperCase()];
+      if(obj&&obj.precio>0&&obj.target>0){
+        var up=(obj.target/obj.precio-1)*100;var w=v/rvTotal;rvWUp+=w*up;
+        rvItems.push({ticker:p.ticker,pct:(v/rvTotal*100),precio:obj.precio,target:obj.target,up:up,rec:obj.rec});
+      } else rvMissing.push(p.ticker);
+    });
+  }
+  var rfShare=grandTotal>0?rfTotal/grandTotal:0;
+  var rvShare=grandTotal>0?rvTotal/grandTotal:0;
+  return {rfItems:rfItems,rvItems:rvItems,rfMissing:rfMissing,rvMissing:rvMissing,
+    rfWTir:rfWTir,rvWUp:rvWUp,rfTotal:rfTotal,rvTotal:rvTotal,grandTotal:grandTotal,
+    rfShare:rfShare,rvShare:rvShare,combined:rfWTir*rfShare+rvWUp*rvShare,
+    RF_CATS:RF_CATS};
+}
+
 function renderRentabilidad(){
   var el=document.getElementById('rentPanel');
   if(!el)return;
@@ -3571,56 +3791,10 @@ function renderRentabilidad(){
     el.innerHTML='<div style="padding:40px 0;text-align:center;color:var(--mu);">Cargá la cartera primero para ver la rentabilidad estimada.</div>';
     return;
   }
-
-  // ── Classify positions ──
-  var RF_CATS=['Bonos Soberanos','Corporativos','Bonos ARS'];
-  var RV_CATS=['Acciones','Cedears','Internacionales'];
-  var rfItems=[], rvItems=[], rfTotal=0, rvTotal=0, grandTotal=0;
-
-  Object.values(positions).forEach(function(p){
-    var v=getVal(p);
-    if(!v||v<=0)return;
-    grandTotal+=v;
-    if(RF_CATS.indexOf(p.cat)>=0)rfTotal+=v;
-    else if(RV_CATS.indexOf(p.cat)>=0)rvTotal+=v;
-  });
-
-  // RF: weighted TIR
-  var rfWTir=0, rfMissing=[];
-  if(rfTotal>0){
-    Object.values(positions).forEach(function(p){
-      if(RF_CATS.indexOf(p.cat)<0)return;
-      var v=getVal(p);if(!v||v<=0)return;
-      var db=_rOnDB[p.ticker]||_rSovDB[p.ticker];
-      var tir=db?_rNormTir(db.tir):null;
-      if(tir!=null&&!isNaN(tir)&&tir>0){
-        var w=v/rfTotal;
-        rfWTir+=w*(tir*100);
-        rfItems.push({ticker:p.ticker,pct:(v/rfTotal*100),tir:tir*100,contrib:w*tir*100});
-      } else rfMissing.push(p.ticker);
-    });
-  }
-
-  // RV: weighted upside to precio objetivo
-  var rvWUp=0, rvMissing=[];
-  if(rvTotal>0){
-    Object.values(positions).forEach(function(p){
-      if(RV_CATS.indexOf(p.cat)<0)return;
-      var v=getVal(p);if(!v||v<=0)return;
-      var obj=_rPreciosMap[p.ticker.toUpperCase()];
-      if(obj&&obj.precio>0&&obj.target>0){
-        var up=(obj.target/obj.precio-1)*100;
-        var w=v/rvTotal;
-        rvWUp+=w*up;
-        rvItems.push({ticker:p.ticker,pct:(v/rvTotal*100),precio:obj.precio,target:obj.target,up:up,rec:obj.rec});
-      } else rvMissing.push(p.ticker);
-    });
-  }
-
-  // Combined: weight RF and RV by their share of grandTotal
-  var rfShare=grandTotal>0?rfTotal/grandTotal:0;
-  var rvShare=grandTotal>0?rvTotal/grandTotal:0;
-  var combined=rfWTir*rfShare+rvWUp*rvShare;
+  var r=_rCalcRentabilidad(positions);
+  var rfItems=r.rfItems, rvItems=r.rvItems, rfMissing=r.rfMissing, rvMissing=r.rvMissing;
+  var rfWTir=r.rfWTir, rvWUp=r.rvWUp, rfTotal=r.rfTotal, rvTotal=r.rvTotal;
+  var grandTotal=r.grandTotal, rfShare=r.rfShare, rvShare=r.rvShare, combined=r.combined;
 
   // ── Render ──
   var h='';
