@@ -391,6 +391,15 @@ tr:hover td{background:rgba(33,38,45,.5);}
 
 <script>
 // ══════════════════════════════════════════════════════════════
+// CONFIG WORKER — consolidación de posiciones y costeo
+// buildPositions/buildPositionsFromPDF viven en el Worker (no acá) para no
+// exponer esa lógica en el repo público. Este archivo solo manda los datos
+// ya parseados (tenencia/posición/movimientos) y recibe positions calculado.
+// ══════════════════════════════════════════════════════════════
+var WORKER_URL='https://finanzasconnico-proxy.nicostrijland.workers.dev';
+var FCN_KEY='fcn-2026-cambiar-esta-clave'; // tiene que coincidir con API_KEY en el Worker
+
+// ══════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════
 var S={
@@ -1271,75 +1280,20 @@ document.addEventListener('keydown',function(e){
 
 // ══════════════════════════════════════════════════════════════
 // BUILD POSITIONS
+// La consolidación de operaciones y el costeo (PPP, ajuste por split, etc.)
+// se calculan en el Worker (finanzasconnico-proxy /monitor-calc) — acá solo
+// se mandan los datos ya parseados y se recibe positions calculado. Ver
+// CONFIG WORKER arriba.
 // ══════════════════════════════════════════════════════════════
-function buildPositions(posData,movData,tenData){
-  var positions={};
-
-  if(tenData&&Object.keys(tenData.byTicker).length){
-    // Fuente principal: tenencia de Balanz (valor exacto por posición)
-    Object.entries(tenData.byTicker).forEach(function(e){
-      var ticker=e[0], td=e[1];
-      var cat=getCat(ticker,td.tipo);
-      var pd=posData[ticker];
-      var isFCI=td.tipo==='Fondos';
-      var pppUSD=0;
-      if(pd){
-        var posP=pd.pppUSD, tenP=td.pppTen||0;
-        // Detectar PPP incorrecto: si posición final tiene precio >4× el de la tenencia
-        // → hubo split/ajuste que posición final no reflejó en el precio
-        if(tenP>0&&posP>tenP*4){
-          pppUSD=tenP;  // usar PPP de tenencia (ya ajustado por split)
-        } else if(posP>0){
-          pppUSD=posP;
-        } else {
-          pppUSD=tenP;
-        }
-      } else {
-        pppUSD=td.pppTen||0;
-      }
-      // Sin PPP (posición transferida sin historial): usar valor actual como costo base
-      if(pppUSD===0&&!isFCI&&td.val>0&&td.qty>0) pppUSD=td.val/td.qty;
-      positions[ticker]={
-        ticker, cat,
-        desc:CAT_DESC[ticker]||td.desc||ticker,
-        totalQty:td.qty,
-        tenVal:td.val,          // valor directo de Balanz (fuente de verdad)
-        pppUSD:pppUSD,
-        totalCostUSD:td.qty*pppUSD,
-        lots:pd?pd.lots:[],
-        isFCI:isFCI,
-        fciUSD:isFCI?td.val:undefined,
-      };
-    });
-  } else {
-    // Fallback: sin tenencia, usar movimientos + precios de mercado
-    var allTickers=new Set([...Object.keys(posData),...Object.keys(movData.qty)]);
-    allTickers.forEach(function(ticker){
-      var currentQty=movData.qty[ticker]||0;
-      if(currentQty<=0.01)return;
-      var cat=getCat(ticker,'');
-      if(cat==='Fondos')return;
-      var pd=posData[ticker];
-      positions[ticker]={
-        ticker, cat,
-        desc:CAT_DESC[ticker]||(pd?pd.desc:ticker),
-        totalQty:currentQty,
-        pppUSD:pd?pd.pppUSD:0,
-        totalCostUSD:currentQty*(pd?pd.pppUSD:0),
-        lots:pd?pd.lots:[],
-      };
-    });
-    // FCI fallback
-    positions['BCMMA']={
-      ticker:'BCMMA', cat:'Fondos',
-      desc:'Balanz Money Market ARS (FCI)',
-      totalQty:movData.qty['BCMMA']||943507,
-      pppUSD:0, totalCostUSD:0, lots:[],
-      isFCI:true, fciUSD:29022,
-      fciNote:'Valor aproximado. Cargá la Tenencia Balanz para precisión exacta.',
-    };
-  }
-  return positions;
+async function buildPositions(posData,movData,tenData){
+  var res=await fetch(WORKER_URL+'/monitor-calc',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-FCN-Key':FCN_KEY},
+    body:JSON.stringify({posData,movData,tenData}),
+  });
+  if(!res.ok)throw new Error('El servidor de cálculo respondió '+res.status);
+  var data=await res.json();
+  return data.positions||{};
 }
 
 // Construye posiciones usando PDF como fuente primaria (qty, precio, valor).
@@ -1385,73 +1339,17 @@ function accruedInterestPct(ticker,asOfDate){
 }
 
 // PPP viene de Posición Final o Tenencia si están disponibles.
-function buildPositionsFromPDF(posData,movData,tenData){
-  var positions={};
-  Object.entries(PDF_DATA.positions).forEach(function(e){
-    var ticker=e[0],pd=e[1];
-    var qty=pd.qty, valorUSD=pd.valorUSD, precioUSD=pd.precioUSD;
-    // Categoría: .E y numéricos son autoridad de getCat; resto confía en el PDF > Tenencia > getCat
-    var tenEntry=tenData&&tenData.byTicker[ticker];
-    var cat;
-    if(ticker.endsWith('.E'))cat='Internacionales';
-    else if(/^\d{4,6}$/.test(ticker))cat=/\(E\)/i.test(pd.desc||'')?'Internacionales':'Fondos';
-    else{var gcCat=getCat(ticker,'');if(gcCat!=='Otros')cat=gcCat; // getCat conoce POA, GD30, etc.
-         else if(pd.cat&&pd.cat!=='Otros')cat=pd.cat;
-         else if(tenEntry)cat=getCat(ticker,tenEntry.tipo);
-         else cat=pd.cat||'Otros';}
-    var isFCI=cat==='Fondos';
-    // PPP: Posición Final con ajuste de split per-lote
-    var pppUSD=0,totalCostUSD=0;
-    var posEntry=posData[ticker];
-    var lots=posEntry?posEntry.lots:[];
-    var adjLots=[],adjCost=0;
-    if(posEntry&&posEntry.totalQty>0&&precioUSD>0){
-      // Elegir el multiplicador de split cuya qty total ajustada sea más cercana a la qty del PDF
-      var SPLIT_MULTS=[2,3,4,5,10,25,50,100];
-      var posQty=lots.reduce(function(s,l){return s+l.qty;},0);
-      var bestMult=1,bestDiff=Math.abs(posQty-qty);
-      SPLIT_MULTS.forEach(function(m){
-        var testQty=lots.reduce(function(s,l){
-          var r=l.precioUSD/precioUSD;
-          return s+(Math.abs(r/m-1)<0.35?l.qty*m:l.qty);
-        },0);
-        var d=Math.abs(testQty-qty);
-        if(d<bestDiff){bestDiff=d;bestMult=m;}
-      });
-      var adjLots=lots.map(function(lot){
-        if(bestMult===1)return lot;
-        var ratio=lot.precioUSD/precioUSD;
-        var applies=Math.abs(ratio/bestMult-1)<0.35;
-        if(applies){
-          return {qty:lot.qty*bestMult,precioUSD:lot.precioUSD/bestMult,
-                  loteUSD:lot.loteUSD,mep:lot.mep,fecha:lot.fecha,moneda:lot.moneda};
-        }
-        return lot;
-      });
-      var adjQty=adjLots.reduce(function(s,l){return s+l.qty;},0);
-      var adjCost=adjLots.reduce(function(s,l){return s+l.loteUSD;},0);
-      totalCostUSD=adjCost;
-      pppUSD=adjQty>0?adjCost/adjQty:0;
-      lots=adjLots;
-    }
-    if(pppUSD===0&&!isFCI&&valorUSD>0&&qty>0)pppUSD=valorUSD/qty;
-    // Usar costo real de lotes conocidos. Si hay mismatch de qtys (ej PLC4O 24k vs 30k PDF),
-    // usamos el costo de lo que hay en PosF para no inventar costo de unidades sin datos.
-    var finalCostUSD=adjLots.length>0?adjCost:(pppUSD>0?qty*pppUSD:0);
-    positions[ticker]={
-      ticker, cat,
-      desc:CAT_DESC[ticker]||(tenEntry?tenEntry.desc:'')||pd.desc||ticker,
-      qty:qty, totalQty:qty,
-      precioUSD:precioUSD, valorUSD:valorUSD,
-      tenVal:valorUSD,
-      pppUSD:pppUSD,
-      totalCostUSD:finalCostUSD,
-      lots:lots,
-      isFCI:isFCI,
-      fciUSD:isFCI?valorUSD:undefined,
-    };
+// Consolidación/costeo (incl. detección de split por lote) calculado en el
+// Worker — ver nota en buildPositions arriba.
+async function buildPositionsFromPDF(posData,movData,tenData){
+  var res=await fetch(WORKER_URL+'/monitor-calc',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-FCN-Key':FCN_KEY},
+    body:JSON.stringify({posData,movData,tenData,pdfPositions:PDF_DATA.positions}),
   });
-  return positions;
+  if(!res.ok)throw new Error('El servidor de cálculo respondió '+res.status);
+  var data=await res.json();
+  return data.positions||{};
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1874,7 +1772,7 @@ async function generate(forceLivePrices){
     aplicarPreciosTransferenciaAPosData(posData,movData);
 
     // Posiciones: PDF como fuente principal si está cargado
-    var positions=hasPDF?buildPositionsFromPDF(posData,movData,tenData):buildPositions(posData,movData,tenData);
+    var positions=hasPDF?await buildPositionsFromPDF(posData,movData,tenData):await buildPositions(posData,movData,tenData);
     S.positions=positions; S.movData=movData;
 
     // Nombre del cliente: input manual > PDF > tenencia
