@@ -34,8 +34,9 @@ h1{font-size:22px;font-weight:700;color:#fff;}
 input[type=file]{display:none;}
 
 /* ── Pasos (1·2·3) ── */
-.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;align-items:stretch;}
-@media(max-width:900px){.steps-grid{grid-template-columns:1fr;}}
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;align-items:stretch;}
+@media(max-width:1100px){.steps-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.steps-grid{grid-template-columns:1fr;}}
 .step-card{background:var(--sf);border:2px solid var(--bd);border-radius:10px;padding:14px 16px;
   display:flex;flex-direction:column;transition:border-color .2s;text-align:left;}
 .step-card.ubox{cursor:pointer;}
@@ -157,12 +158,22 @@ tr:hover td{background:rgba(33,38,45,.5);}
 /* ── Flujos futuros ── */
 .flujo-title{font-size:15px;font-weight:700;color:#fff;margin:20px 0 4px;}
 .flujo-sub{font-size:11px;color:var(--mu);margin-bottom:14px;}
-.flujo-table{width:100%;border-collapse:collapse;font-size:12px;}
-.flujo-table th{text-align:left;color:var(--mu);font-weight:600;padding:4px 8px;border-bottom:1px solid var(--bd);font-size:11px;}
-.flujo-table td{padding:5px 8px;border-bottom:1px solid var(--sf2);}
-.flujo-bar-wrap{display:flex;align-items:center;gap:8px;min-width:120px;}
-.flujo-bar-fill{height:10px;border-radius:3px;background:var(--ac);min-width:2px;}
-.flujo-total-row td{font-weight:700;color:var(--ac);border-top:1px solid var(--bd);border-bottom:none;}
+.flujo-source-badge{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:2px 7px;border-radius:10px;margin-left:8px;vertical-align:middle;}
+.flujo-source-badge.est{background:rgba(59,130,246,.15);color:#60a5fa;}
+.flujo-source-badge.exact{background:rgba(34,197,94,.15);color:#4ade80;}
+/* Bar chart style */
+.flujo-chart{display:flex;align-items:flex-end;gap:6px;padding:8px 0 4px;overflow-x:auto;}
+.flujo-bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:52px;flex:1 0 52px;}
+.flujo-bar-outer{width:100%;display:flex;align-items:flex-end;justify-content:center;height:80px;}
+.flujo-bar-rect{width:38px;border-radius:4px 4px 0 0;background:var(--ac);transition:opacity .15s;min-height:4px;}
+.flujo-bar-rect:hover{opacity:.75;}
+.flujo-bar-rect.amort{background:#f59e0b;}
+.flujo-bar-label{font-size:9.5px;color:var(--mu);text-align:center;white-space:nowrap;}
+.flujo-bar-amt{font-size:10px;font-weight:700;color:var(--tx);font-family:'Courier New',monospace;text-align:center;white-space:nowrap;}
+.flujo-legend{display:flex;gap:14px;margin:8px 0 12px;font-size:10.5px;color:var(--mu);}
+.flujo-legend span{display:flex;align-items:center;gap:4px;}
+.flujo-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;}
+.flujo-total-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ac);padding:6px 14px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -211,7 +222,15 @@ tr:hover td{background:rgba(33,38,45,.5);}
       <span class="step-num" id="pdfStepNum">1</span>
       <div><div class="step-title">📄 Resumen de Cuenta (PDF)</div><div class="step-req">Obligatorio</div></div>
     </div>
-    <div class="step-desc">Balanz app/web → Estado de cuenta → PDF. Da el valor exacto de la cartera y el efectivo, tal cual lo ve Balanz hoy.</div>
+    <div class="step-desc">Da el valor exacto de la cartera y el efectivo tal cual lo ve Balanz.
+      <span style="color:var(--ac);cursor:pointer;" onclick="document.getElementById('pdfTip').classList.toggle('hidden')">¿Cómo obtenerlo? ▾</span>
+    </div>
+    <div id="pdfTip" class="hidden" style="margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px 12px;font-size:10px;line-height:1.6;color:var(--tx);text-align:left;">
+      <strong>En Balanz app o web:</strong><br>
+      1. Mi cuenta → <strong>Posición consolidada</strong><br>
+      2. Elegí la fecha en el selector de la derecha<br>
+      3. Tocá el botón de <strong>descargar / exportar PDF</strong>
+    </div>
     <div style="display:flex;gap:8px;align-items:flex-start;flex:1;">
       <label class="pdf-drop" id="pdfDropLabel">
         📎 Subir PDF<br><span style="font-size:9px;opacity:0.7;">o soltá aquí</span>
@@ -249,9 +268,36 @@ tr:hover td{background:rgba(33,38,45,.5);}
       <span class="step-num" id="movStepNum">3</span>
       <div><div class="step-title">📂 Movimientos</div><div class="step-req opt">Para ver Renta cobrada y Flujos</div></div>
     </div>
-    <div class="step-desc">Sin esto no se ven los cupones/dividendos cobrados ni los depósitos y retiros de la cuenta.</div>
+    <div class="step-desc">Sin esto no se ven los cupones/dividendos cobrados ni los depósitos y retiros.
+      <span style="color:var(--ac);cursor:pointer;" onclick="event.stopPropagation();document.getElementById('movTip').classList.toggle('hidden')">¿Cómo obtenerlo? ▾</span>
+    </div>
+    <div id="movTip" class="hidden" style="margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px 12px;font-size:10px;line-height:1.6;color:var(--tx);text-align:left;">
+      <strong>En Balanz app o web:</strong><br>
+      1. Mi cuenta → <strong>Movimientos</strong><br>
+      2. Fecha desde: <strong>01/01/2020</strong> · Fecha hasta: <strong>hoy</strong><br>
+      3. Exportar Excel (ícono de descarga)
+    </div>
     <div class="us" id="stMov" style="margin-top:auto;">Sin cargar</div>
     <input type="file" id="fMov" accept=".xlsx,.xls" multiple onchange="loadFile(this,'mov')">
+  </div>
+
+  <div class="step-card ubox" id="bPagos" onclick="document.getElementById('fPagos').click()">
+    <div class="step-head">
+      <span class="step-num" id="pagosStepNum">4</span>
+      <div><div class="step-title">📅 Flujos proyectados</div><div class="step-req opt">Para mayor precisión en flujos</div></div>
+    </div>
+    <div class="step-desc">Con este archivo los flujos futuros usan datos exactos de Balanz en vez de estimaciones.
+      <span style="color:var(--ac);cursor:pointer;" onclick="event.stopPropagation();document.getElementById('pagosTip').classList.toggle('hidden')">¿Cómo obtenerlo? ▾</span>
+    </div>
+    <div id="pagosTip" class="hidden" style="margin-bottom:6px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:8px 12px;font-size:10px;line-height:1.6;color:var(--tx);text-align:left;">
+      <strong>En Balanz app o web:</strong><br>
+      1. Evolución → <strong>Flujos proyectados</strong><br>
+      2. Seleccioná el rango <strong>Máx</strong><br>
+      3. Hacé clic en <strong>Detalles de pago</strong> (abajo del gráfico)<br>
+      4. <strong>Exportar a Excel</strong> — ícono arriba a la izquierda de la tabla
+    </div>
+    <div class="us" id="stPagos" style="margin-top:auto;">Sin cargar (opcional)</div>
+    <input type="file" id="fPagos" accept=".xlsx,.xls" onchange="loadFile(this,'pagos')">
   </div>
 </div>
 
@@ -337,6 +383,7 @@ var S={
   tenRows:[], tenClients:{}, comitente:'',
   catFilter:'all', activeTab:'posicion',
   periodFrom:null, periodTo:null,
+  pagosData:null,
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -693,6 +740,27 @@ function loadFile(inp,type){
       autoGenerate();
     };
     r.readAsArrayBuffer(files[0]);
+  } else if(type==='pagos'){
+    var r=new FileReader();
+    r.onload=function(e){
+      var buf=new Uint8Array(e.target.result);
+      try{
+        var wb=XLSX.read(buf,{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+        // Expect: Ticker, Fecha, Renta, Amortización, Total
+        S.pagosData=rows.filter(function(r){return r.Fecha&&r.Total;}).map(function(r){
+          var dStr=typeof r.Fecha==='string'?r.Fecha:String(r.Fecha);
+          return {ticker:String(r.Ticker||'').trim().toUpperCase(),fecha:dStr.slice(0,10),renta:+(r.Renta||0),amort:+(r['Amortización']||r['Amortizacion']||0),total:+(r.Total||0)};
+        });
+        document.getElementById('stPagos').textContent='✓ '+files[0].name+' ('+S.pagosData.length+' flujos)';
+        document.getElementById('bPagos').classList.add('ok');
+        if(S.activeTab==='rentabilidad')renderRentabilidad();
+      }catch(err){
+        document.getElementById('stPagos').innerHTML='<span style="color:var(--rd);">⚠ Error: '+err.message+'</span>';
+      }
+    };
+    r.readAsArrayBuffer(files[0]);
   } else {
     S.movBufs=[];var done=0;
     files.forEach(function(f){
@@ -710,7 +778,7 @@ function loadFile(inp,type){
 
 // Drag & drop — los 3 pasos lo soportan (antes solo Movimientos/PosF/Boletos; el PDF decía
 // "o soltá aquí" pero nunca estuvo cableado para recibir el drop realmente).
-['bReal','bMov'].forEach(function(id){
+['bReal','bMov','bPagos'].forEach(function(id){
   var b=document.getElementById(id);
   b.addEventListener('dragover',function(e){e.preventDefault();b.classList.add('over');});
   b.addEventListener('dragleave',function(){b.classList.remove('over');});
@@ -1444,6 +1512,9 @@ function onClientSelect(){
   document.getElementById('bReal').classList.remove('ok');
   document.getElementById('stReal').textContent='Sin cargar';
   S.movBufs=[]; S.realBufs=[];
+  S.pagosData=null;
+  document.getElementById('stPagos').textContent='Sin cargar (opcional)';
+  document.getElementById('bPagos').classList.remove('ok');
   autoGenerate();
 }
 
@@ -1645,6 +1716,10 @@ function nuevoCliente(){
   document.getElementById('fMov').value='';
   document.getElementById('stMov').textContent='Sin cargar';
   document.getElementById('bMov').classList.remove('ok');
+  S.pagosData=null;
+  var fPagos=document.getElementById('fPagos');if(fPagos)fPagos.value='';
+  document.getElementById('stPagos').textContent='Sin cargar (opcional)';
+  document.getElementById('bPagos').classList.remove('ok');
 
   S.positions={}; S.movData=null; S.posData=null;
   S.closedTrades=null; S.hasPosData=false; S.bolData=null; S.realizadoData=null;
@@ -3132,28 +3207,38 @@ function downloadReport(modo){
 
     // ── FLUJOS FUTUROS ──
     (function(){
-      var rfBondPos={};
-      Object.values(pos).forEach(function(p){
-        if(['Bonos Soberanos','Corporativos','Bonos ARS'].indexOf(p.cat)>=0&&(_rOnDB[p.ticker]||_rSovDB[p.ticker]))rfBondPos[p.ticker]=p;
-      });
-      var flujos=_rProyectarFlujos(rfBondPos);
+      var RF_CATS_LOCAL=['Bonos Soberanos','Corporativos','Bonos ARS'];
+      var flujos=_rGetFlujos(pos,RF_CATS_LOCAL);
       if(!flujos.length)return '';
       var grandFluj=flujos.reduce(function(s,f){return s+f.total;},0);
       var maxF=Math.max.apply(null,flujos.map(function(f){return f.total;}));
-      var rows=flujos.map(function(f){
-        var barW=maxF>0?Math.max(2,Math.round(f.total/maxF*80)):2;
-        var det=f.items.map(function(x){return x.ticker+' '+x.tipo;}).join(', ');
-        return '<tr><td><strong>'+f.mes+'</strong></td>'+
-          '<td><div style="display:inline-block;height:8px;width:'+barW+'px;background:#3b82f6;border-radius:2px;vertical-align:middle;"></div></td>'+
-          '<td class="num" style="color:#16a34a;font-weight:700;">USD '+N(Math.round(f.total),0)+'</td>'+
-          '<td class="desc">'+det+'</td></tr>';
+      var flujosExact=!!(S.pagosData&&S.pagosData.length);
+      // Build bar chart as inline HTML table with bar cells
+      var barRows=flujos.map(function(f){
+        var barW=maxF>0?Math.max(3,Math.round(f.total/maxF*120)):3;
+        var amortAmt=f.items.filter(function(x){return x.tipo==='Amort.';}).reduce(function(s,x){return s+x.monto;},0);
+        var isAmort=amortAmt>f.total*0.5;
+        var barColor=isAmort?'#f59e0b':'#3b82f6';
+        var mon=f.mes;
+        try{var d=new Date(f.mes+'-15');mon=d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'});}catch(e){}
+        var det=f.items.map(function(x){return x.ticker;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ');
+        return '<tr style="border-bottom:1px solid #e2e8f0;">'+
+          '<td style="padding:3px 6px;font-weight:600;font-size:9px;white-space:nowrap;">'+mon+'</td>'+
+          '<td style="padding:3px 6px;"><div style="display:inline-block;height:10px;width:'+barW+'px;background:'+barColor+';border-radius:2px;vertical-align:middle;"></div></td>'+
+          '<td style="padding:3px 6px;text-align:right;font-weight:700;font-size:9.5px;color:#16a34a;font-family:monospace;">USD '+N(Math.round(f.total),0)+'</td>'+
+          '<td style="padding:3px 6px;font-size:8.5px;color:#64748b;">'+det+'</td></tr>';
       }).join('');
       return '<section><h2>Flujos futuros proyectados (próximos 24 meses)</h2>'+
-        '<div style="font-size:9px;color:#94a3b8;margin-bottom:10px;">Cupones y amortizaciones esperados de las posiciones de Renta Fija. Montos estimativos basados en cronograma vigente.</div>'+
-        '<table><thead><tr><th>Mes</th><th>Proporción</th><th class="num">Total estimado</th><th>Detalle</th></tr></thead>'+
-        '<tbody>'+rows+
-        '<tr class="tot-r"><td colspan="2"><strong>Total proyectado</strong></td>'+
-        '<td class="num"><strong>USD '+N(Math.round(grandFluj),0)+'</strong></td><td></td></tr>'+
+        '<div style="font-size:8.5px;color:#94a3b8;margin-bottom:8px;">'+(flujosExact?'Datos exportados de Balanz — Flujos proyectados.':'Cupones y amortizaciones estimados desde el Monitor de Bonos.')+
+        ' <span style="display:inline-block;padding:1px 6px;border-radius:8px;font-weight:700;font-size:8px;background:'+(flujosExact?'#dcfce7':'#dbeafe')+';color:'+(flujosExact?'#16a34a':'#2563eb')+';">'+(flujosExact?'Datos Balanz':'Estimado')+'</span></div>'+
+        '<div style="display:flex;gap:10px;margin-bottom:6px;font-size:8px;color:#64748b;">'+
+        '<span><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;vertical-align:middle;"></span> Cupones</span>'+
+        '<span><span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:2px;vertical-align:middle;"></span> Amortización</span></div>'+
+        '<table style="width:100%;border-collapse:collapse;"><tbody>'+barRows+
+        '<tr style="border-top:2px solid #cbd5e1;">'+
+        '<td colspan="2" style="padding:4px 6px;font-weight:700;font-size:9.5px;">Total proyectado</td>'+
+        '<td style="padding:4px 6px;text-align:right;font-weight:700;font-size:10px;color:#16a34a;font-family:monospace;">USD '+N(Math.round(grandFluj),0)+'</td>'+
+        '<td></td></tr>'+
         '</tbody></table></section>';
     })()+
 
@@ -3591,6 +3676,33 @@ function _rParsePreciosXlsx(buf){
 
 // Proyección de flujos futuros para bonos de renta fija.
 // Devuelve array de {mes:'YYYY-MM', total:$, items:[{ticker,tipo,monto}]}
+// Returns flujos array from pagosData (if loaded) or calculated from ON_DB/SOV_DB
+function _rGetFlujos(positions, RF_CATS){
+  if(S.pagosData&&S.pagosData.length){
+    // Use exact Balanz data — aggregate by YYYY-MM
+    var hoy=new Date(); hoy.setHours(0,0,0,0);
+    var horizon=new Date(hoy); horizon.setMonth(horizon.getMonth()+24);
+    var byMes={};
+    S.pagosData.forEach(function(row){
+      var d=new Date(row.fecha+'T00:00:00');
+      if(isNaN(d)||d<=hoy||d>horizon)return;
+      var mesKey=row.fecha.slice(0,7);
+      if(!byMes[mesKey])byMes[mesKey]={mes:mesKey,total:0,items:[]};
+      byMes[mesKey].total+=row.total;
+      var tipo=row.amort>row.renta?'Amort.':'Cupón';
+      var ex=byMes[mesKey].items.find(function(x){return x.ticker===row.ticker&&x.tipo===tipo;});
+      if(ex)ex.monto+=row.total; else byMes[mesKey].items.push({ticker:row.ticker,tipo:tipo,monto:row.total});
+    });
+    return Object.values(byMes).sort(function(a,b){return a.mes<b.mes?-1:1;});
+  }
+  // Fall back to calculation from bond DB
+  var rfBondPos={};
+  Object.values(positions).forEach(function(p){
+    if(RF_CATS.indexOf(p.cat)>=0&&(_rOnDB[p.ticker]||_rSovDB[p.ticker]))rfBondPos[p.ticker]=p;
+  });
+  return _rProyectarFlujos(rfBondPos);
+}
+
 function _rProyectarFlujos(positions){
   var hoy=new Date();
   var hoyMs=hoy.getTime();
@@ -3865,38 +3977,33 @@ function renderRentabilidad(){
   h+='</div>'; // end rent-grid
 
   // ── Flujos futuros ──
-  h+='<div class="flujo-title">Flujos futuros proyectados (24 meses)</div>';
-  h+='<div class="flujo-sub">Cupones y amortizaciones esperados para las posiciones de Renta Fija. Los montos son estimativos — dependen del cronograma vigente del bono.</div>';
+  var flujos=_rGetFlujos(positions,RF_CATS);
+  var flujosExact=!!(S.pagosData&&S.pagosData.length);
+  h+='<div class="flujo-title">Flujos futuros proyectados (24 meses)<span class="flujo-source-badge '+(flujosExact?'exact':'est')+'">'+(flujosExact?'Datos Balanz':'Estimado')+'</span></div>';
+  h+='<div class="flujo-sub">'+(flujosExact?'Cupones y amortizaciones según los datos exportados de Balanz.':'Cupones y amortizaciones estimados desde el Monitor de Bonos. Subí el archivo de Flujos proyectados (Paso 4) para mayor precisión.')+'</div>';
 
-  var rfBondPositions={};
-  Object.values(positions).forEach(function(p){
-    if(RF_CATS.indexOf(p.cat)>=0&&(_rOnDB[p.ticker]||_rSovDB[p.ticker]))rfBondPositions[p.ticker]=p;
-  });
-
-  if(!Object.keys(rfBondPositions).length){
-    h+='<div style="padding:20px;text-align:center;color:var(--mu);font-size:12px;">Sin posiciones de RF con datos de cupón disponibles.'+(rfTotal>0?' Abrí el Armador de Carteras para cargar los datos del Monitor de Bonos.':'')+'</div>';
+  if(!flujos.length){
+    h+='<div style="padding:20px;text-align:center;color:var(--mu);font-size:12px;">'+(rfTotal>0?'Abrí el Armador de Carteras para cargar los datos del Monitor de Bonos, o subí el archivo de Flujos proyectados (Paso 4).':'Sin posiciones de Renta Fija en la cartera.')+'</div>';
   } else {
-    var flujos=_rProyectarFlujos(rfBondPositions);
-    if(!flujos.length){
-      h+='<div style="padding:20px;text-align:center;color:var(--mu);font-size:12px;">No hay flujos proyectados en los próximos 24 meses (bonos vencidos o sin fecha de cupón).</div>';
-    } else {
-      var maxFlow=Math.max.apply(null,flujos.map(function(f){return f.total;}));
-      h+='<table class="flujo-table"><thead><tr><th>Mes</th><th>Cupones / Amort.</th><th>Total estimado</th><th>Detalle</th></tr></thead><tbody>';
-      var grandFluj=0;
-      flujos.forEach(function(f){
-        grandFluj+=f.total;
-        var barPct=maxFlow>0?Math.max(2,Math.round(f.total/maxFlow*100)):2;
-        var detalle=f.items.map(function(x){return x.ticker+' '+x.tipo+' $'+N(x.monto,0);}).join('; ');
-        h+='<tr>';
-        h+='<td><b>'+f.mes+'</b></td>';
-        h+='<td><div class="flujo-bar-wrap"><div class="flujo-bar-fill" style="width:'+barPct+'px;"></div></div></td>';
-        h+='<td style="color:var(--gr);font-family:\'Courier New\',monospace;font-weight:700;">USD '+N(f.total,0)+'</td>';
-        h+='<td style="color:var(--mu);font-size:11px;">'+detalle+'</td>';
-        h+='</tr>';
-      });
-      h+='<tr class="flujo-total-row"><td>Total proyectado</td><td></td><td>USD '+N(grandFluj,0)+'</td><td style="font-size:10.5px;color:var(--mu);">Suma de todos los flujos estimados</td></tr>';
-      h+='</tbody></table>';
-    }
+    var grandFluj=flujos.reduce(function(s,f){return s+f.total;},0);
+    var maxFlow=Math.max.apply(null,flujos.map(function(f){return f.total;}));
+    h+='<div class="flujo-legend"><span><i style="background:var(--ac);"></i>Cupones</span><span><i style="background:#f59e0b;"></i>Amortización</span></div>';
+    h+='<div class="flujo-chart">';
+    flujos.forEach(function(f){
+      var barH=maxFlow>0?Math.max(4,Math.round(f.total/maxFlow*76)):4;
+      // check if mostly amort
+      var amortAmt=f.items.filter(function(x){return x.tipo==='Amort.';}).reduce(function(s,x){return s+x.monto;},0);
+      var isAmort=amortAmt>f.total*0.5;
+      var mon=f.mes; // YYYY-MM → "MMM YY"
+      try{var d=new Date(f.mes+'-15');mon=d.toLocaleDateString('es-AR',{month:'short',year:'2-digit'});}catch(e){}
+      h+='<div class="flujo-bar-col">';
+      h+='<div class="flujo-bar-amt">$'+N(f.total,0)+'</div>';
+      h+='<div class="flujo-bar-outer"><div class="flujo-bar-rect'+(isAmort?' amort':'')+'" style="height:'+barH+'px;" title="'+f.mes+': USD '+N(f.total,0)+'"></div></div>';
+      h+='<div class="flujo-bar-label">'+mon+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+    h+='<div class="flujo-total-chip">Total en 24 meses: <strong>USD '+N(grandFluj,0)+'</strong></div>';
   }
 
   el.innerHTML=h;
