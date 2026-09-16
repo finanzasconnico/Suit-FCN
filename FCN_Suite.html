@@ -339,6 +339,26 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .hm-table{width:100%;border-collapse:collapse;font-size:11.5px;}
 .hm-table th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 8px 8px 0;font-weight:500;}
 .hm-table td{padding:7px 8px 7px 0;border-top:1px solid var(--border);color:var(--text);}
+
+/* ── MODAL: BUSCADOR GLOBAL (clientes, ONs, herramientas) ── */
+.search-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:850;align-items:flex-start;justify-content:center;backdrop-filter:blur(3px);padding:80px 20px 20px;}
+.search-overlay.open{display:flex;}
+.search-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);width:100%;max-width:560px;max-height:70vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.search-input-row{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.search-input-row .search-icon{font-size:15px;color:var(--muted);}
+#global-search-input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-family:inherit;}
+#global-search-input::placeholder{color:var(--muted);}
+.search-esc-hint{font-size:9.5px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:2px 5px;flex-shrink:0;}
+.search-results{overflow-y:auto;padding:6px;}
+.search-group-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:9px 10px 4px;}
+.search-result-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;cursor:pointer;}
+.search-result-row:hover,.search-result-row.active{background:rgba(255,255,255,.06);}
+.search-result-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0;}
+.search-result-main{flex:1;min-width:0;}
+.search-result-title{font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.search-result-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.search-result-tag{font-size:8.5px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:1px 6px;flex-shrink:0;}
+.search-empty{padding:24px 18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6;}
 .hm-cliente-link{cursor:pointer;color:var(--text);}
 .hm-cliente-link:hover{text-decoration:underline;text-decoration-color:var(--ambar);color:var(--ambar);}
 .hm-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
@@ -473,6 +493,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="topbar-tools" id="topbar-tools"></div>
     <button class="topbar-scroll-hint" id="topbar-scroll-hint" onclick="document.getElementById('topbar-tools').scrollBy({left:160,behavior:'smooth'})" title="Más herramientas →">›</button>
     <div class="topbar-right">
+      <button class="files-status-pill" id="global-search-btn" onclick="abrirBusquedaGlobal()" title="Buscar cliente, ticker o herramienta (Ctrl+K)">
+        <span class="files-status-icon">🔍</span>
+        <span class="files-status-text">Buscar</span>
+      </button>
       <div class="files-status-picker" id="files-status-picker">
         <button class="files-status-pill" id="files-status-pill" onclick="toggleFilesStatusDropdown(event)" title="Estado de los archivos compartidos">
           <span class="files-status-icon">🗂</span>
@@ -604,6 +628,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
           <button class="cc-close" onclick="cerrarCarteraCliente()">✕</button>
         </div>
         <div class="cc-body" id="ccBody"></div>
+      </div>
+    </div>
+
+    <!-- ── MODAL: BUSCADOR GLOBAL (clientes, ONs, herramientas) ── -->
+    <div class="search-overlay" id="searchOverlay" onclick="if(event.target===this) cerrarBusquedaGlobal()">
+      <div class="search-modal">
+        <div class="search-input-row">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="global-search-input" placeholder="Buscar cliente, ticker o herramienta…" autocomplete="off" oninput="renderBusquedaGlobal()" onkeydown="onKeyBusquedaGlobal(event)">
+          <span class="search-esc-hint">Esc</span>
+        </div>
+        <div class="search-results" id="search-results"></div>
       </div>
     </div>
 
@@ -2915,6 +2951,155 @@ function abrirCarteraCliente(cliente) {
   document.getElementById('ccOverlay').classList.add('open');
 }
 function cerrarCarteraCliente() { document.getElementById('ccOverlay').classList.remove('open'); }
+
+// ══════════════════════════════════════════════════════════════
+// BUSCADOR GLOBAL — pedido de Nico (16/09): un solo buscador para clientes, tickers en cartera
+// y herramientas/secciones del Suite (ej. buscar "portfolio monitor" y que abra esa herramienta
+// directo). No reinventa nada de navegación: clientes → abrirCarteraCliente (Vista 360, ya
+// existente), tickers → abrirHolders (ya existente, lista quién lo tiene), herramientas →
+// openTool (que además ya actualiza la URL — ver _setSuiteUrl de la sesión anterior), secciones
+// nativas → sus show*() propios.
+// ══════════════════════════════════════════════════════════════
+const SEARCH_SECCIONES = [
+  { id: 'home', nombre: 'Inicio', icon: '🏠' },
+  { id: 'files', nombre: 'Archivos', icon: '🗂' },
+  { id: 'cliente360', nombre: 'Vista 360', icon: '👤' },
+  { id: 'ranking', nombre: 'Ranking', icon: '🏆' },
+];
+let _searchActiveIdx = -1;
+
+function abrirBusquedaGlobal() {
+  document.getElementById('searchOverlay').classList.add('open');
+  const input = document.getElementById('global-search-input');
+  input.value = '';
+  renderBusquedaGlobal();
+  setTimeout(() => input.focus(), 30);
+}
+function cerrarBusquedaGlobal() { document.getElementById('searchOverlay').classList.remove('open'); }
+
+function _normalizarBusqueda(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function buscarGlobalResultados(q) {
+  const nq = _normalizarBusqueda(q);
+  const out = { herramientas: [], clientes: [], tickers: [] };
+  if (!nq) return out;
+
+  getUserTools().forEach(t => {
+    if (_normalizarBusqueda(t.name).includes(nq) || _normalizarBusqueda(t.badge || '').includes(nq)) {
+      out.herramientas.push({ tipo: 'tool', id: t.id, nombre: t.name, sub: t.badge, icon: t.icon });
+    }
+  });
+  SEARCH_SECCIONES.forEach(s => {
+    if (_normalizarBusqueda(s.nombre).includes(nq)) out.herramientas.push({ tipo: 'seccion', id: s.id, nombre: s.nombre, sub: 'Sección del Suite', icon: s.icon });
+  });
+
+  if (currentTenencia && currentTenencia.carteraPorCliente) {
+    Object.keys(currentTenencia.carteraPorCliente).forEach(cliente => {
+      if (_normalizarBusqueda(cliente).includes(nq)) {
+        const tot = (currentTenencia.carteraPorCliente[cliente] || []).reduce((a, i) => a + (i.tenencia || 0), 0);
+        out.clientes.push({ cliente, tenencia: tot });
+      }
+    });
+    out.clientes.sort((a, b) => b.tenencia - a.tenencia);
+  }
+
+  if (currentTenencia && currentTenencia.porTicker) {
+    Object.entries(currentTenencia.porTicker).forEach(([tk, d]) => {
+      if (_normalizarBusqueda(tk).includes(nq) || _normalizarBusqueda(d.instrumento || '').includes(nq)) {
+        out.tickers.push({ ticker: tk, instrumento: d.instrumento, tenencia: d.tenencia, n: holdersCount(tk) });
+      }
+    });
+    out.tickers.sort((a, b) => b.tenencia - a.tenencia);
+  }
+
+  return out;
+}
+
+function renderBusquedaGlobal() {
+  const q = document.getElementById('global-search-input').value;
+  const el = document.getElementById('search-results');
+  _searchActiveIdx = -1;
+  if (!q.trim()) {
+    el.innerHTML = `<div class="search-empty">Escribí el nombre de un cliente, un ticker, o una herramienta (ej. "portfolio monitor").</div>`;
+    return;
+  }
+  const res = buscarGlobalResultados(q);
+  const total = res.herramientas.length + res.clientes.length + res.tickers.length;
+  if (!total) {
+    el.innerHTML = `<div class="search-empty">Sin resultados para "${escHtml(q)}".</div>`;
+    return;
+  }
+  let html = '';
+  if (res.herramientas.length) {
+    html += `<div class="search-group-label">Herramientas</div>` + res.herramientas.slice(0, 8).map(r => `
+      <div class="search-result-row" onclick="irAResultadoBusqueda('${r.tipo}','${escHtml(r.id).replace(/'/g,"\\'")}')">
+        <span class="search-result-icon">${r.icon || '🧰'}</span>
+        <div class="search-result-main">
+          <div class="search-result-title">${escHtml(r.nombre)}</div>
+          ${r.sub ? `<div class="search-result-sub">${escHtml(r.sub)}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+  if (res.clientes.length) {
+    html += `<div class="search-group-label">Clientes</div>` + res.clientes.slice(0, 8).map(r => `
+      <div class="search-result-row" onclick="irAResultadoBusqueda('cliente','${escHtml(r.cliente).replace(/'/g,"\\'")}')">
+        <span class="search-result-icon">👤</span>
+        <div class="search-result-main">
+          <div class="search-result-title">${escHtml(r.cliente)}</div>
+          <div class="search-result-sub">USD ${fmtK(r.tenencia)}</div>
+        </div>
+      </div>`).join('');
+  }
+  if (res.tickers.length) {
+    html += `<div class="search-group-label">Tickers en cartera</div>` + res.tickers.slice(0, 8).map(r => `
+      <div class="search-result-row" onclick="irAResultadoBusqueda('ticker','${escHtml(r.ticker).replace(/'/g,"\\'")}')">
+        <span class="search-result-icon">🔗</span>
+        <div class="search-result-main">
+          <div class="search-result-title">${escHtml(r.ticker)}</div>
+          <div class="search-result-sub">${escHtml(r.instrumento || '')}</div>
+        </div>
+        <span class="search-result-tag">👤${r.n}</span>
+      </div>`).join('');
+  }
+  el.innerHTML = html;
+}
+
+function irAResultadoBusqueda(tipo, id) {
+  cerrarBusquedaGlobal();
+  if (tipo === 'tool') openTool(id);
+  else if (tipo === 'seccion') {
+    if (id === 'home') showHome();
+    else if (id === 'files') showFiles();
+    else if (id === 'cliente360') showCliente360();
+    else if (id === 'ranking') showRanking();
+  }
+  else if (tipo === 'cliente') abrirCarteraCliente(id);
+  else if (tipo === 'ticker') abrirHolders(id);
+}
+
+function onKeyBusquedaGlobal(event) {
+  if (event.key === 'Escape') { cerrarBusquedaGlobal(); return; }
+  const rows = Array.from(document.querySelectorAll('#search-results .search-result-row'));
+  if (!rows.length) return;
+  if (event.key === 'ArrowDown') { event.preventDefault(); _searchActiveIdx = Math.min(_searchActiveIdx + 1, rows.length - 1); _marcarActivoBusqueda(rows); }
+  else if (event.key === 'ArrowUp') { event.preventDefault(); _searchActiveIdx = Math.max(_searchActiveIdx - 1, 0); _marcarActivoBusqueda(rows); }
+  else if (event.key === 'Enter') { event.preventDefault(); (rows[_searchActiveIdx] || rows[0]).click(); }
+}
+function _marcarActivoBusqueda(rows) {
+  rows.forEach((r, i) => r.classList.toggle('active', i === _searchActiveIdx));
+  if (rows[_searchActiveIdx]) rows[_searchActiveIdx].scrollIntoView({ block: 'nearest' });
+}
+
+// Atajo global Ctrl/Cmd+K — abre el buscador desde cualquier parte del Suite. Ningún otro
+// atajo de la Suite usa K, así que no choca con nada existente.
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    abrirBusquedaGlobal();
+  }
+});
 
 // ── Nombre del cliente para el saludo (columna "Nombre" del Stock, nunca el apellido) ──
 function _nombreClienteFCN(cliente) {
