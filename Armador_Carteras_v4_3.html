@@ -247,6 +247,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 :focus-visible{outline:2px solid var(--balanz) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 
 <body>
@@ -481,11 +482,6 @@ var BYMA_BASE=[
   {t:'BALANZ',n:'FCI Balanz Ahorro',c:'FCI',m:'ARS'}
 ];
 var BYMA=BYMA_BASE.slice();
-// CONFIG WORKER — parseo del Monitor de Bonos (detección de hojas/columnas y
-// extracción de ON_DB/SOV_DB/LET_DB) vive en el Worker, no acá. Ver
-// loadMonitorFull() más abajo.
-var WORKER_URL='https://finanzasconnico-proxy.nicostrijland.workers.dev';
-var FCN_KEY='fcn-2026-cambiar-esta-clave'; // tiene que coincidir con API_KEY en el Worker
 var ON_DB={}, SOV_DB={}, LET_DB={};
 var assets=[], selColor='#DBA03C', docChart=null, bigChart=null, refN=1, editingId=null, pctInputMode='pct';
 var PALETTE=['#DBA03C','#1C8C5F','#4a9ebb','#7b5fbf','#D9892B','#2E7D8C','#5cc8c8','#e8845c','#a3d977','#5b83e8','#0F3A34','#8ab4f0','#C0453B','#4a9e5a','#9b7fd4','#3d6fd4'];
@@ -726,37 +722,100 @@ function findSheetCI(names,kws){
   return null;
 }
 
-// La detección de hojas/columnas y extracción de ON_DB/SOV_DB/LET_DB del Excel
-// vive en el Worker (finanzasconnico-proxy /armador-monitor-parse), no acá —
-// mismo motivo que portfolio_monitor_fcn.html: no exponer esa lógica en el
-// repo público. Acá solo se manda el archivo y se recibe la data ya armada;
-// los mensajes de progreso/log se reconstruyen igual que antes con lo que
-// devuelve el Worker.
 function loadMonitorFull(input){
   var file=input.files[0];if(!file)return;
   document.getElementById('monitor-stats').style.display='none';
   monProgress(5);monLog('Leyendo '+file.name+'…');
   var reader=new FileReader();
-  reader.onload=async function(e){
+  reader.onload=function(e){
     try{
       monProgress(15);
+      var wb=XLSX.read(e.target.result,{type:'array',cellFormula:false,cellDates:false,raw:true});
       monProgress(30);
-      var res=await fetch(WORKER_URL+'/armador-monitor-parse',{
-        method:'POST',
-        headers:{'X-FCN-Key':FCN_KEY},
-        body:e.target.result,
-      });
-      if(!res.ok){
-        var errBody=await res.json().catch(function(){return{};});
-        throw new Error(errBody.error||('El servidor de cálculo respondió '+res.status));
-      }
-      var data=await res.json();
-      var newON=data.ON_DB||{}, newSOV=data.SOV_DB||{}, newLET=data.LET_DB||{};
-      var newBC=data.BC||[], newBS=data.BS||[], newBL=data.BL||[];
-      var corpCnt=data.corpCnt||0, sovCnt=data.sovCnt||0, letCnt=data.letCnt||0;
-      var cName=data.cName, sName=data.sName, lName=data.lName;
+      var names=wb.SheetNames;
+      var corpCnt=0,sovCnt=0,letCnt=0;
+      var newON={},newSOV={},newLET={};
+      var newBC=[],newBS=[],newBL=[];
 
-      if(cName){
+      // ── CORPORATIVOS ──
+      // Antes esto buscaba "Ticker" solo en columna A o B, y leía TIR/Cupón/etc. por offset
+      // fijo desde ahí (dr[c+4] para TIR, etc.) sin mirar el nombre del encabezado. Si Balanz
+      // corrió una columna en ESTA hoja puntual (Soberanos seguía andando bien, por eso no se
+      // notó antes), el offset dejaba de apuntar a TIR, parseFloat devolvía NaN y la fila se
+      // descartaba en silencio — corpCnt terminaba en 0 sin ningún error visible. Mismo bug de
+      // fondo que ya se arregló en FCN_Suite.html (parseMonitorTIR): ahora busca "Ticker" en
+      // CUALQUIER columna del header y resuelve cada columna por nombre, con el offset viejo
+      // como respaldo si el nombre no aparece.
+      function buscarHeaderTicker(sheetName){
+        var tr=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:'',raw:true});
+        for(var i=0;i<Math.min(tr.length,20);i++){
+          var row=tr[i]||[];
+          for(var j=0;j<row.length;j++){
+            if(String(row[j]||'').trim()==='Ticker') return {hdrRow:i,tCol:j,rows:tr};
+          }
+        }
+        return null;
+      }
+      function buildColFinder(headerRow){
+        var colMap={};
+        headerRow.forEach(function(v,j){ if(v){var k=String(v).trim().toLowerCase(); if(colMap[k]===undefined) colMap[k]=j;} });
+        return function(fallback){
+          for(var i=1;i<arguments.length;i++){
+            var k=String(arguments[i]).toLowerCase();
+            if(colMap[k]!==undefined) return colMap[k];
+          }
+          return fallback;
+        };
+      }
+      var cName=findSheetCI(names,['Corporativos','Corporativo','Corp','ONs']);
+      var cInfo=cName?buscarHeaderTicker(cName):null;
+      if(!cInfo){
+        // scan todas las hojas por una con header Ticker + TIR cerca
+        for(var sn of names){
+          var info=buscarHeaderTicker(sn);
+          if(info){
+            var findColTmp=buildColFinder(info.rows[info.hdrRow]||[]);
+            if(findColTmp(-1,'TIR')>=0){ cName=sn; cInfo=info; break; }
+          }
+        }
+      }
+      if(cInfo){
+        var rows=cInfo.rows, tCol=cInfo.tCol;
+        var findCol=buildColFinder(rows[cInfo.hdrRow]||[]);
+        var iE=findCol(tCol+1,'Emisor','Empresa'), iVto=findCol(tCol+3,'Vencimiento','Vto','Vto.'),
+            iTIR=findCol(tCol+4,'TIR','TIR%','TIR %'), iCup=findCol(tCol+7,'Cupón','Cupon','Cupón %','Cupon %'),
+            iMeses=findCol(tCol+8,'Mes cupón','Meses cupón','Mes cupon'), iMon=findCol(tCol+9,'Moneda','Dólar','Dolar'),
+            iLey=findCol(tCol+10,'Ley'), iCal=findCol(tCol+11,'Calificación','Calificacion','Rating'),
+            iLam=findCol(tCol+12,'Lámina','Lamina');
+        for(var di=cInfo.hdrRow+1;di<rows.length;di++){
+          var dr=rows[di];
+          var tk=String(dr[tCol]||'').trim();
+          var em=String(dr[iE]||'').trim();
+          if(!tk||!em||tk==='Ticker'||tk==='Bonos'||tk==='Actualizado'||tk==='NaN')continue;
+          if(!/^[A-Z0-9]{3,10}O$/.test(tk)&&!/^[A-Z0-9]{3,8}$/.test(tk))continue;
+          if(em.length>60||em==='NaN')continue;
+          if(bonoVencido(dr[iVto]))continue;
+          var tir=parseFloat(dr[iTIR]);
+          if(isNaN(tir))continue;
+          if(newON[tk])continue;
+          var cup=parseFloat(dr[iCup]);
+          newON[tk]={
+            ticker:tk,emisor:em,
+            vencimiento:excelSerial(dr[iVto]),
+            tir:tir, // stored as decimal 0.07 = 7%
+            cupon:isNaN(cup)?null:cup, // also decimal
+            meses_cupon:String(dr[iMeses]||'').trim(),
+            moneda:String(dr[iMon]||'').trim(),
+            ley:String(dr[iLey]||'').trim(),
+            calificacion:String(dr[iCal]||'').trim(),
+            lamina:parseFloat(dr[iLam])||null
+          };
+          corpCnt++;
+          var v7=newON[tk].vencimiento?newON[tk].vencimiento.slice(0,7):'';
+          var cupPct=newON[tk].cupon?Math.round(newON[tk].cupon*10000)/100:null;
+          var nm=em+(cupPct&&v7?' '+cupPct+'% '+v7:'')+' ('+tk+')';
+          newBC.push({t:tk,n:nm,c:'Renta Fija | Corporativos (ONs)',m:'USD'});
+        }
         monStat('corp',corpCnt,corpCnt>0?'ok':'warn');
         if(corpCnt===0) monLog('⚠ Hoja Corporativos ('+cName+') encontrada pero 0 filas leídas — revisar si cambiaron las columnas','warn');
       } else {
@@ -764,15 +823,112 @@ function loadMonitorFull(input){
         monStat('corp','0','warn');
       }
 
+      // ── SOBERANOS ──
+      var sName=findSheetCI(names,['Soberanos','Soberano','Sovereign','Bonos USD']);
+      if(!sName){
+        for(var sn of names){
+          if(sn===cName)continue;
+          var tr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
+          var flat=tr.slice(0,40).flat().map(function(v){return String(v||'').trim().toUpperCase();});
+          if(flat.some(function(v){return['GD30','AL30','GD35','GD29','AL29','GD41','AE38','GD46','AO27','AO28','AN29'].includes(v);})){sName=sn;break;}
+        }
+      }
       monLog('Soberanos: hoja='+(sName||'NO ENCONTRADA')+'…');
       if(sName){
+        var rows=XLSX.utils.sheet_to_json(wb.Sheets[sName],{header:1,defval:'',raw:true});
+        var currentCat='soberano';
+        for(var ri=0;ri<rows.length;ri++){
+          var row=rows[ri];
+          var r0=String(row[0]||'').trim().toUpperCase();
+          var r1=String(row[1]||'').trim().toUpperCase();
+          if(r0==='SOBERANOS'||r1==='SOBERANOS')currentCat='soberano';
+          else if(r0==='PROVINCIALES'||r1==='PROVINCIALES')currentCat='provincial';
+          else if(r0==='BOPREALES'||r1==='BOPREALES')currentCat='bopreal';
+          else if(r0.includes('DOLLAR')||r1.includes('DOLLAR'))currentCat='dollarlinked';
+          if(r0!=='TICKER')continue;
+          for(var di=ri+1;di<rows.length;di++){
+            var dr=rows[di];
+            var tk=String(dr[0]||'').trim().toUpperCase();
+            var em=String(dr[1]||'').trim();
+            if(tk==='TICKER')break;
+            if(!tk||!em||em==='NaN'||em===''||em.length>70)continue;
+            if(!/^[A-Z]{1,4}[0-9]{1,4}[A-Z]?$|^[A-Z]{2,6}[0-9]{2}[A-Z]?$/.test(tk))continue;
+            var tirRaw=parseFloat(dr[4]);
+            if(isNaN(tirRaw))continue;
+            var tir=Math.abs(tirRaw)>1?tirRaw/100:tirRaw;
+            if(tir>1.5||tir<-0.5)continue;
+            if(bonoVencido(dr[3]))continue;
+            if(newSOV[tk])continue;
+            var cupRaw=parseFloat(dr[7]);
+            var cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
+            newSOV[tk]={
+              categoria:currentCat,emisor:em,tir:tir,
+              precio:parseFloat(dr[2])||null,
+              venc:excelSerial(dr[3]),
+              cupon:cup,
+              meses:String(dr[8]||'').trim(),
+              moneda:String(dr[9]||'').trim(),
+              ley:String(dr[10]||'').trim(),
+              calif:String(dr[11]||'').trim()
+            };
+            sovCnt++;
+            var catL=currentCat==='provincial'?'Renta Fija | Sub-soberanos':currentCat==='bopreal'?'Renta Fija | Bopreales':'Renta Fija | Soberanos';
+            var mm=(newSOV[tk].moneda==='Cable'||newSOV[tk].moneda==='USD'||newSOV[tk].moneda==='MEP')?'USD':'ARS';
+            newBS.push({t:tk,n:em+' '+tk,c:catL,m:mm});
+          }
+        }
         monStat('sov',sovCnt,sovCnt>0?'ok':'warn');
       } else {
         monLog('⚠ Hoja Soberanos no encontrada','warn');
         monStat('sov','0','warn');
       }
 
+      // ── LETRAS/BONOS ARS ──
+      var lName=findSheetCI(names,['Letras','Letras-Bonos','Letras Bonos','Pesos','Tasa Fija','Renta Pesos','Locales']);
+      if(!lName){
+        for(var sn of names){
+          if(sn===cName||sn===sName)continue;
+          var tr=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
+          var flat=tr.slice(0,40).flat().map(function(v){return String(v||'').trim();});
+          if(flat.some(function(v){return['TX26','S29Y6','T30J6','TMF27','TMG27','TZXM7'].some(function(t){return v===t;});})){lName=sn;break;}
+        }
+      }
       if(lName){
+        var rows=XLSX.utils.sheet_to_json(wb.Sheets[lName],{header:1,defval:'',raw:true});
+        var currentSec='TasaFija';
+        for(var ri=0;ri<rows.length;ri++){
+          var c0=String(rows[ri][0]||'').trim();
+          if(c0==='Bonos Tasa Fija')currentSec='TasaFija';
+          else if(c0==='Bonos TAMAR')currentSec='TAMAR';
+          else if(c0==='Bonos CER')currentSec='CER';
+          if(c0!=='Ticker')continue;
+          for(var di=ri+1;di<rows.length;di++){
+            var dr=rows[di];
+            var tk=String(dr[0]||'').trim();
+            var papel=String(dr[1]||'').trim();
+            if(!tk||tk==='Ticker'||tk==='Resumen'||tk==='NaN'||tk.startsWith('S29')&&false)continue;
+            if(!/^[A-Z0-9]{2,10}$/.test(tk))continue;
+            var dias=parseFloat(dr[4]);
+            if(!isNaN(dias)&&dias<-5)continue;
+            if(bonoVencido(dr[3]))continue;
+            var tna=parseFloat(dr[7]);
+            var tir=parseFloat(dr[6]);
+            if(isNaN(tna)&&isNaN(tir))continue;
+            if(newLET[tk])continue;
+            newLET[tk]={
+              ticker:tk,tipo:papel||currentSec,seccion:currentSec,
+              precio:parseFloat(dr[2])||null,
+              venc:excelSerial(dr[3]),
+              dias:isNaN(dias)?null:dias,
+              tir:isNaN(tir)?null:tir,
+              tna:isNaN(tna)?null:tna,
+              tem:parseFloat(dr[8])||null,
+              moneda:'ARS',ley:'ARG'
+            };
+            letCnt++;
+            newBL.push({t:tk,n:(papel||currentSec)+' '+tk,c:'Renta Fija | Letras y Bonos ARS',m:'ARS'});
+          }
+        }
         monStat('let',letCnt,letCnt>0?'ok':'warn');
       }
 
@@ -1768,42 +1924,17 @@ document.addEventListener('DOMContentLoaded',function(){
   setTimeout(function(){_prefetchFonts();},2000);
 });
 
-// ── SHARED FILES AUTO-LOAD ──
+// ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel/fallback: ver fcn-core.js)
 (function() {
-  var DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
   function uk(k) { return k; }
-  function openDB() {
-    return new Promise(function(res, rej) {
-      var r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = function(e) { e.target.result.createObjectStore(DB_STORE); };
-      r.onsuccess = function(e) { res(e.target.result); };
-      r.onerror = function() { rej(); };
-    });
-  }
-  function getShared(key) {
-    return openDB().then(function(db) {
-      return new Promise(function(res) {
-        var r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess = function() { res(r.result || null); };
-        r.onerror = function() { res(null); };
-      });
-    }).catch(function() { return null; });
-  }
   function loadFromEntry(entry) {
     if (!entry) return;
     loadMonitorFull({ files: [new File([entry.data], entry.name)] });
   }
-  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
-  // cae a la copia publicada en la carpeta data/ del sitio.
-  function fetchStaticFallback(url) {
-    return fetch(url).then(function(r){ return r.ok ? r.arrayBuffer() : null; })
-      .then(function(buf){ return buf ? {data:buf, name:url.split('/').pop()} : null; })
-      .catch(function(){ return null; });
-  }
   function loadMonitor() {
-    getShared(uk('monitor')).then(function(entry){
+    fcnGetSharedFile(uk('monitor')).then(function(entry){
       if (entry) { loadFromEntry(entry); return; }
-      fetchStaticFallback('data/monitor.xlsx').then(loadFromEntry);
+      fcnFetchStaticFallback('data/monitor.xlsx').then(loadFromEntry);
     });
   }
   // ── Cliente activo (seleccionado desde el panel de la Suite) ──
@@ -1819,10 +1950,10 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   window.addEventListener('DOMContentLoaded', function() {
     loadMonitor();
-    getShared('activeClient').then(applyActiveClient);
+    fcnGetSharedFile('activeClient').then(applyActiveClient);
   });
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = function(e) {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', function(e) {
       if (!e.data) return;
       if (e.data.type === 'client_selected') {
         applyActiveClient({ cliente: e.data.cliente });
@@ -1832,7 +1963,7 @@ document.addEventListener('DOMContentLoaded',function(){
       var raw = e.data.rawKey || e.data.key;
       if (raw !== 'monitor') return;
       setTimeout(loadMonitor, 1500);
-    };
+    });
   }
 })();
 

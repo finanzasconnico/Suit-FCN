@@ -145,6 +145,7 @@ table.hm-table td { padding:7px 9px; border-bottom:1px solid var(--wash-1); }
 :focus-visible{outline:2px solid var(--gold) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -325,11 +326,6 @@ function xirr(price, cashflows, asOf) {
   }
   return mid;
 }
-
-// CONFIG WORKER — parseo del Excel (handleExcel/parseExcelBlock) vive en el
-// Worker, no acá. Ver handleExcel() más abajo.
-const WORKER_URL='https://finanzasconnico-proxy.nicostrijland.workers.dev';
-const FCN_KEY='fcn-2026-cambiar-esta-clave'; // tiene que coincidir con API_KEY en el Worker
 
 // ============================================================
 // ESTADO
@@ -654,24 +650,25 @@ function mergeOnsLive() {
 document.getElementById('btnReloadExcel').addEventListener('click', () => document.getElementById('fileInputHidden').click());
 document.getElementById('fileInputHidden').addEventListener('change', e => { if (e.target.files[0]) handleExcel(e.target.files[0]); });
 
-// La detección de columnas y extracción de DATA.ons/DATA.equity del Excel
-// (config EXCEL_SHEETS + parseExcelBlock/dedupe) vive en el Worker
-// (finanzasconnico-proxy /monitorvivo-excel-parse), no acá.
+const EXCEL_SHEETS = {
+  ons: { names: ['Corporativos'], dedupe: true, fields: { ticker: 0, emisor: 1, precioMep: 2, vencimiento: 3, tir: 4, duration: 5, amortizacion: 6, cupon: 7, mesCupon: 8, dolar: 9, ley: 10, calif: 11, laminaMin: 12, sector: 13, paridad: 14, precioCable: 15, tirCable: 16, durationCable: 17 } },
+  equity: { names: ['Equity'], fields: { update: -1, ticker: 0, ratio: 1, rating: 2, tpUsd: 3, tpArs: 4, precioHoyUsd: 5, pctATp: 6 }, dedupeByLatestUpdate: true }
+};
+
 function handleExcel(file) {
   const reader = new FileReader();
-  reader.onload = async e => {
+  reader.onload = e => {
     try {
-      const res = await fetch(WORKER_URL+'/monitorvivo-excel-parse',{
-        method:'POST',
-        headers:{'X-FCN-Key':FCN_KEY},
-        body:e.target.result,
-      });
-      if(!res.ok){
-        const errBody = await res.json().catch(()=>({}));
-        throw new Error(errBody.error||('El servidor de cálculo respondió '+res.status));
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true, raw: true });
+      for (const key in EXCEL_SHEETS) {
+        const cfg = EXCEL_SHEETS[key];
+        const sheetName = cfg.names.find(n => wb.SheetNames.includes(n));
+        if (!sheetName) continue;
+        let rows = parseExcelBlock(wb.Sheets[sheetName], cfg.fields);
+        if (cfg.dedupeByLatestUpdate) rows = dedupeLatest(rows);
+        else if (cfg.dedupe) rows = dedupeFirst(rows);
+        DATA[key] = rows;
       }
-      const data = await res.json();
-      Object.assign(DATA, data.DATA||{});
       mergeOnsLive();
       renderTab();
     } catch (err) {
@@ -679,6 +676,39 @@ function handleExcel(file) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+function dedupeFirst(rows) { const m = new Map(); for (const r of rows) if (!m.has(r.ticker)) m.set(r.ticker, r); return [...m.values()]; }
+function dedupeLatest(rows) { const m = new Map(); for (const r of rows) { const p = m.get(r.ticker); const d = r.update instanceof Date ? r.update.getTime() : 0; const pd = p && p.update instanceof Date ? p.update.getTime() : -1; if (!p || d >= pd) m.set(r.ticker, r); } return [...m.values()]; }
+function parseExcelBlock(ws, fieldOffsets) {
+  const raw = XLSX.utils.sheet_to_json(ws, { defval: null, header: 1, raw: true });
+  let hIdx = -1, tIdx = -1;
+  for (let i = 0; i < Math.min(raw.length, 20); i++) {
+    const row = raw[i] || [];
+    for (let j = 0; j < row.length; j++) if (row[j] === 'Ticker') { hIdx = i; tIdx = j; break; }
+    if (hIdx >= 0) break;
+  }
+  if (hIdx < 0) return [];
+  const out = [];
+  for (let i = hIdx + 1; i < raw.length; i++) {
+    const row = raw[i] || [];
+    const tk = String(row[tIdx + fieldOffsets.ticker] || '').trim();
+    if (!tk || tk.toLowerCase() === 'ticker' || !/^[A-Za-z0-9][A-Za-z0-9.\-]{1,9}$/.test(tk)) continue;
+    const rec = {};
+    for (const key in fieldOffsets) rec[key] = row[tIdx + fieldOffsets[key]] !== undefined ? row[tIdx + fieldOffsets[key]] : null;
+    rec.ticker = tk.toUpperCase();
+    // Un bono/ON con vencimiento ya pasado no es una posición ni una oportunidad — el Monitor
+    // lo sigue trayendo unos días con TIR basura. Se descarta. Margen 3 días.
+    if ('vencimiento' in fieldOffsets) {
+      const vRaw = rec.vencimiento;
+      let ms = null;
+      if (vRaw instanceof Date) ms = vRaw.getTime();
+      else if (typeof vRaw === 'number' && vRaw > 20000) ms = Math.round((vRaw - 25569) * 86400 * 1000);
+      else if (vRaw) { const d = new Date(String(vRaw)); if (!isNaN(d.getTime())) ms = d.getTime(); }
+      if (ms != null && ms > 946684800000 && ms < Date.now() - 3 * 86400000) continue; // > 2000: descarta fecha vacía / epoch
+    }
+    out.push(rec);
+  }
+  return out;
 }
 
 // ============================================================
@@ -954,30 +984,11 @@ function updateFootNote(count) {
 
 renderTab();
 
-// ── SHARED FILES AUTO-LOAD ──
+// ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel: ver fcn-core.js)
 (function() {
-  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function openDB() {
-    return new Promise((res, rej) => {
-      const r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-      r.onsuccess = e => res(e.target.result);
-      r.onerror = () => rej();
-    });
-  }
-  async function getShared(key) {
-    try {
-      const db = await openDB();
-      return new Promise(res => {
-        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess = () => res(r.result || null);
-        r.onerror = () => res(null);
-      });
-    } catch { return null; }
-  }
   function fakeFile(entry) { return new File([entry.data], entry.name); }
   async function loadTenencia() {
-    const ten = await getShared('tenencia');
+    const ten = await fcnGetSharedFile('tenencia');
     if (!ten) return;
     try {
       const wb = XLSX.read(ten.data, { type: 'array' });
@@ -988,22 +999,22 @@ renderTab();
     } catch (e) { console.warn('[Monitor Vivo] error leyendo tenencia', e); }
   }
   async function loadShared() {
-    const mon = await getShared('monitor');
+    const mon = await fcnGetSharedFile('monitor');
     if (mon) handleExcel(fakeFile(mon));
     await loadTenencia();
   }
   window.addEventListener('DOMContentLoaded', loadShared);
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = async e => {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', async e => {
       if (!e.data || e.data.type !== 'file_updated') return;
       const raw = e.data.rawKey || e.data.key;
       if (raw === 'tenencia') { await loadTenencia(); return; }
       if (raw !== 'monitor') return;
       await new Promise(r => setTimeout(r, 1500));
-      const entry = await getShared('monitor');
+      const entry = await fcnGetSharedFile('monitor');
       if (!entry) return;
       handleExcel(fakeFile(entry));
-    };
+    });
   }
 })();
 </script>

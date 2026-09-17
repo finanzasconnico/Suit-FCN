@@ -117,6 +117,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
 :focus-visible{outline:2px solid var(--gold) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 <body>
 
@@ -276,11 +277,6 @@ function fcnIrArchivos(e) {
   (window.top || window).location.href = 'FCN_Suite.html';
 }
 
-// CONFIG WORKER — parseo del Monitor de Bonos (cargarExcel/parseCorporativos/
-// parseSoberanos) vive en el Worker, no acá. Ver cargarExcel() más abajo.
-var WORKER_URL='https://finanzasconnico-proxy.nicostrijland.workers.dev';
-var FCN_KEY='fcn-2026-cambiar-esta-clave'; // tiene que coincidir con API_KEY en el Worker
-
 // ═══════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════
@@ -313,8 +309,8 @@ function iniciarBYMA(){
   if(typeof FCNByma === 'undefined') return;
   FCNByma.getONs().then(onBYMA).catch(function(e){ console.warn('[BYMA]', e); });
   try{
-    if(typeof BroadcastChannel !== 'undefined'){
-      new BroadcastChannel('fcn_shared').addEventListener('message', function(ev){
+    if(fcnBroadcastChannel){
+      fcnBroadcastChannel.addEventListener('message', function(ev){
         if(ev && ev.data && ev.data.type==='byma_updated') FCNByma.getONs().then(onBYMA);
       });
     }
@@ -403,21 +399,11 @@ function subirCompartido(key, input, cargarFn){
   if(!file) return;
   var reader = new FileReader();
   reader.onload = function(e){
-    var buf = e.target.result;
-    var req = indexedDB.open('fcn_shared_v1', 1);
-    req.onupgradeneeded = function(ev){ ev.target.result.createObjectStore('files'); };
-    req.onsuccess = function(ev){
-      var db = ev.target.result;
-      var putReq = db.transaction('files','readwrite').objectStore('files')
-        .put({ data: buf, name: file.name, ts: Date.now() }, key);
-      putReq.onsuccess = function(){
-        if(typeof BroadcastChannel !== 'undefined'){
-          new BroadcastChannel('fcn_shared').postMessage({ type:'file_updated', key:key, rawKey:key });
-        }
-      };
-      putReq.onerror = function(){ console.warn('[fcn_shared] no se pudo publicar', key, putReq.error); };
-    };
-    req.onerror = function(){ console.warn('[fcn_shared] no se pudo abrir para publicar', key, req.error); };
+    fcnSaveSharedFile(key, e.target.result, file.name).then(function(){
+      if(fcnBroadcastChannel){
+        fcnBroadcastChannel.postMessage({ type:'file_updated', key:key, rawKey:key });
+      }
+    }).catch(function(err){ console.warn('[fcn_shared] no se pudo publicar', key, err); });
   };
   reader.readAsArrayBuffer(file);
 }
@@ -425,10 +411,6 @@ function subirCompartido(key, input, cargarFn){
 // ═══════════════════════════════════════════════════════
 // EXCEL LOADER (mismo formato que Armador_Carteras / Scanner_ONs)
 // ═══════════════════════════════════════════════════════
-// La detección de hojas/columnas y extracción de bonos del Excel de Monitor
-// de Bonos (parseCorporativos/parseSoberanos) vive en el Worker
-// (finanzasconnico-proxy /bonos-monitor-parse), no acá — mismo motivo que en
-// el resto de la Suite: no exponer esa lógica en el repo público.
 function cargarExcel(input){
   var file = input.files[0];
   if(!file) return;
@@ -436,20 +418,12 @@ function cargarExcel(input){
   status.style.color = 'rgba(255,200,100,.8)';
   status.textContent = 'Leyendo Monitor Individuos…';
   var reader = new FileReader();
-  reader.onload = async function(e){
+  reader.onload = function(e){
     try{
-      var res = await fetch(WORKER_URL+'/bonos-monitor-parse',{
-        method:'POST',
-        headers:{'X-FCN-Key':FCN_KEY},
-        body:e.target.result,
-      });
-      if(!res.ok){
-        var errBody = await res.json().catch(function(){return{};});
-        throw new Error(errBody.error||('El servidor de cálculo respondió '+res.status));
-      }
-      var data = await res.json();
-      Object.assign(BOND_DB, data.BOND_DB||{});
-      var count = data.count||0;
+      var wb = XLSX.read(e.target.result, {type:'array', cellFormula:false, cellDates:false, raw:true});
+      var count = 0;
+      count += parseCorporativos(wb);
+      count += parseSoberanos(wb);
       saveDBToStorage();
       status.style.color = '#6dc27a';
       status.textContent = '✓ '+count+' bonos cargados en la base';
@@ -462,6 +436,101 @@ function cargarExcel(input){
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function parseCorporativos(wb){
+  var shName = wb.SheetNames.find(function(n){return n==='Corporativos';})
+    || wb.SheetNames.find(function(n){return n.toLowerCase().includes('corporativ');});
+  if(!shName) return 0;
+  var ws = wb.Sheets[shName];
+  var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+  var hdrRow=-1, colOffset=0;
+  for(var i=0;i<Math.min(rows.length,15);i++){
+    if(String(rows[i][0]).trim()==='Ticker'){hdrRow=i;colOffset=0;break;}
+    if(String(rows[i][1]).trim()==='Ticker'){hdrRow=i;colOffset=1;break;}
+  }
+  if(hdrRow<0) return 0;
+  var count=0;
+  for(var r=hdrRow+1;r<rows.length;r++){
+    var row=rows[r], c=colOffset;
+    var ticker=String(row[c+0]||'').trim();
+    var emisor=String(row[c+1]||'').trim();
+    if(!ticker||!emisor||ticker==='Ticker') continue;
+    var tirRaw=parseFloat(row[c+4]);
+    var cuponRaw=parseFloat(row[c+7]);
+    if(isNaN(tirRaw)||tirRaw<=0) continue;
+    var vencDate=excelDateToISO(row[c+3]);
+    if(bonoVencidoISO(vencDate)) continue;
+    var moneda=String(row[c+9]||'').trim();
+    var ley=String(row[c+10]||'').trim();
+    var calif=String(row[c+11]||'').trim();
+    var meses=String(row[c+8]||'').trim();
+    var amort=String(row[c+6]||'').trim();
+    var cupon=isNaN(cuponRaw)?null:Math.round(cuponRaw*10000)/100;
+    var tir=Math.round(tirRaw*10000)/100;
+    BOND_DB[ticker]={
+      ticker:ticker, emisor:emisor, categoria:'ON',
+      cupon_anual:cupon, meses_cupon:meses, vencimiento:vencDate,
+      amortizacion:amort, moneda:moneda, ley:ley, calificacion:calif,
+      tir_ref:tir, precio_ref:null, dur_ref:null
+    };
+    count++;
+  }
+  return count;
+}
+
+function parseSoberanos(wb){
+  var shName = wb.SheetNames.find(function(n){return n==='Soberanos';})
+    || wb.SheetNames.find(function(n){return n.toLowerCase().includes('sobera');});
+  if(!shName) return 0;
+  var rows = XLSX.utils.sheet_to_json(wb.Sheets[shName], {header:1, defval:'', raw:true});
+  // La hoja "Soberanos" de Balanz arranca en la columna B, así que sheet_to_json la indexa
+  // desde ahí: la columna "Ticker" cae en el índice 0, no 1. Se busca en qué columna está
+  // "Ticker" en cada fila de header (hay varios bloques: Soberanos, Provinciales, BOPREAL…) y
+  // se lee todo por offset fijo desde esa columna — mismo criterio que Scanner de ONs y
+  // Calculadora de Rotaciones. Bug real (arreglado 2026-09): antes leía todo +1 columna
+  // corrido y no cargaba NINGÚN soberano; funcionaba de rebote solo por el caché compartido
+  // fcn-sov-db de Armador/Scanner.
+  var findTickerCol = function(row){
+    row = row || [];
+    for(var j=0;j<row.length;j++){ if(String(row[j]||'').trim()==='Ticker') return j; }
+    return -1;
+  };
+  var count=0;
+  for(var hi=0; hi<rows.length; hi++){
+    var tCol = findTickerCol(rows[hi]);
+    if(tCol<0) continue;
+    var dataEnd = rows.length;
+    for(var k=hi+1; k<rows.length; k++){ if(findTickerCol(rows[k])>=0){ dataEnd=k; break; } }
+    for(var sr=hi+1; sr<dataEnd; sr++){
+      var srow = rows[sr] || [];
+      var ticker = String(srow[tCol]||'').trim().toUpperCase();
+      var emisor = String(srow[tCol+1]||'').trim();
+      if(!ticker||!emisor) continue;
+      if(!/^[A-Z0-9]{2,8}$/.test(ticker)) continue;
+      if(ticker.includes('/')) continue;
+      var tirRaw = parseFloat(srow[tCol+4]);
+      if(isNaN(tirRaw)||tirRaw<=0) continue;
+      var vencISO = excelDateToISO(srow[tCol+3]);
+      if(bonoVencidoISO(vencISO)) continue;
+      var cuponRaw = parseFloat(srow[tCol+7]);
+      BOND_DB[ticker]={
+        ticker:ticker, emisor:emisor, categoria:'Soberano',
+        cupon_anual: isNaN(cuponRaw)?null:Math.round(cuponRaw*10000)/100,
+        meses_cupon: String(srow[tCol+8]||'').trim(),
+        vencimiento: vencISO,
+        amortizacion: String(srow[tCol+6]||'').trim(),
+        moneda: String(srow[tCol+9]||'').trim(),
+        ley: String(srow[tCol+10]||'').trim(),
+        calificacion: String(srow[tCol+11]||'').trim(),
+        tir_ref: Math.round(tirRaw*10000)/100,
+        precio_ref: parseFloat(srow[tCol+2])||null,
+        dur_ref: parseFloat(srow[tCol+5])||null
+      };
+      count++;
+    }
+  }
+  return count;
 }
 
 function excelDateToISO(v){
@@ -1025,41 +1094,12 @@ function editarAmort(iso, val){
   renderAll();
 }
 
-// ── SHARED FILES AUTO-LOAD ──
+// ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel/fallback: ver fcn-core.js)
 (function() {
-  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function openDB() {
-    return new Promise((res, rej) => {
-      const r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-      r.onsuccess = e => res(e.target.result);
-      r.onerror = () => rej();
-    });
-  }
-  async function getShared(key) {
-    try {
-      const db = await openDB();
-      return new Promise(res => {
-        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess = () => res(r.result || null);
-        r.onerror = () => res(null);
-      });
-    } catch { return null; }
-  }
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
-  // Si este navegador nunca subió Monitor de Individuos (p.ej. otra compu),
-  // cae a la copia publicada en la carpeta data/ del sitio.
-  async function fetchStaticFallback(url) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) return null;
-      const buf = await r.arrayBuffer();
-      return { data: buf, name: url.split('/').pop() };
-    } catch { return null; }
-  }
   async function loadShared() {
-    let mon = await getShared('monitor');
-    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
+    let mon = await fcnGetSharedFile('monitor');
+    if (!mon) mon = await fcnFetchStaticFallback('data/monitor.xlsx');
     if (mon) cargarExcel(fakeInput(mon));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
@@ -1081,7 +1121,7 @@ function editarAmort(iso, val){
     return byTicker;
   }
   async function loadTenenciaCliente() {
-    const [ten, activeClient] = await Promise.all([getShared('tenencia'), getShared('activeClient')]);
+    const [ten, activeClient] = await Promise.all([fcnGetSharedFile('tenencia'), fcnGetSharedFile('activeClient')]);
     if (activeClient && activeClient.cliente) clienteActivo = activeClient.cliente;
     if (ten && ten.data) {
       try {
@@ -1097,8 +1137,8 @@ function editarAmort(iso, val){
   }
   window.addEventListener('DOMContentLoaded', loadTenenciaCliente);
 
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = async e => {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', async e => {
       if (!e.data) return;
       if (e.data.type === 'client_selected') {
         clienteActivo = e.data.cliente || null;
@@ -1115,11 +1155,11 @@ function editarAmort(iso, val){
       }
       if (raw !== 'monitor') return;
       await new Promise(r => setTimeout(r, 1500));
-      let entry = await getShared('monitor');
-      if (!entry) entry = await fetchStaticFallback('data/monitor.xlsx');
+      let entry = await fcnGetSharedFile('monitor');
+      if (!entry) entry = await fcnFetchStaticFallback('data/monitor.xlsx');
       if (!entry) return;
       cargarExcel(fakeInput(entry));
-    };
+    });
   }
 })();
 </script>

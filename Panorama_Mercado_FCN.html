@@ -153,6 +153,7 @@ table.holders tr:hover td{background:var(--wash-1);}
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 <body>
 
@@ -324,12 +325,6 @@ function fcnIrArchivos(e) {
   (window.top || window).location.href = 'FCN_Suite.html';
 }
 
-// CONFIG WORKER — parseo del Monitor de Bonos (cargarMonitor) vive en el
-// Worker, no acá. Misma ruta que usa Scanner_ONs_FCN.html: es el mismo
-// formato de dataMonitor.
-const WORKER_URL='https://finanzasconnico-proxy.nicostrijland.workers.dev';
-const FCN_KEY='fcn-2026-cambiar-esta-clave'; // tiene que coincidir con API_KEY en el Worker
-
 // ══════════════════════════════════════════════════════════════
 //  ESTADO
 // ══════════════════════════════════════════════════════════════
@@ -353,8 +348,8 @@ function iniciarBYMA(){
   if(typeof FCNByma === 'undefined') return;
   FCNByma.getONs().then(onBYMA).catch(e=>console.warn('[BYMA]', e));
   try{
-    if(typeof BroadcastChannel !== 'undefined'){
-      new BroadcastChannel('fcn_shared').addEventListener('message', ev=>{
+    if(fcnBroadcastChannel){
+      fcnBroadcastChannel.addEventListener('message', ev=>{
         if(ev && ev.data && ev.data.type==='byma_updated') FCNByma.getONs().then(onBYMA);
       });
     }
@@ -422,20 +417,9 @@ function subirCompartido(key, input, cargarFn) {
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      const db = await new Promise((res, rej) => {
-        const r = indexedDB.open('fcn_shared_v1', 1);
-        r.onupgradeneeded = ev => ev.target.result.createObjectStore('files');
-        r.onsuccess = ev => res(ev.target.result);
-        r.onerror = () => rej(r.error);
-      });
-      await new Promise((res, rej) => {
-        const req = db.transaction('files', 'readwrite').objectStore('files')
-          .put({ data: e.target.result, name: file.name, ts: Date.now() }, key);
-        req.onsuccess = () => res();
-        req.onerror = () => rej(req.error);
-      });
-      if (typeof BroadcastChannel !== 'undefined') {
-        new BroadcastChannel('fcn_shared').postMessage({ type: 'file_updated', key: key, rawKey: key });
+      await fcnSaveSharedFile(key, e.target.result, file.name);
+      if (fcnBroadcastChannel) {
+        fcnBroadcastChannel.postMessage({ type: 'file_updated', key: key, rawKey: key });
       }
     } catch (err) { console.warn('[fcn_shared] no se pudo publicar', key, err); }
   };
@@ -445,10 +429,6 @@ function subirCompartido(key, input, cargarFn) {
 // ══════════════════════════════════════════════════════════════
 //  CARGA — MONITOR DE INDIVIDUOS (misma lógica que Scanner de ONs)
 // ══════════════════════════════════════════════════════════════
-// La detección de hojas/columnas y extracción de dataMonitor del Excel de
-// Monitor de Bonos vive en el Worker (finanzasconnico-proxy
-// /scanner-monitor-parse — misma ruta y mismo formato que usa
-// Scanner_ONs_FCN.html), no acá.
 function cargarMonitor(input) {
   const file = input.files ? input.files[0] : null;
   if (!file) return Promise.resolve();
@@ -459,20 +439,100 @@ function cargarMonitor(input) {
   // las filas — quedaba "En cartera de clientes: 0" siempre, sin importar los datos reales).
   return new Promise(resolve => {
   const reader = new FileReader();
-  reader.onload = async e => {
+  reader.onload = e => {
     try {
-      const res = await fetch(WORKER_URL+'/scanner-monitor-parse',{
-        method:'POST',
-        headers:{'X-FCN-Key':FCN_KEY},
-        body:e.target.result,
-      });
-      if(!res.ok){
-        const errBody = await res.json().catch(()=>({}));
-        throw new Error(errBody.error||('El servidor de cálculo respondió '+res.status));
+      const wb = XLSX.read(e.target.result, {type:'array', cellFormula:false, cellDates:false, raw:true});
+      const names = wb.SheetNames;
+      dataMonitor = {}; let corpCnt=0, sovCnt=0;
+
+      let cName = names.find(s=>s==='Corporativos') || names.find(s=>s.toLowerCase().includes('corporativ')) || null;
+      if(!cName){for(const s of names){const r=XLSX.utils.sheet_to_json(wb.Sheets[s],{defval:null,header:1});if(r.slice(0,15).some(row=>row.some(v=>v==='Ticker'))){cName=s;break;}}}
+      if(!cName) throw new Error('No encontré la hoja Corporativos.');
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[cName], {defval:null, header:1, raw:true});
+      let hIdx=-1, tIdx=-1;
+      for(let i=0;i<Math.min(raw.length,15);i++){for(let j=0;j<raw[i].length;j++){if(raw[i][j]==='Ticker'){hIdx=i;tIdx=j;break;}}if(hIdx>=0)break;}
+      if(hIdx<0) throw new Error('No encontré la columna "Ticker".');
+      const iT=tIdx, iE=tIdx+1, iVto=tIdx+3, iTIR=tIdx+4, iCup=tIdx+7, iDol=tIdx+9, iCal=tIdx+11, iTIRC=tIdx+16;
+      const colMap = {};
+      raw[hIdx].forEach((v,j)=>{ if(v){const k=String(v).trim().toLowerCase(); if(colMap[k]===undefined) colMap[k]=j;} });
+      const findCol=(...names)=>{for(const n of names){const k=n.toLowerCase();if(colMap[k]!==undefined)return colMap[k];}return -1;};
+      const iDur = findCol('Duration','Dur.','Dur','Duration (años)','Duración','Duracion');
+      const iLamMin = findCol('Lámina min.','Lamina min.','Lámina mín.','Lamina mín.','Lam. min.','Lámina Min','Lamina Min');
+      const parseNum = v=>{if(v===null||v===undefined||v==='')return null;const n=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;};
+      const calcDurFromVto = vtoRaw=>{
+        if(!vtoRaw) return null;
+        let ms;
+        if(typeof vtoRaw==='number') ms=Math.round((vtoRaw-25569)*86400*1000);
+        else {const d=new Date(String(vtoRaw));if(isNaN(d)) return null;ms=d.getTime();}
+        const yrs=(ms-Date.now())/(365.25*86400*1000);
+        return yrs>0?Math.round(yrs*100)/100:null;
+      };
+      // Un bono/ON con vencimiento ya pasado no es una posición ni una oportunidad — el Monitor
+      // lo sigue trayendo unos días con TIR basura. Se descarta de todo el Panorama. Margen 3 días.
+      const _nowMs=Date.now();
+      const yaVencio=vtoRaw=>{let ms=null;if(typeof vtoRaw==='number'&&vtoRaw>20000)ms=Math.round((vtoRaw-25569)*86400*1000);else if(vtoRaw){const d=new Date(String(vtoRaw));if(!isNaN(d.getTime()))ms=d.getTime();}return ms!=null&&ms>946684800000&&ms<_nowMs-3*86400000;};
+      for(let i=hIdx+1;i<raw.length;i++){
+        const row=raw[i]; const tk=String(row[iT]||'').trim();
+        if(!tk||!/^[A-Z0-9]{3,8}$/i.test(tk)) continue;
+        const vtoRaw=row[iVto];
+        if(yaVencio(vtoRaw)) continue;
+        const vencimiento=typeof vtoRaw==='number'?excelSerialToDate(vtoRaw):(String(vtoRaw||'').trim());
+        const durFromExcel=parseNum(iDur>=0?row[iDur]:null);
+        const duration=durFromExcel!==null&&durFromExcel>0?durFromExcel:calcDurFromVto(vtoRaw);
+        dataMonitor[tk]={tipo:'corporativo',tir:parseFloat(row[iTIR])||null,cupon:parseFloat(row[iCup])||null,
+          vencimiento,calificacion:String(row[iCal]||'').trim(),
+          emisor:String(row[iE]||'').trim(),tirCable:parseFloat(row[iTIRC])||null,
+          dolar:String(row[iDol]||'').trim(),instrumento:String(row[iE]||'').trim(),
+          duration, laminaMin: parseNum(iLamMin>=0?row[iLamMin]:null)};
+        corpCnt++;
       }
-      const data = await res.json();
-      dataMonitor = data.dataMonitor||{};
-      const corpCnt=data.corpCnt||0, sovCnt=data.sovCnt||0;
+
+      let sName = names.find(s=>s==='Soberanos') || names.find(s=>['soberano','sovereign','bonos usd'].some(k=>s.toLowerCase().includes(k))) || null;
+      if(!sName){
+        for(const sn of names){
+          if(sn===cName) continue;
+          const flat=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:''}).slice(0,40).flat().map(v=>String(v||'').trim().toUpperCase());
+          if(['GD30','AL30','GD35','GD29','AL29','GD41','AE38','GD46'].some(t=>flat.includes(t))){sName=sn;break;}
+        }
+      }
+      if(sName){
+        const sovRaw=XLSX.utils.sheet_to_json(wb.Sheets[sName],{defval:'',header:1,raw:true});
+        let currentCat='soberano';
+        for(let ri=0;ri<sovRaw.length;ri++){
+          const row=sovRaw[ri];
+          const r0=String(row[0]||'').trim().toUpperCase();
+          const r1=String(row[1]||'').trim().toUpperCase();
+          if(r0==='SOBERANOS'||r1==='SOBERANOS') currentCat='soberano';
+          else if(r0==='PROVINCIALES'||r1==='PROVINCIALES') currentCat='provincial';
+          else if(r0==='BOPREALES'||r1==='BOPREALES') currentCat='bopreal';
+          else if(r0.includes('DOLLAR')||r1.includes('DOLLAR')) currentCat='dollarlinked';
+          if(r0!=='TICKER') continue;
+          for(let di=ri+1;di<sovRaw.length;di++){
+            const dr=sovRaw[di];
+            const tk=String(dr[0]||'').trim().toUpperCase();
+            const em=String(dr[1]||'').trim();
+            if(tk==='TICKER') break;
+            if(!tk||!em||em.length>70) continue;
+            if(!/^[A-Z]{1,4}[0-9]{1,4}[A-Z]?$|^[A-Z]{2,6}[0-9]{2}[A-Z]?$/.test(tk)) continue;
+            const tirRaw=parseFloat(dr[4]);
+            if(isNaN(tirRaw)) continue;
+            const tir=Math.abs(tirRaw)>1?tirRaw/100:tirRaw;
+            if(tir>1.5||tir<-0.5) continue;
+            if(dataMonitor[tk]) continue;
+            const vRaw=dr[3];
+            if(yaVencio(vRaw)) continue;
+            const cupRaw=parseFloat(dr[7]);
+            const cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
+            const vencimiento=vRaw?(typeof vRaw==='number'?excelSerialToDate(vRaw):String(vRaw).trim()):'';
+            const sovDur=calcDurFromVto(vRaw);
+            dataMonitor[tk]={tipo:currentCat,tir,cupon:cup,vencimiento,
+              calificacion:String(dr[11]||'').trim(),emisor:em,
+              tirCable:null,dolar:String(dr[9]||'').trim(),instrumento:em,
+              duration:sovDur,laminaMin:null};
+            sovCnt++;
+          }
+        }
+      }
       const total=corpCnt+sovCnt;
       if(total===0) throw new Error('No se encontraron tickers válidos en el Monitor.');
       showToast(`✓ Monitor cargado: ${corpCnt} ONs + ${sovCnt} Soberanos/Sub-sober.`);
@@ -900,46 +960,19 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 //  SHARED FILES AUTO-LOAD — Monitor (con fallback publicado) + Tenencia (solo local, nunca se publica)
 // ══════════════════════════════════════════════════════════════
 (function() {
-  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function openDB() {
-    return new Promise((res, rej) => {
-      const r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-      r.onsuccess = e => res(e.target.result);
-      r.onerror = () => rej();
-    });
-  }
-  async function getShared(key) {
-    try {
-      const db = await openDB();
-      return new Promise(res => {
-        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess = () => res(r.result || null);
-        r.onerror = () => res(null);
-      });
-    } catch { return null; }
-  }
   function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
-  async function fetchStaticFallback(url) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) return null;
-      const buf = await r.arrayBuffer();
-      return { data: buf, name: url.split('/').pop() };
-    } catch { return null; }
-  }
   async function loadShared() {
     // Monitor PRIMERO y esperado (await) — construirHolders() (disparado por cargarTenencia)
     // necesita que dataMonitor ya esté poblado para poder cruzar los tickers de Tenencia contra
     // él; si no, todas las filas quedan descartadas silenciosamente (ver comentario en
     // cargarMonitor). El orden inverso fue justo el bug reportado: "En cartera: 0" siempre.
-    let mon = await getShared('monitor');
-    if (!mon) mon = await fetchStaticFallback('data/monitor.xlsx');
+    let mon = await fcnGetSharedFile('monitor');
+    if (!mon) mon = await fcnFetchStaticFallback('data/monitor.xlsx');
     if (mon) await cargarMonitor(fakeInput(mon));
-    const topF = await getShared('topClientsFilter');
+    const topF = await fcnGetSharedFile('topClientsFilter');
     if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
-    const activeClient = await getShared('activeClient');
-    const ten = await getShared('tenencia');
+    const activeClient = await fcnGetSharedFile('activeClient');
+    const ten = await fcnGetSharedFile('tenencia');
     if (ten) await cargarTenencia(fakeInput(ten));
     if (activeClient && activeClient.cliente) waitForDataAndApplyClient(activeClient.cliente);
   }
@@ -960,8 +993,8 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     setTimeout(() => waitForDataAndApplyClient(cliente, tries + 1), 500);
   }
   window.addEventListener('DOMContentLoaded', loadShared);
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = async e => {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', async e => {
       if (!e.data) return;
       if (e.data.type === 'top_clients_selected') {
         topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
@@ -974,12 +1007,12 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
       }
       if (e.data.type !== 'file_updated') return;
       await new Promise(r => setTimeout(r, 1500));
-      const entry = await getShared(e.data.key);
+      const entry = await fcnGetSharedFile(e.data.key);
       if (!entry) return;
       const raw = e.data.rawKey || e.data.key;
       if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
       if (raw === 'monitor')  cargarMonitor(fakeInput(entry));
-    };
+    });
   }
 })();
 </script>
