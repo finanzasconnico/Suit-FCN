@@ -39,6 +39,24 @@
   --muted:   #8AA39D;
   --border:  #1E3A34;
   --radius:  6px;
+  --wash-1:  rgba(255,255,255,.045);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F1EFE9;--border:#E2E6E4;
+    --ambar:#B8862F;--text:#1C2B28;--muted:#5B6B66;
+    --wash-1:rgba(0,0,0,.035);
+  }
+}
+[data-theme="light"]{
+  --bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F1EFE9;--border:#E2E6E4;
+  --ambar:#B8862F;--text:#1C2B28;--muted:#5B6B66;
+  --wash-1:rgba(0,0,0,.035);
+}
+[data-theme="dark"]{
+  --bg:#081917;--surface:#0E2622;--surface2:#122E29;--border:#1E3A34;
+  --ambar:#DBA03C;--text:#EAF1EE;--muted:#8AA39D;
+  --wash-1:rgba(255,255,255,.045);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
@@ -122,8 +140,8 @@ input[type=range]{accent-color:var(--ambar);width:100%;}
 .holders-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;justify-content:space-between;}
 table.holders{width:100%;border-collapse:collapse;font-size:12px;}
 table.holders th{text-align:left;font-size:9.5px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--border);}
-table.holders td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);}
-table.holders tr:hover td{background:rgba(255,255,255,.03);}
+table.holders td{padding:7px 8px;border-bottom:1px solid var(--wash-1);}
+table.holders tr:hover td{background:var(--wash-1);}
 .no-holders{background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);padding:16px;text-align:center;color:var(--muted);font-size:12px;}
 .copy-btn{font-size:10.5px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;}
 .copy-btn:hover{color:var(--ambar);border-color:var(--ambar);}
@@ -132,8 +150,9 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
 .btn-rotar:hover{opacity:.88;}
 .btn-rotar-out{flex:1;display:block;text-align:center;padding:10px 16px;border-radius:5px;background:transparent;border:1px solid var(--jade);color:var(--jade);font-weight:600;font-size:12.5px;text-decoration:none;transition:background .15s,color .15s;}
 .btn-rotar-out:hover{background:var(--jade);color:#fff;}
-:focus-visible{outline:2px solid #DBA03C !important;outline-offset:2px !important;}
+:focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
+<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
 
@@ -146,7 +165,8 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
       <div class="byma-estado" id="byma-estado" style="display:none;"></div>
     </div>
   </div>
-  <div style="display:flex;gap:8px;">
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--text);">🌙</button>
     <label class="upload-pill">📈 Monitor <input type="file" id="inp-monitor" accept=".xlsx,.xls,.xlsm,.csv" onchange="subirCompartido('monitor', this, cargarMonitor)"></label>
     <label class="upload-pill">📊 Tenencia <input type="file" id="inp-tenencia" accept=".xlsx,.xls,.csv" onchange="subirCompartido('tenencia', this, cargarTenencia)"></label>
   </div>
@@ -293,6 +313,26 @@ table.holders tr:hover td{background:rgba(255,255,255,.03);}
 <div class="toast" id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════════════════════════
+// TEMA (claro/oscuro) — clave compartida con el resto de la Suite ('fcn_theme').
+// ══════════════════════════════════════════════════════════════
+function currentEffectiveTheme(){
+  var attr=document.documentElement.getAttribute('data-theme');
+  if(attr==='light'||attr==='dark')return attr;
+  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+}
+function setThemeIcon(){
+  var btn=document.getElementById('btnTheme');
+  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
+}
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme',theme);
+  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
+  setThemeIcon();
+}
+function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
+window.addEventListener('DOMContentLoaded',setThemeIcon);
+
 // Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
 // iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
 // abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).

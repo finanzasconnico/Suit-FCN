@@ -16,12 +16,28 @@
   --ambar:   #DBA03C;
   --danger:  #C0453B;
   --text:    #EAF1EE;
+  --text-strong: #ffffff;
   --muted:   #6C817C;
   --dim:     #3C5752;
+  --wash-1:  rgba(255,255,255,.05);
   --font-d:  'Spectral', Georgia, serif;
   --font-s:  'Hanken Grotesk', system-ui, sans-serif;
   --font-m:  'IBM Plex Mono', ui-monospace, monospace;
   --r: 6px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#FAF9F6;--surface:#FFFFFF;--border:#E2E6E4;--ambar:#B8862F;
+    --text:#1C2B28;--text-strong:#0A130F;--muted:#5B6B66;--wash-1:rgba(0,0,0,.035);
+  }
+}
+[data-theme="light"]{
+  --bg:#FAF9F6;--surface:#FFFFFF;--border:#E2E6E4;--ambar:#B8862F;
+  --text:#1C2B28;--text-strong:#0A130F;--muted:#5B6B66;--wash-1:rgba(0,0,0,.035);
+}
+[data-theme="dark"]{
+  --bg:#081917;--surface:#0E2622;--border:#1E3A34;--ambar:#DBA03C;
+  --text:#EAF1EE;--text-strong:#ffffff;--muted:#6C817C;--wash-1:rgba(255,255,255,.05);
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { min-height: 100vh; }
@@ -109,7 +125,7 @@ label {
 input[type="email"], input[type="text"] {
   width: 100%;
   padding: 11px 14px;
-  background: rgba(255,255,255,.05);
+  background: var(--wash-1);
   border: 1px solid var(--border);
   border-radius: var(--r);
   color: var(--text);
@@ -184,7 +200,7 @@ input::placeholder { color: var(--dim); }
   color: var(--dim);
   letter-spacing: .06em;
 }
-:focus-visible{outline:2px solid #DBA03C !important;outline-offset:2px !important;}
+:focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
 </head>
 <body>
