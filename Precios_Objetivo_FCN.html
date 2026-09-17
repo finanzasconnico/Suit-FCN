@@ -6,6 +6,7 @@
 <title>Precios Objetivo — FCN Suite</title>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="fcn-core.js"></script>
 <style>
 :root {
   --bg:      #081917;
@@ -139,7 +140,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 .empty-sub code{font-family:var(--font-m);font-size:11px;background:var(--surface2);padding:2px 6px;border-radius:3px;border:1px solid var(--border);color:var(--ambar);}
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
-<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="fcn-theme.js"></script>
 </head>
 <body>
 <div class="page" id="page">
@@ -214,26 +215,6 @@ tbody td{padding:9px 12px;vertical-align:middle;}
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-// TEMA (claro/oscuro) — clave compartida con el resto de la Suite ('fcn_theme').
-// ══════════════════════════════════════════════════════════════
-function currentEffectiveTheme(){
-  var attr=document.documentElement.getAttribute('data-theme');
-  if(attr==='light'||attr==='dark')return attr;
-  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-}
-function setThemeIcon(){
-  var btn=document.getElementById('btnTheme');
-  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme',theme);
-  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
-  setThemeIcon();
-}
-function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
-window.addEventListener('DOMContentLoaded',setThemeIcon);
-
 // Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
 // iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
 // abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).
@@ -246,36 +227,9 @@ function fcnIrArchivos(e) {
 }
 
 // ══════════════════════════════════════════
-//  INDEXED DB — copiado exacto del Suite
+//  INDEXED DB + BROADCAST CHANNEL — compartido, ver fcn-core.js
 // ══════════════════════════════════════════
-const DB_NAME  = 'fcn_shared_v1';
-const DB_STORE = 'files';
-
-function openSharedDB() {
-  return new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-    req.onsuccess  = e => res(e.target.result);
-    req.onerror    = () => rej(new Error('IndexedDB no disponible'));
-  });
-}
-
-async function getSharedFile(key) {
-  try {
-    const db = await openSharedDB();
-    return new Promise(res => {
-      const tx  = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get(key);
-      req.onsuccess = () => res(req.result || null);
-      req.onerror   = () => res(null);
-    });
-  } catch { return null; }
-}
-
-// ══════════════════════════════════════════
-//  BROADCAST CHANNEL
-// ══════════════════════════════════════════
-const BC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('fcn_shared') : null;
+const BC = fcnBroadcastChannel;
 if (BC) {
   BC.onmessage = e => {
     if (e.data?.type === 'file_updated' && e.data?.key === 'precios_objetivo') {
@@ -296,7 +250,7 @@ if (BC) {
 }
 // Cliente/Top N ya elegidos en el Suite antes de que se abriera esta pestaña.
 (async () => {
-  const [activeClient, topF] = await Promise.all([getSharedFile('activeClient'), getSharedFile('topClientsFilter')]);
+  const [activeClient, topF] = await Promise.all([fcnGetSharedFile('activeClient'), fcnGetSharedFile('topClientsFilter')]);
   if (activeClient?.cliente) clienteActivo = activeClient.cliente;
   if (topF?.clientes?.length) topClientesFiltroSet = new Set(topF.clientes);
 })();
@@ -368,7 +322,7 @@ function abrirHolders(ticker) {
 function cerrarHolders() { document.getElementById('holdersOverlay').classList.remove('open'); }
 
 async function loadTenencia() {
-  const entry = await getSharedFile('tenencia');
+  const entry = await fcnGetSharedFile('tenencia');
   if (!entry || !entry.data) return;
   try {
     const wb = XLSX.read(entry.data, { type: 'array' });
@@ -581,21 +535,10 @@ function showTimestamp(ts) {
 // ══════════════════════════════════════════
 //  LOAD & RENDER
 // ══════════════════════════════════════════
-// Si este navegador nunca subió el archivo (p.ej. otra compu / otro asesor),
-// cae a la copia publicada en la carpeta data/ del sitio (ver FCN_Suite.html).
-async function fetchStaticFallback(url) {
-  try {
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const buf = await r.arrayBuffer();
-    const lastMod = r.headers.get('Last-Modified');
-    return { data: buf, name: url.split('/').pop(), ts: lastMod ? new Date(lastMod).getTime() : Date.now() };
-  } catch { return null; }
-}
 
 async function loadAndRender() {
-  let entry = await getSharedFile('precios_objetivo');
-  if (!entry || !entry.data) entry = await fetchStaticFallback('data/precios_objetivo.xlsx');
+  let entry = await fcnGetSharedFile('precios_objetivo');
+  if (!entry || !entry.data) entry = await fcnFetchStaticFallback('data/precios_objetivo.xlsx');
   if (!entry || !entry.data) {
     document.getElementById('empty-state').style.display  = 'flex';
     document.getElementById('table-wrap').style.display   = 'none';

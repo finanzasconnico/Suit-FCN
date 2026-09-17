@@ -246,7 +246,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 }
 :focus-visible{outline:2px solid var(--balanz) !important;outline-offset:2px !important;}
 </style>
-<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="fcn-theme.js"></script>
 </head>
 
 <body>
@@ -439,26 +439,6 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-// TEMA (claro/oscuro) — clave compartida con el resto de la Suite ('fcn_theme').
-// ══════════════════════════════════════════════════════════════
-function currentEffectiveTheme(){
-  var attr=document.documentElement.getAttribute('data-theme');
-  if(attr==='light'||attr==='dark')return attr;
-  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-}
-function setThemeIcon(){
-  var btn=document.getElementById('btnTheme');
-  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme',theme);
-  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
-  setThemeIcon();
-}
-function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
-window.addEventListener('DOMContentLoaded',setThemeIcon);
-
 // ═══ BASE DATA ═══
 var BYMA_BASE=[
   {t:'GGAL',n:'Grupo Financiero Galicia',c:'Renta Variable | Argentina',m:'ARS'},
@@ -575,30 +555,6 @@ async function fetchTargetPrice(ticker) {
 var _preciosObjMap = {}; // ticker.toUpperCase() → { precio, target, moneda, rec }
 
 var _preciosObjReady = (function loadPreciosObjetivo() {
-  var DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function _openDB() {
-    return new Promise(function(res,rej){
-      var r = indexedDB.open(DB_NAME,1);
-      r.onupgradeneeded = function(e){e.target.result.createObjectStore(DB_STORE);};
-      r.onsuccess = function(e){res(e.target.result);};
-      r.onerror = function(){rej();};
-    });
-  }
-  function _getShared(key) {
-    return _openDB().then(function(db){
-      return new Promise(function(res){
-        var r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess = function(){res(r.result||null);};
-        r.onerror = function(){res(null);};
-      });
-    }).catch(function(){return null;});
-  }
-  function _fetchStatic(url) {
-    return fetch(url, {cache:'no-store'}).then(function(r){
-      if (!r.ok) return null;
-      return r.arrayBuffer().then(function(buf){ return {data:buf, name:url.split('/').pop()}; });
-    }).catch(function(){ return null; });
-  }
   function parse(entry) {
     if (!entry || !entry.data) return;
     try {
@@ -625,8 +581,8 @@ var _preciosObjReady = (function loadPreciosObjetivo() {
     } catch(e) { console.warn('[PreciosObj] parse error', e); }
   }
   function load() {
-    return _getShared('precios_objetivo').then(function(entry){
-      return entry || _fetchStatic('data/precios_objetivo.xlsx');
+    return fcnGetSharedFile('precios_objetivo').then(function(entry){
+      return entry || fcnFetchStaticFallback('data/precios_objetivo.xlsx');
     }).then(parse);
   }
   var ready = new Promise(function(resolve){
@@ -641,12 +597,12 @@ var _preciosObjReady = (function loadPreciosObjetivo() {
       updateYield(); // recalcula también la barra de objetivo de precio (updateTarget)
     }
   });
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = function(e) {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', function(e) {
       if (e.data && e.data.type === 'file_updated' && e.data.key === 'precios_objetivo') {
         setTimeout(load, 500);
       }
-    };
+    });
   }
   return ready;
 })();

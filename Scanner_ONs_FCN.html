@@ -353,7 +353,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .cc-total b{color:var(--jade);}
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
-<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="fcn-theme.js"></script>
 </head>
 <body>
 
@@ -737,26 +737,6 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 </div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-// TEMA (claro/oscuro) — clave compartida con el resto de la Suite ('fcn_theme').
-// ══════════════════════════════════════════════════════════════
-function currentEffectiveTheme(){
-  var attr=document.documentElement.getAttribute('data-theme');
-  if(attr==='light'||attr==='dark')return attr;
-  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-}
-function setThemeIcon(){
-  var btn=document.getElementById('btnTheme');
-  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme',theme);
-  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
-  setThemeIcon();
-}
-function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
-window.addEventListener('DOMContentLoaded',setThemeIcon);
-
 // Link de "no hay archivo cargado" → FCN Suite. Si esta herramienta está embebida en el
 // iframe de FCN_Suite.html, cambia directo a la pestaña Archivos sin recargar nada; si se
 // abrió suelta (doble clic), navega a FCN_Suite.html (el href plano ya cubre ese caso solo).

@@ -454,7 +454,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .toast.hidden{transform:translateY(20px);opacity:0;}
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
-<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -895,29 +896,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 <script>
 // ══════════════════════════════════════════════════════════════
-// TEMA (claro/oscuro) — clave de localStorage compartida ('fcn_theme') con
-// el resto de la Suite, así el toggle elegido en una herramienta se respeta
-// en las demás. El atributo data-theme ya se aplicó en el <head> (antes del
-// primer paint) si había una preferencia guardada.
-// ══════════════════════════════════════════════════════════════
-function currentEffectiveTheme(){
-  var attr=document.documentElement.getAttribute('data-theme');
-  if(attr==='light'||attr==='dark')return attr;
-  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-}
-function setThemeIcon(){
-  var btn=document.getElementById('btnTheme');
-  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme',theme);
-  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
-  setThemeIcon();
-}
-function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
-window.addEventListener('DOMContentLoaded',setThemeIcon);
-
-// ══════════════════════════════════════════════════════════════
 //  ⚙ USUARIOS — editá esta sección para gestionar el equipo
 // ══════════════════════════════════════════════════════════════
 // Nota: este login es solo para personalizar el nombre — no restringe acceso.
@@ -1092,87 +1070,39 @@ function downloadForPublish(key, arrayBuffer) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  INDEXED DB — almacenamiento de archivos compartidos
+//  INDEXED DB + BROADCAST CHANNEL — compartido, ver fcn-core.js.
+//  Acá solo queda lo específico del hub: activeClient y topClientsFilter
+//  no tienen la forma genérica {data,name,ts} de un archivo, así que usan
+//  fcnOpenSharedDB() directo en vez de fcnGetSharedFile/fcnSaveSharedFile.
 // ══════════════════════════════════════════════════════════════
-const DB_NAME  = 'fcn_shared_v1';
-const DB_STORE = 'files';
-
-// Se reusa la misma conexión durante toda la sesión en vez de abrir una nueva
-// en cada get/save/delete — abrir IndexedDB tiene overhead y esto se llama
-// muy seguido (dashboard, estado de archivos, cliente activo, etc.).
-let _dbPromise = null;
-function openSharedDB() {
-  if (_dbPromise) return _dbPromise;
-  _dbPromise = new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-    req.onsuccess  = e => res(e.target.result);
-    req.onerror    = () => { _dbPromise = null; rej(new Error('IndexedDB no disponible')); };
-  });
-  return _dbPromise;
-}
-
-async function saveSharedFile(key, arrayBuffer, fileName) {
-  const db = await openSharedDB();
-  return new Promise((res, rej) => {
-    const tx  = db.transaction(DB_STORE, 'readwrite');
-    const req = tx.objectStore(DB_STORE).put({ data: arrayBuffer, name: fileName, ts: Date.now() }, key);
-    req.onsuccess = () => res();
-    req.onerror   = () => rej();
-  });
-}
-
-async function getSharedFile(key) {
-  try {
-    const db = await openSharedDB();
-    return new Promise(res => {
-      const tx  = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get(key);
-      req.onsuccess = () => res(req.result || null);
-      req.onerror   = () => { console.warn('[fcn_shared] error leyendo', key, req.error); res(null); };
-    });
-  } catch (e) { console.warn('[fcn_shared] no se pudo abrir IndexedDB para leer', key, e); return null; }
-}
-
-async function deleteSharedFile(key) {
-  const db = await openSharedDB();
-  return new Promise((res, rej) => {
-    const tx  = db.transaction(DB_STORE, 'readwrite');
-    const req = tx.objectStore(DB_STORE).delete(key);
-    req.onsuccess = () => res();
-    req.onerror   = () => rej();
-  });
-}
-
-// BroadcastChannel: notifica a las herramientas abiertas cuando se actualiza un archivo
-const BC = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('fcn_shared') : null;
+const BC = fcnBroadcastChannel;
 
 // ── CLIENTE ACTIVO — mismo IndexedDB compartido, clave dedicada 'activeClient' ──
 async function saveActiveClientStorage(cliente) {
-  const db = await openSharedDB();
+  const db = await fcnOpenSharedDB();
   return new Promise((res, rej) => {
-    const tx  = db.transaction(DB_STORE, 'readwrite');
-    const req = tx.objectStore(DB_STORE).put({ cliente, ts: Date.now() }, 'activeClient');
+    const tx  = db.transaction(FCN_DB_STORE, 'readwrite');
+    const req = tx.objectStore(FCN_DB_STORE).put({ cliente, ts: Date.now() }, 'activeClient');
     req.onsuccess = () => res();
     req.onerror   = () => rej();
   });
 }
 async function getActiveClientStorage() {
   try {
-    const db = await openSharedDB();
+    const db = await fcnOpenSharedDB();
     return new Promise(res => {
-      const tx  = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get('activeClient');
+      const tx  = db.transaction(FCN_DB_STORE, 'readonly');
+      const req = tx.objectStore(FCN_DB_STORE).get('activeClient');
       req.onsuccess = () => res(req.result ? req.result.cliente : null);
       req.onerror   = () => { console.warn('[fcn_shared] error leyendo activeClient', req.error); res(null); };
     });
   } catch (e) { console.warn('[fcn_shared] no se pudo abrir IndexedDB para leer activeClient', e); return null; }
 }
 async function clearActiveClientStorage() {
-  const db = await openSharedDB();
+  const db = await fcnOpenSharedDB();
   return new Promise((res, rej) => {
-    const tx  = db.transaction(DB_STORE, 'readwrite');
-    const req = tx.objectStore(DB_STORE).delete('activeClient');
+    const tx  = db.transaction(FCN_DB_STORE, 'readwrite');
+    const req = tx.objectStore(FCN_DB_STORE).delete('activeClient');
     req.onsuccess = () => res();
     req.onerror   = () => rej();
   });
@@ -1182,30 +1112,30 @@ async function clearActiveClientStorage() {
 // herramientas que todavía no entienden este filtro (no lo escuchan) siguen funcionando
 // exactamente igual que antes, no hay riesgo de romper nada por agregar esto.
 async function saveTopClientsStorage(n, clientes) {
-  const db = await openSharedDB();
+  const db = await fcnOpenSharedDB();
   return new Promise((res, rej) => {
-    const tx  = db.transaction(DB_STORE, 'readwrite');
-    const req = tx.objectStore(DB_STORE).put({ n, clientes, ts: Date.now() }, 'topClientsFilter');
+    const tx  = db.transaction(FCN_DB_STORE, 'readwrite');
+    const req = tx.objectStore(FCN_DB_STORE).put({ n, clientes, ts: Date.now() }, 'topClientsFilter');
     req.onsuccess = () => res();
     req.onerror   = () => rej();
   });
 }
 async function getTopClientsStorage() {
   try {
-    const db = await openSharedDB();
+    const db = await fcnOpenSharedDB();
     return new Promise(res => {
-      const tx  = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get('topClientsFilter');
+      const tx  = db.transaction(FCN_DB_STORE, 'readonly');
+      const req = tx.objectStore(FCN_DB_STORE).get('topClientsFilter');
       req.onsuccess = () => res(req.result || null);
       req.onerror   = () => res(null);
     });
   } catch (e) { return null; }
 }
 async function clearTopClientsStorage() {
-  const db = await openSharedDB();
+  const db = await fcnOpenSharedDB();
   return new Promise((res, rej) => {
-    const tx  = db.transaction(DB_STORE, 'readwrite');
-    const req = tx.objectStore(DB_STORE).delete('topClientsFilter');
+    const tx  = db.transaction(FCN_DB_STORE, 'readwrite');
+    const req = tx.objectStore(FCN_DB_STORE).delete('topClientsFilter');
     req.onsuccess = () => res();
     req.onerror   = () => rej();
   });
@@ -3483,19 +3413,12 @@ function dashStaleMs(key) { return key === 'precios_objetivo' ? 40 * 86400000 : 
 //  'auto' (no subido acá, pero se autocarga desde data/) · 'miss' (bloqueo real)
 // ══════════════════════════════════════════════════════════════
 const staticFallbackCache = {};
-// Copiado del patrón canónico (Precios_Objetivo_FCN.html). Hasta acá, FCN_Suite.html solo
-// chequeaba si el fallback estático EXISTE (hasStaticFallback, para la pill de estado) pero
-// nunca lo usaba para traer los datos — así, en una compu que nunca subió Monitor o Precios
-// Objetivo, el panel de Archivos mostraba bien "Autocargado desde la web" pero las cajas del
-// dashboard de inicio decían "Sin datos todavía": nunca había un fetch real, solo el HEAD.
-async function fetchStaticFallback(url) {
-  try {
-    const r = await fetch(url, { cache: 'no-store' });
-    if (!r.ok) return null;
-    const buf = await r.arrayBuffer();
-    return { data: buf, name: url.split('/').pop() };
-  } catch (e) { console.warn('[Dashboard] no se pudo traer el fallback estático', url, e); return null; }
-}
+// fetchStaticFallback vive en fcn-core.js (fcnFetchStaticFallback) — hasta acá,
+// FCN_Suite.html solo chequeaba si el fallback estático EXISTE (hasStaticFallback,
+// para la pill de estado) pero nunca lo usaba para traer los datos — así, en una
+// compu que nunca subió Monitor o Precios Objetivo, el panel de Archivos mostraba
+// bien "Autocargado desde la web" pero las cajas del dashboard de inicio decían
+// "Sin datos todavía": nunca había un fetch real, solo el HEAD.
 
 async function hasStaticFallback(key) {
   const fixedName = STATIC_PUBLISH_KEYS[key];
@@ -3511,7 +3434,7 @@ async function hasStaticFallback(key) {
 async function getFilesStatusList() {
   const out = [];
   for (const sf of SHARED_FILES) {
-    const entry = await getSharedFile(userKey(sf.key));
+    const entry = await fcnGetSharedFile(userKey(sf.key));
     let status;
     if (entry) {
       status = (Date.now() - entry.ts > dashStaleMs(sf.key)) ? 'stale' : 'ok';
@@ -3662,8 +3585,8 @@ async function getTenenciaParsedCached(force) {
   if (force) _tenenciaParsePromise = null;
   if (!_tenenciaParsePromise) {
     _tenenciaParsePromise = (async () => {
-      let entry = await getSharedFile(userKey('tenencia'));
-      if (!entry && STATIC_PUBLISH_KEYS.tenencia) entry = await fetchStaticFallback('data/' + STATIC_PUBLISH_KEYS.tenencia);
+      let entry = await fcnGetSharedFile(userKey('tenencia'));
+      if (!entry && STATIC_PUBLISH_KEYS.tenencia) entry = await fcnFetchStaticFallback('data/' + STATIC_PUBLISH_KEYS.tenencia);
       return parseTenencia(entry);
     })();
   }
@@ -3672,10 +3595,10 @@ async function getTenenciaParsedCached(force) {
 
 async function loadDashKey(key, force) {
   if (key === 'tenencia') { dashData.tenencia = await getTenenciaParsedCached(force); return; }
-  let entry = await getSharedFile(userKey(key));
+  let entry = await fcnGetSharedFile(userKey(key));
   // tenencia/stock nunca tienen fallback estático (datos de clientes) — solo aplica a
   // monitor/precios_objetivo, que sí se publican para todo el equipo.
-  if (!entry && STATIC_PUBLISH_KEYS[key]) entry = await fetchStaticFallback('data/' + STATIC_PUBLISH_KEYS[key]);
+  if (!entry && STATIC_PUBLISH_KEYS[key]) entry = await fcnFetchStaticFallback('data/' + STATIC_PUBLISH_KEYS[key]);
   dashData[DASH_KEY_TO_FIELD[key]] = DASH_PARSERS[key](entry);
 }
 
@@ -3909,7 +3832,7 @@ function buildFileCard(sf, entry) {
 // NO se dispara solo al subir, para no descargarle un archivo de "publicar"
 // a cada compañero que suba/pegue el mismo archivo en su propia compu.
 async function publicarManual(key) {
-  const entry = await getSharedFile(userKey(key));
+  const entry = await fcnGetSharedFile(userKey(key));
   if (!entry || !entry.data) { showToast('❌ No encontré el archivo guardado para "' + key + '".'); return; }
   const data = key === 'monitor' ? slimMonitorArrayBuffer(entry.data) : entry.data;
   downloadForPublish(key, data);
@@ -3919,7 +3842,7 @@ async function publicarManual(key) {
 // updateFilesTabDot() volvía a leer los mismos 4 archivos por su cuenta en cada iteración —
 // hasta 16 idas a IndexedDB para pintar 4 tarjetas). Ahora se lee una sola vez y se reusa.
 async function refreshFilesStatus() {
-  const entries = await Promise.all(SHARED_FILES.map(sf => getSharedFile(userKey(sf.key))));
+  const entries = await Promise.all(SHARED_FILES.map(sf => fcnGetSharedFile(userKey(sf.key))));
   SHARED_FILES.forEach((sf, i) => {
     const card = document.getElementById('fcard-' + sf.key);
     if (card) card.innerHTML = buildFileCard(sf, entries[i]);
@@ -3944,7 +3867,7 @@ function onFileSelected(key, input) {
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      await saveSharedFile(userKey(key), e.target.result, file.name);
+      await fcnSaveSharedFile(userKey(key), e.target.result, file.name);
       await refreshFilesStatus();
       notifyTools(key);
       refreshDashboardForKey(key);
@@ -3961,7 +3884,7 @@ function onFileSelected(key, input) {
 }
 
 async function onDeleteFile(key) {
-  await deleteSharedFile(userKey(key));
+  await fcnDeleteSharedFile(userKey(key));
   await refreshFilesStatus();
   refreshDashboardForKey(key);
   if (key === 'tenencia') refreshClienteList();
@@ -3991,7 +3914,7 @@ async function pasteFromClipboard(key) {
 
     // Guardar igual que si fuera un archivo subido
     const fileName = key + '_pegado.xlsx';
-    await saveSharedFile(userKey(key), buffer, fileName);
+    await fcnSaveSharedFile(userKey(key), buffer, fileName);
     await refreshFilesStatus();
     notifyTools(key);
     refreshDashboardForKey(key);

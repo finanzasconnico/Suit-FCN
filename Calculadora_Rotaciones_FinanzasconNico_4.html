@@ -340,7 +340,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
 .toast-panorama.show{opacity:1;}
 :focus-visible{outline:2px solid var(--series-rotar) !important;outline-offset:2px !important;}
 </style>
-<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="fcn-theme.js"></script>
 </head>
 <body>
 
@@ -697,26 +697,6 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
-// TEMA (claro/oscuro) — clave compartida con el resto de la Suite ('fcn_theme').
-// ═══════════════════════════════════════════════════════
-function currentEffectiveTheme(){
-  var attr=document.documentElement.getAttribute('data-theme');
-  if(attr==='light'||attr==='dark')return attr;
-  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-}
-function setThemeIcon(){
-  var btn=document.getElementById('btnTheme');
-  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme',theme);
-  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
-  setThemeIcon();
-}
-function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
-window.addEventListener('DOMContentLoaded',setThemeIcon);
-
 // ═══════════════════════════════════════════════════════
 // UTILIDADES
 // ═══════════════════════════════════════════════════════

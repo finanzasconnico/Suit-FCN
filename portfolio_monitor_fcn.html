@@ -218,7 +218,7 @@ tr:hover td{background:var(--hover);}
 .rf-hint{font-size:10px;color:var(--mu);margin:6px 0 10px;}
 :focus-visible{outline:2px solid var(--ac) !important;outline-offset:2px !important;}
 </style>
-<script>(function(){try{var t=localStorage.getItem('fcn_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="fcn-theme.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -419,31 +419,15 @@ tr:hover td{background:var(--hover);}
 
 <script>
 // ══════════════════════════════════════════════════════════════
-// TEMA (claro/oscuro) — el atributo data-theme ya se aplicó en el <head>
-// (antes del primer paint, para evitar el flash) si había una preferencia
-// guardada; acá solo definimos toggle + ícono + persistencia.
+// TEMA (claro/oscuro) — mecanismo compartido en fcn-theme.js. Acá solo el
+// gancho específico de esta herramienta: el donut es un <canvas> — a
+// diferencia del resto (CSS puro), no se repinta solo al cambiar las
+// variables de tema. Sin esto, después de togglear el tema quedaba con
+// los colores del tema anterior "pintados" hasta la próxima carga de datos.
 // ══════════════════════════════════════════════════════════════
-function currentEffectiveTheme(){
-  var attr=document.documentElement.getAttribute('data-theme');
-  if(attr==='light'||attr==='dark')return attr;
-  return window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
-}
-function setThemeIcon(){
-  var btn=document.getElementById('btnTheme');
-  if(btn)btn.textContent=currentEffectiveTheme()==='light'?'🌙':'☀️';
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme',theme);
-  try{localStorage.setItem('fcn_theme',theme);}catch(e){}
-  setThemeIcon();
-  // El donut es un <canvas> — a diferencia del resto (CSS puro), no se
-  // repinta solo al cambiar las variables de tema. Sin esto, después de
-  // togglear el tema quedaba con los colores del tema anterior "pintados"
-  // hasta la próxima carga de datos.
+window.fcnOnThemeChange = function(){
   if(typeof S!=='undefined'&&S.positions&&typeof renderDonut==='function')renderDonut(S.positions);
-}
-function toggleTheme(){applyTheme(currentEffectiveTheme()==='light'?'dark':'light');}
-window.addEventListener('DOMContentLoaded',setThemeIcon);
+};
 
 // ══════════════════════════════════════════════════════════════
 // CONFIG WORKER — consolidación de posiciones y costeo
