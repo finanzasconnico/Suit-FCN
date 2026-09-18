@@ -294,6 +294,10 @@ details.cond-details summary:hover{color:var(--text-strong);}
 .radar-kpi-val{font-size:20px;font-weight:600;color:var(--text-strong);margin:2px 0 1px;}
 .radar-kpi-sub{font-size:10.5px;color:var(--cream-dim);}
 .radar-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px;}
+.radar-cc{padding:5px 11px;border-radius:20px;font-size:10.5px;font-weight:500;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--wash-1);color:var(--cream-dim);transition:all .15s;user-select:none;}
+.radar-cc:hover{border-color:var(--wash-3);color:var(--text-strong);}
+.radar-cc.active{background:var(--balanz);color:var(--text-strong);border-color:var(--balanz);}
+.radar-cc-hint{font-size:10px;color:var(--cream-dim);font-style:italic;}
 .radar-ctl{background:var(--wash-1);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:11px;padding:6px 9px;outline:none;}
 .radar-ctl:focus{border-color:var(--balanz);}
 .radar-ctl-lbl{font-size:10.5px;color:var(--cream-dim);}
@@ -531,6 +535,11 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <div class="radar-kpis" id="radar-kpis"></div>
       <div class="radar-bar">
         <div class="preset-chips" id="radar-chips"></div>
+      </div>
+      <div class="radar-bar" title="Filtra las alternativas de compra (los comparables) de todas las filas del radar">
+        <span class="radar-ctl-lbl">Calificación de los comparables:</span>
+        <div class="preset-chips" id="radar-calif-chips"></div>
+        <span class="radar-cc-hint" id="radar-calif-hint"></span>
       </div>
       <div class="radar-bar">
         <span class="radar-ctl-lbl">AUM mínimo:</span>

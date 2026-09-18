@@ -189,6 +189,8 @@ tbody tr:hover{filter:brightness(1.35);}
 .pa-tk:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
 .pa-emp{font-size:10.5px;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;}
 .pa-cartera{white-space:nowrap;text-align:right;}
+.pa-punt{white-space:nowrap;text-align:right;font-size:18px;}
+.chip-rank.active{border-color:var(--ambar);background:var(--ambar-d);color:var(--ambar);}
 .pa-usd{font-family:var(--font-m);font-size:13px;color:var(--text);font-weight:500;}
 .pa-cli{font-size:10px;color:var(--muted);}
 .pa-qh{max-width:300px;}
@@ -373,6 +375,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       </select>
     </label>
     <div class="filter-chips" id="sector-chips"></div>
+    <button class="chip chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
     <div class="ten-min-wrap" id="ten-min-wrap" style="display:none">
       <input type="number" id="ten-min-input" min="0" step="500" placeholder="Tenencia mín. USD" oninput="onTenMinChange()" title="Ocultar lo que tengo por debajo de este monto">
@@ -411,6 +414,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>📝 Registro</b><p>Dentro de la ficha de cada empresa (con un cliente enfocado) podés anotar qué le propusiste y si aceptó o rechazó. Si ya rechazó algo, te lo marca en Panorama para que no lo vuelvas a plantear. Se guarda solo en esta compu.</p></div>
       <div><b>✉ Avisar a los que lo tienen</b><p>En la ficha de una empresa, si tus clientes la tienen en cartera, el botón <b>"Avisar a los N"</b> arma un mensaje por cada tenedor: los primeros por tenencia como borrador de WhatsApp 1×1, el resto como mail masivo (CSV + Word, igual que Licitaciones). El texto compara su múltiplo contra su historia y contra los pares del sector, y podés elegir una alternativa del mismo rubro para proponer la rotación. Queda anotado en el Registro. Si el papel hoy no se ve caro, te avisa antes de mandar.</p></div>
       <div><b>Rebote (pestaña Técnico)</b><p>Puntos de análisis técnico clásico: cuando el precio se acerca a una media clave, suele rebotar ahí. Arriba de la media y acercándose = está testeando un <b>soporte</b> (posible compra). Abajo de la media y acercándose = está testeando una <b>resistencia</b> (posible venta). Se mira en 3 plazos — corto (media de 200 ruedas diarias), mediano (media de 20 semanas) y largo (media de 20 y 50 meses) — más los niveles de Fibonacci entre el máximo y el mínimo del último año. Si el rebote técnico no tiene el negocio detrás (o el techo aparece con el negocio sólido), te lo marca con un aviso ámbar al lado. Filtrable desde el selector <b>"Señal" → Técnico (rebote)</b>.</p></div>
+      <div><b>🏆 Puntaje y Ranking</b><p>Cada activo con los tres ejes completos tiene un <b>puntaje de −100 a +100</b> (positivo = conviene comprar, negativo = conviene vender): 35% Negocio + 35% Valuación + 30% Tendencia. Se ve en la columna <b>Puntaje</b> de Panorama (pasá el mouse para ver el desglose) y se ordena tocando el título. El chip <b>🏆 Ranking de puntaje</b> lo deja ordenado de una: 1er clic lo que más conviene comprar, 2º clic lo que más conviene vender. ETFs, índices y lo que no tiene todos los datos quedan afuera.</p></div>
       <div><b>⇄ Comparar</b><p>Elegí dos activos (desde el botón de arriba o "Comparar con otro activo" en la ficha) y te arma una tabla lado a lado con todo — múltiplo, tendencia, negocio, valuación, analistas, rebote — y un veredicto según la misma lectura de "Qué hacer" que ya usás en el resto de la herramienta. Si conviene rotar, un botón arma el mensaje simple para el cliente (mail o WhatsApp); si hay un cliente enfocado y tiene la posición, se completa solo con su ganancia real.</p></div>
     </div>
     <p class="help-foot">La pestaña <b>Panorama</b> junta todo. Para ver cada análisis por separado y con más detalle: <b>Técnico</b> (el precio y las medias), <b>Negocio</b> (crecimiento, rentabilidad, deuda) y <b>Múltiplos</b> (caro o barato vs. su historia). La opinión de los analistas tiene su propia herramienta, "Precios Objetivo".<br><br>Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b>. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
@@ -534,6 +538,9 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
           <li><b>Reducir</b>: Tendencia bajista (≤ −20) <b>y</b> Negocio flojo.</li>
         </ul>
         <p>Los analistas <b>no</b> entran en el veredicto — van al lado, para que veas si coinciden.</p>
+
+        <h4>Puntaje combinado (−100 a +100)</h4>
+        <p>Un solo número para <b>ordenar</b> la lista: <b>positivo = conviene comprar, negativo = conviene vender</b>. Es <b>35% Negocio + 35% Valuación + 30% Tendencia</b> (los mismos puntajes que ves en cada columna; la Valuación va de +100 si está 40% más barata que su promedio de 5 años a −100 si está 40% más cara). Se calcula solo si están los tres ejes — los ETFs, los índices, los papeles en pesos sin tendencia y lo que no tiene promedio histórico quedan sin puntaje ("—"). El chip <b>🏆 Ranking de puntaje</b> de la barra ordena de mayor a menor (comprar) y, con un segundo clic, de menor a mayor (vender). No reemplaza a "Qué hacer": el veredicto dice el porqué, el puntaje solo ordena — y los analistas no entran.</p>
 
         <h4>Precio objetivo de analistas</h4>
         <p>La columna "Analistas" sale del archivo de Precios Objetivo que cargás una vez por mes. Muestra la recomendación de consenso (Compra / Mantener / Venta), el precio objetivo promedio y cuánta suba le ven desde el precio de hoy. El "coinciden / difieren" te avisa si los analistas están de acuerdo con la lectura de la fila — cuando difieren, vale la pena mirar por qué.</p>
@@ -972,6 +979,38 @@ function lecturaRebote(r){
     alerta={txt:'⚠ negocio sólido', detalle:'el negocio acompaña — la resistencia podría perforarse en vez de frenar la suba.'};
   }
   return {...base, pts, alerta};
+}
+
+// ══════════════════════════════════════════
+//  PUNTAJE COMBINADO −100 … +100 (Nico, 18/09/2026): un solo número para ORDENAR la lista.
+//  Positivo = conviene comprar, negativo = conviene vender. Junta los tres ejes que ya
+//  existen — Negocio, Valuación y Tendencia — con los mismos puntajes que se ven en cada
+//  columna; no inventa datos nuevos. NO reemplaza al veredicto ("Qué hacer"): el veredicto
+//  dice POR QUÉ, el puntaje solo ordena. Los analistas no entran (igual que en el veredicto).
+//  Solo se calcula si están los TRES ejes — sin eso (ETFs/índices sin balances, papeles en
+//  ARS sin tendencia, sin promedio histórico) da null y la fila queda afuera del ranking.
+// ══════════════════════════════════════════
+const PUNTAJE_PESOS={negocio:0.35, valuacion:0.35, tendencia:0.30};
+function puntajeDetalle(r){
+  const t=tendencia(r), n=fundamental(r), v=valuacion5y(r);
+  if(t===null||n===null||v===null) return null;
+  // valuación: +40% más barata que su promedio de 5 años = +100, 40% más cara = −100
+  // (−40% es el mismo corte que usa el veredicto para llamarla "cara")
+  const v100=Math.round(clamp(v/0.40,-1,1)*100);
+  const total=Math.round(clamp(n*PUNTAJE_PESOS.negocio + v100*PUNTAJE_PESOS.valuacion + t*PUNTAJE_PESOS.tendencia,-100,100));
+  return {total, negocio:n, valuacion:v100, tendencia:t};
+}
+function puntaje(r){ const d=puntajeDetalle(r); return d?d.total:null; }
+function puntajeTitle(r){
+  const d=puntajeDetalle(r);
+  if(!d) return 'Sin puntaje: faltan datos (ETF o índice sin balances, papel en ARS sin tendencia, o sin promedio histórico).';
+  const s=x=>(x>0?'+':'')+x;
+  return `Negocio ${s(d.negocio)} (35%) · Valuación ${s(d.valuacion)} (35%) · Tendencia ${s(d.tendencia)} (30%)`;
+}
+function puntajeCell(r){
+  const p=puntaje(r);
+  if(p===null) return `<span class="dash" title="${puntajeTitle(r)}">—</span>`;
+  return `<span title="${puntajeTitle(r)}">${tendCell(p)}</span>`;
 }
 
 // ── QUÉ HACER: veredicto simple (observación, NO recomendación) ──
@@ -1683,6 +1722,7 @@ function renderComparacion(){
       ${row('Negocio', chip(sa.sn), chip(sb.sn))}
       ${row('Precio (vs. historia)', chip(sa.sp), chip(sb.sp))}
       ${row('Qué hacer', `<span class="qh ${sa.q.cls}">${sa.q.v}</span>`, `<span class="qh ${sb.q.cls}">${sb.q.v}</span>`)}
+      ${row('Puntaje (−100…+100)', puntajeCell(a), puntajeCell(b))}
       ${row('Analistas', anCell(sa), anCell(sb))}
       ${row('Rebote técnico', rebCell(sa), rebCell(sb))}
     </tbody></table></div>
@@ -1898,7 +1938,7 @@ function abrirFicha(ticker){
   const sec=(t,items)=>`<div class="fs-sec"><h5>${t}</h5>${items.map(x=>`<p class="fs-p">${x}</p>`).join('')}</div>`;
   body.innerHTML=`
     <div class="fs-verd qh ${q.cls}">${q.v}</div><p class="fs-por">${q.por}</p>
-    <div class="fs-chips"><span>Tendencia ${chip(st)}</span><span>Negocio ${chip(sn)}</span><span>Precio ${chip(sp)}</span></div>
+    <div class="fs-chips"><span>Tendencia ${chip(st)}</span><span>Negocio ${chip(sn)}</span><span>Precio ${chip(sp)}</span><span>Puntaje ${puntajeCell(r)}</span></div>
     <button class="btn-msg" style="margin:10px 0 2px;" onclick="cerrarHolders();abrirComparar('${String(r.ticker).replace(/'/g,"\\'")}')">⇄ Comparar con otro activo</button>
     ${sec('📈 El precio', tec.length?tec:['Sin datos de precio.'])}
     ${sec('🏭 El negocio', neg)}
@@ -2251,6 +2291,7 @@ function visibleRows(){
     if(tenMin>0 && tenenciaTotal(r)<tenMin) return false;
     if(soloPrioridad && !['Reducir','Atención'].includes(queHacer(r).v)) return false;
     if(sigFiltro && !cumpleSenal(r,sigFiltro)) return false;
+    if(rankingModo && puntaje(r)===null) return false;   // ranking = solo lo que tiene los 3 ejes
     if(clienteActivo || topClientesSet){
       const hs=holdersFor(r);
       if(clienteActivo && !hs.some(h=>h.cliente===clienteActivo)) return false;
@@ -2271,6 +2312,7 @@ function sortGetters(){
       activo:r=>r.ticker,
       cartera:r=>hayTen?tenenciaTotal(r):(QH_ORDEN[queHacer(r).v]||0),
       quehacer:r=>QH_ORDEN[queHacer(r).v]||0,
+      punt:r=>puntaje(r),
       tend:r=>tendencia(r), fund:r=>fundamental(r), val:r=>valuacion5y(r),
       anal:r=>analistasDe(r)?.upside ?? null,
     };
@@ -2321,7 +2363,28 @@ function currentSort(){
 }
 function sortBy(col){
   const s=currentSort();
-  if(s.col===col) s.asc=!s.asc; else { s.col=col; s.asc=true; }
+  // el puntaje arranca de MAYOR a menor (lo que más conviene comprar arriba); un 2º clic
+  // lo invierte y deja arriba lo que más conviene vender
+  if(s.col===col) s.asc=!s.asc; else { s.col=col; s.asc=(col==='punt'?false:true); }
+  if(rankingModo && col!=='punt') rankingModo=0;   // ordenar por otra columna apaga el chip "Ranking"
+  actualizarChipRanking();
+  render();
+}
+// Chip "🏆 Ranking": apagado → comprar (puntaje de mayor a menor) → vender (de menor a mayor) →
+// apagado. Mientras está prendido deja SOLO lo que tiene puntaje (sin ETFs/índices/datos faltantes).
+let rankingModo=0;   // 0 apagado · 1 comprar · 2 vender
+function actualizarChipRanking(){
+  const c=document.getElementById('chip-ranking'); if(!c) return;
+  c.classList.toggle('active',rankingModo>0);
+  c.textContent = rankingModo===1 ? '🏆 Ranking: comprar ↓' : rankingModo===2 ? '🏆 Ranking: vender ↑' : '🏆 Ranking de puntaje';
+}
+function toggleRanking(){
+  rankingModo=(rankingModo+1)%3;
+  if(rankingModo>0){
+    activeTab='Panorama'; buildTabs();
+    sortState.Panorama={col:'punt',asc:rankingModo===2};
+  }
+  actualizarChipRanking();
   render();
 }
 function applySort(rows){
@@ -2385,8 +2448,8 @@ function render(){
   };
 
   if(activeTab==='Panorama'){
-    ncols=5;
-    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1)}${th('quehacer','Qué hacer')}
+    ncols=6;
+    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1)}${th('punt','Puntaje',1)}${th('quehacer','Qué hacer')}
       <th>Señales</th>${th('anal','Analistas',1)}</tr>`;
     const sigRow=(lbl,s)=> `<div class="pa-sig-row"><span class="pa-sig-lbl">${lbl}</span>`
       + (s ? `<span class="sig ${s.cls}" title="${lbl}: ${typeof s.num==='number' && Math.abs(s.num)<=1 ? (s.num>=0?'+':'')+fmtN(s.num*100,0)+'%' : (s.num>0?'+':'')+s.num}">${s.txt}</span>` : '<span class="dash">—</span>')
@@ -2402,6 +2465,7 @@ function render(){
       return `<tr style="background:${bg}">
         <td class="pa-activo"><div class="pa-tk" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
         <td class="pa-cartera">${carteraCell}</td>
+        <td class="pa-punt">${puntajeCell(r)}</td>
         <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span>${clienteActivo&&regRechazado(clienteActivo,r.ticker)?' <span class="qh-rech" title="ya se lo propusiste y lo rechazó — mirá la ficha">📝 rechazado</span>':''}<div class="pa-por">${q.por}</div></td>
         <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
         <td class="pa-anal">${analCell(r)}</td>
