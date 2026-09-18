@@ -942,7 +942,8 @@ const TOOLS = [
   { id:'calcbonos', name:'Calculadora de Bonos',     icon:'🧮', desc:'Precio ↔ TIR, cronograma de flujos, Duration y DV01 para ONs y Soberanos. Se autocompleta con el Monitor.', badge:'Renta Fija', file:'Calculadora_Bonos_FinanzasconNico.html', color:'jade' },
   { id:'calcrot',   name:'Calculadora de Rotaciones', icon:'🔁', desc:'¿Conviene cambiar de bono? Comparación simple y directa. Se autocompleta con el Monitor.',                            badge:'Renta Fija', file:'Calculadora_Rotaciones_FinanzasconNico_4.html', color:'amber' },
   { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' },
-  { id:'multiplos', name:'Valuación por Múltiplos', icon:'⚖️', desc:'Múltiplos (P/E, P/S, EV/EBITDA, P/FCF, P/B) actual vs. promedio histórico de 3/5/10 años + medias móviles semanales, seleccionados por sector.', badge:'Research', file:'Valuacion_Multiplos_FCN.html', color:'jade' }
+  { id:'multiplos', name:'Valuación por Múltiplos', icon:'⚖️', desc:'Múltiplos (P/E, P/S, EV/EBITDA, P/FCF, P/B) actual vs. promedio histórico de 3/5/10 años + medias móviles semanales, seleccionados por sector.', badge:'Research', file:'Valuacion_Multiplos_FCN.html', color:'jade' },
+  { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Subís los estados contables (10 años, formato Investing.com/WSJ) y arma ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 — pantallazo listo para mandarle al cliente.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' }
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -1217,7 +1218,7 @@ function showApp() {
 // ══════════════════════════════════════════════════════════════
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
-  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos'] },
+  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos','fundamental'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','armador','monitor'] },
   { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },

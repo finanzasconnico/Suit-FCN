@@ -305,6 +305,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 <body>
 <div class="page" id="page">
@@ -700,33 +701,10 @@ function fcnIrArchivos(e){
 }
 
 // ══════════════════════════════════════════
-//  INDEXED DB — copiado del Suite
+//  INDEXED DB + BROADCAST CHANNEL — compartido, ver fcn-core.js
 // ══════════════════════════════════════════
-const DB_NAME='fcn_shared_v1', DB_STORE='files';
-function openSharedDB(){
-  return new Promise((res,rej)=>{
-    const req=indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded=e=>e.target.result.createObjectStore(DB_STORE);
-    req.onsuccess=e=>res(e.target.result);
-    req.onerror=()=>rej(new Error('IndexedDB no disponible'));
-  });
-}
-async function getSharedFile(key){
-  try{
-    const db=await openSharedDB();
-    return new Promise(res=>{
-      const tx=db.transaction(DB_STORE,'readonly');
-      const req=tx.objectStore(DB_STORE).get(key);
-      req.onsuccess=()=>res(req.result||null);
-      req.onerror=()=>res(null);
-    });
-  }catch{ return null; }
-}
-
-// ══════════════════════════════════════════
-//  BROADCAST CHANNEL
-// ══════════════════════════════════════════
-const BC=(typeof BroadcastChannel!=='undefined')?new BroadcastChannel('fcn_shared'):null;
+const getSharedFile = fcnGetSharedFile;
+const BC = fcnBroadcastChannel;
 if(BC){
   BC.onmessage=e=>{
     if(e.data?.type==='file_updated' && e.data?.key==='valuacion_multiplos') setTimeout(loadAndRender,300);
@@ -1970,7 +1948,7 @@ const REC_LABEL={strongbuy:'Compra fuerte',buy:'Compra',hold:'Mantener',sell:'Ve
 const REC_CLS={strongbuy:'rec-sb',buy:'rec-b',hold:'rec-h',sell:'rec-s',strongsell:'rec-ss',underperform:'rec-s',outperform:'rec-b'};
 async function loadAnalistas(){
   let entry=await getSharedFile('precios_objetivo');
-  if(!entry||!entry.data) entry=await fetchStaticFallback('data/precios_objetivo.xlsx');
+  if(!entry||!entry.data) entry=await fcnFetchStaticFallback('data/precios_objetivo.xlsx');
   if(!entry||!entry.data) return;
   try{
     const wb=XLSX.read(entry.data,{type:'array'});
@@ -1998,7 +1976,7 @@ function analistasDe(r){
 // ── "QUÉ CAMBIÓ" — compara con la foto de la corrida anterior ──
 let PREV={};   // { TICKER: fila parseada de la corrida anterior }
 async function loadPrev(){
-  const entry=await fetchStaticFallback('data/valuacion_multiplos_prev.xlsx');
+  const entry=await fcnFetchStaticFallback('data/valuacion_multiplos_prev.xlsx');
   if(!entry||!entry.data) return;
   try{
     const rows=parseBuffer(entry);
@@ -2590,19 +2568,9 @@ function showTimestamp(ts,rows){
 // ══════════════════════════════════════════
 //  LOAD & RENDER
 // ══════════════════════════════════════════
-async function fetchStaticFallback(url){
-  try{
-    const r=await fetch(url);
-    if(!r.ok) return null;
-    const buf=await r.arrayBuffer();
-    const lastMod=r.headers.get('Last-Modified');
-    return { data:buf, name:url.split('/').pop(), ts:lastMod?new Date(lastMod).getTime():Date.now() };
-  }catch{ return null; }
-}
-
 async function loadAndRender(){
   let entry=await getSharedFile('valuacion_multiplos');
-  if(!entry||!entry.data) entry=await fetchStaticFallback('data/valuacion_multiplos.xlsx');
+  if(!entry||!entry.data) entry=await fcnFetchStaticFallback('data/valuacion_multiplos.xlsx');
   const show=(id,v)=>{const el=document.getElementById(id); if(el) el.style.display=v;};
   if(!entry||!entry.data){
     show('empty-state','flex'); show('table-wrap','none'); show('toolbar','none'); show('tabs','none'); show('foot-note','none');

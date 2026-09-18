@@ -268,6 +268,7 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 <body>
 
@@ -727,49 +728,20 @@ async function fetchPrecioTicker(ticker) {
 // vea los datos, así no hay que acordarse de filtrar en cada lugar por separado.
 let topClientesFiltroSet = null; // null = sin filtro | Set<string> de nombres de cliente
 
-// ── SHARED FILES AUTO-LOAD ──
+// ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel/fallback: ver fcn-core.js)
 (function() {
-  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
   function uk(k) { return k; }
-  function openDB() {
-    return new Promise((res, rej) => {
-      const r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-      r.onsuccess = e => res(e.target.result);
-      r.onerror = () => rej();
-    });
-  }
-  async function getShared(key) {
-    try {
-      const db = await openDB();
-      return new Promise(res => {
-        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess = () => res(r.result || null);
-        r.onerror = () => res(null);
-      });
-    } catch { return null; }
-  }
-  // Fallback estático (sin PII) — mismo patrón que el resto de la Suite (ver CLAUDE.md), para
-  // que los targets aparezcan aunque esta compu nunca haya subido el archivo a mano.
-  async function fetchStaticFallback(url) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) return null;
-      const buf = await r.arrayBuffer();
-      return { data: buf, name: url.split('/').pop() };
-    } catch { return null; }
-  }
   async function loadShared() {
-    const [ten, stk, po, topF] = await Promise.all([getShared(uk('tenencia')), getShared(uk('stock')), getShared('precios_objetivo'), getShared('topClientsFilter')]);
+    const [ten, stk, po, topF] = await Promise.all([fcnGetSharedFile(uk('tenencia')), fcnGetSharedFile(uk('stock')), fcnGetSharedFile('precios_objetivo'), fcnGetSharedFile('topClientsFilter')]);
     if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
     if (ten) handleFile(new File([ten.data], ten.name));
     if (stk) handleStock(new File([stk.data], stk.name));
-    const poEntry = po || await fetchStaticFallback('data/precios_objetivo.xlsx');
+    const poEntry = po || await fcnFetchStaticFallback('data/precios_objetivo.xlsx');
     if (poEntry) parsePreciosObjetivo(new File([poEntry.data], poEntry.name));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = async e => {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', async e => {
       if (!e.data) return;
       if (e.data.type === 'top_clients_selected') {
         topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
@@ -778,13 +750,13 @@ let topClientesFiltroSet = null; // null = sin filtro | Set<string> de nombres d
       }
       if (e.data.type !== 'file_updated') return;
       await new Promise(r => setTimeout(r, 1500));
-      const entry = await getShared(e.data.key);
+      const entry = await fcnGetSharedFile(e.data.key);
       if (!entry) return;
       const raw = e.data.rawKey || e.data.key;
       if (raw === 'tenencia') handleFile(new File([entry.data], entry.name));
       if (raw === 'stock')    handleStock(new File([entry.data], entry.name));
       if (raw === 'precios_objetivo') parsePreciosObjetivo(new File([entry.data], entry.name));
-    };
+    });
   }
 })();
 
@@ -2003,24 +1975,9 @@ function exportarExcel(){
 
 // ── CLIENTE ACTIVO (desde el Suite) ──
 (function() {
-  const DB_NAME = 'fcn_shared_v1', DB_STORE = 'files';
-  function openDB() {
-    return new Promise((res, rej) => {
-      const r = indexedDB.open(DB_NAME, 1);
-      r.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
-      r.onsuccess = e => res(e.target.result);
-      r.onerror = () => rej();
-    });
-  }
   async function getActiveClient() {
-    try {
-      const db = await openDB();
-      return new Promise(res => {
-        const r = db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get('activeClient');
-        r.onsuccess = () => res(r.result ? r.result.cliente : null);
-        r.onerror = () => res(null);
-      });
-    } catch { return null; }
+    const entry = await fcnGetSharedFile('activeClient');
+    return entry ? entry.cliente : null;
   }
   function applyClientFilter(cliente) {
     const inp = document.getElementById('f-buscar');
@@ -2039,11 +1996,11 @@ function exportarExcel(){
     if (cliente) waitForDataAndApply(cliente);
   }
   window.addEventListener('DOMContentLoaded', init);
-  if (typeof BroadcastChannel !== 'undefined') {
-    new BroadcastChannel('fcn_shared').onmessage = e => {
+  if (fcnBroadcastChannel) {
+    fcnBroadcastChannel.addEventListener('message', e => {
       if (!e.data || e.data.type !== 'client_selected') return;
       applyClientFilter(e.data.cliente);
-    };
+    });
   }
 })();
 </script>

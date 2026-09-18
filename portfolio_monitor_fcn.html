@@ -219,6 +219,7 @@ tr:hover td{background:var(--hover);}
 :focus-visible{outline:2px solid var(--ac) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-core.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -4073,24 +4074,7 @@ function seleccionarClienteActivoPM(nombre){
   return true;
 }
 (function(){
-  var DB_NAME='fcn_shared_v1', DB_STORE='files';
-  function openDB(){
-    return new Promise(function(res,rej){
-      var r=indexedDB.open(DB_NAME,1);
-      r.onupgradeneeded=function(e){e.target.result.createObjectStore(DB_STORE);};
-      r.onsuccess=function(e){res(e.target.result);};
-      r.onerror=function(){rej();};
-    });
-  }
-  function getShared(key){
-    return openDB().then(function(db){
-      return new Promise(function(res){
-        var r=db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get(key);
-        r.onsuccess=function(){res(r.result||null);};
-        r.onerror=function(){res(null);};
-      });
-    }).catch(function(){return null;});
-  }
+  var getShared = fcnGetSharedFile; // ver fcn-core.js
   function waitForClientsAndApply(nombre,tries){
     tries=tries||0;
     if(S.tenRows&&S.tenRows.length){seleccionarClienteActivoPM(nombre);return;}
@@ -4130,8 +4114,8 @@ function seleccionarClienteActivoPM(nombre){
         if(S.activeTab==='rentabilidad')renderRentabilidad();
       } else {
         // Static fallback (public file — ok per CLAUDE.md privacy rules)
-        fetch('data/precios_objetivo.xlsx').then(function(r){return r.ok?r.arrayBuffer():null;})
-          .then(function(buf){if(buf){_rParsePreciosXlsx(buf);_rDataLoaded=true;if(S.activeTab==='rentabilidad')renderRentabilidad();}})
+        fcnFetchStaticFallback('data/precios_objetivo.xlsx')
+          .then(function(fb){if(fb&&fb.data){_rParsePreciosXlsx(fb.data);_rDataLoaded=true;if(S.activeTab==='rentabilidad')renderRentabilidad();}})
           .catch(function(){});
       }
     }).catch(function(){});
@@ -4148,8 +4132,8 @@ function seleccionarClienteActivoPM(nombre){
     loadSharedRentData();
   }
   window.addEventListener('DOMContentLoaded',init);
-  if(typeof BroadcastChannel!=='undefined'){
-    new BroadcastChannel('fcn_shared').onmessage=function(e){
+  if(fcnBroadcastChannel){
+    fcnBroadcastChannel.addEventListener('message',function(e){
       if(!e.data)return;
       if(e.data.type==='client_selected'&&e.data.cliente){seleccionarClienteActivoPM(e.data.cliente);return;}
       if(e.data.type==='file_updated'&&(e.data.rawKey||e.data.key)==='tenencia'){
@@ -4158,7 +4142,7 @@ function seleccionarClienteActivoPM(nombre){
       if(e.data.type==='file_updated'&&((e.data.rawKey||e.data.key)==='monitor'||(e.data.rawKey||e.data.key)==='precios_objetivo')){
         setTimeout(loadSharedRentData,800);
       }
-    };
+    });
   }
 })();
 </script>

@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Análisis Fundamental — FinanzasconNico</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --jade:#1C8C5F; --jade-dk:#156b48; --ink:#1c2b28; --soft:#5b6b66; --line:#e2e6e4; --bg:#faf9f6; --card:#ffffff;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+    --good:#0ca30c; --warn:#c98500; --critical:#d03b3b;
+    --good-bg:rgba(12,163,12,0.09); --warn-bg:rgba(201,133,0,0.10); --critical-bg:rgba(208,59,59,0.09);
+  }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;margin:0;padding:28px 20px 70px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  h1{font-size:22px;letter-spacing:-.01em;margin:0 0 4px;}
+  .sub{color:var(--soft);font-size:13px;margin-bottom:24px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:20px;}
+  .panel h2{font-size:14px;margin:0 0 14px;padding-bottom:8px;border-bottom:2px solid var(--jade);}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;min-width:180px;flex:1;}
+  .field label{font-size:11.5px;font-weight:600;color:var(--soft);text-transform:uppercase;letter-spacing:.03em;}
+  .field input[type=text]{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+  .mode-toggle{display:flex;gap:8px;margin-bottom:16px;}
+  .mode-btn{font:inherit;font-size:13px;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--soft);cursor:pointer;font-weight:600;}
+  .mode-btn.active{background:var(--jade);border-color:var(--jade);color:#fff;}
+  .upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0;}
+  .upload-card{border:1.5px dashed var(--line);border-radius:10px;padding:14px;background:#fcfcfa;}
+  .upload-card.filled{border-color:var(--jade);background:rgba(28,140,95,0.05);}
+  .upload-card .req{font-size:10px;color:var(--soft);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;}
+  .upload-card .req.optional::after{content:" · opcional";text-transform:none;}
+  .upload-card .name{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .upload-card input[type=file]{font-size:12px;width:100%;}
+  .upload-card .status{font-size:11.5px;color:var(--jade);margin-top:6px;display:none;}
+  .upload-card.filled .status{display:block;}
+  .btn{font:inherit;font-size:14px;font-weight:700;background:var(--jade);color:#fff;border:0;border-radius:9px;padding:11px 22px;cursor:pointer;}
+  .btn:hover{background:var(--jade-dk);}
+  .btn:disabled{background:#c7cdc9;cursor:not-allowed;}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  .msg{font-size:13px;padding:10px 14px;border-radius:8px;margin-top:12px;}
+  .msg.warn{background:var(--warn-bg);color:#8a5c00;}
+  .msg.error{background:var(--critical-bg);color:#8a2424;}
+  .msg.info{background:rgba(28,140,95,0.08);color:var(--jade-dk);}
+  #report{display:none;}
+  .masthead{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-start;justify-content:space-between;padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--line);}
+  .masthead h1{margin:0 0 6px;}
+  .ticker-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--jade-dk);background:rgba(28,140,95,0.08);border:1px solid var(--line);padding:3px 10px;border-radius:999px;letter-spacing:.03em;margin-bottom:8px;}
+  textarea.blurb{width:100%;max-width:640px;font:inherit;font-size:14px;line-height:1.6;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;resize:vertical;min-height:70px;}
+  .meta{font-size:12px;color:var(--soft);text-align:right;line-height:1.5;}
+
+  .score-headline{display:flex;align-items:center;gap:18px;margin-bottom:16px;flex-wrap:wrap;}
+  .score-big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;}
+  .score-big small{font-size:18px;font-weight:600;color:var(--soft);}
+  .score-big.good{color:var(--good);} .score-big.warn{color:var(--warn);} .score-big.critical{color:var(--critical);}
+  .score-note{font-size:12.5px;color:var(--soft);max-width:400px;}
+
+  .score-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  @media(max-width:820px){.score-grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:480px){.score-grid{grid-template-columns:1fr;}}
+  .score-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;}
+  .score-card.good{background:var(--good-bg);} .score-card.warn{background:var(--warn-bg);} .score-card.critical{background:var(--critical-bg);} .score-card.na{background:#f4f3f0;}
+  .score-top{display:flex;align-items:center;gap:8px;}
+  .score-icon{width:20px;height:20px;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;}
+  .score-icon.good{background:var(--good);} .score-icon.warn{background:var(--warn);} .score-icon.critical{background:var(--critical);} .score-icon.na{background:#9a9a92;}
+  .score-label{font-size:13px;font-weight:700;line-height:1.25;}
+  .score-status{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .score-status.good{color:var(--good);} .score-status.warn{color:var(--warn);} .score-status.critical{color:var(--critical);} .score-status.na{color:#8a8a80;}
+  .score-detail{font-size:12px;color:var(--soft);line-height:1.45;}
+
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:760px){.chart-grid{grid-template-columns:1fr;}}
+  .chart-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 16px 10px;}
+  .chart-card.empty{display:flex;align-items:center;justify-content:center;min-height:160px;color:var(--soft);font-size:12.5px;text-align:center;padding:20px;}
+  .chart-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:8px;}
+  .chart-title{font-size:13.5px;font-weight:700;}
+  .chart-unit{font-size:10.5px;color:var(--soft);}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--soft);}
+  .legend-swatch{width:9px;height:9px;border-radius:2px;flex:none;}
+  .chart-svg-wrap{position:relative;}
+  svg.chart{width:100%;height:auto;display:block;overflow:visible;}
+  .axis-label{font-size:8px;fill:var(--soft);}
+  .gridline{stroke:var(--line);stroke-width:1;}
+  .baseline{stroke:#c3c2b7;stroke-width:1;}
+  .hover-col{fill:transparent;}
+  .crosshair{stroke:#c3c2b7;stroke-width:1;stroke-dasharray:2,2;pointer-events:none;opacity:0;}
+  .tooltip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:11.5px;line-height:1.5;padding:7px 10px;border-radius:8px;opacity:0;transform:translate(-50%,-100%);white-space:nowrap;z-index:5;font-variant-numeric:tabular-nums;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .tooltip .tt-title{font-weight:700;opacity:.75;margin-bottom:2px;}
+  .tooltip .tt-row{display:flex;gap:8px;justify-content:space-between;}
+  .tooltip .tt-sw{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;}
+  .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+  footer{font-size:11.5px;color:var(--soft);line-height:1.6;padding-top:14px;border-top:1px solid var(--line);margin-top:24px;}
+  .sources-note{font-size:11.5px;color:var(--soft);margin-top:10px;line-height:1.5;}
+  .field-tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:1px;}
+  .field-tag.excel{background:rgba(28,140,95,0.12);color:var(--jade-dk);}
+  .field-tag.yahoo{background:rgba(42,120,214,0.12);color:var(--s1);}
+  @media print{
+    .panel.controls,.actions,.mode-toggle{display:none!important;}
+    body{padding:0;background:#fff;}
+    .panel{border:none;box-shadow:none;padding:0;margin-bottom:16px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Análisis Fundamental</h1>
+  <div class="sub">Subí los estados contables (o el histórico de precio) y armá el pantallazo para mandarle al cliente. Formato esperado: exportación anual estilo Investing.com / WSJ Market Data (Cuenta de resultados, Balance, Flujo de caja).</div>
+
+  <div class="panel controls">
+    <h2>1. Tipo de activo</h2>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeEmpresaBtn" onclick="setMode('empresa')">🏢 Empresa</button>
+      <button class="mode-btn" id="modeIndiceBtn" onclick="setMode('indice')">📊 Índice / ETF</button>
+    </div>
+    <div class="sub" id="modeHint" style="margin-bottom:0;">Para una empresa evaluamos ventas, márgenes, balance y flujo de caja. Un índice o ETF no tiene estados contables propios — ahí el informe se arma solo con la evolución del precio.</div>
+  </div>
+
+  <div class="panel controls">
+    <h2>2. Datos del activo</h2>
+    <div class="row">
+      <div class="field"><label>Ticker</label><input type="text" id="inTicker" placeholder="AAPL"></div>
+      <div class="field" style="flex:2;"><label>Nombre</label><input type="text" id="inNombre" placeholder="Apple Inc."></div>
+    </div>
+  </div>
+
+  <div class="panel controls" id="uploadEmpresa">
+    <h2>3. Estados contables (anuales, formato Investing.com / WSJ)</h2>
+    <div class="upload-grid">
+      <div class="upload-card" id="cardIS">
+        <div class="req">Requerido</div>
+        <div class="name">Cuenta de resultados</div>
+        <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'is')">
+        <div class="status">✓ cargado</div>
+      </div>
+      <div class="upload-card" id="cardBS">
+        <div class="req">Requerido</div>
+        <div class="name">Balance</div>
+        <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'bs')">
+        <div class="status">✓ cargado</div>
+      </div>
+      <div class="upload-card" id="cardCF">
+        <div class="req">Requerido</div>
+        <div class="name">Flujo de caja</div>
+        <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'cf')">
+        <div class="status">✓ cargado</div>
+      </div>
+      <div class="upload-card" id="cardPX">
+        <div class="req optional">Precio histórico</div>
+        <div class="name">Precio de la acción</div>
+        <input type="file" accept=".xlsx,.xls,.csv" onchange="onFile(event,'px')">
+        <div class="status">✓ cargado</div>
+      </div>
+    </div>
+    <div class="sub" style="margin-bottom:0;">Si no subís el precio histórico, lo intentamos traer automáticamente por ticker (Yahoo Finance) al generar el informe. Cualquier estado contable que falte, o al que le falte el último año, también se completa así cuando el dato existe.</div>
+  </div>
+
+  <div class="panel controls" id="uploadIndice" style="display:none;">
+    <h2>3. Precio histórico</h2>
+    <div class="upload-grid">
+      <div class="upload-card" id="cardPX2">
+        <div class="req optional">Si no lo subís, lo buscamos por ticker</div>
+        <div class="name">Precio histórico</div>
+        <input type="file" accept=".xlsx,.xls,.csv" onchange="onFile(event,'px')">
+        <div class="status">✓ cargado</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel controls">
+    <button class="btn" id="genBtn" onclick="generarInforme()">📊 Generar informe</button>
+    <div id="genMsg"></div>
+  </div>
+
+  <div id="report"></div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+/* ======================= estado ======================= */
+const FILES = { is:null, bs:null, cf:null, px:null };
+let MODE = 'empresa';
+
+function setMode(m){
+  MODE = m;
+  document.getElementById('modeEmpresaBtn').classList.toggle('active', m==='empresa');
+  document.getElementById('modeIndiceBtn').classList.toggle('active', m==='indice');
+  document.getElementById('uploadEmpresa').style.display = m==='empresa' ? '' : 'none';
+  document.getElementById('uploadIndice').style.display = m==='indice' ? '' : 'none';
+  document.getElementById('modeHint').textContent = m==='empresa'
+    ? 'Para una empresa evaluamos ventas, márgenes, balance y flujo de caja.'
+    : 'Un índice o ETF no tiene estados contables propios — acá el informe se arma solo con la evolución del precio y su tendencia de largo plazo.';
+}
+
+async function onFile(ev, key){
+  const f = ev.target.files[0];
+  if(!f) return;
+  const buf = await f.arrayBuffer();
+  FILES[key] = { name:f.name, buf };
+  const map = {is:'cardIS', bs:'cardBS', cf:'cardCF', px: MODE==='empresa' ? 'cardPX' : 'cardPX2'};
+  const card = document.getElementById(map[key]);
+  card.classList.add('filled');
+  card.querySelector('.status').textContent = '✓ ' + f.name;
+}
+
+/* ======================= parser genérico (Investing.com / WSJ) ======================= */
+function normalizar(s){
+  return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+function parseCelda(v){
+  if(typeof v === 'number') return v;
+  if(typeof v === 'string'){
+    const s = v.trim();
+    if(!s || s === '-') return null;
+    if(s.endsWith('%')) return null; // fila de crecimiento/margen en texto, no la usamos
+    // "39.624,13": el archivo a veces guarda mas decimales de precision como texto,
+    // con el punto de las celdas "limpias" seguido de una coma con mas cifras: se
+    // concatenan como un solo decimal (39.624,13 -> 39.62413), NO como miles+decimal.
+    if(/^-?\d+\.\d+,\d+$/.test(s)) return parseFloat(s.replace(',', ''));
+    if(/^-?\d+,\d+$/.test(s)) return parseFloat(s.replace(',', '.'));
+    if(/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  }
+  return null;
+}
+
+function parseEstadoContable(matrix){
+  let headerRow=-1;
+  outer: for(let r=0;r<matrix.length;r++){
+    const row = matrix[r]||[];
+    for(let c=0;c<row.length;c++){
+      if(typeof row[c]==='string' && /per.?odo\s*terminado/i.test(row[c])){ headerRow=r; break outer; }
+    }
+  }
+  if(headerRow<0) return null;
+  const hRow = matrix[headerRow]||[];
+  const yearCols=[], years=[];
+  for(let c=0;c<hRow.length;c++){
+    const v = hRow[c];
+    if(typeof v==='number' && v>=1990 && v<=2035){ years.push(v); yearCols.push(c); }
+  }
+  if(!years.length) return null;
+  // Los valores de cada fila no siempre están alineados a la misma columna que el
+  // encabezado (varía incluso entre los 3 archivos de una misma exportación) — en vez
+  // de asumir un offset fijo, se toman las últimas N celdas de cada fila (N = años) y
+  // se busca la etiqueta como el último texto no vacío antes de esa zona de valores.
+  const N = years.length;
+  const filas = [];
+  for(let r=headerRow+1;r<matrix.length;r++){
+    const row = matrix[r]||[];
+    if(row.length < N) continue;
+    const values = row.slice(-N).map(parseCelda);
+    if(values.every(v=>v===null)) continue;
+    const labelZoneEnd = row.length - N;
+    let label=null;
+    for(let c=labelZoneEnd-1;c>=0;c--){
+      if(typeof row[c]==='string' && row[c].trim()){ label=row[c].trim(); break; }
+    }
+    if(!label) continue;
+    filas.push({ label, norm: normalizar(label), values });
+  }
+  return { years, filas };
+}
+
+function buscarFila(filas, rule){
+  for(const f of filas){
+    const ok = typeof rule === 'function' ? rule(f.norm) : f.norm === rule;
+    if(ok && f.values.some(v=>v!==null)) return f.values;
+  }
+  return null;
+}
+
+function extraerCampos(parsed, campos){
+  if(!parsed) return {};
+  const out = {};
+  for(const [key, rule] of Object.entries(campos)){
+    out[key] = buscarFila(parsed.filas, rule);
+  }
+  return out;
+}
+
+const CAMPOS_IS = {
+  ventas: 'ingresos totales',
+  beneficio_bruto: 'beneficio bruto',
+  beneficio_neto: 'beneficio neto',
+  ebitda: 'ebitda',
+  bpa: n => n.includes('bpa') && n.includes('basico'),
+};
+const CAMPOS_BS = {
+  activo_corriente: 'total del activo corriente',
+  pasivo_corriente: 'total del pasivo corriente',
+  activos_totales: 'activos totales',
+  pasivo_total: 'pasivo total',
+  patrimonio_neto: 'patrimonio neto',
+  deuda_total: 'deuda total',
+};
+const CAMPOS_CF = {
+  fcf: n => n.includes('flujo de caja libre'),
+};
+
+/* precio: xlsx/csv de 2 columnas fecha/cierre (Yahoo, Investing, etc.) */
+function parsePrecio(wb){
+  const sh = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sh, {defval:null});
+  const out = [];
+  for(const r of rows){
+    let fecha=null, cierre=null;
+    for(const k of Object.keys(r)){
+      const nk = normalizar(k);
+      if(fecha===null && /fecha|date/.test(nk)) fecha = r[k];
+      if(cierre===null && /cierre|close|precio|price/.test(nk) && !/ajustad|adj/.test(nk)) cierre = r[k];
+    }
+    if(fecha==null && cierre==null){ continue; }
+    if(fecha!=null && cierre!=null){
+      let iso = null;
+      if(typeof fecha === 'number'){ // serial de Excel
+        const d = XLSX.SSF.parse_date_code(fecha);
+        iso = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+      } else {
+        const d = new Date(fecha);
+        if(!isNaN(d)) iso = d.toISOString().slice(0,10);
+      }
+      if(iso && typeof cierre==='number') out.push({date:iso, close:cierre});
+    }
+  }
+  out.sort((a,b)=> a.date.localeCompare(b.date));
+  return out;
+}
+
+function precioEnOAntes(serie, isoDate){
+  let best=null;
+  for(const p of serie){ if(p.date<=isoDate) best=p; else break; }
+  return best ? best.close : null;
+}
+
+/* ======================= fallback Yahoo (precio) ======================= */
+async function fetchPrecioYahoo(ticker){
+  try{
+    const r = await fetch(`/api/price?ticker=${encodeURIComponent(ticker)}`);
+    if(!r.ok) return null;
+    const j = await r.json();
+    return (j && j.series) ? j.series : null;
+  }catch(e){ return null; }
+}
+
+/* ======================= generar informe ======================= */
+async function generarInforme(){
+  const btn = document.getElementById('genBtn');
+  const msg = document.getElementById('genMsg');
+  msg.innerHTML = '';
+  const ticker = document.getElementById('inTicker').value.trim().toUpperCase();
+  const nombre = document.getElementById('inNombre').value.trim() || ticker;
+  if(!ticker){ msg.innerHTML = '<div class="msg error">Ingresá un ticker.</div>'; return; }
+
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try{
+    if(MODE === 'indice'){
+      await generarInformeIndice(ticker, nombre);
+    } else {
+      await generarInformeEmpresa(ticker, nombre);
+    }
+  } catch(e){
+    msg.innerHTML = `<div class="msg error">Ocurrió un error armando el informe: ${e.message}</div>`;
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '📊 Generar informe';
+  }
+}
+
+async function leerFilas(fileEntry){
+  if(!fileEntry) return null;
+  const wb = XLSX.read(fileEntry.buf, {type:'array'});
+  const sh = wb.Sheets[wb.SheetNames[0]];
+  const matrix = XLSX.utils.sheet_to_json(sh, {header:1, defval:null, raw:true});
+  return parseEstadoContable(matrix);
+}
+
+async function generarInformeEmpresa(ticker, nombre){
+  const msg = document.getElementById('genMsg');
+  const warnings = [];
+
+  if(!FILES.is || !FILES.bs || !FILES.cf){
+    const faltan = [!FILES.is&&'Cuenta de resultados', !FILES.bs&&'Balance', !FILES.cf&&'Flujo de caja'].filter(Boolean).join(', ');
+    msg.innerHTML = `<div class="msg error">Faltan archivos requeridos: ${faltan}.</div>`;
+    return;
+  }
+
+  const pIS = await leerFilas(FILES.is);
+  const pBS = await leerFilas(FILES.bs);
+  const pCF = await leerFilas(FILES.cf);
+  if(!pIS || !pBS || !pCF){
+    msg.innerHTML = `<div class="msg error">No pude reconocer el formato de uno de los archivos (no encontré la fila "Período terminado:"). Verificá que sea una exportación anual estilo Investing.com / WSJ.</div>`;
+    return;
+  }
+
+  const campos = { ...extraerCampos(pIS, CAMPOS_IS), ...extraerCampos(pBS, CAMPOS_BS), ...extraerCampos(pCF, CAMPOS_CF) };
+  // años: unión de los 3 archivos (deberían coincidir; si no, se alinea por año)
+  const yearSets = [pIS.years, pBS.years, pCF.years];
+  const years = [...new Set(yearSets.flat())].sort((a,b)=>a-b);
+  const yearIdx = (arr, srcYears) => years.map(y=>{
+    const i = srcYears.indexOf(y);
+    return (arr && i>=0) ? arr[i] : null;
+  });
+  const S = {};
+  for(const k of Object.keys(CAMPOS_IS)) S[k] = yearIdx(campos[k], pIS.years);
+  for(const k of Object.keys(CAMPOS_BS)) S[k] = yearIdx(campos[k], pBS.years);
+  for(const k of Object.keys(CAMPOS_CF)) S[k] = yearIdx(campos[k], pCF.years);
+
+  const camposFaltantes = Object.entries(S).filter(([k,v])=>v.every(x=>x===null)).map(([k])=>k);
+  if(camposFaltantes.length){
+    warnings.push(`No se encontraron en el archivo: ${camposFaltantes.join(', ')}. Esos gráficos/criterios van a aparecer sin dato.`);
+  }
+
+  // precio: archivo subido o fallback Yahoo
+  let precioSerie = FILES.px ? parsePrecio(XLSX.read(FILES.px.buf, {type: FILES.px.name.endsWith('.csv')?'string':'array', raw:true})) : null;
+  let precioFuente = FILES.px ? 'excel' : null;
+  if((!precioSerie || !precioSerie.length)){
+    const y = await fetchPrecioYahoo(ticker);
+    if(y && y.length){ precioSerie = y; precioFuente = 'yahoo'; }
+  }
+  let precioPorAnio = null;
+  if(precioSerie && precioSerie.length){
+    // fecha de cierre de ejercicio: última fecha reportada en el balance para ese año, si no hay, 31/12
+    precioPorAnio = years.map(y=> precioEnOAntes(precioSerie, `${y}-12-31`));
+  } else {
+    warnings.push('No se pudo obtener el precio de la acción (ni archivo ni Yahoo). Los 2 gráficos de precio no se muestran.');
+  }
+
+  renderInformeEmpresa({ ticker, nombre, years, S, precioPorAnio, precioFuente, warnings });
+}
+
+async function generarInformeIndice(ticker, nombre){
+  const msg = document.getElementById('genMsg');
+  let serie = FILES.px ? parsePrecio(XLSX.read(FILES.px.buf, {type: FILES.px.name.endsWith('.csv')?'string':'array', raw:true})) : null;
+  let fuente = FILES.px ? 'excel' : null;
+  if(!serie || !serie.length){
+    serie = await fetchPrecioYahoo(ticker);
+    fuente = serie ? 'yahoo' : null;
+  }
+  if(!serie || !serie.length){
+    msg.innerHTML = `<div class="msg error">No se pudo conseguir el precio histórico (ni archivo ni Yahoo). Subí un archivo de precio para continuar.</div>`;
+    return;
+  }
+  renderInformeIndice({ ticker, nombre, serie, fuente });
+}
+
+/* ======================= scoring ======================= */
+function upRatio(arr){
+  const vals = arr.filter(v=>v!==null && v!==undefined);
+  if(vals.length<2) return null;
+  let up=0, total=0;
+  for(let i=1;i<arr.length;i++){
+    if(arr[i]==null || arr[i-1]==null) continue;
+    total++; if(arr[i]>arr[i-1]) up++;
+  }
+  return total>0 ? up/total : null;
+}
+function cagr(arr){
+  const vals = arr.map((v,i)=>[i,v]).filter(([,v])=>v!==null && v>0);
+  if(vals.length<2) return null;
+  const [i0,v0] = vals[0], [i1,v1] = vals[vals.length-1];
+  const n = i1-i0;
+  if(n<=0) return null;
+  return (Math.pow(v1/v0, 1/n)-1)*100;
+}
+function ultimo(arr){ for(let i=arr.length-1;i>=0;i--) if(arr[i]!=null) return arr[i]; return null; }
+function minVal(arr){ const v = arr.filter(x=>x!=null); return v.length?Math.min(...v):null; }
+function divArr(a,b,mul=1){ return a.map((x,i)=> (x!=null && b[i]!=null && b[i]!==0) ? x/b[i]*mul : null); }
+
+const ICON = {good:'✓', warn:'!', critical:'✕', na:'—'};
+const WORD = {good:'Cumple', warn:'Con matices', critical:'No cumple', na:'Sin dato'};
+
+function tarjeta(status, label, detail){
+  return `<div class="score-card ${status}">
+    <div class="score-top"><div class="score-icon ${status}">${ICON[status]}</div><div class="score-label">${label}</div></div>
+    <div class="score-status ${status}">${WORD[status]}</div>
+    <div class="score-detail">${detail}</div>
+  </div>`;
+}
+
+function calcularCriteriosEmpresa(S, years){
+  const margenBruto = divArr(S.beneficio_bruto, S.ventas, 100);
+  const margenNeto = divArr(S.beneficio_neto, S.ventas, 100);
+  const margenEbitda = divArr(S.ebitda, S.ventas, 100);
+  const criterios = [];
+
+  if(S.ventas.some(v=>v!=null)){
+    const up = upRatio(S.ventas), c = cagr(S.ventas);
+    const n = S.ventas.filter(v=>v!=null).length;
+    const status = up==null ? 'na' : up>=0.9?'good':up>=0.6?'warn':'critical';
+    criterios.push({key:'ventas', label:'Ventas crecientes año a año', status,
+      detail: up==null?'Datos insuficientes.':`Subieron en ${Math.round(up*(n-1))} de ${n-1} ejercicios${c!=null?` (CAGR ${c>=0?'+':''}${c.toFixed(1)}%/año)`:''}.`});
+  } else criterios.push({key:'ventas', label:'Ventas crecientes año a año', status:'na', detail:'Sin dato de ventas en el archivo.'});
+
+  if(S.bpa.some(v=>v!=null)){
+    const up = upRatio(S.bpa);
+    const n = S.bpa.filter(v=>v!=null).length;
+    const status = up==null?'na':up>=0.9?'good':up>=0.6?'warn':'critical';
+    criterios.push({key:'bpa', label:'BPA creciente', status,
+      detail: up==null?'Datos insuficientes.':`Subió en ${Math.round(up*(n-1))} de ${n-1} ejercicios.`});
+  } else criterios.push({key:'bpa', label:'BPA creciente', status:'na', detail:'Sin dato de BPA en el archivo.'});
+
+  const mn = ultimo(margenNeto), mnMin = minVal(margenNeto);
+  criterios.push({key:'margen_neto', label:'Margen neto > 15%', status: mn==null?'na':(mn>15 && mnMin>15)?'good':(mn>15?'warn':'critical'),
+    detail: mn==null?'Sin dato.':`${mn.toFixed(1)}% en el último ejercicio (mínimo del período: ${mnMin.toFixed(1)}%).`});
+
+  const mb = ultimo(margenBruto), mbMin = minVal(margenBruto);
+  criterios.push({key:'margen_bruto', label:'Margen bruto > 25%', status: mb==null?'na':(mb>25 && mbMin>25)?'good':(mb>25?'warn':'critical'),
+    detail: mb==null?'Sin dato.':`${mb.toFixed(1)}% en el último ejercicio (mínimo del período: ${mbMin.toFixed(1)}%).`});
+
+  const me = ultimo(margenEbitda), meMin = minVal(margenEbitda);
+  criterios.push({key:'margen_ebitda', label:'Margen EBITDA > 25%', status: me==null?'na':(me>25 && meMin>25)?'good':(me>25?'warn':'critical'),
+    detail: me==null?'Sin dato.':`${me.toFixed(1)}% en el último ejercicio (mínimo del período: ${meMin.toFixed(1)}%).`});
+
+  if(S.activos_totales.some(v=>v!=null) && S.pasivo_total.some(v=>v!=null)){
+    const ok = years.every((y,i)=> S.activos_totales[i]==null || S.pasivo_total[i]==null || S.activos_totales[i]>S.pasivo_total[i]);
+    const a = ultimo(S.activos_totales), p = ultimo(S.pasivo_total);
+    criterios.push({key:'activo_pasivo', label:'Activo total > Pasivo total', status: ok?'good':'critical',
+      detail: `Último ejercicio: activo ${a?.toFixed(0)} vs. pasivo ${p?.toFixed(0)} (misma unidad del archivo).`});
+  } else criterios.push({key:'activo_pasivo', label:'Activo total > Pasivo total', status:'na', detail:'Sin dato de balance en el archivo.'});
+
+  if(S.activo_corriente.some(v=>v!=null) && S.pasivo_corriente.some(v=>v!=null)){
+    const flags = years.map((y,i)=> (S.activo_corriente[i]!=null && S.pasivo_corriente[i]!=null) ? S.activo_corriente[i]>S.pasivo_corriente[i] : null);
+    const ultimoFlag = [...flags].reverse().find(f=>f!==null);
+    let racha=0; for(let i=flags.length-1;i>=0;i--){ if(flags[i]===false) racha++; else if(flags[i]===true) break; }
+    criterios.push({key:'corriente', label:'Activo corriente > Pasivo corriente', status: ultimoFlag==null?'na':ultimoFlag?'good':'critical',
+      detail: ultimoFlag==null?'Sin dato.':ultimoFlag?'Se cumple en el último ejercicio.':`No se cumple hace ${racha} ejercicio(s) seguido(s).`});
+  } else criterios.push({key:'corriente', label:'Activo corriente > Pasivo corriente', status:'na', detail:'Sin dato de balance en el archivo.'});
+
+  if(S.fcf.some(v=>v!=null)){
+    const up = upRatio(S.fcf), c = cagr(S.fcf);
+    const n = S.fcf.filter(v=>v!=null).length;
+    const status = up==null?'na':up>=0.9?'good':up>=0.5?'warn':'critical';
+    criterios.push({key:'fcf', label:'Flujo de caja libre creciente', status,
+      detail: up==null?'Sin dato.':`Subió en ${Math.round(up*(n-1))} de ${n-1} ejercicios${c!=null?` (CAGR de fondo ${c>=0?'+':''}${c.toFixed(1)}%/año)`:''}.`});
+  } else criterios.push({key:'fcf', label:'Flujo de caja libre creciente', status:'na', detail:'Sin dato de flujo de caja en el archivo.'});
+
+  return { criterios, margenBruto, margenNeto, margenEbitda };
+}
+
+function puntajeSobre10(criterios){
+  const evaluables = criterios.filter(c=>c.status!=='na');
+  if(!evaluables.length) return null;
+  const pts = {good:1, warn:0.5, critical:0};
+  const suma = evaluables.reduce((a,c)=>a+pts[c.status],0);
+  return { score: suma/evaluables.length*10, n: evaluables.length, total: criterios.length };
+}
+
+/* ======================= charts (motor genérico) ======================= */
+const CW=560, CH=260, PAD_L=40, PAD_R=10, PAD_T=10, PAD_B=22;
+const plotW = CW-PAD_L-PAD_R, plotH = CH-PAD_T-PAD_B;
+function fmtNum(v, d=1){ return v==null ? '—' : v.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+
+function makeChart(cfg, years){
+  const allVals = cfg.series.flatMap(s=>s.values).filter(v=>v!=null);
+  if(!allVals.length){
+    return `<div class="chart-card empty"><div>${cfg.title}<br><span style="font-size:11px;">Sin datos suficientes para este gráfico.</span></div></div>`;
+  }
+  const maxV = Math.max(...allVals,0), minV = Math.min(...allVals,0);
+  const topV = maxV*1.15 || 1;
+  const yScale = v => PAD_T + plotH - (v-minV)/((topV-minV)||1)*plotH;
+  const xStep = plotW/((years.length-1)||1);
+  const xScale = i => PAD_L + i*xStep;
+  const valueFmt = cfg.valueFmt || (v=>fmtNum(v));
+
+  const gridLines=[]; const ticks=4;
+  for(let t=0;t<=ticks;t++){
+    const v = topV*t/ticks, y = yScale(v);
+    gridLines.push(`<line class="gridline" x1="${PAD_L}" x2="${CW-PAD_R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>`);
+    gridLines.push(`<text class="axis-label" x="${PAD_L-6}" y="${(y+2.5).toFixed(1)}" text-anchor="end">${valueFmt(v)}</text>`);
+  }
+  const step = years.length>12?2:1;
+  const xLabels = years.map((yr,i)=> (i%step===0) ? `<text class="axis-label" x="${xScale(i).toFixed(1)}" y="${CH-6}" text-anchor="middle">${yr}</text>` : '').join('');
+
+  let marks='';
+  if(cfg.type==='bar'){
+    const n=cfg.series.length, bandW=xStep*0.62, barW=bandW/n-2;
+    cfg.series.forEach((s,si)=>{
+      s.values.forEach((v,i)=>{
+        if(v==null) return;
+        const x = xScale(i)-bandW/2+si*(barW+2);
+        const y = yScale(Math.max(v,0)), y0=yScale(0), h=Math.abs(y0-y);
+        marks += `<rect x="${x.toFixed(1)}" y="${Math.min(y,y0).toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${s.color}"/>`;
+      });
+    });
+  } else {
+    cfg.series.forEach(s=>{
+      let pts=[];
+      s.values.forEach((v,i)=>{ if(v!=null) pts.push(`${xScale(i).toFixed(1)},${yScale(v).toFixed(1)}`); });
+      marks += `<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+      s.values.forEach((v,i)=>{ if(v!=null) marks += `<circle cx="${xScale(i).toFixed(1)}" cy="${yScale(v).toFixed(1)}" r="2.6" fill="${s.color}"/>`; });
+    });
+  }
+  const hoverCols = years.map((yr,i)=>{
+    const cx=xScale(i), left = i===0?PAD_L:(xScale(i-1)+cx)/2, right = i===years.length-1?CW-PAD_R:(xScale(i+1)+cx)/2;
+    return `<rect class="hover-col" data-i="${i}" x="${left.toFixed(1)}" y="${PAD_T}" width="${(right-left).toFixed(1)}" height="${plotH}"/>`;
+  }).join('');
+  const legend = cfg.series.length>1 ? `<div class="legend">${cfg.series.map(s=>`<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${s.label}</span>`).join('')}</div>` : '';
+
+  return `<div class="chart-card">
+    <div class="chart-head"><div class="chart-title">${cfg.title}</div><div class="chart-unit">${cfg.unit}</div></div>
+    ${legend}
+    <div class="chart-svg-wrap">
+      <svg class="chart" viewBox="0 0 ${CW} ${CH}" data-chart-id="${cfg.id}">
+        ${gridLines.join('')}
+        <line class="baseline" x1="${PAD_L}" x2="${CW-PAD_R}" y1="${yScale(0).toFixed(1)}" y2="${yScale(0).toFixed(1)}"/>
+        ${marks}
+        <line class="crosshair" id="cross-${cfg.id}" x1="0" x2="0" y1="${PAD_T}" y2="${PAD_T+plotH}"/>
+        ${xLabels}
+        ${hoverCols}
+      </svg>
+    </div>
+  </div>`;
+}
+
+function wireHover(charts, years){
+  const tooltip = document.getElementById('tooltip');
+  document.querySelectorAll('svg.chart').forEach(svg=>{
+    const cfg = charts.find(c=>c.id===svg.dataset.chartId);
+    if(!cfg) return;
+    const wrap = svg.closest('.chart-svg-wrap');
+    const cross = svg.querySelector('#cross-'+cfg.id);
+    svg.addEventListener('mousemove', e=>{
+      const target = e.target.closest('.hover-col');
+      if(!target) return;
+      const i = +target.dataset.i;
+      const rect = svg.getBoundingClientRect();
+      const scaleX = rect.width/CW;
+      const cx = PAD_L + i*(plotW/((years.length-1)||1));
+      cross.setAttribute('x1',cx); cross.setAttribute('x2',cx); cross.style.opacity=1;
+      const rows = cfg.series.map(s=>{
+        const v = s.values[i];
+        return `<div class="tt-row"><span><span class="tt-sw" style="background:${s.color}"></span>${s.label}</span><b style="margin-left:10px">${v==null?'—':cfg.tt(v)}</b></div>`;
+      }).join('');
+      tooltip.innerHTML = `<div class="tt-title">${years[i]}</div>${rows}`;
+      tooltip.style.opacity=1;
+      const wrapRect = wrap.getBoundingClientRect();
+      tooltip.style.left = (rect.left-wrapRect.left+cx*scaleX)+'px';
+      tooltip.style.top = (rect.top-wrapRect.top-8)+'px';
+      wrap.style.position='relative';
+      if(tooltip.parentElement!==wrap) wrap.appendChild(tooltip);
+    });
+    svg.addEventListener('mouseleave', ()=>{ cross.style.opacity=0; tooltip.style.opacity=0; });
+  });
+}
+
+/* ======================= render: informe empresa ======================= */
+function renderInformeEmpresa(ctx){
+  const { ticker, nombre, years, S, precioPorAnio, precioFuente, warnings } = ctx;
+  const { criterios, margenBruto, margenNeto, margenEbitda } = calcularCriteriosEmpresa(S, years);
+  const puntaje = puntajeSobre10(criterios);
+
+  const roa = divArr(S.beneficio_neto, S.activos_totales, 100);
+  const roe = divArr(S.beneficio_neto, S.patrimonio_neto, 100);
+  const investedCap = years.map((y,i)=> (S.deuda_total[i]!=null && S.patrimonio_neto[i]!=null) ? S.deuda_total[i]+S.patrimonio_neto[i] : null);
+  const nopat = S.ebitda.map((v,i)=> null); // no usamos ebitda para roic; usamos beneficio_bruto*0 -> placeholder
+  // ROIC estimado: EBIT no disponible directo del archivo -> aproximamos con EBITDA como proxy operativo si no hay otra cosa
+  const ebitProxy = S.ebitda; // aproximación: se etiqueta "estimado" en el gráfico
+  const roic = years.map((y,i)=>{
+    if(ebitProxy[i]==null || investedCap[i]==null || investedCap[i]===0) return null;
+    const nopatY = ebitProxy[i]*0.79; // tasa efectiva ~21% asumida cuando no hay dato de impuestos en el archivo
+    return nopatY/investedCap[i]*100;
+  });
+
+  const idx = arr => { const base = arr.find(v=>v!=null); if(base==null) return arr.map(()=>null); return arr.map(v=> v!=null ? v/base*100 : null); };
+  const precioIdx = precioPorAnio ? idx(precioPorAnio) : null;
+  const bpaIdx = idx(S.bpa);
+  const netoIdx = idx(S.beneficio_neto);
+
+  const fuenteTag = (excelOk) => excelOk ? '<span class="field-tag excel">Excel</span>' : '<span class="field-tag yahoo">Yahoo</span>';
+
+  const scoreStatus = puntaje==null?'warn':puntaje.score>=7?'good':puntaje.score>=4.5?'warn':'critical';
+
+  const charts = [
+    {id:'ventas', title:'Ventas', unit:'unidad del archivo', type:'bar', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,2),
+      series:[{label:'Ventas', color:'var(--s1)', values:S.ventas}]},
+    {id:'ni', title:'Ingreso neto', unit:'unidad del archivo', type:'bar', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,2),
+      series:[{label:'Ingreso neto', color:'var(--s1)', values:S.beneficio_neto}]},
+    {id:'margenes', title:'Márgenes', unit:'% sobre ventas', type:'line', valueFmt:v=>fmtNum(v,0)+'%', tt:v=>fmtNum(v)+'%',
+      series:[
+        {label:'Margen bruto', color:'var(--s1)', values:margenBruto},
+        {label:'Margen neto', color:'var(--s2)', values:margenNeto},
+        {label:'Margen EBITDA', color:'var(--s3)', values:margenEbitda},
+      ]},
+    {id:'activopasivo', title:'Activo vs. Pasivo', unit:'unidad del archivo', type:'bar', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,2),
+      series:[
+        {label:'Activo total', color:'var(--s1)', values:S.activos_totales},
+        {label:'Pasivo total', color:'var(--s2)', values:S.pasivo_total},
+      ]},
+    {id:'corriente', title:'Activo corriente vs. Pasivo corriente', unit:'unidad del archivo', type:'bar', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,2),
+      series:[
+        {label:'Activo corriente', color:'var(--s1)', values:S.activo_corriente},
+        {label:'Pasivo corriente', color:'var(--s2)', values:S.pasivo_corriente},
+      ]},
+    {id:'fcf', title:'Flujo de caja libre', unit:'unidad del archivo', type:'bar', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,2),
+      series:[{label:'FCL', color:'var(--s1)', values:S.fcf}]},
+    {id:'retornos', title:'ROA · ROE · ROIC (estimado)', unit:'%', type:'line', valueFmt:v=>fmtNum(v,0)+'%', tt:v=>fmtNum(v)+'%',
+      series:[
+        {label:'ROA', color:'var(--s1)', values:roa},
+        {label:'ROE', color:'var(--s2)', values:roe},
+        {label:'ROIC (estimado)', color:'var(--s3)', values:roic},
+      ]},
+  ];
+  if(precioIdx){
+    charts.push({id:'preciobpa', title:'Precio de la acción vs. BPA', unit:'índice, primer año = 100', type:'line', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,0),
+      series:[{label:'Precio', color:'var(--s1)', values:precioIdx},{label:'BPA', color:'var(--s2)', values:bpaIdx}]});
+    charts.push({id:'precioneto', title:'Precio de la acción vs. Ingreso neto', unit:'índice, primer año = 100', type:'line', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,0),
+      series:[{label:'Precio', color:'var(--s1)', values:precioIdx},{label:'Ingreso neto', color:'var(--s3)', values:netoIdx}]});
+  } else {
+    charts.push({id:'preciobpa-empty', __empty:true, title:'Precio de la acción vs. BPA'});
+    charts.push({id:'precioneto-empty', __empty:true, title:'Precio de la acción vs. Ingreso neto'});
+  }
+
+  const chartsHtml = charts.map(c => c.__empty
+    ? `<div class="chart-card empty"><div>${c.title}<br><span style="font-size:11px;">Sin precio disponible.</span></div></div>`
+    : makeChart(c, years)).join('');
+
+  const warnHtml = warnings.length ? `<div class="msg warn">${warnings.map(w=>`• ${w}`).join('<br>')}</div>` : '';
+
+  document.getElementById('report').innerHTML = `
+    <div class="masthead">
+      <div>
+        <div class="ticker-pill">${ticker}</div>
+        <h1>${nombre} — Análisis Fundamental</h1>
+        <textarea class="blurb" id="blurbBox" placeholder="Resumen breve de qué hace la empresa, para el cliente…"></textarea>
+      </div>
+      <div class="meta">Ejercicios ${years[0]}–${years[years.length-1]}<br>Precio: ${precioFuente==='excel'?'archivo subido':precioFuente==='yahoo'?'Yahoo Finance':'sin dato'}<br>Cifras en la unidad del archivo original</div>
+    </div>
+    ${warnHtml}
+    <section class="panel">
+      <h2>Puntaje fundamental</h2>
+      <div class="score-headline">
+        <div class="score-big ${scoreStatus}">${puntaje?puntaje.score.toFixed(1):'—'}<small>/10</small></div>
+        <div class="score-note">${puntaje?`Basado en ${puntaje.n} de ${puntaje.total} criterios evaluables con los datos del archivo.`:'No se pudo calcular: faltan los datos base.'}</div>
+      </div>
+      <div class="score-grid">${criterios.map(c=>tarjeta(c.status,c.label,c.detail)).join('')}</div>
+    </section>
+    <section class="panel">
+      <h2>Evolución ${years[0]}–${years[years.length-1]}</h2>
+      <div class="chart-grid">${chartsHtml}</div>
+      <div class="sources-note">ROIC estimado con una tasa impositiva efectiva del 21% (no viene desglosada en el archivo) sobre el EBITDA como proxy operativo — es una aproximación, no la cifra exacta de un proveedor institucional.</div>
+    </section>
+    <div class="actions">
+      <button class="btn ghost" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+      <button class="btn ghost" onclick="copiarResumen()">📋 Copiar resumen</button>
+    </div>
+    <footer>Informe armado a partir de los archivos subidos${precioFuente==='yahoo'?' + precio de Yahoo Finance':''}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
+  `;
+  document.getElementById('report').style.display = '';
+  wireHover(charts.filter(c=>!c.__empty), years);
+}
+
+function copiarResumen(){
+  const box = document.getElementById('blurbBox');
+  const scoreBig = document.querySelector('.score-big');
+  const txt = `${box ? box.value : ''}\n\nPuntaje fundamental: ${scoreBig ? scoreBig.textContent.replace('/10','/10') : ''}`;
+  navigator.clipboard.writeText(txt.trim()).then(()=>{
+    alert('Copiado al portapapeles.');
+  }).catch(()=>{ alert('No se pudo copiar automáticamente. Seleccioná el texto a mano.'); });
+}
+
+/* ======================= render: informe índice/ETF ======================= */
+function renderInformeIndice(ctx){
+  const { ticker, nombre, serie, fuente } = ctx;
+  const years = [...new Set(serie.map(p=>p.date.slice(0,4)))].map(Number).sort((a,b)=>a-b);
+  const cierrePorAnio = years.map(y=> precioEnOAntes(serie, `${y}-12-31`));
+  const c = cagr(cierrePorAnio);
+  const up = upRatio(cierrePorAnio);
+  const maxHist = Math.max(...serie.map(p=>p.close));
+  const ultimoPrecio = serie[serie.length-1].close;
+  const drawdown = (ultimoPrecio/maxHist-1)*100;
+
+  const criterios = [
+    {key:'cagr', label:'Tendencia de largo plazo (CAGR)', status: c==null?'na':c>5?'good':c>0?'warn':'critical',
+      detail: c==null?'Sin dato suficiente.':`${c>=0?'+':''}${c.toFixed(1)}% anual entre ${years[0]} y ${years[years.length-1]}.`},
+    {key:'anios', label:'Años con cierre al alza', status: up==null?'na':up>=0.65?'good':up>=0.45?'warn':'critical',
+      detail: up==null?'Sin dato.':`${Math.round(up*100)}% de los cierres anuales fueron al alza.`},
+    {key:'drawdown', label:'Distancia al máximo histórico', status: drawdown>-10?'good':drawdown>-25?'warn':'critical',
+      detail: `${drawdown.toFixed(1)}% respecto del máximo del período.`},
+  ];
+  const puntaje = puntajeSobre10(criterios);
+  const scoreStatus = puntaje==null?'warn':puntaje.score>=7?'good':puntaje.score>=4.5?'warn':'critical';
+
+  const chart = {id:'precioidx', title:'Precio', unit:'cierre anual', type:'line', valueFmt:v=>fmtNum(v,0), tt:v=>fmtNum(v,2),
+    series:[{label:'Precio', color:'var(--s1)', values:cierrePorAnio}]};
+
+  document.getElementById('report').innerHTML = `
+    <div class="masthead">
+      <div>
+        <div class="ticker-pill">${ticker}</div>
+        <h1>${nombre} — Análisis de Índice / ETF</h1>
+        <textarea class="blurb" id="blurbBox" placeholder="Resumen breve para el cliente (qué sigue este índice/ETF)…"></textarea>
+      </div>
+      <div class="meta">${years[0]}–${years[years.length-1]}<br>Precio: ${fuente==='excel'?'archivo subido':'Yahoo Finance'}</div>
+    </div>
+    <section class="panel">
+      <h2>Puntaje (criterios de índice/ETF)</h2>
+      <div class="score-headline">
+        <div class="score-big ${scoreStatus}">${puntaje?puntaje.score.toFixed(1):'—'}<small>/10</small></div>
+        <div class="score-note">Un índice/ETF no tiene estados contables — se evalúa por tendencia de precio, no por márgenes o balance.</div>
+      </div>
+      <div class="score-grid">${criterios.map(c=>tarjeta(c.status,c.label,c.detail)).join('')}</div>
+    </section>
+    <section class="panel">
+      <h2>Evolución de precio</h2>
+      <div class="chart-grid">${makeChart(chart, years)}</div>
+    </section>
+    <div class="actions">
+      <button class="btn ghost" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+      <button class="btn ghost" onclick="copiarResumen()">📋 Copiar resumen</button>
+    </div>
+    <footer>Informe armado a partir de ${fuente==='excel'?'el archivo subido':'Yahoo Finance'}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
+  `;
+  document.getElementById('report').style.display = '';
+  wireHover([chart], years);
+}
+</script>
+</body>
+</html>
