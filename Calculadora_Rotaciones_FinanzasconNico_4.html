@@ -731,7 +731,7 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="field"><label>Fecha de hoy</label><input type="date" id="p-hoy" onchange="onGlobalChange()"></div>
         <div class="field"><label>Comisión (%, ambas puntas)</label><input type="number" step="0.01" id="p-comision" value="0.50" onchange="onGlobalChange()"></div>
         <div class="field"><label>Precios a usar del Excel</label>
-          <select id="p-precio-tipo" onchange="onGlobalChange()"><option value="cable" selected>Cable</option><option value="mep">MEP</option></select>
+          <select id="p-precio-tipo" onchange="onGlobalChange()"><option value="cable">Cable</option><option value="mep" selected>MEP</option></select>
         </div>
       </div>
       <div class="info-box" style="margin-top:10px;font-size:11px;">
@@ -1327,8 +1327,8 @@ function seleccionarBono(pata, ticker){
   document.getElementById(p+'-emisor').value = (real ? real.emisor : (b?b.emisor:'')) || '';
 
   var tipoPrecio = document.getElementById('p-precio-tipo').value;
-  var tir = tirEfectivo(ticker, tipoPrecio);
-  var precio = precioEfectivo(ticker, tipoPrecio);
+  var tir = tirEfectivo(ticker, tipoPrecio, pata);
+  var precio = precioEfectivo(ticker, tipoPrecio, pata);
   document.getElementById(p+'-tir').value = tir!=null ? tir : '';
   document.getElementById(p+'-precio').value = precio!=null ? precio : '';
 
@@ -1628,7 +1628,7 @@ function renderChips(p, bond){
     '<span class="chip">'+(bond.amortType==='bullet'?'Bullet':'Amortizable')+'</span>'+
     flujoTag+
     (bond.calif ? '<span class="chip">'+bond.calif+'</span>' : '')+
-    bymaChipHTML(bond.ticker, bond.precio);
+    bymaChipHTML(bond.ticker, bond.precio, p==='v' ? 'venta' : 'compra');
 
   // Días de tenencia + rentabilidad ya obtenida — solo en la pata de VENTA, y solo si hay un
   // cliente activo con una posición real de este ticker en su Tenencia (precio de compra real
@@ -1701,7 +1701,7 @@ function calificacionRank(calif){
 }
 var lastVentaParaComparables = null;
 function tirEfectivaBond(b){
-  return tirEfectivo(b.ticker, document.getElementById('p-precio-tipo').value);
+  return tirEfectivo(b.ticker, document.getElementById('p-precio-tipo').value, 'compra');
 }
 function durationBond(b){
   var real = FLUJO_DB[b.ticker];
@@ -1711,6 +1711,17 @@ function durationBond(b){
 function califBond(b){
   var real = FLUJO_DB[b.ticker];
   return (real && real.calif) ? real.calif : b.calif;
+}
+// Familia de calificación (AAA / AA / A / BBB / BB / B / CCC o menos), sin distinguir +/-.
+function familiaCalif(rank){
+  if(rank==null) return null;
+  if(rank===0) return 'AAA';
+  if(rank<=3) return 'AA';
+  if(rank<=6) return 'A';
+  if(rank<=9) return 'BBB';
+  if(rank<=12) return 'BB';
+  if(rank<=15) return 'B';
+  return 'CCC';
 }
 // mismo universo que usa el buscador de ticker (buscarBonoInput): BOND_DB + lo que
 // solo existe como hoja individual en FLUJO_DB (sin duplicar los que ya están en BOND_DB).
@@ -2020,15 +2031,15 @@ function _licRegistrarEnUniverso(nuevaON, amortRows, silencioso){
 // (BOND_DB/FLUJO_DB) — mismo criterio exacto que usa seleccionarBono() para precargar la pata de
 // venta/compra del comparador individual, solo que acá arma el objeto directo en vez de llenar
 // inputs del formulario.
-function bondDesdeUniverso(ticker, forzarTipoPrecio){
+function bondDesdeUniverso(ticker, forzarTipoPrecio, lado){
   var b = BOND_DB[ticker];
   var real = FLUJO_DB[ticker];
   if(!b && !real) return null;
   // forzarTipoPrecio: la licitación siempre compara en MEP (Nico confía en la TIR/precio MEP
   // del Monitor y la ON nueva ya viene ajustada a MEP) — sin importar el selector global.
   var tipoPrecio = forzarTipoPrecio || document.getElementById('p-precio-tipo').value;
-  var tir = tirEfectivo(ticker, tipoPrecio);
-  var precio = precioEfectivo(ticker, tipoPrecio);
+  var tir = tirEfectivo(ticker, tipoPrecio, lado);
+  var precio = precioEfectivo(ticker, tipoPrecio, lado);
   var cuponAnual = (real && real.cuponAnual!=null) ? real.cuponAnual : (b?b.cuponAnual:null);
   var freq, fechaVencStr, ley, calif, fechaEmisionStr, amortType;
   if(real){
@@ -2139,7 +2150,7 @@ function buscarCandidatosLicitacion(){
     (TENENCIA_POR_CLIENTE[cliente]||[]).forEach(function(pos){
       if(pos.ticker===nuevaON.ticker) return; // ya lo tiene — no aplica "rotar a lo mismo"
       if(tenenciaMinPos!=null && (pos.tenencia==null || pos.tenencia < tenenciaMinPos)){ posFiltradasPorTamano++; return; } // posición muy chica para rotar
-      if(!bondCache.hasOwnProperty(pos.ticker)) bondCache[pos.ticker] = bondDesdeUniverso(pos.ticker, 'mep');
+      if(!bondCache.hasOwnProperty(pos.ticker)) bondCache[pos.ticker] = bondDesdeUniverso(pos.ticker, 'mep', 'venta');
       var baseBond = bondCache[pos.ticker];
       if(!baseBond){ huboTickersSinDatos = true; return; }
 
@@ -3704,9 +3715,10 @@ function limpiarClienteActivo(){
 }
 // TIR "actual" de un ticker fuera de una rotación puntual — mismo orden de prioridad que usa
 // seleccionarBono() al autocompletar (cronograma real > MEP/Cable según el tipo elegido).
-function tirActualDeTicker(ticker){
+// lado: 'venta' (lo que ya tiene el cliente: se cobra el bid) | 'compra' (candidato: se paga el offer).
+function tirActualDeTicker(ticker, lado){
   if(!BOND_DB[ticker] && !FLUJO_DB[ticker]) return null;
-  var tir = tirEfectivo(ticker, document.getElementById('p-precio-tipo').value);
+  var tir = tirEfectivo(ticker, document.getElementById('p-precio-tipo').value, lado);
   return tir!=null ? tir : null;
 }
 
@@ -3728,7 +3740,7 @@ function renderClienteTickerChips(){
   }
   var hayBajas = false;
   wrap.innerHTML = items.map(function(it){
-    var tir = tirActualDeTicker(it.ticker);
+    var tir = tirActualDeTicker(it.ticker, 'venta');
     var esBaja = umbralTirCliente!=null && tir!=null && tir < umbralTirCliente;
     if(esBaja) hayBajas = true;
     var tirTxt = tir!=null ? ' · TIR '+fmtNum(tir)+'%' : '';
@@ -3788,18 +3800,31 @@ function alternativasParaRotar(tickerActual, opts){
   opts = opts || {};
   var n = opts.n || 1, excluirTickers = opts.excluir, modo = opts.modo || 'tir', ventaja = opts.ventajaTir || 0;
   var baseRaw = BOND_DB[tickerActual];
-  var tirBase = tirActualDeTicker(tickerActual);
+  var tirBase = tirActualDeTicker(tickerActual, 'venta');
   var durBase = baseRaw ? durationBond(baseRaw) : null;
+  // opts.calif = {misma:bool, sel:{familia:true}}: filtro explícito de calificación de los comparables
+  // (lo usa el Radar). Si está activo REEMPLAZA el piso AA- de corporativas y aplica a todo el universo.
+  var cf = opts.calif || null, selFam = cf && cf.sel ? Object.keys(cf.sel) : [];
+  var cfActivo = !!(cf && (cf.misma || selFam.length));
+  var famBase = null;
+  if(cfActivo && cf.misma){
+    famBase = familiaCalif(calificacionRank(califBond(baseRaw || {ticker:tickerActual})));
+    if(!famBase) return [];                          // sin calificación propia no hay "misma" contra qué comparar
+  }
   var lista = [];
   Object.keys(BOND_DB).forEach(function(tk){
     if(tk===tickerActual) return;
     if(excluirTickers && excluirTickers[tk]) return;
     var b = BOND_DB[tk];
-    if(b.categoria==='ON'){
+    if(cfActivo){
+      var fam = familiaCalif(calificacionRank(b.calif));
+      if(!fam) return;
+      if(cf.misma ? fam!==famBase : !cf.sel[fam]) return;
+    } else if(b.categoria==='ON'){
       var rk = calificacionRank(b.calif);
       if(rk==null || rk>RF_CORP_MIN_RANK) return;
     }
-    var tir = tirActualDeTicker(tk);
+    var tir = tirActualDeTicker(tk, 'compra');
     // Techo de sanidad (mismo criterio que "Mejores TIR" del dashboard de Inicio): una TIR por
     // encima de esto casi siempre es un dato roto (precio mal cargado, bono a días de vencer)
     // más que una oportunidad real — sin este techo, "elegí la TIR más alta" terminaba
@@ -3836,6 +3861,16 @@ function candidatoParaRotar(tickerActual, excluirTickers){
 // ══════════════════════════════════════════════════════════════
 var radarAbierto = false;
 var radarFiltro = 'todas';   // todas | tir | dur | gan | conc
+var radarCalifMisma = false; // comparables = misma familia de calificación que el ticker tenido
+var radarCalifSel = {};      // familia -> true (multi-selección de calificaciones de los comparables)
+var RADAR_FAMILIAS = [['AAA','AAA'],['AA','AA'],['A','A'],['BBB','BBB'],['BB','BB'],['B','B'],['CCC','CCC o menos']];
+function radarCalifActivo(){ return radarCalifMisma || Object.keys(radarCalifSel).length>0; }
+function radarCalifOpts(){ return radarCalifActivo() ? {misma:radarCalifMisma, sel:radarCalifSel} : null; }
+function radarCalifClick(c){
+  if(c==='std'){ radarCalifMisma=false; radarCalifSel={}; }
+  else if(c==='misma'){ radarCalifMisma=!radarCalifMisma; radarCalifSel={}; }
+  else { radarCalifMisma=false; if(radarCalifSel[c]) delete radarCalifSel[c]; else radarCalifSel[c]=true; }
+}
 var radarExpandidos = {};    // ticker -> true
 var radarUltimo = null;      // último cálculo, para las acciones de cada fila
 var RADAR_CHIPS = [['todas','Todas'],['tir','↑ Mejora TIR'],['dur','⇊ Acortar Duration'],['gan','◎ Toma Ganancias'],['conc','⚠ Concentración']];
@@ -3871,7 +3906,7 @@ function radarCalcular(){
   Object.keys(porTicker).forEach(function(tk){
     var raw = BOND_DB[tk], real = FLUJO_DB[tk];
     if(!raw && !real) return;                       // sin datos de mercado: no analizable
-    var tir = tirActualDeTicker(tk);
+    var tir = tirActualDeTicker(tk, 'venta');
     if(tir==null) return;
     var holders = porTicker[tk].sort(function(a,b){ return b.tenencia-a.tenencia; });
     var g = { ticker:tk, tir:tir, holders:holders };
@@ -3888,8 +3923,8 @@ function radarCalcular(){
     g.pnlPct = costoTot>0 ? (tenConCosto/costoTot-1)*100 : null;
     g.ganUSD = costoTot>0 ? tenConCosto-costoTot : null;
     g.ppcProm = nomConCosto>0 ? costoTot/nomConCosto : null;
-    g.altsTir = alternativasParaRotar(tk, {n:4, modo:'tir', ventajaTir:R.ventaja});
-    g.altsDur = (g.duration!=null && g.duration>=R.dur) ? alternativasParaRotar(tk, {n:4, modo:'dur'}) : [];
+    g.altsTir = alternativasParaRotar(tk, {n:4, modo:'tir', ventajaTir:R.ventaja, calif:radarCalifOpts()});
+    g.altsDur = (g.duration!=null && g.duration>=R.dur) ? alternativasParaRotar(tk, {n:4, modo:'dur', calif:radarCalifOpts()}) : [];
     g.hTir = g.altsTir.length ? holders : [];
     g.hDur = g.altsDur.length ? holders : [];
     g.hGan = holders.filter(function(h){ return h.pnlPct!=null && h.pnlPct>=R.gan; });
@@ -3919,6 +3954,8 @@ function radarRender(){
   if(!hayMonitor || !hayTenencia){
     document.getElementById('radar-kpis').innerHTML = '';
     document.getElementById('radar-chips').innerHTML = '';
+    document.getElementById('radar-calif-chips').innerHTML = '';
+    document.getElementById('radar-calif-hint').textContent = '';
     document.getElementById('radar-resumen').innerHTML = '';
     lista.innerHTML = '<div class="radar-empty">'+(!hayMonitor ? 'Falta el <b>Monitor de Individuos</b> (precios y TIR de los bonos). ' : '')+(!hayTenencia ? 'Falta la <b>Tenencia por Ticker</b>: subila una vez en FCN Suite → Archivos.' : '')+'</div>';
     return;
@@ -3949,6 +3986,14 @@ function radarRender(){
     return '<span class="preset-chip'+(radarFiltro===c[0]?' active':'')+'" data-act="chip" data-f="'+c[0]+'">'+c[1]+' <b>'+n+'</b></span>';
   }).join('');
 
+  var cfAct = radarCalifActivo();
+  function ccBtn(c, lbl, on, tip){ return '<button type="button" class="radar-cc'+(on?' active':'')+'" data-act="cc" data-c="'+c+'" aria-pressed="'+(on?'true':'false')+'"'+(tip?' title="'+tip+'"':'')+'>'+lbl+'</button>'; }
+  document.getElementById('radar-calif-chips').innerHTML =
+    ccBtn('std','Estándar (corp. ≥ AA-)',!cfAct,'Comportamiento de siempre: corporativas AA- o mejor, soberanos sin piso')+
+    ccBtn('misma','= Misma calif.',radarCalifMisma,'Solo comparables de la misma familia de calificación que el ticker tenido (AA+/AA/AA- cuentan como AA)')+
+    RADAR_FAMILIAS.map(function(fm){ return ccBtn(fm[0], fm[1], !!radarCalifSel[fm[0]]); }).join('');
+  document.getElementById('radar-calif-hint').textContent = cfAct ? 'Filtro activo: se ignora el piso AA- de corporativas y aplica también a soberanos.' : '';
+
   var vis = pasa.filter(function(g){ return radarFlag(g, radarFiltro); });
   var orden = document.getElementById('radar-orden').value;
   vis.sort(function(a,b){
@@ -3964,6 +4009,7 @@ function radarRender(){
   lista.onclick = radarClick;
   document.getElementById('radar-kpis').onclick = radarClick;
   document.getElementById('radar-chips').onclick = radarClick;
+  document.getElementById('radar-calif-chips').onclick = radarClick;
 }
 
 function radarGrupoHTML(g){
@@ -4013,8 +4059,10 @@ function radarCuerpoHTML(g){
   var verTir = radarFiltro==='todas' || radarFiltro==='tir' || radarFiltro==='gan' || radarFiltro==='conc';
   var verDur = radarFiltro==='todas' || radarFiltro==='dur';
   if(verTir){
-    h += '<div class="radar-sec">↑ Mayor TIR con calificación y duration parecidas</div>';
-    h += g.altsTir.length ? radarAltsHTML(g, g.altsTir, 'tir') : '<div class="radar-empty" style="padding:8px 0;text-align:left;">Sin alternativa con más TIR (y calificación/duration parecidas) que valga la pena.</div>';
+    var cfA = radarCalifActivo();
+    var cfTxt = radarCalifMisma ? 'misma calificación ('+_rEsc(familiaCalif(calificacionRank(g.calif))||'—')+')' : (cfA ? 'calificación '+Object.keys(radarCalifSel).join(' / ') : 'calificación');
+    h += '<div class="radar-sec">↑ Mayor TIR con '+cfTxt+' y duration parecidas</div>';
+    h += g.altsTir.length ? radarAltsHTML(g, g.altsTir, 'tir') : '<div class="radar-empty" style="padding:8px 0;text-align:left;">Sin alternativa con más TIR (y '+cfTxt+'/duration parecidas) que valga la pena.</div>';
   }
   if(verDur && g.altsDur.length){
     h += '<div class="radar-sec">⇊ Menos duration sin resignar TIR</div>'+radarAltsHTML(g, g.altsDur, 'dur');
@@ -4034,6 +4082,7 @@ function radarClick(e){
   if(!t) return;
   var act = t.getAttribute('data-act'), tk = t.getAttribute('data-tk'), alt = t.getAttribute('data-alt');
   if(act==='grupo'){ radarExpandidos[tk] = !radarExpandidos[tk]; radarRender(); return; }
+  if(act==='cc'){ radarCalifClick(t.getAttribute('data-c')); radarRender(); return; }
   if(act==='chip' || act==='kpi'){
     var f = t.getAttribute('data-f'); if(f==='aum') return;
     radarFiltro = (act==='kpi' && radarFiltro===f) ? 'todas' : f;
@@ -4084,8 +4133,8 @@ function radarCopiarMensaje(tk, altTk, modo){
 // sobre la tenencia real de esa posición para dar un número en USD, no solo en puntos.
 function calcularGananciaFilaRF(fila, hoy, comisionPct){
   if(!fila.candidatoTicker) return null;
-  var venta = bondDesdeUniverso(fila.ticker);
-  var compra = bondDesdeUniverso(fila.candidatoTicker);
+  var venta = bondDesdeUniverso(fila.ticker, null, 'venta');
+  var compra = bondDesdeUniverso(fila.candidatoTicker, null, 'compra');
   if(!venta || !compra) return null;
   var anios = revisionRFHorizonte;
   var retV = pctRetornoAHorizonte(Object.assign({}, venta, {nominales:100}), hoy, comisionPct, anios);
@@ -4103,7 +4152,7 @@ function abrirRevisionRFCliente(){
   var excluir = {};
   items.forEach(function(it){ excluir[it.ticker]=true; });
   revisionRFFilas = items.filter(function(it){
-    var tir = tirActualDeTicker(it.ticker);
+    var tir = tirActualDeTicker(it.ticker, 'venta');
     return umbralTirCliente!=null && tir!=null && tir<umbralTirCliente;
   }).map(function(it){
     var raw = BOND_DB[it.ticker]; var real = FLUJO_DB[it.ticker];
@@ -4111,7 +4160,7 @@ function abrirRevisionRFCliente(){
     var fila = {
       ticker: it.ticker, tenencia: it.tenencia, nominales: it.nominales,
       emisorActual: (real?real.emisor:(raw?raw.emisor:''))||'',
-      tirActual: tirActualDeTicker(it.ticker),
+      tirActual: tirActualDeTicker(it.ticker, 'venta'),
       candidatoTicker: cand?cand.ticker:null,
       candidatoEmisor: cand?cand.emisor:null,
       candidatoTir: cand?cand.tir:null,
@@ -4165,7 +4214,7 @@ function editarCandidatoRevisionRF(i, nuevoTicker){
   var raw = BOND_DB[nuevoTicker]; var real = FLUJO_DB[nuevoTicker];
   f.candidatoTicker = nuevoTicker;
   f.candidatoEmisor = (real?real.emisor:(raw?raw.emisor:''))||'';
-  f.candidatoTir = tirActualDeTicker(nuevoTicker);
+  f.candidatoTir = tirActualDeTicker(nuevoTicker, 'compra');
   var hoy = parseISO(document.getElementById('p-hoy').value) || new Date();
   var comisionPct = parseFloat(document.getElementById('p-comision').value)||0;
   f.calc = calcularGananciaFilaRF(f, hoy, comisionPct);
@@ -4741,16 +4790,26 @@ function aplicarVivo(store){
     // archivo lo manejan como fracción decimal (1.0420) — ver incidente de escala en
     // memoria project-byma-ons-vivo. Convertir ACÁ, una sola vez, evita repetir el
     // /100 (o peor, olvidarlo) en cada lugar que consume VIVO_BY_TICKER.
-    if(mMep && mMep.moneda==='mep' && mMep.precio>0)       v.precioMep   = mMep.precio/100;
-    if(mCable && mCable.moneda==='cable' && mCable.precio>0) v.precioCable = mCable.precio/100;
+    // Math.round(x*1e4)/1e6 == x/100 redondeado a 6 decimales (evita 0,9590000000000001 en el input)
+    if(mMep && mMep.moneda==='mep' && mMep.precio>0)       v.precioMep   = Math.round(mMep.precio*1e4)/1e6;
+    if(mCable && mCable.moneda==='cable' && mCable.precio>0) v.precioCable = Math.round(mCable.precio*1e4)/1e6;
 
+    // Precios EJECUTABLES por lado: comprar = offer (C), vender = bid (V). null => se usa el último.
+    function pxLado(m, k){ return m && m[k]>0 ? Math.round(m[k]*1e4)/1e6 : null; }
+    v.precioMepC   = (mMep && mMep.moneda==='mep')     ? pxLado(mMep,'compra')   : null;
+    v.precioMepV   = (mMep && mMep.moneda==='mep')     ? pxLado(mMep,'venta')    : null;
+    v.precioCableC = (mCable && mCable.moneda==='cable') ? pxLado(mCable,'compra') : null;
+    v.precioCableV = (mCable && mCable.moneda==='cable') ? pxLado(mCable,'venta')  : null;
     if(v.precioMep!=null || v.precioCable!=null){
       var sched = scheduleParaTIRViva(tk, hoy);
       if(sched && sched.length){
         var seedM = b && b.tirMep!=null ? b.tirMep : (b && b.tirCable!=null ? b.tirCable : 10);
         var seedC = b && b.tirCable!=null ? b.tirCable : (b && b.tirMep!=null ? b.tirMep : 10);
-        if(v.precioMep!=null)   v.tirMep   = tirDesdePrecio(sched, 100*v.precioMep,   hoy, seedM);
-        if(v.precioCable!=null) v.tirCable = tirDesdePrecio(sched, 100*v.precioCable, hoy, seedC);
+        var tirDe = function(px, seed){ return px!=null ? tirDesdePrecio(sched, 100*px, hoy, seed) : null; };
+        v.tirMep   = tirDe(v.precioMep,   seedM);
+        v.tirCable = tirDe(v.precioCable, seedC);
+        v.tirMepC   = tirDe(v.precioMepC,   seedM);   v.tirMepV   = tirDe(v.precioMepV,   seedM);
+        v.tirCableC = tirDe(v.precioCableC, seedC);   v.tirCableV = tirDe(v.precioCableV, seedC);
       }
       conPrecio++;
     }
@@ -4780,7 +4839,7 @@ function reAplicarPrecioVivo(pata, ticker){
   var actual = parseFloat(el.value);
   var b = BOND_DB[ticker];
   var monitorPx = b ? (tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep) : (b.precioMep!=null?b.precioMep:b.precioCable)) : null;
-  var vivoPx = precioEfectivo(ticker, tipoPrecio);
+  var vivoPx = precioEfectivo(ticker, tipoPrecio, pata);
   if(vivoPx==null) return;
   var sinTocar = !(actual>0) || (monitorPx!=null && Math.abs(actual-monitorPx) < 1e-6);
   if(sinTocar && Math.abs((actual||0)-vivoPx) > 1e-6){
@@ -4789,22 +4848,27 @@ function reAplicarPrecioVivo(pata, ticker){
   }
 }
 
-function precioEfectivo(ticker, tipoPrecio){
+// lado: 'compra' => offer (lo que se paga) · 'venta' => bid (lo que se cobra) · omitido => último pase.
+// Si esa punta no tiene precio confiable, cae al último pase; si tampoco, al Monitor.
+function _sufLado(lado){ return lado==='compra' ? 'C' : (lado==='venta' ? 'V' : ''); }
+function precioEfectivo(ticker, tipoPrecio, lado){
   var v = VIVO_BY_TICKER[ticker];
   if(v){
-    if(tipoPrecio==='cable' && v.precioCable!=null) return v.precioCable;
-    if(tipoPrecio!=='cable' && v.precioMep!=null)   return v.precioMep;
+    var k = tipoPrecio==='cable' ? 'precioCable' : 'precioMep', s = _sufLado(lado);
+    if(s && v[k+s]!=null) return v[k+s];
+    if(v[k]!=null) return v[k];
   }
   var b = BOND_DB[ticker];
   if(!b) return null;
   return tipoPrecio==='cable' ? (b.precioCable!=null?b.precioCable:b.precioMep)
                               : (b.precioMep!=null?b.precioMep:b.precioCable);
 }
-function tirEfectivo(ticker, tipoPrecio){
+function tirEfectivo(ticker, tipoPrecio, lado){
   var v = VIVO_BY_TICKER[ticker];
   if(v){
-    if(tipoPrecio==='cable' && v.tirCable!=null) return v.tirCable;
-    if(tipoPrecio!=='cable' && v.tirMep!=null)   return v.tirMep;
+    var k = tipoPrecio==='cable' ? 'tirCable' : 'tirMep', s = _sufLado(lado);
+    if(s && v[k+s]!=null) return v[k+s];
+    if(v[k]!=null) return v[k];
   }
   var real = FLUJO_DB[ticker];
   if(real && real.tirEfectiva!=null) return real.tirEfectiva;
@@ -4814,8 +4878,12 @@ function tirEfectivo(ticker, tipoPrecio){
                               : (b.tirMep!=null?b.tirMep:b.tirCable);
 }
 
+function precioEfectivoVivo(v, tipoPrecio, lado){
+  var k = tipoPrecio==='cable' ? 'precioCable' : 'precioMep', s = _sufLado(lado);
+  return (s && v[k+s]!=null) ? v[k+s] : v[k];
+}
 // chip "⚡ BYMA" para renderChips(): estado de liquidez + si el precio cargado es el del vivo
-function bymaChipHTML(ticker, precioCargado){
+function bymaChipHTML(ticker, precioCargado, lado){
   var v = VIVO_BY_TICKER[ticker];
   if(!v) return BYMA_STORE && BYMA_STORE.ready
     ? '<span class="chip byma-chip off" title="Este ticker no matcheó contra BYMA (vencido, o BYMA lo nombra distinto) — precio del Monitor.">⚡ sin dato BYMA</span>' : '';
@@ -4824,11 +4892,15 @@ function bymaChipHTML(ticker, precioCargado){
   if(!m) return '';
   var lq = FCNByma.liquidez(m);
   var cls = lq.nivel==='sin-op' ? 'off' : (lq.nivel==='ok' ? '' : 'stale');
-  var pxVivo = tipoPrecio==='cable' ? v.precioCable : v.precioMep;   // decimal (1.0420), misma convención que el Monitor
-  var usandoVivo = pxVivo!=null && precioCargado!=null && Math.abs(precioCargado-pxVivo) < 5e-3;
+  var pxVivo = precioEfectivoVivo(v, tipoPrecio, lado);   // decimal (1.0420), misma convención que el Monitor
+  var kBase = tipoPrecio==='cable' ? 'precioCable' : 'precioMep';
+  var ladoTxt = (lado==='compra' && v[kBase+'C']!=null) ? 'offer' : ((lado==='venta' && v[kBase+'V']!=null) ? 'bid' : '');
+  var usandoVivo = pxVivo!=null && precioCargado!=null && Math.abs(precioCargado-pxVivo) < 5e-4;
   var txt = '⚡ BYMA ' + (BYMA_STORE?BYMA_STORE.asOfText:'') +
-            (pxVivo!=null ? ' · ' + fmtNum(pxVivo*100,2) + (usandoVivo?'':' (Monitor cargado)') : '') +
+            (pxVivo!=null ? ' · ' + (ladoTxt ? ladoTxt+' ' : '') + fmtNum(pxVivo*100,2) + (usandoVivo?'':' (otro precio cargado)') : '') +
             ' · ' + lq.emoji + ' ' + lq.label +
+            (m.origenPrecio==='mid' ? ' · punto medio bid/offer' : '') +
+            (m.stale ? ' · ⚠ la punta '+(tipoPrecio==='cable'?'Cable':'MEP')+' no operó hoy (la actividad es de otra punta)' : '') +
             (m.sospechoso ? ' · ⚠ movió '+fmtNum((m.ratioVsMonitor-1)*100,1)+'% vs Monitor' : '');
   return '<span class="chip byma-chip '+cls+'" title="Precio y volumen del día desde la API pública de BYMA. La TIR se recalcula con el cronograma.">'+txt+'</span>';
 }

@@ -27,6 +27,7 @@
   var TTL_MS = 90 * 1000;          // frescura de la caché durante la rueda
   var RECIENTE_MIN = 30;           // "operó hace poco" si la última op fue < 30 min
   var VOL_OK = 1000;               // nominales operados hoy para 🟢 (si no, 🟡)
+  var EXEC_TOL = 0.03;             // punta bid/offer aceptada si está a ≤3% del precio de referencia
   var RATIO_TOL = 0.08;            // |precioBYMA/(precioMonitor*100) - 1| máximo tolerado
 
   // Ticker del Monitor -> stem BYMA (4 chars), SOLO para los que BYMA nombra
@@ -99,13 +100,33 @@
       if (!best) {
         best = arr.filter(function (x) { return x.settlementType === '2'; })[0] || arr[0];
       }
-      var px = num(best.closingPrice) || num(best.trade) || num(best.previousClosingPrice);
       var operoHoySym = !!bestHour;
+      // PRECIO de la punta: solo si HOY hubo operación (último pase), o si no operó pero tiene
+      // libro de dos puntas ajustado (mid bid/offer). NUNCA el cierre anterior: una punta muerta
+      // (ej. IRCJC 18/09/2026: trade 0, bid/offer 0, prev 95,90 mientras IRCJD operaba a 101,70)
+      // devolvía un precio viejo que además pasaba el guard de ±8% y terminaba en una TIR de 18%.
+      var px = null, origen = null;
+      if (operoHoySym) {
+        px = num(best.trade) || num(best.closingPrice) || null;
+        if (px) origen = 'ult';
+      }
+      if (!px) {
+        var bd = num(best.bidPrice), of = num(best.offerPrice);
+        if (bd > 0 && of > 0 && of >= bd && (of - bd) / ((of + bd) / 2) <= 0.03) {
+          px = (bd + of) / 2; origen = 'mid';
+        }
+      }
+      // Puntas del libro (para precio EJECUTABLE: compra = offer, venta = bid). Si la fila elegida
+      // no trae una de las dos, se toma la mejor de las otras filas del símbolo (CI / 24hs).
+      var bidX = num(best.bidPrice), askX = num(best.offerPrice);
+      if (!(bidX > 0)) arr.forEach(function (x) { var b = num(x.bidPrice); if (b > bidX) bidX = b; });
+      if (!(askX > 0)) arr.forEach(function (x) { var a = num(x.offerPrice); if (a > 0 && (!(askX > 0) || a < askX)) askX = a; });
       var leg = {
         precio: px || null,
+        origen: origen,
         prev: num(best.previousClosingPrice) || null,
-        bid: num(best.bidPrice) || null,
-        ask: num(best.offerPrice) || null,
+        bid: bidX || null,
+        ask: askX || null,
         vwap: num(best.vwap) || null,
         vol: volN,
         nOrdenes: ordN,
@@ -260,6 +281,7 @@
       operoHoy: liq.operoHoy, ultimaOp: liq.ultimaOp,
       minDesdeUltimaOp: liq.operoHoy ? minutosDesde(liq.ultimaOp) : null,
       stale: !leg.operoHoy,              // sobre la punta de PRECIO específica, no la liquidez agregada
+      origenPrecio: leg.origen || null,  // 'ult' = último pase de hoy · 'mid' = punto medio bid/offer · null = sin precio
       ratioVsMonitor: ratio,
       sospechoso: sospechoso,
       usadoLegAlternativa: usadoAlt,
@@ -273,6 +295,7 @@
     // 8%+ fuera de rango dispara TIR absurdas (casos reales de ~18% en ONs que deberían
     // rendir la mitad — ver memoria project-byma-ons-vivo). Igual reportamos la (falta de)
     // liquidez — eso no depende del precio.
+    base.compra = null; base.venta = null;   // precios ejecutables (ver abajo); null = usar 'precio'
     if (sospechoso) {
       base.precio = null;
       base.descartadoPorEscala = true;
@@ -280,7 +303,22 @@
     }
     if (!(precio > 0)) { base.precio = null; return base; }
 
-    base.precio = precio;               // % de par, USD
+    base.precio = precio;               // % de par, USD (último pase de hoy o mid)
+
+    // Precio EJECUTABLE por lado: para COMPRAR se paga el offer (punta vendedora, la más cara),
+    // para VENDER se cobra el bid (punta compradora, la más barata). Se descarta una punta que
+    // esté a más de EXEC_TOL del precio de referencia o del Monitor (libro fino / orden fuera de
+    // mercado) o si el libro está cruzado — en ese caso el consumidor cae a 'precio'.
+    function okExec(x) {
+      if (!(x > 0)) return false;
+      if (Math.abs(x / precio - 1) > EXEC_TOL) return false;
+      if (monitorPrecio > 0 && Math.abs(x / (monitorPrecio * 100) - 1) > RATIO_TOL) return false;
+      return true;
+    }
+    if (!(leg.bid > 0 && leg.ask > 0 && leg.ask < leg.bid)) {
+      if (okExec(leg.ask)) base.compra = leg.ask;
+      if (okExec(leg.bid)) base.venta = leg.bid;
+    }
     return base;
   }
 
