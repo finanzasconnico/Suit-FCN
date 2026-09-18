@@ -253,6 +253,39 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .hm-table{width:100%;border-collapse:collapse;font-size:11.5px;}
 .hm-table th{text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 0 8px;font-weight:500;}
 .hm-table td{padding:7px 0;border-top:1px solid rgba(30,58,52,.5);color:var(--text);}
+/* Correlación de cartera */
+.corr-top{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+.corr-top>div{flex:1;min-width:190px;}
+.corr-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px;}
+.corr-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:3px 4px 3px 10px;font-family:var(--font-m);font-size:11px;color:var(--text);}
+.corr-chip input{width:64px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--muted);font:11px var(--font-m);padding:2px 4px;outline:none;text-align:right;}
+.corr-chip input:focus{color:var(--text);}
+.corr-chip button{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0 6px;}
+.corr-chip button:hover{color:var(--danger);}
+.corr-verd{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:8px;border:1px solid var(--border);margin:14px 0 8px;}
+.corr-verd .cv-t{font-weight:700;font-size:13.5px;}
+.corr-verd .cv-s{font-size:11.5px;color:var(--muted);line-height:1.5;}
+.corr-verd.ok{background:rgba(28,140,95,.12);}.corr-verd.ok .cv-t{color:var(--pos);}
+.corr-verd.mid{background:var(--wash-1);}
+.corr-verd.warn{background:rgba(219,160,60,.14);}.corr-verd.warn .cv-t{color:var(--ambar);}
+.corr-verd.bad{background:rgba(192,69,59,.14);}.corr-verd.bad .cv-t{color:var(--neg);}
+.corr-mat-wrap{overflow-x:auto;margin:10px 0;}
+.corr-mat{border-collapse:separate;border-spacing:2px;font-family:var(--font-m);font-size:10.5px;}
+.corr-mat th{font-weight:600;color:var(--muted);padding:3px 5px;text-align:center;white-space:nowrap;}
+.corr-mat th.rh{text-align:right;color:var(--text);}
+.corr-mat td{min-width:34px;height:26px;text-align:center;border-radius:3px;color:var(--text);}
+.corr-mat td.dg{background:var(--wash-1);color:var(--dim);}
+.corr-mat td.na{color:var(--dim);}
+.corr-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin:2px 0 10px;}
+.corr-leg i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+.corr-avg{font-family:var(--font-m);font-size:11px;}
+/* "?" de ayuda */
+.q{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);font:600 9px/1 var(--font-s);cursor:help;vertical-align:middle;text-transform:none;letter-spacing:0;user-select:none;}
+.q:hover,.q:focus-visible,.q.on{background:var(--jade);border-color:var(--jade);color:#fff;outline:none;}
+#q-pop{position:fixed;z-index:10000;max-width:min(320px,calc(100vw - 24px));padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font:400 12px/1.55 var(--font-s);text-transform:none;letter-spacing:0;box-shadow:0 10px 28px rgba(0,0,0,.35);pointer-events:none;opacity:0;transition:opacity .12s;}
+#q-pop.show{opacity:1;}
+#q-pop b{color:var(--text-strong);}
+@media (prefers-reduced-motion:reduce){#q-pop{transition:none;}}
 .hm-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
 .hm-total b{color:var(--jade);}
 /* ── FICHA DE EMPRESA ── */
@@ -386,6 +419,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
     <button class="chip chip-msg" onclick="abrirComparar()" title="Comparar dos activos y armar un mensaje simple si conviene rotar">⇄ Comparar</button>
+    <button class="chip chip-msg" onclick="abrirCorr()" title="Ver qué tan diversificada está una cartera: si sus activos se mueven juntos o no">🔗 Correlación</button>
     <button class="chip chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
     <span class="counter" id="counter"></span>
   </div>
@@ -414,6 +448,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>📝 Registro</b><p>Dentro de la ficha de cada empresa (con un cliente enfocado) podés anotar qué le propusiste y si aceptó o rechazó. Si ya rechazó algo, te lo marca en Panorama para que no lo vuelvas a plantear. Se guarda solo en esta compu.</p></div>
       <div><b>✉ Avisar a los que lo tienen</b><p>En la ficha de una empresa, si tus clientes la tienen en cartera, el botón <b>"Avisar a los N"</b> arma un mensaje por cada tenedor: los primeros por tenencia como borrador de WhatsApp 1×1, el resto como mail masivo (CSV + Word, igual que Licitaciones). El texto compara su múltiplo contra su historia y contra los pares del sector, y podés elegir una alternativa del mismo rubro para proponer la rotación. Queda anotado en el Registro. Si el papel hoy no se ve caro, te avisa antes de mandar.</p></div>
       <div><b>Rebote (pestaña Técnico)</b><p>Puntos de análisis técnico clásico: cuando el precio se acerca a una media clave, suele rebotar ahí. Arriba de la media y acercándose = está testeando un <b>soporte</b> (posible compra). Abajo de la media y acercándose = está testeando una <b>resistencia</b> (posible venta). Se mira en 3 plazos — corto (media de 200 ruedas diarias), mediano (media de 20 semanas) y largo (media de 20 y 50 meses) — más los niveles de Fibonacci entre el máximo y el mínimo del último año. Si el rebote técnico no tiene el negocio detrás (o el techo aparece con el negocio sólido), te lo marca con un aviso ámbar al lado. Filtrable desde el selector <b>"Señal" → Técnico (rebote)</b>.</p></div>
+      <div><b>🔗 Correlación</b><p>Botón <b>🔗 Correlación</b> de la barra: elegís la cartera de un cliente (o sumás tickers a mano) y te muestra si sus activos se mueven juntos. Una matriz con colores (rojo = se mueven casi iguales, verde = independientes), una lectura en palabras ("Bien diversificada" … "Muy concentrada"), cuánto baja el riesgo por diversificar y qué pares duplican la misma apuesta. Usa los retornos semanales de ~3 años; es solo renta variable.</p></div>
       <div><b>🏆 Puntaje y Ranking</b><p>Cada activo con los tres ejes completos tiene un <b>puntaje de −100 a +100</b> (positivo = conviene comprar, negativo = conviene vender): 35% Negocio + 35% Valuación + 30% Tendencia. Se ve en la columna <b>Puntaje</b> de Panorama (pasá el mouse para ver el desglose) y se ordena tocando el título. El chip <b>🏆 Ranking de puntaje</b> lo deja ordenado de una: 1er clic lo que más conviene comprar, 2º clic lo que más conviene vender. ETFs, índices y lo que no tiene todos los datos quedan afuera.</p></div>
       <div><b>⇄ Comparar</b><p>Elegí dos activos (desde el botón de arriba o "Comparar con otro activo" en la ficha) y te arma una tabla lado a lado con todo — múltiplo, tendencia, negocio, valuación, analistas, rebote — y un veredicto según la misma lectura de "Qué hacer" que ya usás en el resto de la herramienta. Si conviene rotar, un botón arma el mensaje simple para el cliente (mail o WhatsApp); si hay un cliente enfocado y tiene la posición, se completa solo con su ganancia real.</p></div>
     </div>
@@ -651,6 +686,33 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 
   <datalist id="ticker-datalist"></datalist>
 
+  <div class="holders-overlay" id="corrOverlay" onclick="if(event.target===this) cerrarCorr()">
+    <div class="msg-modal" style="max-width:860px;">
+      <div class="hm-head">
+        <div><div class="hm-title">Correlación de la cartera <span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="correlacion">?</span></div><div class="hm-sub">¿Qué tan diversificados están estos activos? ¿Se mueven juntos o no?</div></div>
+        <button class="hm-close" onclick="cerrarCorr()">✕</button>
+      </div>
+      <div class="msg-body">
+        <div class="corr-top">
+          <div>
+            <label class="msg-lbl" style="margin-top:0;">Cartera de un cliente</label>
+            <select id="corr-cli" class="msg-input" onchange="corrElegirCliente(this.value)"></select>
+          </div>
+          <div>
+            <label class="msg-lbl" style="margin-top:0;">…o sumá activos a mano</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="corr-add" class="msg-input" list="ticker-datalist" placeholder="Ej: KO" style="text-transform:uppercase;" onkeydown="if(event.key==='Enter'){event.preventDefault();corrAgregar();}">
+              <button class="btn-msg" onclick="corrAgregar()">Agregar</button>
+            </div>
+          </div>
+        </div>
+        <div class="corr-chips" id="corr-chips"></div>
+        <p class="msg-nota" id="corr-hint" style="margin-top:4px;">Cada activo puede llevar un monto en USD (opcional): con montos, la correlación promedio y el riesgo se ponderan por peso; sin montos, se cuentan todos por igual.</p>
+        <div id="corr-res"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="holders-overlay" id="compararOverlay" onclick="if(event.target===this) cerrarComparar()">
     <div class="msg-modal" style="max-width:640px;">
       <div class="hm-head">
@@ -719,6 +781,7 @@ if(BC){
     if(e.data?.type==='file_updated' && e.data?.rawKey==='stock') setTimeout(loadStock,300);
     if(e.data?.type==='file_updated' && (e.data?.key==='precios_objetivo'||e.data?.rawKey==='precios_objetivo')) setTimeout(loadAnalistas,300);
     if(e.data?.type==='client_selected'){ clienteActivo=e.data.cliente||null; render(); }
+    if(e.data?.type==='vm_abrir_corr') vmCheckCorrPend();
     if(e.data?.type==='top_clients_selected'){ topClientesSet=(e.data.clientes&&e.data.clientes.length)?new Set(e.data.clientes):null; render(); }
   };
 }
@@ -1081,9 +1144,9 @@ function tendBg(score){
 }
 function tendCell(score){
   if(score===null||score===undefined) return '<span class="dash">—</span>';
-  const a=Math.min(Math.abs(score)/100,1)*0.9+0.1;
-  const col=score>=0?`rgba(74,222,128,${a.toFixed(2)})`:`rgba(232,131,126,${a.toFixed(2)})`;
-  return `<b style="color:${col}">${score>0?'+':''}${score}</b>`;
+  // colores de los tokens (--pos/--neg) para que se lean en tema claro y oscuro; la intensidad va por opacidad
+  const a=Math.min(Math.abs(score)/100,1)*0.45+0.55;
+  return `<b style="color:var(${score>=0?'--pos':'--neg'});opacity:${a.toFixed(2)}">${score>0?'+':''}${score}</b>`;
 }
 
 // ══════════════════════════════════════════
@@ -1705,6 +1768,11 @@ function renderComparacion(){
     return `${mLabel(s)} <b>${fmtN(s.mm.actual,1)}</b>${s.mm.p5!=null?` <span class="dash">(prom.5a ${fmtN(s.mm.p5,1)})</span>`:''}`;
   };
   const anCell=s=> s.an ? `${REC_LABEL[s.an.rec]||'—'}${s.an.upside!=null?` · ${s.an.upside>=0?'+':''}${fmtN(s.an.upside*100,0)}%`:''}` : '<span class="dash">sin cobertura</span>';
+  const parCell=s=>{
+    if(s.med==null) return '—';
+    const rel=(s.mm&&s.mm.actual!=null&&s.med>0)?s.mm.actual/s.med-1:null;
+    return `${fmtN(s.med,1)}${rel!=null?` <span class="dash">(${s.r.ticker} ${rel>=0?'+':'−'}${fmtN(Math.abs(rel)*100,0)}%)</span>`:''}`;
+  };
   const rebCell=s=> s.reb ? `<span class="sig ${s.reb.cls}">${s.reb.txt}</span>` : '<span class="dash">—</span>';
 
   const ganTxt = ver.ganador==='B' ? `Conviene evaluar rotar ${a.ticker} → ${b.ticker}` : ver.ganador==='A' ? `${a.ticker} sigue mejor parada — no rotaría a ${b.ticker}` : 'Sin ventaja clara entre las dos';
@@ -1716,19 +1784,19 @@ function renderComparacion(){
       ${row('Empresa', nombreCorto(a), nombreCorto(b))}
       ${row('Sector', a.sector||'—', b.sector||'—')}
       ${row('Precio', a.precio!=null?`${a.moneda||''} ${fmtN(a.precio)}`:'—', b.precio!=null?`${b.moneda||''} ${fmtN(b.precio)}`:'—')}
-      ${row('Múltiplo primario', multCell(sa), multCell(sb))}
-      ${row('vs. pares del sector', sa.med!=null?fmtN(sa.med,1):'—', sb.med!=null?fmtN(sb.med,1):'—')}
-      ${row('Tendencia', chip(sa.st), chip(sb.st))}
-      ${row('Negocio', chip(sa.sn), chip(sb.sn))}
-      ${row('Precio (vs. historia)', chip(sa.sp), chip(sb.sp))}
-      ${row('Qué hacer', `<span class="qh ${sa.q.cls}">${sa.q.v}</span>`, `<span class="qh ${sb.q.cls}">${sb.q.v}</span>`)}
-      ${row('Puntaje (−100…+100)', puntajeCell(a), puntajeCell(b))}
-      ${row('Analistas', anCell(sa), anCell(sb))}
-      ${row('Rebote técnico', rebCell(sa), rebCell(sb))}
+      ${row('Múltiplo primario'+ayq('multiplo'), multCell(sa), multCell(sb))}
+      ${row('Mediana del sector'+ayq('pares'), parCell(sa), parCell(sb))}
+      ${row('Tendencia'+ayq('tendencia'), chip(sa.st), chip(sb.st))}
+      ${row('Negocio'+ayq('negocio'), chip(sa.sn), chip(sb.sn))}
+      ${row('Precio (vs. historia)'+ayq('precioH'), chip(sa.sp), chip(sb.sp))}
+      ${row('Qué hacer'+ayq('quehacer'), `<span class="qh ${sa.q.cls}">${sa.q.v}</span>`, `<span class="qh ${sb.q.cls}">${sb.q.v}</span>`)}
+      ${row('Puntaje (−100…+100)'+ayq('puntaje'), puntajeCell(a), puntajeCell(b))}
+      ${row('Analistas'+ayq('analistas'), anCell(sa), anCell(sb))}
+      ${row('Rebote técnico'+ayq('rebote'), rebCell(sa), rebCell(sb))}
     </tbody></table></div>
     <div class="fs-sec"><h5>Lectura</h5>${ver.partesHtml.map(p=>`<p class="fs-p">${p}</p>`).join('')}<p class="fs-p"><b>${ver.cierre}</b></p></div>
     <div class="msg-actions"><button class="btn-msg" onclick="cmpAbrirMensaje()">✉ Armar mensaje para el cliente</button></div>
-    <p class="msg-nota">Observación cuantitativa con los datos de hoy — no reemplaza tu análisis ni es una recomendación general de mercado.</p>
+    <p class="msg-nota">Observación cuantitativa con los datos de hoy — no reemplaza tu análisis ni es una recomendación general de mercado. Solo mide números (negocio, precio frente a su historia, tendencia): no ve noticias ni catalizadores como el lanzamiento de un producto, resultados por venir o litigios — eso lo sumás vos.</p>
   `;
 }
 // mensaje simple para el cliente. canal: 'mail'|'wpp'. ganPct = ganancia del cliente
@@ -1938,7 +2006,7 @@ function abrirFicha(ticker){
   const sec=(t,items)=>`<div class="fs-sec"><h5>${t}</h5>${items.map(x=>`<p class="fs-p">${x}</p>`).join('')}</div>`;
   body.innerHTML=`
     <div class="fs-verd qh ${q.cls}">${q.v}</div><p class="fs-por">${q.por}</p>
-    <div class="fs-chips"><span>Tendencia ${chip(st)}</span><span>Negocio ${chip(sn)}</span><span>Precio ${chip(sp)}</span><span>Puntaje ${puntajeCell(r)}</span></div>
+    <div class="fs-chips"><span>Tendencia${ayq('tendencia')} ${chip(st)}</span><span>Negocio${ayq('negocio')} ${chip(sn)}</span><span>Precio${ayq('precioH')} ${chip(sp)}</span><span>Puntaje${ayq('puntaje')} ${puntajeCell(r)}</span></div>
     <button class="btn-msg" style="margin:10px 0 2px;" onclick="cerrarHolders();abrirComparar('${String(r.ticker).replace(/'/g,"\\'")}')">⇄ Comparar con otro activo</button>
     ${sec('📈 El precio', tec.length?tec:['Sin datos de precio.'])}
     ${sec('🏭 El negocio', neg)}
@@ -2077,6 +2145,7 @@ async function loadTenencia(){
       if(!_carteraTocado){ soloCartera=true; chip.classList.add('active'); }
     }
     render();
+    vmCheckCorrPend();
   }catch(e){ console.warn('[Múltiplos] error leyendo tenencia',e); }
 }
 
@@ -2405,10 +2474,247 @@ function applySort(rows){
 // ══════════════════════════════════════════
 //  RENDER
 // ══════════════════════════════════════════
-function th(col,label,num){
+// ══════════════════════════════════════════
+//  CORRELACIÓN DE CARTERA — ¿los activos se mueven juntos? Retornos semanales (~3 años)
+//  de data/retornos_semanales.json (lo genera .github/scripts/retornos_semanales.py en el
+//  mismo workflow que el resto). Sirve para la cartera de un cliente (pesos = su tenencia
+//  en USD) o para una que se arma a mano. Bonos/ONs no entran: es solo renta variable.
+// ══════════════════════════════════════════
+let CORR_DATA=null, corrSel=[], corrCli='', corrUltimo=null;
+const CORR_MAX=25;
+const _escC=x=>String(x??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+async function cargarRetornos(){
+  if(CORR_DATA) return CORR_DATA;
+  try{
+    const r=await fetch('data/retornos_semanales.json',{cache:'no-cache'});
+    if(!r.ok) throw new Error(r.status);
+    const j=await r.json();
+    const serie={};
+    Object.entries(j.ret||{}).forEach(([tk,arr])=>{ serie[tk.toUpperCase()]=Float64Array.from(arr,v=>v===null?NaN:v/10000); });
+    CORR_DATA={fechas:j.fechas||[], serie, generado:j.generado||''};
+  }catch(e){ return null; }
+  return CORR_DATA;
+}
+function corrPar(a,b,minN){
+  let n=0,sa=0,sb=0,saa=0,sbb=0,sab=0;
+  for(let i=0;i<a.length;i++){ const x=a[i], y=b[i]; if(x!==x||y!==y) continue; n++; sa+=x; sb+=y; saa+=x*x; sbb+=y*y; sab+=x*y; }
+  if(n<(minN||40)) return null;
+  const ma=sa/n, mb=sb/n, va=saa/n-ma*ma, vb=sbb/n-mb*mb;
+  if(va<=1e-12||vb<=1e-12) return null;
+  return {rho:clamp((sab/n-ma*mb)/Math.sqrt(va*vb),-1,1), n};
+}
+// volatilidad anual de la cartera vs. el promedio ponderado de la de cada activo, sobre las semanas en
+// que TODOS cotizan (si son menos de 52, no se calcula: sería ruido)
+function corrVol(series,w){
+  const T=series[0].length, idx=[];
+  for(let t=0;t<T;t++){ if(series.every(s=>s[t]===s[t])) idx.push(t); }
+  if(idx.length<52) return null;
+  const k=series.length, n=idx.length;
+  const mu=series.map(s=>idx.reduce((a,t)=>a+s[t],0)/n);
+  const cov=Array.from({length:k},()=>new Array(k).fill(0));
+  for(let i=0;i<k;i++) for(let j=i;j<k;j++){
+    let c=0; for(const t of idx) c+=(series[i][t]-mu[i])*(series[j][t]-mu[j]);
+    cov[i][j]=cov[j][i]=c/(n-1);
+  }
+  let varP=0, avg=0;
+  for(let i=0;i<k;i++){ avg+=w[i]*Math.sqrt(cov[i][i]*52); for(let j=0;j<k;j++) varP+=w[i]*w[j]*cov[i][j]*52; }
+  return {n, volP:Math.sqrt(Math.max(varP,0)), avg};
+}
+function corrBg(rho){
+  if(rho===null) return 'transparent';
+  if(rho>=0.5){ const a=0.16+(Math.min(rho,1)-0.5)/0.5*0.44; return `rgba(192,69,59,${a.toFixed(2)})`; }
+  if(rho<=0.2){ const a=0.12+Math.min((0.2-rho)/0.5,1)*0.36; return `rgba(28,140,95,${a.toFixed(2)})`; }
+  return 'transparent';
+}
+function corrFila(tk){
+  const u=String(tk||'').trim().toUpperCase();
+  return allRows.find(r=>r.ticker.toUpperCase()===u||r.tickerUsado.toUpperCase()===u)||null;
+}
+function abrirCorr(cli){
+  const cls=clientesConCartera();
+  const sel=document.getElementById('corr-cli');
+  sel.innerHTML='<option value="">— Armar a mano —</option>'+cls.map(c=>`<option value="${_escC(c)}">${_escC(datosCliente(c).nombre||c)}</option>`).join('');
+  const ini = cli!==undefined ? cli : (clienteActivo||'');
+  document.getElementById('corr-add').value='';
+  document.getElementById('corrOverlay').classList.add('open');
+  if(ini && cls.includes(ini)){ sel.value=ini; corrElegirCliente(ini); }
+  else { sel.value=''; corrCli=''; renderCorrChips(); renderCorr(); }
+}
+// el Suite (Vista 360 del cliente → "🔗 Correlación") deja un pedido en localStorage y avisa por el
+// BroadcastChannel; si esta pestaña todavía se está cargando, se retoma cuando terminan los datos y la tenencia
+function vmCheckCorrPend(){
+  if(!allRows.length || !dataTenencia || !dataTenencia.length) return;
+  let pend=null; try{ pend=JSON.parse(localStorage.getItem('vm_corr_pend')||'null'); }catch(e){}
+  if(!pend || Date.now()-pend.t>60000) return;
+  try{ localStorage.removeItem('vm_corr_pend'); }catch(e){}
+  abrirCorr(pend.cliente);
+}
+function cerrarCorr(){ document.getElementById('corrOverlay').classList.remove('open'); }
+function corrElegirCliente(c){
+  corrCli=c||'';
+  if(c){
+    corrSel=carteraDeCliente(c).map(x=>({tk:x.r.ticker, w:Math.round(x.ten)}));
+  }
+  renderCorrChips(); renderCorr();
+}
+function corrAgregar(){
+  const inp=document.getElementById('corr-add');
+  const r=corrFila(inp.value);
+  if(!r){ if(inp.value.trim()){ inp.style.borderColor='var(--danger)'; setTimeout(()=>inp.style.borderColor='',900); } return; }
+  if(!corrSel.some(x=>x.tk===r.ticker)) corrSel.push({tk:r.ticker,w:null});
+  inp.value=''; renderCorrChips(); renderCorr();
+}
+function corrQuitar(tk){ corrSel=corrSel.filter(x=>x.tk!==tk); renderCorrChips(); renderCorr(); }
+function corrPeso(tk,v){ const it=corrSel.find(x=>x.tk===tk); if(it){ const n=parseFloat(v); it.w=(n>0)?n:null; } renderCorr(); }
+function corrEjemplo(){ corrCli=''; document.getElementById('corr-cli').value=''; corrSel=['AAPL','MSFT','KO','JNJ','XOM','NEM'].filter(t=>corrFila(t)).map(t=>({tk:t,w:null})); renderCorrChips(); renderCorr(); }
+function renderCorrChips(){
+  const el=document.getElementById('corr-chips');
+  el.innerHTML=corrSel.map(x=>{
+    const k=JSON.stringify(x.tk).replace(/"/g,'&quot;');
+    return `<span class="corr-chip">${_escC(x.tk)}<input type="number" min="0" step="100" value="${x.w||''}" placeholder="USD" title="Monto en USD (opcional)" onchange="corrPeso(${k},this.value)"><button title="Sacar" onclick="corrQuitar(${k})">✕</button></span>`;
+  }).join('');
+}
+async function renderCorr(){
+  const res=document.getElementById('corr-res');
+  corrUltimo=null;
+  if(!corrSel.length){
+    res.innerHTML=`<div class="hm-empty">Elegí la cartera de un cliente o agregá dos o más tickers para ver si se mueven juntos.<br><button class="btn-msg" style="margin-top:10px;" onclick="corrEjemplo()">Probar con un ejemplo</button></div>`;
+    return;
+  }
+  const D=await cargarRetornos();
+  if(!D){
+    res.innerHTML=`<div class="hm-empty">Todavía no hay datos de correlación (<b>data/retornos_semanales.json</b>).<br>Se generan solos con el workflow "Actualizar Valuación por Múltiplos" (o corriendo <b>retornos_semanales.py</b>).</div>`;
+    return;
+  }
+  // 1. activos con datos, en el orden de mayor peso
+  const conMonto=corrSel.every(x=>x.w>0);
+  let items=corrSel.map(x=>({tk:x.tk, w:x.w, s:D.serie[String(x.tk).toUpperCase()], r:corrFila(x.tk)}));
+  const sinDatos=items.filter(i=>!i.s).map(i=>i.tk);
+  items=items.filter(i=>i.s);
+  if(conMonto) items.sort((a,b)=>b.w-a.w);
+  let recorte=0;
+  if(items.length>CORR_MAX){ recorte=items.length-CORR_MAX; items=items.slice(0,CORR_MAX); }
+  if(items.length<2){
+    res.innerHTML=`<div class="hm-empty">${items.length?'Sumá al menos un activo más para poder compararlos.':'Ninguno de estos activos tiene historial de precios.'}${sinDatos.length?`<br><span class="dash">Sin datos: ${_escC(sinDatos.join(', '))}</span>`:''}</div>`;
+    return;
+  }
+  const k=items.length;
+  const sw=conMonto?items.reduce((a,i)=>a+i.w,0):k;
+  const w=items.map(i=>conMonto?i.w/sw:1/k);
+  // 2. matriz
+  const M=Array.from({length:k},()=>new Array(k).fill(null));
+  for(let i=0;i<k;i++) for(let j=i+1;j<k;j++){ const c=corrPar(items[i].s,items[j].s); M[i][j]=M[j][i]=c; }
+  // 3. correlación promedio ponderada (i≠j) y por activo
+  let num=0, den=0; const pares=[];
+  for(let i=0;i<k;i++) for(let j=i+1;j<k;j++){
+    const c=M[i][j]; if(!c) continue;
+    num+=2*w[i]*w[j]*c.rho; den+=2*w[i]*w[j];
+    pares.push({a:items[i].tk,b:items[j].tk,rho:c.rho});
+  }
+  const rhoMed=den>0?num/den:null;
+  const mediaDe=i=>{ let a=0,b=0; for(let j=0;j<k;j++){ if(j===i||!M[i][j]) continue; a+=w[j]*M[i][j].rho; b+=w[j]; } return b>0?a/b:null; };
+  // 4. lectura
+  let cls,tit,exp;
+  if(rhoMed===null){ cls='mid'; tit='Sin datos suficientes'; exp='No hay semanas en común para comparar estos activos.'; }
+  else if(rhoMed<0.30){ cls='ok'; tit='Bien diversificada'; exp='Los activos se mueven bastante por separado: cuando uno cae, los otros amortiguan.'; }
+  else if(rhoMed<0.50){ cls='mid'; tit='Diversificación moderada'; exp='Hay algo de relación entre los activos, pero todavía se compensan en parte.'; }
+  else if(rhoMed<0.65){ cls='warn'; tit='Poco diversificada'; exp='Muchos activos tienden a subir y bajar a la vez: la cartera se parece a una sola apuesta.'; }
+  else { cls='bad'; tit='Muy concentrada en el mismo riesgo'; exp='Casi todo se mueve junto: una mala semana del mercado golpea a toda la cartera al mismo tiempo.'; }
+  const vol=corrVol(items.map(i=>i.s),w);
+  const volTxt=vol?` Volatilidad anual estimada de la cartera: <b>${fmtN(vol.volP*100,0)}%</b> (el promedio de cada activo por separado es ${fmtN(vol.avg*100,0)}%; diversificar la baja <b>${fmtN(Math.max(0,1-vol.volP/vol.avg)*100,0)}%</b>).`:'';
+  // 5. sectores
+  const sec={};
+  items.forEach((i,ix)=>{ const s=(i.r&&i.r.sector)||'Sin sector'; sec[s]=(sec[s]||0)+w[ix]; });
+  const secTop=Object.entries(sec).sort((a,b)=>b[1]-a[1]);
+  const secTxt=secTop.length?`Por sector: ${secTop.slice(0,3).map(([s,v])=>`${_escC(s)} ${fmtN(v*100,0)}%`).join(' · ')}${secTop[0][1]>=0.5?' — <b>más de la mitad en un solo sector</b>':''}.`:'';
+  if(secTop.length && secTop[0][1]>=0.5 && (cls==='ok'||cls==='mid')) exp+=' Ojo: aunque no se muevan igual, más de la mitad está en un solo sector, y si ese sector se da vuelta los golpea a todos.';
+  // 6. pares
+  const juntos=pares.filter(p=>p.rho>=0.6).sort((a,b)=>b.rho-a.rho).slice(0,5);
+  const aparte=pares.filter(p=>p.rho<=0.2).sort((a,b)=>a.rho-b.rho).slice(0,3);
+  const f2=x=>`${x<0?'−':''}${Math.abs(x).toFixed(2).replace('.',',')}`;
+  const parTxt=p=>`<b>${_escC(p.a)}</b> y <b>${_escC(p.b)}</b> (${f2(p.rho)})`;
+  const ars=items.filter(i=>i.r&&i.r.moneda==='ARS').map(i=>i.tk);
+  // 7. tabla
+  const head=`<tr><th></th>${items.map(i=>`<th>${_escC(i.tk)}</th>`).join('')}<th title="Correlación promedio de este activo con el resto de la cartera">vs. resto</th></tr>`;
+  const body=items.map((a,i)=>{
+    const m=mediaDe(i);
+    return `<tr><th class="rh">${_escC(a.tk)}${conMonto?` <span class="dash">${fmtN(w[i]*100,0)}%</span>`:''}</th>${items.map((b,j)=>{
+      if(i===j) return '<td class="dg">—</td>';
+      const c=M[i][j];
+      if(!c) return '<td class="na" title="Sin semanas en común suficientes">·</td>';
+      return `<td style="background:${corrBg(c.rho)}" title="${_escC(a.tk)} y ${_escC(b.tk)}: ${f2(c.rho)} (${c.n} semanas)">${Math.round(c.rho*100)}</td>`;
+    }).join('')}<td class="corr-avg" style="background:${corrBg(m)}">${m===null?'·':Math.round(m*100)}</td></tr>`;
+  }).join('');
+  const rango=D.fechas.length?`${D.fechas[0]} → ${D.fechas[D.fechas.length-1]}`:'';
+  res.innerHTML=`
+    <div class="corr-verd ${cls}"><div><div class="cv-t">${tit}${rhoMed!==null?` · correlación media <span class="corr-avg">${Math.round(rhoMed*100)}</span>`:''}</div><div class="cv-s">${exp}${volTxt}</div></div></div>
+    <p class="fs-p">${secTxt}</p>
+    ${juntos.length?`<p class="fs-p"><b>Se mueven casi iguales:</b> ${juntos.map(parTxt).join(' · ')}. Tener las dos duplica la misma apuesta.</p>`:`<p class="fs-p"><b>Ningún par se mueve casi igual</b> (todos por debajo de 60): no hay activos duplicando la misma apuesta.</p>`}
+    ${aparte.length?`<p class="fs-p"><b>Los que más diversifican:</b> ${aparte.map(parTxt).join(' · ')}.</p>`:''}
+    <div class="corr-leg"><span><i style="background:rgba(28,140,95,.4)"></i>≤ 20 casi independientes</span><span><i style="background:var(--wash-1)"></i>20–50 relación moderada</span><span><i style="background:rgba(192,69,59,.3)"></i>≥ 50 se mueven juntos</span><span><i style="background:rgba(192,69,59,.6)"></i>≥ 80 casi iguales</span></div>
+    <div class="corr-mat-wrap"><table class="corr-mat"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+    <div class="msg-actions"><button class="btn-msg" id="corr-copiar" onclick="corrCopiar()">Copiar lectura</button></div>
+    <p class="msg-nota">Correlación de retornos semanales (${_escC(rango)}). Los números de la tabla son la correlación ×100. Mide cómo se movieron en el pasado: no predice el futuro, y en las crisis la correlación entre acciones suele subir.${conMonto?'':' Sin montos cargados, todos los activos pesan lo mismo.'}${ars.length?` ${_escC(ars.join(', '))} cotiza${ars.length>1?'n':''} en pesos: su correlación incluye el efecto del tipo de cambio.`:''}${sinDatos.length?` Sin historial de precios (fuera del cálculo): ${_escC(sinDatos.join(', '))}.`:''}${recorte?` Se muestran los ${CORR_MAX} de mayor peso (${recorte} más quedaron afuera).`:''} Es solo renta variable: los bonos y ONs no entran.</p>`;
+  const plano=h=>h.replace(/<[^>]+>/g,'').replace(/&amp;/g,'&');
+  corrUltimo=`Correlación de la cartera (retornos semanales, últimos ~3 años)\n`
+    + `${tit}${rhoMed!==null?` — correlación media ${Math.round(rhoMed*100)}/100`:''}\n${exp}${vol?` Volatilidad anual estimada: ${fmtN(vol.volP*100,0)}% (promedio de los activos por separado: ${fmtN(vol.avg*100,0)}%).`:''}\n`
+    + (secTop.length?`Por sector: ${secTop.slice(0,3).map(([s,v])=>`${s} ${fmtN(v*100,0)}%`).join(' · ')}\n`:'')
+    + (juntos.length?`Se mueven casi iguales: ${juntos.map(p=>plano(parTxt(p))).join('; ')}\n`:'')
+    + (aparte.length?`Los que más diversifican: ${aparte.map(p=>plano(parTxt(p))).join('; ')}\n`:'')
+    + `Activos: ${items.map(i=>i.tk).join(', ')}\n(Observación sobre el pasado, no una predicción ni una recomendación.)`;
+}
+function corrCopiar(){
+  if(!corrUltimo) return;
+  const b=document.getElementById('corr-copiar');
+  const ok=()=>{ if(b){ const t=b.textContent; b.textContent='¡Copiado!'; setTimeout(()=>b.textContent=t,1400); } };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(corrUltimo).then(ok,()=>{});
+  else { const ta=document.createElement('textarea'); ta.value=corrUltimo; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');ok();}catch(e){} ta.remove(); }
+}
+
+// ── "?" de ayuda: un globito con la explicación en criollo, al lado de cada término ──
+const AYUDA={
+  puntaje:'<b>Puntaje (−100 a +100).</b> Un solo número que resume tres cosas: el negocio (35%), el precio frente a su propia historia (35%) y la tendencia (30%). Cuanto más alto, mejor puntúa hoy; negativo, puntúa mal. Sirve para <b>ordenar</b> la lista, no es una orden de compra. No incluye la opinión de los analistas ni noticias.',
+  quehacer:'<b>Qué hacer.</b> El veredicto del panel para hoy, cruzando tendencia, negocio y precio: <b>Sumar</b> (se ve atractiva) · <b>Mantener</b> · <b>Atención</b> (hay una señal de alerta) · <b>Reducir</b> (varias señales en contra).',
+  senales:'<b>Señales.</b> Tres lecturas en palabras: <b>Tendencia</b> (¿el precio viene subiendo o bajando?), <b>Negocio</b> (¿la empresa es sana y rentable?) y <b>Precio</b> (¿está cara o barata frente a su historia?). Pasá el mouse por cada una para ver el número.',
+  tendencia:'<b>Tendencia.</b> Hacia dónde viene yendo el precio: lo compara con sus promedios de 21, 50 y 200 semanas, cuánto subió en 3 meses, cómo rindió frente al resto en 6 meses y qué tan cerca está de su máximo del año. <b>Alcista</b> = viene subiendo · <b>Lateral</b> · <b>Bajista</b> = viene cayendo.',
+  negocio:'<b>Negocio.</b> Qué tan sana y rentable es la empresa mirando varios años: crecimiento de ventas, si gana plata, si el margen mejora, si genera caja y cuánta deuda tiene. <b>Sólido</b> = buenos números · <b>Regular</b> = mixtos · <b>Flojo</b> = se están deteriorando.',
+  precioH:'<b>Precio (vs. historia).</b> Compara lo que se paga hoy por la empresa (el múltiplo — mirá el "?" de Múltiplo) con lo que se pagó en promedio en los últimos 5 años. <b>Barato</b> = el precio tendría que subir 5% o más para volver a su promedio · <b>En precio</b> = normal · <b>Caro</b> = tendría que bajar 30% o más.',
+  multiplo:'<b>Múltiplo.</b> Cuánto se paga por cada dólar que la empresa vende o gana. <b>P/E</b>: precio ÷ ganancia · <b>P/S</b>: precio ÷ ventas · <b>EV/EBITDA</b>: valor de la empresa ÷ ganancia operativa · <b>P/FCF</b>: precio ÷ caja libre · <b>P/B</b>: precio ÷ patrimonio. Se usa el más representativo de cada sector. "Prom. 5a" es el promedio de los últimos 5 años: si hoy está por encima, está más cara que lo habitual para esa empresa.',
+  pares:'<b>Mediana del sector.</b> El mismo múltiplo, pero de la empresa "del medio" entre las del mismo sector que sigue el panel; entre paréntesis, cuánto más caro o barato está este activo frente a esa referencia. Ojo: es solo una referencia y <b>no entra en el puntaje</b>. Sectores como Comunicaciones mezclan gigantes tecnológicas con telefónicas y medios de múltiplo bajo, así que la comparación puede no ser justa.',
+  analistas:'<b>Analistas.</b> La opinión de los analistas de Wall Street que siguen la acción: su recomendación de consenso y cuánto por encima (o por debajo) del precio de hoy está su precio objetivo promedio. Es una opinión externa: <b>no entra en el puntaje</b>.',
+  rebote:'<b>Rebote técnico.</b> Mira si el precio está cerca de una media móvil o de un nivel de Fibonacci, que son zonas donde suele frenar y rebotar. Precio arriba de la media y acercándose = posible soporte (compra); abajo y acercándose = posible resistencia (venta).',
+  correlacion:'<b>Correlación.</b> Mide si dos activos se mueven juntos. <b>+100</b> = suben y bajan idéntico · <b>0</b> = no tienen relación · <b>negativo</b> = uno tiende a subir cuando el otro baja. Una cartera con todo muy correlacionado es como tener una sola apuesta; con activos poco correlacionados, las caídas de uno se compensan en parte con los otros. Se calcula con los retornos semanales de los últimos ~3 años.',
+  cartera:'<b>En cartera.</b> Cuánto suman entre todos tus clientes en este activo (USD) y cuántos clientes lo tienen.'
+};
+function ayq(k){ return `<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="${k}">?</span>`; }
+(function(){
+  let pop=null, cur=null;
+  const hit=e=>e.target&&e.target.closest?e.target.closest('.q'):null;
+  function ensure(){ if(!pop){ pop=document.createElement('div'); pop.id='q-pop'; pop.setAttribute('role','tooltip'); document.body.appendChild(pop); } return pop; }
+  function show(el){
+    const t=AYUDA[el.dataset.q]; if(!t) return;
+    const p=ensure(); p.innerHTML=t; cur=el; el.classList.add('on'); p.classList.add('show');
+    const r=el.getBoundingClientRect(), pw=p.offsetWidth, ph=p.offsetHeight;
+    const left=Math.max(12,Math.min(r.left+r.width/2-pw/2, window.innerWidth-pw-12));
+    let top=r.bottom+8; if(top+ph>window.innerHeight-8) top=r.top-ph-8;
+    p.style.left=left+'px'; p.style.top=Math.max(8,top)+'px';
+  }
+  function hide(){ if(cur) cur.classList.remove('on'); cur=null; if(pop) pop.classList.remove('show'); }
+  document.addEventListener('mouseover',e=>{ const el=hit(e); if(el) show(el); });
+  document.addEventListener('mouseout',e=>{ if(hit(e)) hide(); });
+  document.addEventListener('focusin',e=>{ const el=hit(e); if(el) show(el); });
+  document.addEventListener('focusout',e=>{ if(hit(e)) hide(); });
+  // en el celular no hay hover: un toque abre, un toque afuera cierra. Va en captura para que el
+  // "?" de un título de columna NO dispare el ordenamiento de esa columna.
+  document.addEventListener('click',e=>{ const el=hit(e); if(el){ e.stopPropagation(); e.preventDefault(); show(el); } else hide(); },true);
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') hide(); });
+  window.addEventListener('scroll',hide,true);
+})();
+
+function th(col,label,num,help){
   const s=currentSort();
   const arrow=s.col===col?(s.asc?'↑':'↓'):'↕';
-  return `<th class="${num?'num ':''}${s.col===col?'sorted':''}" onclick="sortBy('${col}')">${label} <span class="sort-arrow">${arrow}</span></th>`;
+  return `<th class="${num?'num ':''}${s.col===col?'sorted':''}" onclick="sortBy('${col}')">${label}${help?ayq(help):''} <span class="sort-arrow">${arrow}</span></th>`;
 }
 function tkCell(r){
   const holders=holdersFor(r);
@@ -2449,8 +2755,8 @@ function render(){
 
   if(activeTab==='Panorama'){
     ncols=6;
-    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1)}${th('punt','Puntaje',1)}${th('quehacer','Qué hacer')}
-      <th>Señales</th>${th('anal','Analistas',1)}</tr>`;
+    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1,'cartera')}${th('punt','Puntaje',1,'puntaje')}${th('quehacer','Qué hacer',0,'quehacer')}
+      <th>Señales${ayq('senales')}</th>${th('anal','Analistas',1,'analistas')}</tr>`;
     const sigRow=(lbl,s)=> `<div class="pa-sig-row"><span class="pa-sig-lbl">${lbl}</span>`
       + (s ? `<span class="sig ${s.cls}" title="${lbl}: ${typeof s.num==='number' && Math.abs(s.num)<=1 ? (s.num>=0?'+':'')+fmtN(s.num*100,0)+'%' : (s.num>0?'+':'')+s.num}">${s.txt}</span>` : '<span class="dash">—</span>')
       + `</div>`;
@@ -2669,6 +2975,7 @@ async function loadAndRender(){
   buildSectorChips();
   showTimestamp(entry.ts,allRows);
   render();
+  vmCheckCorrPend();
 }
 
 // ── INIT ──

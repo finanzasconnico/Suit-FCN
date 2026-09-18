@@ -3010,6 +3010,7 @@ function abrirCarteraCliente(cliente) {
         <button class="cc-abtn" onclick="reporteCartera('${cEsc}')">⬇ Reporte para el cliente</button>
         <button class="cc-abtn" onclick="abrirArmadorConCartera('${cEsc}')">📊 Abrir en Armador</button>
       </div>` +
+        <button class="cc-abtn" onclick="abrirCorrelacionCliente('${cEsc}')" title="Ver si los activos de renta variable de este cliente se mueven juntos (diversificación)">🔗 Correlación</button>
       `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Días</th><th>Rent.</th><th>Señal</th></tr></thead>` +
       `<tbody>${rows}</tbody></table>` +
       `<div class="cc-total">Tenencia total: <b>USD ${fmtK(tenTotal)}</b></div>`;
@@ -3187,6 +3188,15 @@ const _ARM_TIPO = {
   letras: 'Renta Fija | Letras y Bonos ARS', fondos: 'FCI', efectivo: 'Liquidez / Money Market',
 };
 function abrirArmadorConCartera(cliente) {
+// Vista 360 → panel de Valuación por Múltiplos con la correlación de la cartera de este cliente.
+// El panel puede no estar cargado todavía: deja el pedido en localStorage (mismo origen) y avisa por
+// el BroadcastChannel; el panel lo retoma apenas termina de cargar sus datos y la tenencia.
+function abrirCorrelacionCliente(cliente) {
+  try { localStorage.setItem('vm_corr_pend', JSON.stringify({ cliente, t: Date.now() })); } catch (e) {}
+  const ov = document.getElementById('ccOverlay'); if (ov) ov.classList.remove('open');
+  openTool('multiplos');
+  if (BC) BC.postMessage({ type: 'vm_abrir_corr' });
+}
   const items = (currentTenencia && currentTenencia.carteraPorCliente && currentTenencia.carteraPorCliente[cliente]) || [];
   if (!items.length) { alert('Sin posiciones cargadas para este cliente.'); return; }
   const inv = items.filter(i => i.grupo !== 'Liquidez');
