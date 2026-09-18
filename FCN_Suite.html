@@ -965,7 +965,8 @@ const TOOLS = [
   { id:'calcrot',   name:'Calculadora de Rotaciones', icon:'🔁', desc:'¿Conviene cambiar de bono? Comparación simple y directa. Se autocompleta con el Monitor.',                            badge:'Renta Fija', file:'Calculadora_Rotaciones_FinanzasconNico_4.html', color:'amber' },
   { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' },
   { id:'multiplos', name:'Valuación por Múltiplos', icon:'⚖️', desc:'Múltiplos (P/E, P/S, EV/EBITDA, P/FCF, P/B) actual vs. promedio histórico de 3/5/10 años + medias móviles semanales, seleccionados por sector.', badge:'Research', file:'Valuacion_Multiplos_FCN.html', color:'jade' },
-  { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Subís los estados contables (10 años, formato Investing.com/WSJ) y arma ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 — pantallazo listo para mandarle al cliente.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' }
+  { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Subís los estados contables (10 años, formato Investing.com/WSJ) y arma ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 — pantallazo listo para mandarle al cliente.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' },
+  { id:'cuantocobro', name:'¿Cuánto cobro?', icon:'💰', desc:'Letras en pesos y bonos/ONs en dólares: con un monto, cuánto cobrás y cuándo, mes a mes. Precios en vivo de BYMA, TIR y cartera combinada.', badge:'Renta Fija', file:'Cuanto_Cobro_FCN.html', color:'jade' }
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -3009,8 +3010,8 @@ function abrirCarteraCliente(cliente) {
     body.innerHTML = `<div class="cc-actions">
         <button class="cc-abtn" onclick="reporteCartera('${cEsc}')">⬇ Reporte para el cliente</button>
         <button class="cc-abtn" onclick="abrirArmadorConCartera('${cEsc}')">📊 Abrir en Armador</button>
-      </div>` +
         <button class="cc-abtn" onclick="abrirCorrelacionCliente('${cEsc}')" title="Ver si los activos de renta variable de este cliente se mueven juntos (diversificación)">🔗 Correlación</button>
+      </div>` +
       `<table class="cc-table"><thead><tr><th>Ticker</th><th>Instrumento</th><th>Grupo</th><th>Tenencia USD</th><th>Nominales</th><th>Días</th><th>Rent.</th><th>Señal</th></tr></thead>` +
       `<tbody>${rows}</tbody></table>` +
       `<div class="cc-total">Tenencia total: <b>USD ${fmtK(tenTotal)}</b></div>`;
@@ -3187,7 +3188,6 @@ const _ARM_TIPO = {
   corporativos: 'Renta Fija | Corporativos (ONs)', bonos: 'Renta Fija | Soberanos',
   letras: 'Renta Fija | Letras y Bonos ARS', fondos: 'FCI', efectivo: 'Liquidez / Money Market',
 };
-function abrirArmadorConCartera(cliente) {
 // Vista 360 → panel de Valuación por Múltiplos con la correlación de la cartera de este cliente.
 // El panel puede no estar cargado todavía: deja el pedido en localStorage (mismo origen) y avisa por
 // el BroadcastChannel; el panel lo retoma apenas termina de cargar sus datos y la tenencia.
@@ -3197,6 +3197,7 @@ function abrirCorrelacionCliente(cliente) {
   openTool('multiplos');
   if (BC) BC.postMessage({ type: 'vm_abrir_corr' });
 }
+function abrirArmadorConCartera(cliente) {
   const items = (currentTenencia && currentTenencia.carteraPorCliente && currentTenencia.carteraPorCliente[cliente]) || [];
   if (!items.length) { alert('Sin posiciones cargadas para este cliente.'); return; }
   const inv = items.filter(i => i.grupo !== 'Liquidez');
