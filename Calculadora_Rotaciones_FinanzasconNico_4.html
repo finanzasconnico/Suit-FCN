@@ -284,6 +284,61 @@ details.cond-details summary:hover{color:var(--text-strong);}
 .rfrev-msg-box{display:none;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:12px;}
 .rfrev-msg-box.open{display:flex;}
 
+/* ── RADAR DE ROTACIONES (todo el libro) ── */
+.radar-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px;}
+.radar-kpi{background:var(--wash-1);border:1px solid var(--border);border-left:3px solid var(--wash-3);border-radius:var(--radius);padding:10px 13px;cursor:pointer;transition:background .15s,border-color .15s;text-align:left;font-family:inherit;color:inherit;}
+.radar-kpi:hover{background:var(--wash-2);}
+.radar-kpi.on{background:var(--wash-2);border-color:var(--balanz);}
+.radar-kpi.k-tir{border-left-color:var(--warn-text);} .radar-kpi.k-dur{border-left-color:var(--series-mantener);} .radar-kpi.k-gan{border-left-color:var(--neg-text);} .radar-kpi.k-aum{border-left-color:var(--pos-text);cursor:default;}
+.radar-kpi-lbl{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--cream-dim);}
+.radar-kpi-val{font-size:20px;font-weight:600;color:var(--text-strong);margin:2px 0 1px;}
+.radar-kpi-sub{font-size:10.5px;color:var(--cream-dim);}
+.radar-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px;}
+.radar-ctl{background:var(--wash-1);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:11px;padding:6px 9px;outline:none;}
+.radar-ctl:focus{border-color:var(--balanz);}
+.radar-ctl-lbl{font-size:10.5px;color:var(--cream-dim);}
+.radar-reglas{margin-bottom:12px;font-size:11px;color:var(--cream-dim);}
+.radar-reglas summary{cursor:pointer;user-select:none;}
+.radar-reglas-grid{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:8px;}
+.radar-reglas-grid label{display:flex;align-items:center;gap:6px;}
+.radar-reglas-grid input{width:64px;}
+.radar-resumen{font-size:11.5px;color:var(--cream-dim);margin:2px 0 10px;}
+.radar-resumen b{color:var(--text-strong);}
+.radar-grupo{background:var(--wash-1);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;}
+.radar-grupo.open{border-color:var(--wash-3);}
+.radar-gh{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:11px 14px;cursor:pointer;}
+.radar-gh:hover{background:var(--wash-1);}
+.radar-gh-id{flex:1 1 230px;min-width:0;}
+.radar-gh-tk{display:flex;align-items:center;flex-wrap:wrap;gap:7px;}
+.radar-arrow{font-size:10px;color:var(--cream-dim);width:12px;}
+.radar-tk{font-weight:700;font-size:14px;color:var(--text-strong);}
+.radar-tk.baja{color:var(--neg-text);}
+.radar-badge{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid;}
+.radar-badge.b-tir{color:var(--pos-text);border-color:var(--pos-text);background:rgba(28,140,95,.12);}
+.radar-badge.b-dur{color:var(--series-mantener);border-color:var(--series-mantener);background:rgba(59,130,196,.12);}
+.radar-badge.b-gan{color:var(--warn-text);border-color:var(--warn-text);background:rgba(217,160,60,.12);}
+.radar-badge.b-conc{color:var(--neg-text);border-color:var(--neg-text);background:rgba(208,59,59,.12);}
+.radar-gsub{font-size:10.5px;color:var(--cream-dim);margin-top:3px;padding-left:19px;}
+.radar-ms{display:flex;flex-wrap:wrap;gap:6px 20px;align-items:flex-end;}
+.radar-m{text-align:right;min-width:52px;}
+.radar-m b{display:block;font-size:13px;color:var(--text-strong);font-weight:600;}
+.radar-m span{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-dim);}
+.radar-m.pos b{color:var(--pos-text);} .radar-m.neg b{color:var(--neg-text);}
+.radar-m.big b{font-size:14.5px;}
+.radar-gb{border-top:1px solid var(--border);padding:4px 14px 12px;}
+.radar-sec{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--cream-dim);margin:10px 0 4px;}
+.radar-alts{width:100%;border-collapse:collapse;font-size:11.5px;}
+.radar-alts th{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-dim);font-weight:500;text-align:left;padding:4px 8px;}
+.radar-alts td{padding:7px 8px;border-top:1px solid var(--border);vertical-align:middle;}
+.radar-alts td.n{color:var(--cream-dim);width:22px;}
+.radar-alts .mej{color:var(--pos-text);font-weight:600;white-space:nowrap;}
+.radar-alts .acc{text-align:right;white-space:nowrap;}
+.radar-alts .acc button{width:auto;display:inline-block;padding:5px 9px;font-size:10.5px;margin-left:5px;}
+.radar-sub{display:block;font-size:9.5px;color:var(--cream-dim);}
+.radar-cli{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;font-size:10.5px;color:var(--cream-dim);}
+.radar-empty{padding:26px 10px;text-align:center;font-size:12px;color:var(--cream-dim);}
+@media(max-width:700px){.radar-alts .acc{white-space:normal;}}
+
 /* ── LICITACIÓN / OPORTUNIDAD MASIVA ── */
 .lic-toggle-head{display:flex;flex-direction:column;align-items:center;cursor:pointer;padding:2px 0;transition:opacity .15s ease;}
 .lic-toggle-head:hover{opacity:.85;}
@@ -458,6 +513,48 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       <button class="btn btn-primary" style="width:100%;" onclick="buscarCandidatosLicitacion()">🔍 Buscar candidatos</button>
 
       <div id="lic-resultados" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <!-- ── RADAR DE ROTACIONES — TODO EL LIBRO ──────────────────────────────
+       Vista de entrada única: escanea la renta fija de TODOS los clientes y agrupa por ticker
+       tenido, ordenando por tipo de oportunidad (mejorar TIR / acortar duration / tomar
+       ganancias / concentración). Reusa el mismo motor que "Revisión RF por cliente"
+       (alternativasParaRotar) — no calcula nada nuevo, solo lo aplica a todo el libro a la vez. -->
+  <div class="leg-card advisor-only" id="radar-panel" style="margin-bottom:18px;">
+    <div class="lic-toggle-head" onclick="toggleRadarPanel()">
+      <div class="leg-title" style="text-align:center;">📡 Radar de rotaciones — todo el libro</div>
+      <div class="leg-sub" style="text-align:center;margin-bottom:2px;">Sin elegir cliente ni ticker: toda tu renta fija ordenada por oportunidad de rotar</div>
+      <span id="radar-toggle-arrow" class="lic-toggle-arrow">▾</span>
+    </div>
+    <div id="radar-body" style="display:none;margin-top:16px;">
+      <div class="radar-kpis" id="radar-kpis"></div>
+      <div class="radar-bar">
+        <div class="preset-chips" id="radar-chips"></div>
+      </div>
+      <div class="radar-bar">
+        <span class="radar-ctl-lbl">AUM mínimo:</span>
+        <select class="radar-ctl" id="radar-aum" onchange="radarRender()">
+          <option value="0">Sin mínimo</option><option value="1000" selected>≥ USD 1.000</option><option value="5000">≥ USD 5.000</option><option value="10000">≥ USD 10.000</option><option value="25000">≥ USD 25.000</option><option value="50000">≥ USD 50.000</option>
+        </select>
+        <input class="radar-ctl" type="text" id="radar-buscar" placeholder="Buscar ticker o emisor…" oninput="radarRender()" style="flex:1 1 170px;max-width:280px;">
+        <span class="radar-ctl-lbl">Ordenar:</span>
+        <select class="radar-ctl" id="radar-orden" onchange="radarRender()">
+          <option value="ten">Mayor tenencia</option><option value="mej">Mayor mejora de TIR</option><option value="tir">Menor TIR actual</option><option value="pnl">Mayor ganancia %</option><option value="cli">Más clientes</option>
+        </select>
+        <button class="btn btn-outline small" style="width:auto;padding:6px 11px;" onclick="radarRender()" title="Recalcular con los datos cargados ahora">↻ Actualizar</button>
+      </div>
+      <details class="radar-reglas">
+        <summary>⚙ Reglas de detección (editables)</summary>
+        <div class="radar-reglas-grid">
+          <label>Mejora TIR: ventaja mín. <input class="radar-ctl" type="number" step="0.1" id="radar-r-ventaja" value="0.5" onchange="radarRender()"> p.p.</label>
+          <label>Acortar duration: desde <input class="radar-ctl" type="number" step="0.5" id="radar-r-dur" value="5" onchange="radarRender()"> años</label>
+          <label>Toma de ganancias: desde <input class="radar-ctl" type="number" step="1" id="radar-r-gan" value="8" onchange="radarRender()"> %</label>
+          <label>Concentración: desde <input class="radar-ctl" type="number" step="5" id="radar-r-conc" value="30" onchange="radarRender()"> % de la RF del cliente</label>
+        </div>
+      </details>
+      <div class="radar-resumen" id="radar-resumen"></div>
+      <div id="radar-lista"></div>
     </div>
   </div>
 
@@ -1117,6 +1214,7 @@ function cargarExcel(input){
       var countFlujo = parseTickerSheets(wb);
       saveDBToStorage();
       saveFlujoDBToStorage();
+      if(typeof radarRender==='function') radarRender();
       status.style.color = '#6dc27a';
       status.textContent = '✓ '+count+' bonos cargados'+(countFlujo>0?' · '+countFlujo+' con cronograma real de flujos 📋':'')+' — ahora solo escribís ticker, nominales y precio';
       document.getElementById('icon-excel').innerHTML = '<span class="status-dot"></span>';
@@ -3518,6 +3616,7 @@ function parseTenenciaParaClientes(entry){
     Object.keys(resultado).forEach(function(c){ todos[c]=true; });
     Object.keys(liquidezPorCliente).forEach(function(c){ todos[c]=true; });
     CLIENTE_LIST = Object.keys(todos).sort(function(a,b){ return a.localeCompare(b,'es'); });
+    if(typeof radarRender==='function') radarRender();
   } catch(e){ console.warn('[Rotaciones] error leyendo tenencia', e); }
 }
 
@@ -3673,11 +3772,16 @@ var RF_CORP_MIN_RANK = 3;       // AA- en ESCALA_CALIF (0=AAA) — mismo piso de
 // precio (MEP/Cable) que ya está elegido en el selector global de la calculadora, para que
 // coincida exactamente con lo que muestran los chips en rojo (si no, un bono podía aparecer
 // "flojo" en el chip con un tipo de precio y "sano" acá con otro).
-function candidatoParaRotar(tickerActual, excluirTickers){
+// opts: {n (cuántas devolver, default 1), excluir, modo:'tir'|'dur', ventajaTir (p.p. mínimos de TIR
+// extra, solo modo 'tir')}. modo 'tir' = mismo criterio de siempre (más TIR, duration ±2 años);
+// modo 'dur' = para ACORTAR duration: al menos 1,5 años menos y sin resignar más de 0,25 p.p. de TIR.
+function alternativasParaRotar(tickerActual, opts){
+  opts = opts || {};
+  var n = opts.n || 1, excluirTickers = opts.excluir, modo = opts.modo || 'tir', ventaja = opts.ventajaTir || 0;
   var baseRaw = BOND_DB[tickerActual];
   var tirBase = tirActualDeTicker(tickerActual);
   var durBase = baseRaw ? durationBond(baseRaw) : null;
-  var mejorTk = null, mejorTir = -Infinity;
+  var lista = [];
   Object.keys(BOND_DB).forEach(function(tk){
     if(tk===tickerActual) return;
     if(excluirTickers && excluirTickers[tk]) return;
@@ -3691,19 +3795,279 @@ function candidatoParaRotar(tickerActual, excluirTickers){
     // encima de esto casi siempre es un dato roto (precio mal cargado, bono a días de vencer)
     // más que una oportunidad real — sin este techo, "elegí la TIR más alta" terminaba
     // sugiriendo bonos con TIR de 200%+ por un dato sucio. Bug real, 2026-09.
-    if(tir==null || tirBase==null || tir<=tirBase || tir>20) return;
+    if(tir==null || tirBase==null || tir>20) return;
     var dur = durationBond(b);
     // Un bono a semanas de vencer no es un destino razonable para "rotar" (y su TIR
     // recalculada del precio se vuelve inestable/enorme cerca del vencimiento — la causa real
     // de las TIR de 200%+ que se filtraban arriba). Igual se descarta, aunque el techo de TIR
     // ya lo tape casi siempre.
     if(dur!=null && dur<0.25) return;
-    if(durBase!=null && dur!=null && Math.abs(dur-durBase)>2) return;
-    if(tir>mejorTir){ mejorTir=tir; mejorTk=tk; }
+    if(modo==='dur'){
+      if(durBase==null || dur==null || dur>durBase-1.5 || tir<tirBase-0.25) return;
+    } else {
+      if(tir<=tirBase+ventaja) return;
+      if(durBase!=null && dur!=null && Math.abs(dur-durBase)>2) return;
+    }
+    lista.push({ ticker:tk, emisor:b.emisor||'', calif:b.calif||'', tir:tir, duration:dur, vencimiento:b.vencimiento||'', cuponAnual:b.cuponAnual });
   });
-  if(!mejorTk) return null;
-  var b = BOND_DB[mejorTk];
-  return { ticker:mejorTk, emisor:b.emisor||'', calif:b.calif||'', tir:mejorTir, duration:durationBond(b) };
+  lista.sort(function(a,b){ return b.tir-a.tir; });
+  return lista.slice(0,n);
+}
+function candidatoParaRotar(tickerActual, excluirTickers){
+  var r = alternativasParaRotar(tickerActual, {n:1, excluir:excluirTickers});
+  return r.length ? r[0] : null;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RADAR DE ROTACIONES — todo el libro. Agrupa la renta fija de TODOS los clientes por ticker
+//  tenido y marca, por ticker: mejora de TIR (alternativas con más TIR, mismo criterio que la
+//  Revisión RF), acortar duration, toma de ganancias (algún tenedor arriba del umbral) y
+//  concentración (algún tenedor con ese ticker pesando de más en su renta fija). Sin motor
+//  propio: usa alternativasParaRotar / tirActualDeTicker / durationBond de arriba.
+// ══════════════════════════════════════════════════════════════
+var radarAbierto = false;
+var radarFiltro = 'todas';   // todas | tir | dur | gan | conc
+var radarExpandidos = {};    // ticker -> true
+var radarUltimo = null;      // último cálculo, para las acciones de cada fila
+var RADAR_CHIPS = [['todas','Todas'],['tir','↑ Mejora TIR'],['dur','⇊ Acortar Duration'],['gan','◎ Toma Ganancias'],['conc','⚠ Concentración']];
+
+function _rEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function _rNum(id, def){ var v = parseFloat(document.getElementById(id).value); return isNaN(v) ? def : v; }
+function _rUSD(n){ return 'USD '+Math.round(n).toLocaleString('es-AR'); }
+function _rUSDs(n){ return (n>=0?'+':'-')+'USD '+Math.round(Math.abs(n)).toLocaleString('es-AR'); }
+
+function toggleRadarPanel(){
+  var body = document.getElementById('radar-body');
+  radarAbierto = body.style.display==='none';
+  body.style.display = radarAbierto ? '' : 'none';
+  document.getElementById('radar-toggle-arrow').textContent = radarAbierto ? '▴' : '▾';
+  if(radarAbierto) radarRender();
+}
+
+function radarCalcular(){
+  var R = { ventaja:_rNum('radar-r-ventaja',0.5), dur:_rNum('radar-r-dur',5), gan:_rNum('radar-r-gan',8), conc:_rNum('radar-r-conc',30) };
+  var totalRF = {}, porTicker = {};
+  Object.keys(TENENCIA_POR_CLIENTE).forEach(function(cli){
+    totalRF[cli] = (TENENCIA_POR_CLIENTE[cli]||[]).reduce(function(a,it){ return a+(it.tenencia||0); }, 0);
+  });
+  Object.keys(TENENCIA_POR_CLIENTE).forEach(function(cli){
+    (TENENCIA_POR_CLIENTE[cli]||[]).forEach(function(it){
+      if(!(it.tenencia>0)) return;
+      var h = { cliente:cli, nominales:it.nominales, tenencia:it.tenencia, peso: totalRF[cli] ? it.tenencia/totalRF[cli]*100 : 0, costo:null, pnlPct:null, gananciaUSD:null };
+      if(it.ppc>0 && it.nominales>0){ h.costo = it.ppc*it.nominales; h.gananciaUSD = it.tenencia-h.costo; h.pnlPct = (it.tenencia/h.costo-1)*100; }
+      (porTicker[it.ticker] = porTicker[it.ticker] || []).push(h);
+    });
+  });
+  var grupos = [];
+  Object.keys(porTicker).forEach(function(tk){
+    var raw = BOND_DB[tk], real = FLUJO_DB[tk];
+    if(!raw && !real) return;                       // sin datos de mercado: no analizable
+    var tir = tirActualDeTicker(tk);
+    if(tir==null) return;
+    var holders = porTicker[tk].sort(function(a,b){ return b.tenencia-a.tenencia; });
+    var g = { ticker:tk, tir:tir, holders:holders };
+    g.tenencia = holders.reduce(function(a,h){ return a+h.tenencia; }, 0);
+    g.duration = durationBond(raw || {ticker:tk});
+    g.calif = califBond(raw || {ticker:tk}) || '';
+    g.emisor = (real ? real.emisor : (raw ? raw.emisor : '')) || '';
+    g.venc = String((raw && raw.vencimiento) || (real && real.fechaVenc) || '').slice(0,7);
+    g.cupon = (real && real.cuponAnual!=null) ? real.cuponAnual : (raw ? raw.cuponAnual : null);
+    var conCosto = holders.filter(function(h){ return h.costo!=null; });
+    var costoTot = conCosto.reduce(function(a,h){ return a+h.costo; }, 0);
+    var tenConCosto = conCosto.reduce(function(a,h){ return a+h.tenencia; }, 0);
+    var nomConCosto = conCosto.reduce(function(a,h){ return a+h.nominales; }, 0);
+    g.pnlPct = costoTot>0 ? (tenConCosto/costoTot-1)*100 : null;
+    g.ganUSD = costoTot>0 ? tenConCosto-costoTot : null;
+    g.ppcProm = nomConCosto>0 ? costoTot/nomConCosto : null;
+    g.altsTir = alternativasParaRotar(tk, {n:4, modo:'tir', ventajaTir:R.ventaja});
+    g.altsDur = (g.duration!=null && g.duration>=R.dur) ? alternativasParaRotar(tk, {n:4, modo:'dur'}) : [];
+    g.hTir = g.altsTir.length ? holders : [];
+    g.hDur = g.altsDur.length ? holders : [];
+    g.hGan = holders.filter(function(h){ return h.pnlPct!=null && h.pnlPct>=R.gan; });
+    g.hConc = holders.filter(function(h){ return h.peso>=R.conc; });
+    g.mejoraMax = g.altsTir.length ? g.altsTir[0].tir-tir : 0;
+    grupos.push(g);
+  });
+  var kpi = { aum:0, tickers:grupos.length, tir:{usd:0,pos:0}, dur:{usd:0,pos:0}, gan:{usd:0,pos:0}, conc:{usd:0,pos:0} };
+  function acum(k, hs){ hs.forEach(function(h){ kpi[k].usd += h.tenencia; kpi[k].pos++; }); }
+  grupos.forEach(function(g){ kpi.aum += g.tenencia; acum('tir',g.hTir); acum('dur',g.hDur); acum('gan',g.hGan); acum('conc',g.hConc); });
+  return { grupos:grupos, kpi:kpi, R:R };
+}
+
+function radarFlag(g, f){
+  if(f==='tir') return g.hTir.length>0;
+  if(f==='dur') return g.hDur.length>0;
+  if(f==='gan') return g.hGan.length>0;
+  if(f==='conc') return g.hConc.length>0;
+  return g.hTir.length>0 || g.hDur.length>0 || g.hGan.length>0 || g.hConc.length>0;
+}
+
+function radarRender(){
+  if(!radarAbierto) return;
+  var lista = document.getElementById('radar-lista');
+  var hayMonitor = Object.keys(BOND_DB).length>0;
+  var hayTenencia = Object.keys(TENENCIA_POR_CLIENTE).length>0;
+  if(!hayMonitor || !hayTenencia){
+    document.getElementById('radar-kpis').innerHTML = '';
+    document.getElementById('radar-chips').innerHTML = '';
+    document.getElementById('radar-resumen').innerHTML = '';
+    lista.innerHTML = '<div class="radar-empty">'+(!hayMonitor ? 'Falta el <b>Monitor de Individuos</b> (precios y TIR de los bonos). ' : '')+(!hayTenencia ? 'Falta la <b>Tenencia por Ticker</b>: subila una vez en FCN Suite → Archivos.' : '')+'</div>';
+    return;
+  }
+  var data = radarCalcular();
+  radarUltimo = data;
+  var aumMin = parseFloat(document.getElementById('radar-aum').value)||0;
+  var q = (document.getElementById('radar-buscar').value||'').trim().toLowerCase();
+  var pasa = data.grupos.filter(function(g){
+    if(g.tenencia<aumMin) return false;
+    if(q && (g.ticker+' '+g.emisor).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+
+  var k = data.kpi;
+  function kpiCard(f, cls, lbl, usd, sub){
+    return '<button type="button" class="radar-kpi '+cls+(radarFiltro===f?' on':'')+'" data-act="kpi" data-f="'+f+'"'+(f==='aum'?' style="cursor:default"':'')+'><div class="radar-kpi-lbl">'+lbl+'</div><div class="radar-kpi-val">'+_rUSD(usd)+'</div><div class="radar-kpi-sub">'+sub+'</div></button>';
+  }
+  function pl(n, s, p){ return n+' '+(n===1?s:p); }
+  document.getElementById('radar-kpis').innerHTML =
+    kpiCard('aum','k-aum','AUM renta fija analizable',k.aum,pl(k.tickers,'ticker','tickers')+' con datos')+
+    kpiCard('tir','k-tir','Oportunidad mejora TIR',k.tir.usd,pl(k.tir.pos,'posición','posiciones'))+
+    kpiCard('dur','k-dur','Oportunidad acortar duration',k.dur.usd,pl(k.dur.pos,'posición','posiciones'))+
+    kpiCard('gan','k-gan','Toma de ganancias ≥ '+data.R.gan+'%',k.gan.usd,pl(k.gan.pos,'posición','posiciones'))+
+    kpiCard('conc','k-gan','Concentración ≥ '+data.R.conc+'%',k.conc.usd,pl(k.conc.pos,'posición','posiciones'));
+  document.getElementById('radar-chips').innerHTML = RADAR_CHIPS.map(function(c){
+    var n = pasa.filter(function(g){ return radarFlag(g,c[0]); }).length;
+    return '<span class="preset-chip'+(radarFiltro===c[0]?' active':'')+'" data-act="chip" data-f="'+c[0]+'">'+c[1]+' <b>'+n+'</b></span>';
+  }).join('');
+
+  var vis = pasa.filter(function(g){ return radarFlag(g, radarFiltro); });
+  var orden = document.getElementById('radar-orden').value;
+  vis.sort(function(a,b){
+    if(orden==='mej') return b.mejoraMax-a.mejoraMax;
+    if(orden==='tir') return a.tir-b.tir;
+    if(orden==='pnl') return (b.pnlPct==null?-Infinity:b.pnlPct)-(a.pnlPct==null?-Infinity:a.pnlPct);
+    if(orden==='cli') return b.holders.length-a.holders.length;
+    return b.tenencia-a.tenencia;
+  });
+  var aumVis = vis.reduce(function(a,g){ return a+g.tenencia; }, 0);
+  document.getElementById('radar-resumen').innerHTML = '<b>'+vis.length+'</b> ticker'+(vis.length===1?'':'s')+' · AUM <b>'+_rUSD(aumVis)+'</b>';
+  lista.innerHTML = vis.length ? vis.map(radarGrupoHTML).join('') : '<div class="radar-empty">Sin posiciones con este criterio. Probá bajar el AUM mínimo, limpiar la búsqueda o ajustar las reglas.</div>';
+  lista.onclick = radarClick;
+  document.getElementById('radar-kpis').onclick = radarClick;
+  document.getElementById('radar-chips').onclick = radarClick;
+}
+
+function radarGrupoHTML(g){
+  var abierto = !!radarExpandidos[g.ticker];
+  var b = '';
+  if(g.hTir.length) b += '<span class="radar-badge b-tir">Mejora TIR</span>';
+  if(g.hDur.length) b += '<span class="radar-badge b-dur">Acortar duration</span>';
+  if(g.hGan.length) b += '<span class="radar-badge b-gan">Toma ganancias</span>';
+  if(g.hConc.length) b += '<span class="radar-badge b-conc">Concentración</span>';
+  var pnlCls = g.pnlPct==null ? '' : (g.pnlPct>=0?'pos':'neg');
+  function m(val, lbl, cls){ return '<div class="radar-m '+(cls||'')+'"><b>'+val+'</b><span>'+lbl+'</span></div>'; }
+  var head = '<div class="radar-gh" data-act="grupo" data-tk="'+_rEsc(g.ticker)+'">'+
+    '<div class="radar-gh-id"><div class="radar-gh-tk"><span class="radar-arrow">'+(abierto?'▼':'▶')+'</span><span class="radar-tk'+(umbralTirCliente!=null && g.tir<umbralTirCliente?' baja':'')+'">'+_rEsc(g.ticker)+'</span>'+b+(g.cupon!=null?'<span class="radar-sub" style="display:inline;">Cupón '+fmtNum(g.cupon)+'%</span>':'')+'</div>'+
+    '<div class="radar-gsub">'+_rEsc(g.emisor||'—')+(g.venc?' · Vto: '+g.venc:'')+'</div></div>'+
+    '<div class="radar-ms">'+
+      m(fmtNum(g.tir)+'%','TIR actual','pos')+
+      m(g.duration!=null?fmtNum(g.duration)+'a':'—','Duration')+
+      m(_rEsc(g.calif||'—'),'Calif.')+
+      m(g.pnlPct!=null?(g.pnlPct>=0?'+':'')+fmtNum(g.pnlPct,1)+'%':'—','P&L %',pnlCls)+
+      m(g.ganUSD!=null?_rUSDs(g.ganUSD):'—','Gan/pérd USD',pnlCls)+
+      m(g.ppcProm!=null?fmtNum(g.ppcProm,4):'—','PPC prom.')+
+      m(_rUSD(g.tenencia),g.holders.length+' cliente'+(g.holders.length===1?'':'s'),'big')+
+    '</div></div>';
+  return '<div class="radar-grupo'+(abierto?' open':'')+'" id="rg-'+_rEsc(g.ticker)+'">'+head+(abierto?radarCuerpoHTML(g):'')+'</div>';
+}
+
+function radarAltsHTML(g, alts, modo){
+  var nH = g.holders.length;
+  return '<div style="overflow-x:auto;"><table class="radar-alts"><thead><tr><th></th><th>Comprar</th><th>TIR</th><th>Duration</th><th>Calif.</th><th>Vto</th><th>'+(modo==='dur'?'Cambio':'Mejora')+'</th><th></th></tr></thead><tbody>'+
+    alts.map(function(a,i){
+      var mej = modo==='dur'
+        ? '−'+fmtNum(g.duration-a.duration,1)+' años · '+(a.tir-g.tir>=0?'+':'')+fmtNum(a.tir-g.tir)+' pp TIR'
+        : '+'+fmtNum(a.tir-g.tir)+' pp TIR';
+      var at = ' data-tk="'+_rEsc(g.ticker)+'" data-alt="'+_rEsc(a.ticker)+'" data-modo="'+modo+'"';
+      return '<tr><td class="n">'+(i+1)+'</td><td><b>'+_rEsc(a.ticker)+'</b><span class="radar-sub">'+_rEsc(a.emisor)+'</span></td>'+
+        '<td>'+fmtNum(a.tir)+'%</td><td>'+(a.duration!=null?fmtNum(a.duration)+'a':'—')+'</td><td>'+_rEsc(a.calif||'—')+'</td><td>'+_rEsc(String(a.vencimiento).slice(0,7)||'—')+'</td>'+
+        '<td class="mej">'+mej+'</td>'+
+        '<td class="acc"><button type="button" class="btn btn-outline small" data-act="cmp"'+at+'>⇄ Comparar</button>'+
+        '<button type="button" class="btn btn-outline small" data-act="msg"'+at+'>📋 Copiar msg</button>'+
+        (nH ? '<button type="button" class="btn btn-outline small" data-act="avisar"'+at+' title="Abre el aviso masivo a todos los que tienen '+_rEsc(g.ticker)+'">📣 Avisar a '+nH+'</button>' : '')+
+        '</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+function radarCuerpoHTML(g){
+  var h = '<div class="radar-gb">';
+  var verTir = radarFiltro==='todas' || radarFiltro==='tir' || radarFiltro==='gan' || radarFiltro==='conc';
+  var verDur = radarFiltro==='todas' || radarFiltro==='dur';
+  if(verTir){
+    h += '<div class="radar-sec">↑ Mayor TIR con calificación y duration parecidas</div>';
+    h += g.altsTir.length ? radarAltsHTML(g, g.altsTir, 'tir') : '<div class="radar-empty" style="padding:8px 0;text-align:left;">Sin alternativa con más TIR (y calificación/duration parecidas) que valga la pena.</div>';
+  }
+  if(verDur && g.altsDur.length){
+    h += '<div class="radar-sec">⇊ Menos duration sin resignar TIR</div>'+radarAltsHTML(g, g.altsDur, 'dur');
+  }
+  var verPnl = radarFiltro==='gan', verPeso = radarFiltro==='conc';
+  var MAX = 10;
+  h += '<div class="radar-cli"><span>Clientes:</span>'+g.holders.slice(0,MAX).map(function(x){
+    var extra = verPnl && x.pnlPct!=null ? ' · '+(x.pnlPct>=0?'+':'')+fmtNum(x.pnlPct,1)+'%' : (verPeso ? ' · '+fmtNum(x.peso,0)+'% de su RF' : '');
+    var nom = x.cliente.length>28 ? x.cliente.slice(0,27)+'…' : x.cliente;
+    return '<span class="holder-chip" data-act="cli" data-tk="'+_rEsc(g.ticker)+'" data-cli="'+_rEsc(x.cliente)+'" title="Cargar a '+_rEsc(x.cliente)+' como cliente activo con este bono a VENDER">'+_rEsc(nom)+' <b>'+_rUSD(x.tenencia)+'</b>'+extra+'</span>';
+  }).join('')+(g.holders.length>MAX?'<span>+'+(g.holders.length-MAX)+' más</span>':'')+'</div>';
+  return h+'</div>';
+}
+
+function radarClick(e){
+  var t = e.target.closest ? e.target.closest('[data-act]') : null;
+  if(!t) return;
+  var act = t.getAttribute('data-act'), tk = t.getAttribute('data-tk'), alt = t.getAttribute('data-alt');
+  if(act==='grupo'){ radarExpandidos[tk] = !radarExpandidos[tk]; radarRender(); return; }
+  if(act==='chip' || act==='kpi'){
+    var f = t.getAttribute('data-f'); if(f==='aum') return;
+    radarFiltro = (act==='kpi' && radarFiltro===f) ? 'todas' : f;
+    radarRender(); return;
+  }
+  if(act==='cmp') return radarComparar(tk, alt, false);
+  if(act==='avisar') return radarComparar(tk, alt, true);
+  if(act==='msg') return radarCopiarMensaje(tk, alt, t.getAttribute('data-modo'));
+  if(act==='cli') return radarAbrirCliente(tk, t.getAttribute('data-cli'));
+}
+
+function radarComparar(tk, alt, avisar){
+  if(!(BOND_DB[tk]||FLUJO_DB[tk]) || !(BOND_DB[alt]||FLUJO_DB[alt])) return;
+  seleccionarBono('venta', tk);
+  seleccionarBono('compra', alt);
+  if(avisar){
+    if(lastCtx && lastCtx.venta && lastCtx.compra) abrirRotacionMasiva();
+    else alert('No pude armar la comparación de '+tk+' → '+alt+' (faltan datos de alguno de los dos). Revisá el comparador de abajo.');
+    return;
+  }
+  var el = document.querySelector('.legs-grid');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function radarAbrirCliente(tk, cliente){
+  var it = (TENENCIA_POR_CLIENTE[cliente]||[]).filter(function(x){ return x.ticker===tk; })[0];
+  seleccionarClienteActivo(cliente);
+  if(it) autofillClienteBono(tk, it.nominales, it.tenencia);
+  var el = document.querySelector('.legs-grid');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function radarCopiarMensaje(tk, altTk, modo){
+  var g = radarUltimo && radarUltimo.grupos.filter(function(x){ return x.ticker===tk; })[0];
+  var a = g && (modo==='dur' ? g.altsDur : g.altsTir).filter(function(x){ return x.ticker===altTk; })[0];
+  if(!g || !a) return;
+  var det = a.emisor ? ' ('+a.emisor+(a.calif?', calificación '+a.calif:'')+(a.vencimiento?', vence '+String(a.vencimiento).slice(0,7):'')+')' : '';
+  var txt = modo==='dur'
+    ? 'Hola, estaba revisando tu cartera y vi que '+tk+' tiene una duration de '+fmtNum(g.duration,1)+' años. '+altTk+det+' tiene '+fmtNum(a.duration,1)+' años con una TIR parecida (~'+fmtNum(a.tir,1)+'% vs ~'+fmtNum(g.tir,1)+'% actual), así bajás el riesgo de tasa sin resignar rendimiento. Si te interesa, avisame y lo coordinamos.'
+    : 'Hola, estaba revisando tu cartera y vi que '+tk+' hoy rinde ~'+fmtNum(g.tir,1)+'% anual. Una alternativa comparable es '+altTk+det+' con TIR ~'+fmtNum(a.tir,1)+'% (+'+fmtNum(a.tir-g.tir,1)+' puntos). Si te interesa, avisame y lo coordinamos.';
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ showToastRF('Mensaje copiado.'); }, function(){ prompt('Copiá el mensaje:', txt); });
+  } else { prompt('Copiá el mensaje:', txt); }
 }
 
 // Ganancia estimada de UNA fila (vender ticker actual, comprar el candidato) al horizonte

@@ -127,20 +127,26 @@
   <div class="panel controls" id="uploadEmpresa">
     <h2>3. Estados contables (anuales, formato Investing.com / WSJ)</h2>
     <div class="upload-grid">
+      <div class="upload-card" id="cardALL" style="grid-column:1/-1;">
+        <div class="req">Opción rápida</div>
+        <div class="name">Todo junto: un Excel con las 3 hojas, o los 3 archivos seleccionados a la vez</div>
+        <input type="file" multiple accept=".xlsx,.xls" onchange="onFile(event,'all')">
+        <div class="status">✓ cargado</div>
+      </div>
       <div class="upload-card" id="cardIS">
-        <div class="req">Requerido</div>
+        <div class="req optional">Por separado</div>
         <div class="name">Cuenta de resultados</div>
         <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'is')">
         <div class="status">✓ cargado</div>
       </div>
       <div class="upload-card" id="cardBS">
-        <div class="req">Requerido</div>
+        <div class="req optional">Por separado</div>
         <div class="name">Balance</div>
         <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'bs')">
         <div class="status">✓ cargado</div>
       </div>
       <div class="upload-card" id="cardCF">
-        <div class="req">Requerido</div>
+        <div class="req optional">Por separado</div>
         <div class="name">Flujo de caja</div>
         <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'cf')">
         <div class="status">✓ cargado</div>
@@ -178,7 +184,7 @@
 
 <script>
 /* ======================= estado ======================= */
-const FILES = { is:null, bs:null, cf:null, px:null };
+const FILES = { all:[], is:null, bs:null, cf:null, px:null };
 let MODE = 'empresa';
 
 function setMode(m){
@@ -193,14 +199,14 @@ function setMode(m){
 }
 
 async function onFile(ev, key){
-  const f = ev.target.files[0];
-  if(!f) return;
-  const buf = await f.arrayBuffer();
-  FILES[key] = { name:f.name, buf };
-  const map = {is:'cardIS', bs:'cardBS', cf:'cardCF', px: MODE==='empresa' ? 'cardPX' : 'cardPX2'};
+  const files = [...ev.target.files];
+  if(!files.length) return;
+  const entries = await Promise.all(files.map(async f=>({ name:f.name, buf: await f.arrayBuffer() })));
+  FILES[key] = key==='all' ? entries : entries[0];
+  const map = {all:'cardALL', is:'cardIS', bs:'cardBS', cf:'cardCF', px: MODE==='empresa' ? 'cardPX' : 'cardPX2'};
   const card = document.getElementById(map[key]);
   card.classList.add('filled');
-  card.querySelector('.status').textContent = '✓ ' + f.name;
+  card.querySelector('.status').textContent = '✓ ' + entries.map(e=>e.name).join(', ');
 }
 
 /* ======================= parser genérico (Investing.com / WSJ) ======================= */
@@ -223,15 +229,18 @@ function parseCelda(v){
   return null;
 }
 
-function parseEstadoContable(matrix){
-  let headerRow=-1;
-  outer: for(let r=0;r<matrix.length;r++){
+// Una hoja puede traer varios estados apilados (cada uno con su propia fila
+// "Período terminado:") — se parte en bloques y cada bloque se parsea por separado.
+function parseBloques(matrix){
+  const headers = [];
+  for(let r=0;r<matrix.length;r++){
     const row = matrix[r]||[];
-    for(let c=0;c<row.length;c++){
-      if(typeof row[c]==='string' && /per.?odo\s*terminado/i.test(row[c])){ headerRow=r; break outer; }
-    }
+    if(row.some(v=>typeof v==='string' && /per.?odo\s*terminado/i.test(v))) headers.push(r);
   }
-  if(headerRow<0) return null;
+  return headers.map((h,i)=> parseBloque(matrix, h, i+1<headers.length ? headers[i+1] : matrix.length)).filter(Boolean);
+}
+
+function parseBloque(matrix, headerRow, endRow){
   const hRow = matrix[headerRow]||[];
   const yearCols=[], years=[];
   for(let c=0;c<hRow.length;c++){
@@ -241,18 +250,26 @@ function parseEstadoContable(matrix){
   if(!years.length) return null;
   // Los valores de cada fila no siempre están alineados a la misma columna que el
   // encabezado (varía incluso entre los 3 archivos de una misma exportación) — en vez
-  // de asumir un offset fijo, se toman las últimas N celdas de cada fila (N = años) y
-  // se busca la etiqueta como el último texto no vacío antes de esa zona de valores.
+  // de asumir un offset fijo, se busca la última columna con datos DEL BLOQUE (así no
+  // importa si otro bloque apilado en la misma hoja es más ancho) y las N celdas que
+  // terminan ahí (N = años) son los valores; la etiqueta es el último texto no vacío
+  // antes de esa zona.
   const N = years.length;
-  const filas = [];
-  for(let r=headerRow+1;r<matrix.length;r++){
+  const lastUsed = row => { let e=row.length; while(e>0 && (row[e-1]===null || row[e-1]==='' || row[e-1]===undefined)) e--; return e; };
+  let rightEnd = 0;
+  for(let r=headerRow+1;r<endRow;r++){
     const row = matrix[r]||[];
-    if(row.length < N) continue;
-    const values = row.slice(-N).map(parseCelda);
+    if(row.filter(v=>v!==null && v!=='').length < 3) continue;   // ignora notas/pies sueltos
+    rightEnd = Math.max(rightEnd, lastUsed(row));
+  }
+  if(rightEnd < N) return null;
+  const filas = [];
+  for(let r=headerRow+1;r<endRow;r++){
+    const row = matrix[r]||[];
+    const values = Array.from({length:N}, (_,i)=> parseCelda(row[rightEnd-N+i]));
     if(values.every(v=>v===null)) continue;
-    const labelZoneEnd = row.length - N;
     let label=null;
-    for(let c=labelZoneEnd-1;c>=0;c--){
+    for(let c=rightEnd-N-1;c>=0;c--){
       if(typeof row[c]==='string' && row[c].trim()){ label=row[c].trim(); break; }
     }
     if(!label) continue;
@@ -269,14 +286,6 @@ function buscarFila(filas, rule){
   return null;
 }
 
-function extraerCampos(parsed, campos){
-  if(!parsed) return {};
-  const out = {};
-  for(const [key, rule] of Object.entries(campos)){
-    out[key] = buscarFila(parsed.filas, rule);
-  }
-  return out;
-}
 
 const CAMPOS_IS = {
   ventas: 'ingresos totales',
@@ -366,44 +375,60 @@ async function generarInforme(){
   }
 }
 
-async function leerFilas(fileEntry){
-  if(!fileEntry) return null;
-  const wb = XLSX.read(fileEntry.buf, {type:'array'});
-  const sh = wb.Sheets[wb.SheetNames[0]];
-  const matrix = XLSX.utils.sheet_to_json(sh, {header:1, defval:null, raw:true});
-  return parseEstadoContable(matrix);
+// Todas las hojas de todos los archivos subidos (los 3 por separado, o "todo junto") se
+// juntan en una sola bolsa de bloques; cada campo se busca por etiqueta sin importar de
+// qué archivo u hoja viene.
+function leerBloques(fileEntries){
+  const bloques = [];
+  for(const fe of fileEntries){
+    const wb = XLSX.read(fe.buf, {type:'array'});
+    for(const sn of wb.SheetNames){
+      const matrix = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, defval:null, raw:true});
+      bloques.push(...parseBloques(matrix));
+    }
+  }
+  return bloques;
 }
 
 async function generarInformeEmpresa(ticker, nombre){
   const msg = document.getElementById('genMsg');
   const warnings = [];
 
-  if(!FILES.is || !FILES.bs || !FILES.cf){
-    const faltan = [!FILES.is&&'Cuenta de resultados', !FILES.bs&&'Balance', !FILES.cf&&'Flujo de caja'].filter(Boolean).join(', ');
-    msg.innerHTML = `<div class="msg error">Faltan archivos requeridos: ${faltan}.</div>`;
+  const entries = [...FILES.all, FILES.is, FILES.bs, FILES.cf].filter(Boolean);
+  if(!entries.length){
+    msg.innerHTML = `<div class="msg error">Subí al menos un archivo: todo junto, o los estados por separado.</div>`;
     return;
   }
 
-  const pIS = await leerFilas(FILES.is);
-  const pBS = await leerFilas(FILES.bs);
-  const pCF = await leerFilas(FILES.cf);
-  if(!pIS || !pBS || !pCF){
-    msg.innerHTML = `<div class="msg error">No pude reconocer el formato de uno de los archivos (no encontré la fila "Período terminado:"). Verificá que sea una exportación anual estilo Investing.com / WSJ.</div>`;
+  const bloques = leerBloques(entries);
+  if(!bloques.length){
+    msg.innerHTML = `<div class="msg error">No pude reconocer el formato (no encontré ninguna fila "Período terminado:"). Verificá que sea una exportación anual estilo Investing.com / WSJ.</div>`;
     return;
   }
 
-  const campos = { ...extraerCampos(pIS, CAMPOS_IS), ...extraerCampos(pBS, CAMPOS_BS), ...extraerCampos(pCF, CAMPOS_CF) };
-  // años: unión de los 3 archivos (deberían coincidir; si no, se alinea por año)
-  const yearSets = [pIS.years, pBS.years, pCF.years];
-  const years = [...new Set(yearSets.flat())].sort((a,b)=>a-b);
-  const yearIdx = (arr, srcYears) => years.map(y=>{
-    const i = srcYears.indexOf(y);
-    return (arr && i>=0) ? arr[i] : null;
-  });
+  const CAMPOS_TODOS = { ...CAMPOS_IS, ...CAMPOS_BS, ...CAMPOS_CF };
+  const hallados = {};   // campo -> { values, years } del primer bloque que lo trae
+  for(const [k, rule] of Object.entries(CAMPOS_TODOS)){
+    for(const b of bloques){
+      const v = buscarFila(b.filas, rule);
+      if(v){ hallados[k] = { values:v, years:b.years }; break; }
+    }
+  }
+  if(!Object.keys(hallados).length){
+    msg.innerHTML = `<div class="msg error">Reconocí el formato pero no encontré ninguna de las líneas esperadas (Ingresos totales, Beneficio neto, Activos totales…). ¿Los nombres de fila están en español?</div>`;
+    return;
+  }
+  // años: unión de los bloques que aportaron algún campo; cada campo se alinea por año
+  const years = [...new Set(Object.values(hallados).flatMap(h=>h.years))].sort((a,b)=>a-b);
   const S = {};
-  for(const k of Object.keys(CAMPOS_IS)) S[k] = yearIdx(campos[k], pIS.years);
-  for(const k of Object.keys(CAMPOS_BS)) S[k] = yearIdx(campos[k], pBS.years);
-  for(const k of Object.keys(CAMPOS_CF)) S[k] = yearIdx(campos[k], pCF.years);
+  for(const k of Object.keys(CAMPOS_TODOS)){
+    const h = hallados[k];
+    S[k] = years.map(y=>{
+      if(!h) return null;
+      const i = h.years.indexOf(y);
+      return i>=0 ? h.values[i] : null;
+    });
+  }
 
   const camposFaltantes = Object.entries(S).filter(([k,v])=>v.every(x=>x===null)).map(([k])=>k);
   if(camposFaltantes.length){

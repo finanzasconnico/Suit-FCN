@@ -37,15 +37,37 @@ function setThemeIcon(){
   if(btn) btn.textContent = currentEffectiveTheme() === 'light' ? '🌙' : '☀️';
 }
 
-function applyTheme(theme){
+function paintTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
-  try{ localStorage.setItem('fcn_theme', theme); }catch(e){}
   setThemeIcon();
   if(typeof window.fcnOnThemeChange === 'function') window.fcnOnThemeChange(theme);
+}
+
+function applyTheme(theme){
+  try{ localStorage.setItem('fcn_theme', theme); }catch(e){}
+  paintTheme(theme);
 }
 
 function toggleTheme(){
   applyTheme(currentEffectiveTheme() === 'light' ? 'dark' : 'light');
 }
+
+// Embebida en FCN_Suite.html (iframe): el botón de tema del Suite manda para toda la
+// pantalla, así que se oculta el propio de la herramienta. Suelta (abierta directo) lo conserva.
+(function(){
+  var embebida = false;
+  try{ embebida = window.self !== window.top; }catch(e){ embebida = true; }
+  if(!embebida) return;
+  var st = document.createElement('style');
+  st.textContent = '#btnTheme{display:none !important}';
+  document.head.appendChild(st);
+})();
+
+// Cuando OTRA ventana/iframe del mismo origen cambia el tema (ej. el botón del Suite),
+// esta herramienta lo aplica al instante en vez de esperar a que se recargue.
+window.addEventListener('storage', function(e){
+  if(e.key !== 'fcn_theme') return;
+  if(e.newValue === 'light' || e.newValue === 'dark') paintTheme(e.newValue);
+});
 
 window.addEventListener('DOMContentLoaded', setThemeIcon);

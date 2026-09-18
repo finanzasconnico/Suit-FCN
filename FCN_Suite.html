@@ -97,6 +97,22 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .cat-tab{font-weight:500;}
 .subcategory-bar{flex-shrink:0;height:0;overflow:hidden;background:var(--surface2);border-bottom:1px solid transparent;display:flex;align-items:center;gap:2px;padding:0 20px;transition:height .16s ease,border-color .16s ease;}
 .subcategory-bar.show{height:38px;border-bottom-color:var(--border);}
+
+/* ── NAV COLAPSABLE — topbar + subcategorías escondidas; asoman sobre el contenido al llevar el
+   mouse arriba (peek) o quedan fijas con 📌. Mismo patrón que Scanner ONs/Valuación: la clase
+   .pinned es la única fuente de verdad del estado; .peeking es transitorio y nunca decide a dónde
+   va el toggle. .nav-shell mide 0 de alto colapsada, así el contenido usa TODA la pantalla. ── */
+.nav-shell{flex-shrink:0;position:relative;z-index:90;height:0;}
+.nav-shell.pinned{height:auto;}
+.nav-inner{position:absolute;top:0;left:0;right:0;transform:translateY(-101%);opacity:0;visibility:hidden;pointer-events:none;box-shadow:0 16px 34px rgba(0,0,0,.4);transition:transform 160ms cubic-bezier(0.23,1,0.32,1),opacity 120ms ease-out,visibility 0s linear 160ms;}
+.nav-shell.peeking .nav-inner{transform:none;opacity:1;visibility:visible;pointer-events:auto;transition:transform 160ms cubic-bezier(0.23,1,0.32,1),opacity 120ms ease-out,visibility 0s;}
+.nav-shell.pinned .nav-inner{position:relative;transform:none;opacity:1;visibility:visible;pointer-events:auto;box-shadow:none;transition:none;}
+.nav-hot{position:absolute;top:0;left:0;right:0;height:7px;cursor:pointer;}
+.nav-hot::after{content:'';position:absolute;top:0;left:50%;width:64px;height:4px;transform:translateX(-50%);border-radius:0 0 4px 4px;background:var(--jade);opacity:.55;transition:opacity .15s,height .15s;}
+.nav-hot:hover::after{opacity:1;height:6px;}
+.nav-shell.peeking .nav-hot,.nav-shell.pinned .nav-hot{display:none;}
+#btnNavPin.on{border-color:var(--jade);color:var(--jade);}
+@media (prefers-reduced-motion:reduce){.nav-inner{transition:none !important;}}
 .sub-tab{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:11.5px;white-space:nowrap;transition:all .15s;}
 .sub-tab:hover{background:var(--surface);color:var(--text);}
 .sub-tab.active{background:rgba(28,140,95,.15);color:var(--jade);}
@@ -474,6 +490,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 <!-- ── APP ── -->
 <div id="app">
+  <div class="nav-shell" id="nav-shell">
+  <div class="nav-hot" id="nav-hot" title="Mostrar la barra de herramientas"></div>
+  <div class="nav-inner">
   <div class="topbar">
     <div class="topbar-brand">
       <div class="brand-mark">FN</div>
@@ -516,6 +535,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="topbar-tools" id="topbar-tools"></div>
     <button class="topbar-scroll-hint" id="topbar-scroll-hint" onclick="document.getElementById('topbar-tools').scrollBy({left:160,behavior:'smooth'})" title="Más herramientas →">›</button>
     <div class="topbar-right">
+      <button class="files-status-pill" id="btnNavPin" onclick="toggleNavPin()" title="Fijar la barra siempre visible">📌</button>
       <button class="files-status-pill" id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro">🌙</button>
       <button class="files-status-pill" id="global-search-btn" onclick="abrirBusquedaGlobal()" title="Buscar cliente, ticker o herramienta (Ctrl+K)">
         <span class="files-status-icon">🔍</span>
@@ -544,6 +564,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   </div>
 
   <div class="subcategory-bar" id="subcategory-bar"></div>
+  </div>
+  </div>
 
   <div class="content-area" id="content-area">
 
@@ -1254,6 +1276,73 @@ function buildNav() {
   });
   updateTopbarScrollHint();
 }
+
+// ── NAV COLAPSABLE (ver CSS .nav-shell) ──
+// Estado: .pinned = fija (persistida); .peeking = asoma transitoriamente al pasar el mouse por
+// arriba. El toggle decide SOLO por .pinned (mirar .peeking hacía que un clic durante un peek
+// colapsara en vez de fijar — bug ya visto en Scanner ONs).
+(function initNavColapsable() {
+  const shell = document.getElementById('nav-shell');
+  const pinBtn = document.getElementById('btnNavPin');
+  if (!shell || !pinBtn) return;
+  const LS = 'fcn_nav_pinned';
+  let openT = null, closeT = null;
+
+  function paintPin() {
+    const on = shell.classList.contains('pinned');
+    pinBtn.classList.toggle('on', on);
+    pinBtn.title = on ? 'Ocultar la barra (vuelve a aparecer al llevar el mouse arriba)' : 'Fijar la barra siempre visible';
+  }
+  function setPinned(on) {
+    shell.classList.toggle('pinned', on);
+    if (on) shell.classList.remove('peeking');
+    try { localStorage.setItem(LS, on ? '1' : '0'); } catch (e) {}
+    paintPin();
+  }
+  window.toggleNavPin = function () { setPinned(!shell.classList.contains('pinned')); };
+
+  // Algo abierto que no debe cerrarse solo: un desplegable (cliente/archivos) o un campo con foco.
+  function hayAlgoAbierto() {
+    if (shell.querySelector('.client-dropdown.open, .files-status-dropdown.open')) return true;
+    const a = document.activeElement;
+    return !!(a && shell.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName));
+  }
+  function abrir() { clearTimeout(closeT); if (!shell.classList.contains('pinned')) shell.classList.add('peeking'); }
+  function programarCierre() {
+    clearTimeout(closeT);
+    closeT = setTimeout(function () {
+      if (shell.matches(':hover') || hayAlgoAbierto()) { programarCierre(); return; }
+      shell.classList.remove('peeking');
+    }, 260);
+  }
+
+  const hot = document.getElementById('nav-hot');
+  // La franja superior dispara la apertura (con dwell: pasar de largo hacia la barra del
+  // navegador no la abre). Se escucha en la franja y no en el contenedor porque este último no
+  // vuelve a recibir mouseenter si el cursor queda quieto mientras la barra se fija/desfija.
+  hot.addEventListener('mouseenter', function () {
+    if (shell.classList.contains('pinned') || shell.classList.contains('peeking')) return;
+    clearTimeout(openT);
+    openT = setTimeout(abrir, 140);
+  });
+  hot.addEventListener('mouseleave', function () { clearTimeout(openT); });
+  shell.addEventListener('mouseenter', function () { clearTimeout(closeT); });
+  shell.addEventListener('mouseleave', function () {
+    clearTimeout(openT);
+    if (!shell.classList.contains('pinned')) programarCierre();
+  });
+  hot.addEventListener('click', abrir); // táctil: sin hover
+  // Foco pasa al iframe de la herramienta (clic adentro) o Esc: cerrar el peek.
+  window.addEventListener('blur', function () { if (!shell.classList.contains('pinned')) programarCierre(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !shell.classList.contains('pinned')) { shell.classList.remove('peeking'); }
+  });
+
+  let pinned = false;
+  try { pinned = localStorage.getItem(LS) === '1'; } catch (e) {}
+  shell.classList.toggle('pinned', pinned);
+  paintPin();
+})();
 
 function openCategory(catId) {
   const cat = CATEGORIES.find(c => c.id === catId);
