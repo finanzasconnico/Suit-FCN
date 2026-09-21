@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Diagnóstico — Análisis Fundamental</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#faf9f6;color:#1c2b28;margin:0;padding:24px 18px 60px;line-height:1.5;}
+  .wrap{max-width:760px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;} .sub{color:#5b6b66;font-size:13px;margin-bottom:18px;}
+  .row{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid #e2e6e4;border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:14px;}
+  .ic{font-weight:800;width:20px;flex:none;} .ok .ic{color:#0ca30c;} .fail .ic{color:#d03b3b;} .wait .ic{color:#c98500;}
+  .fail{border-color:rgba(208,59,59,.5);background:#fdf1f1;} .det{color:#5b6b66;font-size:12.5px;word-break:break-word;}
+  #final{margin-top:18px;font-weight:700;font-size:15px;}
+  button{font:inherit;font-weight:700;background:#1C8C5F;color:#fff;border:0;border-radius:9px;padding:10px 18px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Diagnóstico de Análisis Fundamental</h1>
+  <div class="sub">Se ejecuta solo, tarda unos 20 segundos. Cuando termine, sacale una captura a toda la pantalla y mandásela a Nico.</div>
+  <div id="lista"></div>
+  <div id="final"></div>
+  <p style="margin-top:22px;"><button onclick="location.reload()">Repetir</button></p>
+</div>
+<script>
+var lista = document.getElementById('lista');
+function fila(id, titulo){
+  var d = document.createElement('div'); d.className = 'row wait'; d.id = id;
+  d.innerHTML = '<div class="ic">…</div><div><div class="t"></div><div class="det"></div></div>';
+  d.querySelector('.t').textContent = titulo; lista.appendChild(d); return d;
+}
+function res(d, ok, det){
+  d.className = 'row ' + (ok ? 'ok' : 'fail'); d.querySelector('.ic').textContent = ok ? '✓' : '✕';
+  d.querySelector('.det').textContent = det || '';
+}
+function conTimeout(p, ms){ return Promise.race([p, new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('tardó más de ' + ms/1000 + ' s')); }, ms); })]); }
+function cargarScript(src){
+  return new Promise(function(ok, no){
+    var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function(){ no(new Error('no se pudo cargar (bloqueado o sin conexión)')); };
+    document.head.appendChild(s);
+  });
+}
+async function paso(titulo, fn){
+  var d = fila('p' + lista.children.length, titulo);
+  try{ var det = await conTimeout(fn(), 25000); res(d, true, det); return true; }
+  catch(e){ res(d, false, e.message || String(e)); return false; }
+}
+
+(async function(){
+  var fallos = 0, f = function(ok){ if(!ok) fallos++; };
+  f(await paso('El navegador ejecuta la página (JavaScript)', async function(){ return navigator.userAgent; }));
+  f(await paso('Componente para leer Excel (cdn.sheetjs.com)', async function(){ await cargarScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js'); return typeof XLSX !== 'undefined' ? 'cargó bien' : 'cargó pero no se definió'; }));
+  f(await paso('Componente para armar PDF (cdnjs.cloudflare.com)', async function(){ await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'); return typeof html2pdf !== 'undefined' ? 'cargó bien' : 'cargó pero no se definió'; }));
+  f(await paso('Datos de la SEC (/api/sec?ticker=AAPL)', async function(){
+    var t0 = Date.now(), r = await fetch('/api/sec?ticker=AAPL'); var j = await r.json();
+    if(!r.ok) throw new Error('respondió ' + r.status + ': ' + (j.error || ''));
+    return 'ok en ' + ((Date.now()-t0)/1000).toFixed(1) + ' s · ' + Object.keys(j.series.ventas).length + ' años de ventas';
+  }));
+  f(await paso('Precio de Yahoo (/api/price?ticker=AAPL)', async function(){
+    var t0 = Date.now(), r = await fetch('/api/price?ticker=AAPL'); var j = await r.json();
+    if(!r.ok) throw new Error('respondió ' + r.status + ': ' + (j.error || ''));
+    return 'ok en ' + ((Date.now()-t0)/1000).toFixed(1) + ' s · ' + j.series.length + ' cotizaciones';
+  }));
+  f(await paso('La herramienta completa, probada por dentro con AAPL', function(){
+    return new Promise(function(ok, no){
+      var fr = document.createElement('iframe'); fr.style.cssText = 'position:absolute;left:-9999px;width:1200px;height:800px;'; fr.src = 'Analisis_Fundamental_FCN.html?diag=' + Date.now();
+      fr.onload = async function(){
+        try{
+          var w = fr.contentWindow, d = fr.contentDocument;
+          await new Promise(function(r){ setTimeout(r, 1500); });
+          var ver = (d.querySelector('h1 span') || {}).textContent || '(sin versión: página vieja en caché)';
+          var banner = d.getElementById('jsError');
+          if(typeof w.generarInforme !== 'function') throw new Error('versión ' + ver + ': la función del botón no existe' + (banner && banner.textContent ? ' · error: ' + banner.textContent : ''));
+          d.getElementById('inTicker').value = 'AAPL'; d.getElementById('genBtn').click();
+          for(var i = 0; i < 40 && !d.querySelector('svg.chart'); i++) await new Promise(function(r){ setTimeout(r, 500); });
+          var n = d.querySelectorAll('svg.chart').length;
+          if(!n) throw new Error('versión ' + ver + ': el botón no generó gráficos · mensaje: "' + ((d.getElementById('genMsg') || {}).innerText || '') + '"' + (banner && banner.textContent ? ' · error: ' + banner.textContent : ''));
+          ok('versión ' + ver + ': generó el informe con ' + n + ' gráficos');
+        }catch(e){ no(e); }
+        finally{ setTimeout(function(){ fr.remove(); }, 500); }
+      };
+      fr.onerror = function(){ no(new Error('no se pudo abrir la herramienta')); };
+      document.body.appendChild(fr);
+    });
+  }));
+  document.getElementById('final').textContent = fallos ? 'Hay ' + fallos + ' paso(s) con ✕: mandale la captura a Nico.' : 'Todo bien en este navegador.';
+})();
+</script>
+</body>
+</html>
