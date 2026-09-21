@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Análisis Fundamental — FinanzasconNico</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --jade:#1C8C5F; --jade-dk:#156b48; --ink:#1c2b28; --soft:#5b6b66; --line:#e2e6e4; --bg:#faf9f6; --card:#ffffff;
@@ -525,12 +526,17 @@ function clasificar(entry){
 
 /* ======================= completar con la SEC (EE.UU.) ======================= */
 async function fetchSEC(ticker){
+  const ctl = new AbortController();
+  const to = setTimeout(()=>ctl.abort(), 40000);
   try{
-    const r = await fetch(`/api/sec?ticker=${encodeURIComponent(ticker)}`);
-    if(!r.ok) return null;
-    const j = await r.json();
-    return (j && j.series) ? j : null;
-  }catch(e){ return null; }
+    const r = await fetch(`/api/sec?ticker=${encodeURIComponent(ticker)}`, { signal: ctl.signal });
+    let j = null;
+    try{ j = await r.json(); }catch(e){}
+    if(!r.ok) return { error: (j && j.error) || `el servidor respondió ${r.status}`, status: r.status };
+    return (j && j.series) ? j : { error:'respuesta vacía', status: 0 };
+  }catch(e){
+    return { error: e.name==='AbortError' ? 'tardó más de 40 segundos' : 'no hay conexión con el servidor', status: 0 };
+  }finally{ clearTimeout(to); }
 }
 
 // Rellena SOLO lo que falta (el archivo tiene prioridad). La SEC viene en USD; el archivo
@@ -621,7 +627,7 @@ async function generarInformeEmpresa(ticker, nombre){
   const hayHuecos = !hayExcel || Object.keys(S).some(k=>S[k].some(x=>x===null));
   if(ticker && hayHuecos){
     const sec = await fetchSEC(ticker);
-    if(sec){
+    if(sec && !sec.error){
       if(sec.name && (nombre===ticker || nombre==='Informe')) nombre = nombreLindo(sec.name);
       const r = completarConSEC(years, S, sec, hayExcel);
       if(r.error){
@@ -635,8 +641,12 @@ async function generarInformeEmpresa(ticker, nombre){
         }
       }
     } else if(!hayExcel){
-      msg.innerHTML = `<div class="msg error">No encontré "${esc(ticker)}" en la SEC: solo cubre empresas de EE.UU. que presentan 10-K/20-F (ej. AAPL, KO, MSFT). Para otras, subí los estados contables en el paso 3.</div>`;
+      msg.innerHTML = sec.status===404
+        ? `<div class="msg error">No encontré "${esc(ticker)}" en la SEC: solo cubre empresas de EE.UU. que presentan 10-K/20-F (ej. AAPL, KO, MSFT). Para otras, subí los estados contables en el paso 3.</div>`
+        : `<div class="msg error">No pude consultar la SEC ahora (${esc(sec.error)}). Probá de nuevo en unos segundos, o subí los estados contables en el paso 3.</div>`;
       return false;
+    } else {
+      warnings.push(`No pude completar con la SEC (${sec.error}).`);
     }
   }
 
@@ -881,6 +891,86 @@ function wireHover(charts, years){
   });
 }
 
+
+/* ======================= PDF descargable ======================= */
+// html2canvas no resuelve bien var(--x) ni las reglas de clase dentro de un <svg>: cada gráfico se
+// pasa a PNG con los estilos ya calculados (el mismo problema y solución que la Calc. de Rotaciones).
+const PROPS_SVG = ['fill','stroke','stroke-width','stroke-dasharray','stroke-linecap','stroke-linejoin','opacity','font-size','font-family','font-weight','text-anchor'];
+function inlinarEstilos(orig, clon){
+  const cs = getComputedStyle(orig);
+  PROPS_SVG.forEach(p=>{ const v = cs.getPropertyValue(p); if(v) clon.style.setProperty(p, v); });
+  for(let i=0;i<orig.children.length;i++) inlinarEstilos(orig.children[i], clon.children[i]);
+}
+async function svgAPng(svg){
+  const vb = svg.viewBox.baseVal, w = vb.width, h = vb.height, escala = 2;
+  const clon = svg.cloneNode(true);
+  inlinarEstilos(svg, clon);
+  clon.querySelectorAll('.hover-col,.crosshair').forEach(n=>n.remove());
+  clon.removeAttribute('class'); clon.removeAttribute('style');
+  clon.setAttribute('xmlns','http://www.w3.org/2000/svg'); clon.setAttribute('width', w); clon.setAttribute('height', h);
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clon)], {type:'image/svg+xml;charset=utf-8'}));
+  try{
+    const img = await new Promise((res,rej)=>{ const im = new Image(); im.onload = ()=>res(im); im.onerror = rej; im.src = url; });
+    const cv = document.createElement('canvas'); cv.width = w*escala; cv.height = h*escala;
+    const cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0,0,cv.width,cv.height); cx.scale(escala,escala); cx.drawImage(img,0,0,w,h);
+    return cv.toDataURL('image/png');
+  } finally { URL.revokeObjectURL(url); }
+}
+async function armarRaizPDF(){
+  const rep = document.getElementById('report');
+  const raiz = document.createElement('div');
+  raiz.id = 'pdfRoot';
+  raiz.style.cssText = 'width:760px;background:#ffffff;color:#1c2b28;padding:28px 30px;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;';
+  raiz.innerHTML = rep.innerHTML;
+  raiz.querySelectorAll('.actions,.tooltip').forEach(n=>n.remove());
+  // la caja de texto editable -> texto fijo (o nada si está vacía)
+  const ta = raiz.querySelector('textarea.blurb'), taOrig = rep.querySelector('textarea.blurb');
+  if(ta){
+    const t = (taOrig.value||'').trim();
+    if(t){ const d = document.createElement('div'); d.style.cssText = 'font-size:14px;line-height:1.6;color:#5b6b66;max-width:640px;white-space:pre-wrap;'; d.textContent = t; ta.replaceWith(d); }
+    else ta.remove();
+  }
+  // gráficos -> imagen
+  const orig = [...rep.querySelectorAll('svg.chart')], clon = [...raiz.querySelectorAll('svg.chart')];
+  for(let i=0;i<orig.length;i++){
+    const img = document.createElement('img');
+    img.src = await svgAPng(orig[i]);
+    img.style.cssText = 'width:100%;height:auto;display:block;';
+    clon[i].replaceWith(img);
+  }
+  return raiz;
+}
+async function descargarPDF(){
+  const btn = document.getElementById('pdfBtn');
+  if(typeof html2pdf === 'undefined'){ window.print(); return; }   // sin la librería (bloqueada): cae al diálogo de imprimir
+  const textoBtn = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Armando PDF…'; }
+  const y0 = window.scrollY;
+  let raiz = null;
+  try{
+    raiz = await armarRaizPDF();
+    document.body.appendChild(raiz);      // html2canvas necesita el nodo en el flujo normal del documento
+    const t = (document.querySelector('#report h1')||{}).innerText || 'informe';
+    const nombreArch = 'Analisis_' + t.split(' — ')[0].replace(/[^\w\-]+/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+    await html2pdf().set({
+      margin: [10,8,10,8],
+      filename: nombreArch,
+      image: { type:'jpeg', quality:0.96 },
+      html2canvas: { scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:760 },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+      pagebreak: { mode:['css','legacy'], avoid:['.chart-card','.score-card','h2','.masthead'] }
+    }).from(raiz).save();
+  }catch(e){
+    console.error('[PDF]', e);
+    alert('No se pudo armar el PDF automáticamente. Se abre el diálogo de imprimir: elegí "Guardar como PDF".');
+    window.print();
+  }finally{
+    if(raiz && raiz.parentNode) raiz.parentNode.removeChild(raiz);
+    window.scrollTo(0, y0);
+    if(btn){ btn.disabled = false; btn.textContent = textoBtn; }
+  }
+}
+
 /* ======================= render: informe empresa ======================= */
 function renderInformeEmpresa(ctx){
   const { ticker, nombre, years, S, precioPorAnio, precioFuente, warnings, fuente } = ctx;
@@ -978,7 +1068,8 @@ function renderInformeEmpresa(ctx){
       <div class="sources-note">ROIC estimado con una tasa impositiva efectiva del 21% (no viene desglosada en el archivo) sobre el EBITDA como proxy operativo — es una aproximación, no la cifra exacta de un proveedor institucional.</div>
     </section>
     <div class="actions">
-      <button class="btn ghost" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+      <button class="btn" id="pdfBtn" onclick="descargarPDF()">⬇ Descargar PDF</button>
+      <button class="btn ghost" onclick="window.print()">🖨️ Imprimir</button>
       <button class="btn ghost" onclick="copiarResumen()">📋 Copiar resumen</button>
     </div>
     <footer>Informe armado a partir de ${fuente||'los datos cargados'}${precioFuente==='yahoo'?' + precio de Yahoo Finance':''}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
@@ -1043,7 +1134,8 @@ function renderInformeIndice(ctx){
       <div class="chart-grid">${makeChart(chart, years)}</div>
     </section>
     <div class="actions">
-      <button class="btn ghost" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+      <button class="btn" id="pdfBtn" onclick="descargarPDF()">⬇ Descargar PDF</button>
+      <button class="btn ghost" onclick="window.print()">🖨️ Imprimir</button>
       <button class="btn ghost" onclick="copiarResumen()">📋 Copiar resumen</button>
     </div>
     <footer>Informe armado a partir de ${fuente==='excel'?'el archivo subido':'Yahoo Finance'}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
