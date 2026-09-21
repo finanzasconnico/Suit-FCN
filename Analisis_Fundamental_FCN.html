@@ -135,7 +135,7 @@ window.addEventListener('unhandledrejection', function(e){
 <body>
 <div class="wrap">
   <div id="jsError" class="msg error" style="display:none;margin:0 0 16px;"></div>
-  <h1>Análisis Fundamental <span style="font-size:11px;font-weight:500;color:var(--soft);">v21/09-c</span></h1>
+  <h1>Análisis Fundamental <span style="font-size:11px;font-weight:500;color:var(--soft);">v21/09-d</span></h1>
   <div class="sub">Elegí la empresa (ticker de EE.UU.) y el informe se arma solo con datos de la SEC y Yahoo Finance. Si tenés los Excel, subilos: tienen prioridad y lo que falte se completa solo.</div>
 
   <div class="panel controls">
@@ -1093,7 +1093,7 @@ function renderInformeEmpresa(ctx){
     </div>
     <footer>Informe armado a partir de ${fuente||'los datos cargados'}${precioFuente==='yahoo'?' + precio de Yahoo Finance':''}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
   `;
-  document.getElementById('report').style.display = '';
+  document.getElementById('report').style.display = 'block';
   wireHover(charts.filter(c=>!c.__empty), years);
 }
 
@@ -1159,7 +1159,7 @@ function renderInformeIndice(ctx){
     </div>
     <footer>Informe armado a partir de ${fuente==='excel'?'el archivo subido':'Yahoo Finance'}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
   `;
-  document.getElementById('report').style.display = '';
+  document.getElementById('report').style.display = 'block';
   wireHover([chart], years);
 }
 </script>
