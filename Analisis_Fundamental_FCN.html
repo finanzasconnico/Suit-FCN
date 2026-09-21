@@ -3,8 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>Análisis Fundamental — FinanzasconNico</title>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+window.addEventListener('error', function(e){
+  var b = document.getElementById('jsError'); if(!b) return;
+  var t = e.target;
+  var txt = (t && t.tagName === 'SCRIPT') ? 'No se pudo cargar un componente externo (' + (t.src||'').split('/')[2] + '). Puede estar bloqueado por la red o una extensión del navegador.'
+          : 'Error en la página: ' + (e.message || 'desconocido') + (e.lineno ? ' (línea ' + e.lineno + ')' : '');
+  b.style.display = 'block'; b.textContent = txt;
+}, true);
+window.addEventListener('unhandledrejection', function(e){
+  var b = document.getElementById('jsError'); if(!b) return;
+  b.style.display = 'block'; b.textContent = 'Error en la página: ' + ((e.reason && e.reason.message) || e.reason);
+});
+</script>
+<script async src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --jade:#1C8C5F; --jade-dk:#156b48; --ink:#1c2b28; --soft:#5b6b66; --line:#e2e6e4; --bg:#faf9f6; --card:#ffffff;
@@ -121,7 +134,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Análisis Fundamental</h1>
+  <div id="jsError" class="msg error" style="display:none;margin:0 0 16px;"></div>
+  <h1>Análisis Fundamental <span style="font-size:11px;font-weight:500;color:var(--soft);">v21/09-c</span></h1>
   <div class="sub">Elegí la empresa (ticker de EE.UU.) y el informe se arma solo con datos de la SEC y Yahoo Finance. Si tenés los Excel, subilos: tienen prioridad y lo que falte se completa solo.</div>
 
   <div class="panel controls">
@@ -138,7 +152,7 @@
     <div class="row">
       <div class="field"><label>Ticker</label><input type="text" id="inTicker" list="tickerList" autocomplete="off" placeholder="AAPL" onkeydown="if(event.key==='Enter'){event.preventDefault();generarInforme();}" oninput="onTickerInput(event)"><datalist id="tickerList"></datalist></div>
       <div class="field" style="flex:2;"><label>Nombre (opcional)</label><input type="text" id="inNombre" placeholder="Apple Inc." onkeydown="if(event.key==='Enter'){event.preventDefault();generarInforme();}"></div>
-      <button class="btn" id="genBtn" onclick="generarInforme()">📊 Generar informe</button>
+      <button class="btn" id="genBtn" onclick="if(typeof generarInforme!=='function'){alert('La página no terminó de cargar bien. Recargala con Ctrl+F5; si sigue igual, avisale a Nico.');return;}generarInforme()">📊 Generar informe</button>
     </div>
     <div id="genMsg"></div>
   </div>
@@ -181,6 +195,10 @@ function setMode(m){
 
 async function addFiles(fileList){
   for(const f of [...fileList]){
+    if(typeof XLSX==='undefined'){
+      FILES.push({ id: ++_fid, name: f.name, kind:'desconocido', info:'todavía no cargó la librería para leer Excel (o está bloqueada por la red). Esperá unos segundos y probá de nuevo, o recargá con Ctrl+F5.' });
+      continue;
+    }
     const entry = { id: ++_fid, name: f.name };
     try{
       entry.buf = await f.arrayBuffer();
@@ -237,7 +255,7 @@ function onTickerInput(ev){
   const elegido = ev.inputType==='insertReplacementText' || (!ev.inputType && t);   // eligió una opción de la lista
   if(elegido && TICKER_NOMBRES[t]!==undefined) generarInforme();
 }
-cargarTickers();
+window.addEventListener('load', cargarTickers);
 
 /* ======================= parser genérico (Investing.com / WSJ) ======================= */
 function normalizar(s){
@@ -431,7 +449,7 @@ function parsePrecio(entry, wbPre){
   if(!rows.length) return [];
   const keys = Object.keys(rows[0]);
   const nk = k => normalizar(k);
-  const kFecha = keys.find(k=>/fecha|date|periodo|dia/.test(nk(k)));
+  const kFecha = keys.find(k=>/^(fecha|date)/.test(nk(k)));
   const noAdj = k => !/ajustad|adj/.test(nk(k));
   const kCierre = keys.find(k=>/^(cierre|close|ultimo|last|precio|price)$/.test(nk(k)))
                || keys.find(k=>/cierre|close|ultimo|last|precio|price/.test(nk(k)) && noAdj(k))
@@ -440,8 +458,9 @@ function parsePrecio(entry, wbPre){
   const out = [];
   for(const r of rows){
     const iso = fechaISO(r[kFecha]), close = numFlex(r[kCierre]);
-    if(iso && close!=null) out.push({date:iso, close});
+    if(iso && close!=null && +iso.slice(0,4)>=1970 && +iso.slice(0,4)<=2100) out.push({date:iso, close});
   }
+  if(out.length < 5 || out.length < 0.6*rows.length) return [];   // no parece una serie de precios
   out.sort((a,b)=> a.date.localeCompare(b.date));
   return out;
 }
