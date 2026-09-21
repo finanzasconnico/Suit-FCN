@@ -965,6 +965,7 @@ const TOOLS = [
   { id:'calcrot',   name:'Calculadora de Rotaciones', icon:'🔁', desc:'¿Conviene cambiar de bono? Comparación simple y directa. Se autocompleta con el Monitor.',                            badge:'Renta Fija', file:'Calculadora_Rotaciones_FinanzasconNico_4.html', color:'amber' },
   { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' },
   { id:'multiplos', name:'Valuación por Múltiplos', icon:'⚖️', desc:'Múltiplos (P/E, P/S, EV/EBITDA, P/FCF, P/B) actual vs. promedio histórico de 3/5/10 años + medias móviles semanales, seleccionados por sector.', badge:'Research', file:'Valuacion_Multiplos_FCN.html', color:'jade' },
+  { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Escribí el ticker de una empresa de EE.UU. y arma solo ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 (datos de la SEC + Yahoo). Si subís tus Excel de Investing, tienen prioridad.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' },
   { id:'cuantocobro', name:'¿Cuánto cobro?', icon:'💰', desc:'Letras en pesos y bonos/ONs en dólares: con un monto, cuánto cobrás y cuándo, mes a mes. Precios en vivo de BYMA, TIR y cartera combinada.', badge:'Renta Fija', file:'Cuanto_Cobro_FCN.html', color:'jade' }
 ];
 
@@ -1240,7 +1241,7 @@ function showApp() {
 // ══════════════════════════════════════════════════════════════
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
-  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos'] },
+  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos','fundamental'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','armador','monitor'] },
   { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },

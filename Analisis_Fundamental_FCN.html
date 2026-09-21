@@ -22,6 +22,8 @@
   .field{display:flex;flex-direction:column;gap:5px;min-width:180px;flex:1;}
   .field label{font-size:11.5px;font-weight:600;color:var(--soft);text-transform:uppercase;letter-spacing:.03em;}
   .field input[type=text]{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+  .row .btn{align-self:flex-end;white-space:nowrap;}
+  #genMsg .msg{margin-top:14px;}
   .mode-toggle{display:flex;gap:8px;margin-bottom:16px;}
   .mode-btn{font:inherit;font-size:13px;padding:9px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--soft);cursor:pointer;font-weight:600;}
   .mode-btn.active{background:var(--jade);border-color:var(--jade);color:#fff;}
@@ -119,7 +121,7 @@
 <body>
 <div class="wrap">
   <h1>Análisis Fundamental</h1>
-  <div class="sub">Subí los estados contables (o el histórico de precio) y armá el pantallazo para mandarle al cliente. Formato esperado: exportación anual estilo Investing.com / WSJ Market Data (Cuenta de resultados, Balance, Flujo de caja).</div>
+  <div class="sub">Elegí la empresa (ticker de EE.UU.) y el informe se arma solo con datos de la SEC y Yahoo Finance. Si tenés los Excel, subilos: tienen prioridad y lo que falte se completa solo.</div>
 
   <div class="panel controls">
     <h2>1. Tipo de activo</h2>
@@ -131,26 +133,23 @@
   </div>
 
   <div class="panel controls">
-    <h2>2. Datos del activo</h2>
+    <h2>2. ¿Qué empresa querés analizar?</h2>
     <div class="row">
-      <div class="field"><label>Ticker</label><input type="text" id="inTicker" placeholder="AAPL"></div>
-      <div class="field" style="flex:2;"><label>Nombre</label><input type="text" id="inNombre" placeholder="Apple Inc."></div>
+      <div class="field"><label>Ticker</label><input type="text" id="inTicker" list="tickerList" autocomplete="off" placeholder="AAPL" onkeydown="if(event.key==='Enter'){event.preventDefault();generarInforme();}" oninput="onTickerInput(event)"><datalist id="tickerList"></datalist></div>
+      <div class="field" style="flex:2;"><label>Nombre (opcional)</label><input type="text" id="inNombre" placeholder="Apple Inc." onkeydown="if(event.key==='Enter'){event.preventDefault();generarInforme();}"></div>
+      <button class="btn" id="genBtn" onclick="generarInforme()">📊 Generar informe</button>
     </div>
+    <div id="genMsg"></div>
   </div>
 
   <div class="panel controls">
-    <h2>3. Archivos</h2>
+    <h2>3. Archivos <span style="font-weight:500;color:var(--soft);font-size:12px;">(opcional)</span></h2>
     <label class="dropzone" id="dropzone" for="fileInput">
       <input type="file" id="fileInput" multiple style="display:none" onchange="addFiles(this.files); this.value='';">
       <div class="dz-title">Soltá acá todos los archivos, o hacé clic para elegirlos</div>
       <div class="dz-sub" id="dzHint"></div>
     </label>
     <div class="file-list" id="fileList"></div>
-  </div>
-
-  <div class="panel controls">
-    <button class="btn" id="genBtn" onclick="generarInforme()">📊 Generar informe</button>
-    <div id="genMsg"></div>
   </div>
 
   <div id="report"></div>
@@ -164,7 +163,7 @@ let _fid = 0;
 let MODE = 'empresa';
 
 const HINTS = {
-  empresa: 'Estados contables (Cuenta de resultados, Balance, Flujo de caja: juntos en un Excel o por separado) y, si querés, el precio histórico (CSV o Excel). No importa el orden ni cuántos subas: cada archivo se reconoce solo.',
+  empresa: 'Si tenés los estados contables (Cuenta de resultados, Balance, Flujo de caja: juntos en un Excel o por separado) o el precio histórico (CSV o Excel), subilos: tienen prioridad y lo que falte se completa solo con la SEC. No importa el orden: cada archivo se reconoce solo.',
   indice: 'El precio histórico (CSV o Excel con una columna de fecha y otra de cierre). Si no lo subís, lo buscamos por ticker.'
 };
 function esc(t){ return String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -211,6 +210,33 @@ function renderFileList(){
   dz.addEventListener('drop', e=>{ if(e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
   document.getElementById('dzHint').textContent = HINTS.empresa;
 })();
+
+
+/* ======================= lista de empresas (autocompletar) ======================= */
+const TICKER_NOMBRES = {};
+async function cargarTickers(){
+  try{
+    const r = await fetch('data/valuacion_multiplos.xlsx');
+    if(!r.ok || typeof XLSX==='undefined') return;
+    const wb = XLSX.read(await r.arrayBuffer(), {type:'array'});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+    const dl = document.getElementById('tickerList');
+    const frag = document.createDocumentFragment();
+    for(const row of rows){
+      const t = String(row.Ticker||'').trim().toUpperCase();
+      if(!t || TICKER_NOMBRES[t]!==undefined) continue;
+      TICKER_NOMBRES[t] = String(row.Empresa||'').trim();
+      const o = document.createElement('option'); o.value = t; o.label = TICKER_NOMBRES[t]; frag.appendChild(o);
+    }
+    dl.appendChild(frag);
+  }catch(e){ console.error(e); }
+}
+function onTickerInput(ev){
+  const t = ev.target.value.trim().toUpperCase();
+  const elegido = ev.inputType==='insertReplacementText' || (!ev.inputType && t);   // eligió una opción de la lista
+  if(elegido && TICKER_NOMBRES[t]!==undefined) generarInforme();
+}
+cargarTickers();
 
 /* ======================= parser genérico (Investing.com / WSJ) ======================= */
 function normalizar(s){
@@ -552,13 +578,16 @@ async function generarInforme(){
   const btn = document.getElementById('genBtn');
   const msg = document.getElementById('genMsg');
   msg.innerHTML = '';
+  if(btn.disabled) return;
   const ticker = document.getElementById('inTicker').value.trim().toUpperCase();
-  const nombre = document.getElementById('inNombre').value.trim() || ticker || 'Informe';
+  const nombre = document.getElementById('inNombre').value.trim() || TICKER_NOMBRES[ticker] || ticker || 'Informe';
 
   btn.disabled = true; btn.textContent = 'Generando…';
+  msg.innerHTML = ticker ? `<div class="msg info">Buscando datos de ${esc(ticker)}… (puede tardar unos segundos)</div>` : '';
   try{
     const ok = MODE === 'indice' ? await generarInformeIndice(ticker, nombre) : await generarInformeEmpresa(ticker, nombre);
-    if(ok) document.getElementById('report').scrollIntoView({behavior:'smooth', block:'start'});
+    if(ok){ msg.innerHTML = ''; document.getElementById('report').scrollIntoView({behavior:'smooth', block:'start'}); }
+    else msg.scrollIntoView({behavior:'smooth', block:'center'});
   } catch(e){
     msg.innerHTML = `<div class="msg error">Ocurrió un error armando el informe: ${esc(e.message)}</div>`;
     console.error(e);
@@ -571,6 +600,9 @@ function precioDeArchivos(){
   return FILES.filter(f=>f.kind==='precio').sort((a,b)=>b.serie.length-a.serie.length)[0] || null;
 }
 
+function nombreLindo(n){
+  return n.toLowerCase().replace(/\b([a-z])/g, m=>m.toUpperCase()).replace(/\b(Inc|Corp|Co|Ltd|Llc|Plc|Sa|Nv)\b\.?/g, '$1.').replace(/\.\.+/g, '.');
+}
 async function generarInformeEmpresa(ticker, nombre){
   const msg = document.getElementById('genMsg');
   const warnings = [];
@@ -590,6 +622,7 @@ async function generarInformeEmpresa(ticker, nombre){
   if(ticker && hayHuecos){
     const sec = await fetchSEC(ticker);
     if(sec){
+      if(sec.name && (nombre===ticker || nombre==='Informe')) nombre = nombreLindo(sec.name);
       const r = completarConSEC(years, S, sec, hayExcel);
       if(r.error){
         warnings.push(`No usé la SEC: ${r.error}.`);
@@ -602,7 +635,7 @@ async function generarInformeEmpresa(ticker, nombre){
         }
       }
     } else if(!hayExcel){
-      msg.innerHTML = `<div class="msg error">No pude traer los datos de "${esc(ticker)}" desde la SEC (solo cubre empresas de EE.UU. que presentan 10-K/20-F, y necesita estar publicado en Vercel). Subí los estados contables.</div>`;
+      msg.innerHTML = `<div class="msg error">No encontré "${esc(ticker)}" en la SEC: solo cubre empresas de EE.UU. que presentan 10-K/20-F (ej. AAPL, KO, MSFT). Para otras, subí los estados contables en el paso 3.</div>`;
       return false;
     }
   }
