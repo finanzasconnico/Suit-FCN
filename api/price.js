@@ -3,7 +3,7 @@
 // Analisis_Fundamental_FCN.html lo usa como fallback cuando no se sube un archivo de precio.
 // Sin dependencias: usa fetch nativo del runtime de Vercel.
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 

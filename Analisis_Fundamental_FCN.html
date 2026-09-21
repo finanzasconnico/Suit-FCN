@@ -95,6 +95,20 @@
   .field-tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:1px;}
   .field-tag.excel{background:rgba(28,140,95,0.12);color:var(--jade-dk);}
   .field-tag.yahoo{background:rgba(42,120,214,0.12);color:var(--s1);}
+
+  .dropzone{display:block;border:2px dashed var(--line);border-radius:12px;padding:26px 18px;text-align:center;background:#fcfcfa;cursor:pointer;transition:border-color .15s,background .15s;}
+  .dropzone:hover,.dropzone.over{border-color:var(--jade);background:rgba(28,140,95,0.05);}
+  .dz-title{font-size:15px;font-weight:700;margin-bottom:4px;}
+  .dz-sub{font-size:12.5px;color:var(--soft);max-width:560px;margin:0 auto;}
+  .file-list{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .file-chip{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff;font-size:13px;}
+  .file-chip.estado,.file-chip.precio{border-color:rgba(28,140,95,0.35);background:rgba(28,140,95,0.05);}
+  .file-chip.desconocido{border-color:rgba(208,59,59,0.35);background:var(--critical-bg);}
+  .file-chip .fi{font-weight:800;flex:none;width:18px;}
+  .file-chip.estado .fi,.file-chip.precio .fi{color:var(--jade);} .file-chip.desconocido .fi{color:var(--critical);}
+  .file-chip .fn{font-weight:600;word-break:break-all;} .file-chip .fd{color:var(--soft);font-size:12px;margin-top:1px;}
+  .file-chip .fx{margin-left:auto;flex:none;border:0;background:none;color:var(--soft);font-size:16px;cursor:pointer;line-height:1;padding:0 2px;}
+  .file-chip .fx:hover{color:var(--critical);}
   @media print{
     .panel.controls,.actions,.mode-toggle{display:none!important;}
     body{padding:0;background:#fff;}
@@ -124,53 +138,14 @@
     </div>
   </div>
 
-  <div class="panel controls" id="uploadEmpresa">
-    <h2>3. Estados contables (anuales, formato Investing.com / WSJ)</h2>
-    <div class="upload-grid">
-      <div class="upload-card" id="cardALL" style="grid-column:1/-1;">
-        <div class="req">Opción rápida</div>
-        <div class="name">Todo junto: un Excel con las 3 hojas, o los 3 archivos seleccionados a la vez</div>
-        <input type="file" multiple accept=".xlsx,.xls" onchange="onFile(event,'all')">
-        <div class="status">✓ cargado</div>
-      </div>
-      <div class="upload-card" id="cardIS">
-        <div class="req optional">Por separado</div>
-        <div class="name">Cuenta de resultados</div>
-        <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'is')">
-        <div class="status">✓ cargado</div>
-      </div>
-      <div class="upload-card" id="cardBS">
-        <div class="req optional">Por separado</div>
-        <div class="name">Balance</div>
-        <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'bs')">
-        <div class="status">✓ cargado</div>
-      </div>
-      <div class="upload-card" id="cardCF">
-        <div class="req optional">Por separado</div>
-        <div class="name">Flujo de caja</div>
-        <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'cf')">
-        <div class="status">✓ cargado</div>
-      </div>
-      <div class="upload-card" id="cardPX">
-        <div class="req optional">Precio histórico</div>
-        <div class="name">Precio de la acción</div>
-        <input type="file" accept=".xlsx,.xls,.csv" onchange="onFile(event,'px')">
-        <div class="status">✓ cargado</div>
-      </div>
-    </div>
-    <div class="sub" style="margin-bottom:0;">Si no subís el precio histórico, lo intentamos traer automáticamente por ticker (Yahoo Finance) al generar el informe. Cualquier estado contable que falte, o al que le falte el último año, también se completa así cuando el dato existe.</div>
-  </div>
-
-  <div class="panel controls" id="uploadIndice" style="display:none;">
-    <h2>3. Precio histórico</h2>
-    <div class="upload-grid">
-      <div class="upload-card" id="cardPX2">
-        <div class="req optional">Si no lo subís, lo buscamos por ticker</div>
-        <div class="name">Precio histórico</div>
-        <input type="file" accept=".xlsx,.xls,.csv" onchange="onFile(event,'px')">
-        <div class="status">✓ cargado</div>
-      </div>
-    </div>
+  <div class="panel controls">
+    <h2>3. Archivos</h2>
+    <label class="dropzone" id="dropzone" for="fileInput">
+      <input type="file" id="fileInput" multiple style="display:none" onchange="addFiles(this.files); this.value='';">
+      <div class="dz-title">Soltá acá todos los archivos, o hacé clic para elegirlos</div>
+      <div class="dz-sub" id="dzHint"></div>
+    </label>
+    <div class="file-list" id="fileList"></div>
   </div>
 
   <div class="panel controls">
@@ -184,34 +159,62 @@
 
 <script>
 /* ======================= estado ======================= */
-const FILES = { all:[], is:null, bs:null, cf:null, px:null };
+let FILES = [];      // { id, name, buf, kind:'estado'|'precio'|'desconocido', info, bloques?, serie? }
+let _fid = 0;
 let MODE = 'empresa';
+
+const HINTS = {
+  empresa: 'Estados contables (Cuenta de resultados, Balance, Flujo de caja: juntos en un Excel o por separado) y, si querés, el precio histórico (CSV o Excel). No importa el orden ni cuántos subas: cada archivo se reconoce solo.',
+  indice: 'El precio histórico (CSV o Excel con una columna de fecha y otra de cierre). Si no lo subís, lo buscamos por ticker.'
+};
+function esc(t){ return String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 function setMode(m){
   MODE = m;
   document.getElementById('modeEmpresaBtn').classList.toggle('active', m==='empresa');
   document.getElementById('modeIndiceBtn').classList.toggle('active', m==='indice');
-  document.getElementById('uploadEmpresa').style.display = m==='empresa' ? '' : 'none';
-  document.getElementById('uploadIndice').style.display = m==='indice' ? '' : 'none';
   document.getElementById('modeHint').textContent = m==='empresa'
     ? 'Para una empresa evaluamos ventas, márgenes, balance y flujo de caja.'
     : 'Un índice o ETF no tiene estados contables propios — acá el informe se arma solo con la evolución del precio y su tendencia de largo plazo.';
+  document.getElementById('dzHint').textContent = HINTS[m];
 }
 
-async function onFile(ev, key){
-  const files = [...ev.target.files];
-  if(!files.length) return;
-  const entries = await Promise.all(files.map(async f=>({ name:f.name, buf: await f.arrayBuffer() })));
-  FILES[key] = key==='all' ? entries : entries[0];
-  const map = {all:'cardALL', is:'cardIS', bs:'cardBS', cf:'cardCF', px: MODE==='empresa' ? 'cardPX' : 'cardPX2'};
-  const card = document.getElementById(map[key]);
-  card.classList.add('filled');
-  card.querySelector('.status').textContent = '✓ ' + entries.map(e=>e.name).join(', ');
+async function addFiles(fileList){
+  for(const f of [...fileList]){
+    const entry = { id: ++_fid, name: f.name };
+    try{
+      entry.buf = await f.arrayBuffer();
+      Object.assign(entry, clasificar(entry));
+    }catch(e){
+      console.error(e);
+      Object.assign(entry, { kind:'desconocido', info:'no se pudo leer el archivo ('+e.message+')' });
+    }
+    FILES.push(entry);
+  }
+  renderFileList();
 }
+function quitarArchivo(id){ FILES = FILES.filter(f=>f.id!==id); renderFileList(); }
+function renderFileList(){
+  const icon = { estado:'✓', precio:'✓', desconocido:'!' };
+  const tipo = { estado:'Estados contables', precio:'Precio histórico', desconocido:'No reconocido' };
+  document.getElementById('fileList').innerHTML = FILES.map(f=>`
+    <div class="file-chip ${f.kind}">
+      <div class="fi">${icon[f.kind]}</div>
+      <div><div class="fn">${esc(f.name)}</div><div class="fd">${tipo[f.kind]} · ${esc(f.info)}</div></div>
+      <button class="fx" title="Quitar" onclick="quitarArchivo(${f.id})">×</button>
+    </div>`).join('');
+}
+(function initDrop(){
+  const dz = document.getElementById('dropzone');
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop', e=>{ if(e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+  document.getElementById('dzHint').textContent = HINTS.empresa;
+})();
 
 /* ======================= parser genérico (Investing.com / WSJ) ======================= */
 function normalizar(s){
-  return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/['’`]/g,'').replace(/\s+/g,' ').toLowerCase().trim();
 }
 function parseCelda(v){
   if(typeof v === 'number') return v;
@@ -278,6 +281,64 @@ function parseBloque(matrix, headerRow, endRow){
   return { years, filas };
 }
 
+
+// Otros sitios (StockAnalysis, Macrotrends, Yahoo…): los años vienen como encabezados de
+// columna ("FY 2025", "2025-09-30", 2025…), a veces de más nuevo a más viejo, y los valores
+// están en esas mismas columnas.
+function anioDe(v){
+  if(typeof v==='number') return (Number.isInteger(v) && v>=1990 && v<=2035) ? v : null;
+  if(v instanceof Date && !isNaN(v)) return v.getFullYear();
+  if(typeof v!=='string') return null;
+  const t = v.trim();
+  if(/ttm|ltm|trailing/i.test(t)) return null;
+  const m = t.match(/(?:^|[^\d])((?:19|20)\d{2})(?!\d)/);
+  return m ? +m[1] : null;
+}
+function numEN(v){
+  if(typeof v==='number') return v;
+  if(typeof v!=='string') return null;
+  let t = v.trim();
+  if(!t || /^[-—–]+$/.test(t) || t.endsWith('%')) return null;
+  let neg = false;
+  if(/^\(.*\)$/.test(t)){ neg = true; t = t.slice(1,-1); }
+  t = t.replace(/[$€£\s]/g,'');
+  let n;
+  if(/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) n = parseFloat(t.replace(/,/g,''));
+  else if(/^-?\d+(\.\d+)?$/.test(t)) n = parseFloat(t);
+  else n = numFlex(t);
+  return n==null ? null : (neg ? -Math.abs(n) : n);
+}
+function parseBloquesGenericos(matrix){
+  const headers = [];
+  for(let r=0;r<matrix.length;r++){
+    const row = matrix[r]||[];
+    const cells = row.map((v,c)=>[c, anioDe(v)]).filter(([,y])=>y!=null);
+    const noVacias = row.filter(v=>v!==null && v!=='').length;
+    if(cells.length>=3 && new Set(cells.map(([,y])=>y)).size===cells.length && cells.length >= 0.6*noVacias){
+      if(headers.length && headers[headers.length-1].r === r-1) continue;   // 2da fila de encabezado (fechas de cierre)
+      headers.push({r, cells});
+    }
+  }
+  const bloques = [];
+  headers.forEach((h,i)=>{
+    const end = i+1<headers.length ? headers[i+1].r : matrix.length;
+    const yearCols = h.cells.map(([c])=>c), years = h.cells.map(([,y])=>y);
+    const filas = [];
+    for(let r=h.r+1;r<end;r++){
+      const row = matrix[r]||[];
+      let label = null;
+      // etiqueta = primer texto no numérico a la izquierda de los años (puede haber una columna TTM con números en el medio)
+      for(let c=0;c<yearCols[0];c++){ if(typeof row[c]==='string' && row[c].trim() && numEN(row[c])===null){ label = row[c].trim(); break; } }
+      if(!label) continue;
+      const values = yearCols.map(c=>numEN(row[c]));
+      if(values.every(v=>v===null)) continue;
+      filas.push({ label, norm: normalizar(label), values });
+    }
+    if(filas.length) bloques.push({ years, filas });
+  });
+  return bloques;
+}
+
 function buscarFila(filas, rule){
   for(const f of filas){
     const ok = typeof rule === 'function' ? rule(f.norm) : f.norm === rule;
@@ -287,49 +348,72 @@ function buscarFila(filas, rule){
 }
 
 
+const eq = (...opts) => n => opts.includes(n);
 const CAMPOS_IS = {
-  ventas: 'ingresos totales',
-  beneficio_bruto: 'beneficio bruto',
-  beneficio_neto: 'beneficio neto',
-  ebitda: 'ebitda',
-  bpa: n => n.includes('bpa') && n.includes('basico'),
+  ventas: eq('ingresos totales','revenue','total revenue','total revenues','revenues','net sales','sales','operating revenue','net revenue'),
+  beneficio_bruto: eq('beneficio bruto','gross profit'),
+  beneficio_neto: eq('beneficio neto','net income','net income common stockholders','net income to common','net income applicable to common shares','net earnings'),
+  ebitda: eq('ebitda','normalized ebitda'),
+  bpa: n => (n.includes('bpa') && n.includes('basico'))
+         || ['eps (basic)','eps basic','basic eps','eps - earnings per share','earnings per share basic','earnings per share (basic)','basic earnings per share','eps'].includes(n),
 };
 const CAMPOS_BS = {
-  activo_corriente: 'total del activo corriente',
-  pasivo_corriente: 'total del pasivo corriente',
-  activos_totales: 'activos totales',
-  pasivo_total: 'pasivo total',
-  patrimonio_neto: 'patrimonio neto',
-  deuda_total: 'deuda total',
+  activo_corriente: eq('total del activo corriente','total current assets'),
+  pasivo_corriente: eq('total del pasivo corriente','total current liabilities'),
+  activos_totales: eq('activos totales','total assets'),
+  pasivo_total: eq('pasivo total','total liabilities','total liabilities net minority interest'),
+  patrimonio_neto: eq('patrimonio neto','total shareholders equity','shareholders equity','total stockholders equity','stockholders equity','share holder equity','total equity','total equity gross minority interest'),
+  deuda_total: eq('deuda total','total debt'),
 };
 const CAMPOS_CF = {
-  fcf: n => n.includes('flujo de caja libre'),
+  fcf: n => n.includes('flujo de caja libre') || n === 'free cash flow' || n.startsWith('free cash flow'),
 };
-
-/* precio: xlsx/csv de 2 columnas fecha/cierre (Yahoo, Investing, etc.) */
-function parsePrecio(wb){
+/* precio: xlsx/csv con fecha + cierre (Yahoo, Investing, Macrotrends...) */
+function numFlex(v){
+  if(typeof v==='number') return isFinite(v) ? v : null;
+  if(typeof v!=='string') return null;
+  let s = v.trim().replace(/[^\d.,\-]/g,'');
+  if(!s || s==='-') return null;
+  const lc = s.lastIndexOf(','), ld = s.lastIndexOf('.');
+  if(lc>=0 && ld>=0) s = lc>ld ? s.replace(/\./g,'').replace(',','.') : s.replace(/,/g,'');
+  else if(lc>=0) s = (s.split(',').length>2) ? s.replace(/,/g,'') : s.replace(',','.');
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+function fechaISO(v){
+  const pad = n => String(n).padStart(2,'0');
+  if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+  if(typeof v==='number'){ const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${pad(d.m)}-${pad(d.d)}` : null; }
+  if(typeof v!=='string') return null;
+  const s = v.trim();
+  let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if(m) return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+  if(m){
+    let d=+m[1], mo=+m[2];
+    if(mo>12 && d<=12){ [d,mo]=[mo,d]; }      // vino como mm/dd/yyyy
+    return `${m[3]}-${pad(mo)}-${pad(d)}`;
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function parsePrecio(entry, wbPre){
+  const wb = wbPre || XLSX.read(entry.buf, {type:'array', raw:true});
   const sh = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sh, {defval:null});
+  const rows = XLSX.utils.sheet_to_json(sh, {defval:null, raw:true});
+  if(!rows.length) return [];
+  const keys = Object.keys(rows[0]);
+  const nk = k => normalizar(k);
+  const kFecha = keys.find(k=>/fecha|date|periodo|dia/.test(nk(k)));
+  const noAdj = k => !/ajustad|adj/.test(nk(k));
+  const kCierre = keys.find(k=>/^(cierre|close|ultimo|last|precio|price)$/.test(nk(k)))
+               || keys.find(k=>/cierre|close|ultimo|last|precio|price/.test(nk(k)) && noAdj(k))
+               || keys.find(k=>/adj/.test(nk(k)));
+  if(!kFecha || !kCierre) return [];
   const out = [];
   for(const r of rows){
-    let fecha=null, cierre=null;
-    for(const k of Object.keys(r)){
-      const nk = normalizar(k);
-      if(fecha===null && /fecha|date/.test(nk)) fecha = r[k];
-      if(cierre===null && /cierre|close|precio|price/.test(nk) && !/ajustad|adj/.test(nk)) cierre = r[k];
-    }
-    if(fecha==null && cierre==null){ continue; }
-    if(fecha!=null && cierre!=null){
-      let iso = null;
-      if(typeof fecha === 'number'){ // serial de Excel
-        const d = XLSX.SSF.parse_date_code(fecha);
-        iso = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
-      } else {
-        const d = new Date(fecha);
-        if(!isNaN(d)) iso = d.toISOString().slice(0,10);
-      }
-      if(iso && typeof cierre==='number') out.push({date:iso, close:cierre});
-    }
+    const iso = fechaISO(r[kFecha]), close = numFlex(r[kCierre]);
+    if(iso && close!=null) out.push({date:iso, close});
   }
   out.sort((a,b)=> a.date.localeCompare(b.date));
   return out;
@@ -351,121 +435,217 @@ async function fetchPrecioYahoo(ticker){
   }catch(e){ return null; }
 }
 
-/* ======================= generar informe ======================= */
-async function generarInforme(){
-  const btn = document.getElementById('genBtn');
-  const msg = document.getElementById('genMsg');
-  msg.innerHTML = '';
-  const ticker = document.getElementById('inTicker').value.trim().toUpperCase();
-  const nombre = document.getElementById('inNombre').value.trim() || ticker;
-  if(!ticker){ msg.innerHTML = '<div class="msg error">Ingresá un ticker.</div>'; return; }
+/* ======================= reconocimiento de archivos ======================= */
+const ETIQUETAS = { ventas:'ventas', beneficio_bruto:'beneficio bruto', beneficio_neto:'beneficio neto', ebitda:'EBITDA', bpa:'BPA',
+  activo_corriente:'activo corriente', pasivo_corriente:'pasivo corriente', activos_totales:'activo total', pasivo_total:'pasivo total',
+  patrimonio_neto:'patrimonio neto', deuda_total:'deuda total', fcf:'flujo de caja libre' };
+const nombresCampos = ks => ks.map(k=>ETIQUETAS[k]||k).join(', ');
+const CAMPOS_TODOS = { ...CAMPOS_IS, ...CAMPOS_BS, ...CAMPOS_CF };
+const CAMPOS_MONETARIOS = Object.keys(CAMPOS_TODOS).filter(k=>k!=='bpa');
 
-  btn.disabled = true; btn.textContent = 'Generando…';
-  try{
-    if(MODE === 'indice'){
-      await generarInformeIndice(ticker, nombre);
-    } else {
-      await generarInformeEmpresa(ticker, nombre);
-    }
-  } catch(e){
-    msg.innerHTML = `<div class="msg error">Ocurrió un error armando el informe: ${e.message}</div>`;
-    console.error(e);
-  } finally {
-    btn.disabled = false; btn.textContent = '📊 Generar informe';
-  }
-}
-
-// Todas las hojas de todos los archivos subidos (los 3 por separado, o "todo junto") se
-// juntan en una sola bolsa de bloques; cada campo se busca por etiqueta sin importar de
-// qué archivo u hoja viene.
-function leerBloques(fileEntries){
+function bloquesDeLibro(wb){
   const bloques = [];
-  for(const fe of fileEntries){
-    const wb = XLSX.read(fe.buf, {type:'array'});
-    for(const sn of wb.SheetNames){
-      const matrix = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, defval:null, raw:true});
-      bloques.push(...parseBloques(matrix));
-    }
+  for(const sn of wb.SheetNames){
+    const matrix = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, defval:null, raw:true});
+    let b = parseBloques(matrix);                       // formato Investing.com / WSJ
+    if(!b.length) b = parseBloquesGenericos(matrix);    // años como encabezado (otros sitios)
+    bloques.push(...b);
   }
   return bloques;
 }
-
-async function generarInformeEmpresa(ticker, nombre){
-  const msg = document.getElementById('genMsg');
-  const warnings = [];
-
-  const entries = [...FILES.all, FILES.is, FILES.bs, FILES.cf].filter(Boolean);
-  if(!entries.length){
-    msg.innerHTML = `<div class="msg error">Subí al menos un archivo: todo junto, o los estados por separado.</div>`;
-    return;
-  }
-
-  const bloques = leerBloques(entries);
-  if(!bloques.length){
-    msg.innerHTML = `<div class="msg error">No pude reconocer el formato (no encontré ninguna fila "Período terminado:"). Verificá que sea una exportación anual estilo Investing.com / WSJ.</div>`;
-    return;
-  }
-
-  const CAMPOS_TODOS = { ...CAMPOS_IS, ...CAMPOS_BS, ...CAMPOS_CF };
-  const hallados = {};   // campo -> { values, years } del primer bloque que lo trae
+// campo -> { values, years } del primer bloque que lo trae
+function hallarCampos(bloques){
+  const hallados = {};
   for(const [k, rule] of Object.entries(CAMPOS_TODOS)){
     for(const b of bloques){
       const v = buscarFila(b.filas, rule);
       if(v){ hallados[k] = { values:v, years:b.years }; break; }
     }
   }
-  if(!Object.keys(hallados).length){
-    msg.innerHTML = `<div class="msg error">Reconocí el formato pero no encontré ninguna de las líneas esperadas (Ingresos totales, Beneficio neto, Activos totales…). ¿Los nombres de fila están en español?</div>`;
-    return;
-  }
-  // años: unión de los bloques que aportaron algún campo; cada campo se alinea por año
-  const years = [...new Set(Object.values(hallados).flatMap(h=>h.years))].sort((a,b)=>a-b);
+  return hallados;
+}
+function armarSeries(bloques){
+  const hall = hallarCampos(bloques);
+  const years = [...new Set(Object.values(hall).flatMap(h=>h.years))].sort((a,b)=>a-b);
   const S = {};
   for(const k of Object.keys(CAMPOS_TODOS)){
-    const h = hallados[k];
+    const h = hall[k];
     S[k] = years.map(y=>{
       if(!h) return null;
       const i = h.years.indexOf(y);
       return i>=0 ? h.values[i] : null;
     });
   }
+  return { years, S, hall };
+}
+function clasificar(entry){
+  const wb = XLSX.read(entry.buf, {type:'array', raw:true});
+  const bloques = bloquesDeLibro(wb);
+  const hall = hallarCampos(bloques);
+  const n = Object.keys(hall).length;
+  if(n){
+    const ys = [...new Set(Object.values(hall).flatMap(h=>h.years))].sort((a,b)=>a-b);
+    return { kind:'estado', bloques, info:`${ys.length} años (${ys[0]}–${ys[ys.length-1]}) · ${n} de ${Object.keys(CAMPOS_TODOS).length} líneas reconocidas` };
+  }
+  let serie = [];
+  try{ serie = parsePrecio(entry, wb); }catch(e){ console.error(e); }
+  if(serie.length){
+    return { kind:'precio', serie, info:`${serie.length} cotizaciones (${serie[0].date} a ${serie[serie.length-1].date})` };
+  }
+  return { kind:'desconocido', info: bloques.length
+    ? 'reconocí los años pero ninguna línea esperada (Ingresos, Beneficio neto, Activos…)'
+    : 'no encontré estados contables (fila "Período terminado" o años como encabezado) ni columnas de fecha y cierre' };
+}
 
-  const camposFaltantes = Object.entries(S).filter(([k,v])=>v.every(x=>x===null)).map(([k])=>k);
+/* ======================= completar con la SEC (EE.UU.) ======================= */
+async function fetchSEC(ticker){
+  try{
+    const r = await fetch(`/api/sec?ticker=${encodeURIComponent(ticker)}`);
+    if(!r.ok) return null;
+    const j = await r.json();
+    return (j && j.series) ? j : null;
+  }catch(e){ return null; }
+}
+
+// Rellena SOLO lo que falta (el archivo tiene prioridad). La SEC viene en USD; el archivo
+// puede estar en miles de millones, millones, etc. -> se calibra la escala con los datos
+// que existen en ambos lados.
+function completarConSEC(years, S, sec, hayExcel){
+  const secYears = [...new Set(Object.values(sec.series).flatMap(o=>Object.keys(o).map(Number)))].sort((a,b)=>a-b);
+  let escala = 1, calibrada = false;
+  if(hayExcel){
+    const ratios = [];
+    for(const k of CAMPOS_MONETARIOS){
+      years.forEach((y,i)=>{
+        const e = S[k][i], sv = sec.series[k] && sec.series[k][y];
+        if(e!=null && sv!=null && e>0 && sv>0) ratios.push(e/(sv/1e9));
+      });
+    }
+    if(ratios.length){
+      ratios.sort((a,b)=>a-b);
+      const med = ratios[Math.floor(ratios.length/2)];
+      const p = Math.round(Math.log10(med));
+      if(Math.abs(Math.log10(med)-p) > 0.12) return { error:'las cifras del archivo no coinciden en escala con las de la SEC' };
+      escala = Math.pow(10, p); calibrada = true;
+    }
+  }
+  const todos = [...new Set([...years, ...secYears])].sort((a,b)=>a-b);
+  const years2 = todos.slice(-10);
+  const llenados = {};
+  const S2 = {};
+  for(const k of Object.keys(CAMPOS_TODOS)){
+    S2[k] = years2.map(y=>{
+      const i = years.indexOf(y);
+      const v = i>=0 ? S[k][i] : null;
+      if(v!=null) return v;
+      const sv = sec.series[k] && sec.series[k][y];
+      if(sv==null) return null;
+      llenados[k] = (llenados[k]||0) + 1;
+      return k==='bpa' ? sv : sv/1e9*escala;
+    });
+  }
+  return { years:years2, S:S2, llenados, calibrada };
+}
+
+/* ======================= generar informe ======================= */
+async function generarInforme(){
+  const btn = document.getElementById('genBtn');
+  const msg = document.getElementById('genMsg');
+  msg.innerHTML = '';
+  const ticker = document.getElementById('inTicker').value.trim().toUpperCase();
+  const nombre = document.getElementById('inNombre').value.trim() || ticker || 'Informe';
+
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try{
+    const ok = MODE === 'indice' ? await generarInformeIndice(ticker, nombre) : await generarInformeEmpresa(ticker, nombre);
+    if(ok) document.getElementById('report').scrollIntoView({behavior:'smooth', block:'start'});
+  } catch(e){
+    msg.innerHTML = `<div class="msg error">Ocurrió un error armando el informe: ${esc(e.message)}</div>`;
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '📊 Generar informe';
+  }
+}
+
+function precioDeArchivos(){
+  return FILES.filter(f=>f.kind==='precio').sort((a,b)=>b.serie.length-a.serie.length)[0] || null;
+}
+
+async function generarInformeEmpresa(ticker, nombre){
+  const msg = document.getElementById('genMsg');
+  const warnings = [];
+  const estados = FILES.filter(f=>f.kind==='estado');
+
+  let { years, S } = armarSeries(estados.flatMap(f=>f.bloques));
+  const hayExcel = years.length > 0;
+  if(!hayExcel && !ticker){
+    msg.innerHTML = `<div class="msg error">Subí los estados contables (o ingresá un ticker de EE.UU. para buscarlos en la SEC).</div>`;
+    return false;
+  }
+  let fuente = hayExcel ? 'archivos subidos' : null;
+
+  // lo que falte en los archivos se busca en la SEC (solo si hay ticker)
+  const faltan = k => S[k].every(x=>x===null);
+  const hayHuecos = !hayExcel || Object.keys(S).some(k=>S[k].some(x=>x===null));
+  if(ticker && hayHuecos){
+    const sec = await fetchSEC(ticker);
+    if(sec){
+      const r = completarConSEC(years, S, sec, hayExcel);
+      if(r.error){
+        warnings.push(`No usé la SEC: ${r.error}.`);
+      } else {
+        years = r.years; S = r.S;
+        const cs = Object.keys(r.llenados);
+        if(cs.length){
+          fuente = hayExcel ? 'archivos subidos + SEC EDGAR' : 'SEC EDGAR';
+          warnings.push(`Completado con SEC EDGAR${hayExcel && !r.calibrada ? ' (sin datos en común para calibrar la unidad: asumí miles de millones de USD)' : ''}: ${nombresCampos(cs)}.`);
+        }
+      }
+    } else if(!hayExcel){
+      msg.innerHTML = `<div class="msg error">No pude traer los datos de "${esc(ticker)}" desde la SEC (solo cubre empresas de EE.UU. que presentan 10-K/20-F, y necesita estar publicado en Vercel). Subí los estados contables.</div>`;
+      return false;
+    }
+  }
+
+  const camposFaltantes = Object.keys(S).filter(faltan);
   if(camposFaltantes.length){
-    warnings.push(`No se encontraron en el archivo: ${camposFaltantes.join(', ')}. Esos gráficos/criterios van a aparecer sin dato.`);
+    warnings.push(`No se encontraron: ${nombresCampos(camposFaltantes)}. Esos gráficos/criterios van a aparecer sin dato.`);
   }
 
   // precio: archivo subido o fallback Yahoo
-  let precioSerie = FILES.px ? parsePrecio(XLSX.read(FILES.px.buf, {type: FILES.px.name.endsWith('.csv')?'string':'array', raw:true})) : null;
-  let precioFuente = FILES.px ? 'excel' : null;
-  if((!precioSerie || !precioSerie.length)){
+  let precioSerie = null, precioFuente = null;
+  const pe = precioDeArchivos();
+  if(pe){ precioSerie = pe.serie; precioFuente = 'excel'; }
+  else if(ticker){
     const y = await fetchPrecioYahoo(ticker);
     if(y && y.length){ precioSerie = y; precioFuente = 'yahoo'; }
   }
   let precioPorAnio = null;
   if(precioSerie && precioSerie.length){
-    // fecha de cierre de ejercicio: última fecha reportada en el balance para ese año, si no hay, 31/12
     precioPorAnio = years.map(y=> precioEnOAntes(precioSerie, `${y}-12-31`));
   } else {
-    warnings.push('No se pudo obtener el precio de la acción (ni archivo ni Yahoo). Los 2 gráficos de precio no se muestran.');
+    warnings.push('Sin precio de la acción (no subiste archivo de precio y no se pudo traer por ticker): los 2 gráficos de precio no se muestran.');
   }
 
-  renderInformeEmpresa({ ticker, nombre, years, S, precioPorAnio, precioFuente, warnings });
+  renderInformeEmpresa({ ticker, nombre, years, S, precioPorAnio, precioFuente, warnings, fuente });
+  return true;
 }
 
 async function generarInformeIndice(ticker, nombre){
   const msg = document.getElementById('genMsg');
-  let serie = FILES.px ? parsePrecio(XLSX.read(FILES.px.buf, {type: FILES.px.name.endsWith('.csv')?'string':'array', raw:true})) : null;
-  let fuente = FILES.px ? 'excel' : null;
-  if(!serie || !serie.length){
+  let serie = null, fuente = null;
+  const pe = precioDeArchivos();
+  if(pe){ serie = pe.serie; fuente = 'excel'; }
+  else if(ticker){
     serie = await fetchPrecioYahoo(ticker);
     fuente = serie ? 'yahoo' : null;
   }
   if(!serie || !serie.length){
-    msg.innerHTML = `<div class="msg error">No se pudo conseguir el precio histórico (ni archivo ni Yahoo). Subí un archivo de precio para continuar.</div>`;
-    return;
+    msg.innerHTML = `<div class="msg error">No hay precio histórico: subí un archivo con fecha y cierre${ticker ? ' (no se pudo traer por ticker)' : ' o ingresá el ticker'}.</div>`;
+    return false;
   }
   renderInformeIndice({ ticker, nombre, serie, fuente });
+  return true;
 }
 
 /* ======================= scoring ======================= */
@@ -670,7 +850,7 @@ function wireHover(charts, years){
 
 /* ======================= render: informe empresa ======================= */
 function renderInformeEmpresa(ctx){
-  const { ticker, nombre, years, S, precioPorAnio, precioFuente, warnings } = ctx;
+  const { ticker, nombre, years, S, precioPorAnio, precioFuente, warnings, fuente } = ctx;
   const { criterios, margenBruto, margenNeto, margenEbitda } = calcularCriteriosEmpresa(S, years);
   const puntaje = puntajeSobre10(criterios);
 
@@ -744,11 +924,11 @@ function renderInformeEmpresa(ctx){
   document.getElementById('report').innerHTML = `
     <div class="masthead">
       <div>
-        <div class="ticker-pill">${ticker}</div>
-        <h1>${nombre} — Análisis Fundamental</h1>
+        ${ticker?`<div class="ticker-pill">${esc(ticker)}</div>`:''}
+        <h1>${esc(nombre)} — Análisis Fundamental</h1>
         <textarea class="blurb" id="blurbBox" placeholder="Resumen breve de qué hace la empresa, para el cliente…"></textarea>
       </div>
-      <div class="meta">Ejercicios ${years[0]}–${years[years.length-1]}<br>Precio: ${precioFuente==='excel'?'archivo subido':precioFuente==='yahoo'?'Yahoo Finance':'sin dato'}<br>Cifras en la unidad del archivo original</div>
+      <div class="meta">Ejercicios ${years[0]}–${years[years.length-1]}<br>Datos: ${fuente||'—'}<br>Precio: ${precioFuente==='excel'?'archivo subido':precioFuente==='yahoo'?'Yahoo Finance':'sin dato'}<br>Cifras en la unidad del archivo original</div>
     </div>
     ${warnHtml}
     <section class="panel">
@@ -768,7 +948,7 @@ function renderInformeEmpresa(ctx){
       <button class="btn ghost" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
       <button class="btn ghost" onclick="copiarResumen()">📋 Copiar resumen</button>
     </div>
-    <footer>Informe armado a partir de los archivos subidos${precioFuente==='yahoo'?' + precio de Yahoo Finance':''}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
+    <footer>Informe armado a partir de ${fuente||'los datos cargados'}${precioFuente==='yahoo'?' + precio de Yahoo Finance':''}. Uso interno / borrador para el cliente — no es una recomendación de inversión.</footer>
   `;
   document.getElementById('report').style.display = '';
   wireHover(charts.filter(c=>!c.__empty), years);
@@ -811,8 +991,8 @@ function renderInformeIndice(ctx){
   document.getElementById('report').innerHTML = `
     <div class="masthead">
       <div>
-        <div class="ticker-pill">${ticker}</div>
-        <h1>${nombre} — Análisis de Índice / ETF</h1>
+        ${ticker?`<div class="ticker-pill">${esc(ticker)}</div>`:''}
+        <h1>${esc(nombre)} — Análisis de Índice / ETF</h1>
         <textarea class="blurb" id="blurbBox" placeholder="Resumen breve para el cliente (qué sigue este índice/ETF)…"></textarea>
       </div>
       <div class="meta">${years[0]}–${years[years.length-1]}<br>Precio: ${fuente==='excel'?'archivo subido':'Yahoo Finance'}</div>
