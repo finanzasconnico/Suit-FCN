@@ -746,6 +746,9 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
         <div class="field"><label>Fecha de la licitación <span style="color:var(--cream-dim);">— último día para entrar</span></label><input type="date" id="lic-fecha-lic" title="Las licitaciones suelen ser un solo día. Va en el mail como la única fecha para suscribir. Obligatorio para generar el envío masivo."></div>
       </div>
       <div class="field-row">
+        <div class="field"><label>Fecha de liquidación <span style="color:var(--cream-dim);">— cuando el cliente empieza a tenerla en cartera</span></label><input type="date" id="lic-fecha-liq" oninput="buscarCandidatosLicitacion()" title="Normalmente unos días después de la licitación (T+1/T+2), no el mismo día. Ancla el cronograma de cupones de la ON nueva y la TIR que se muestra — vacío usa la Fecha de hoy de arriba, como antes."></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Pagos por año</label>
           <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option><option value="12">12 (mensual)</option></select>
         </div>
@@ -1809,10 +1812,16 @@ function leerNuevaON(){
   var freq = parseInt(document.getElementById('lic-freq').value)||2;
   var amortType = document.getElementById('lic-amort').value;
   var fechaLicitacion = parseISO(document.getElementById('lic-fecha-lic').value); // puede ser null (no bloquea la búsqueda, sí el mail)
+  var fechaLiquidacion = parseISO(document.getElementById('lic-fecha-liq').value); // cuando el cliente empieza a tenerla — puede ser null
   var laminaMinVal = parseFloat(document.getElementById('lic-lamina-min').value);
   var laminaMin = (!isNaN(laminaMinVal) && laminaMinVal > 0) ? laminaMinVal : null;
   if(!ticker||isNaN(tasa)||isNaN(precio)||!fechaVenc) return null;
-  var fechaEmision = new Date(); // la ON recién licita — hoy es su emisión
+  // La fecha de liquidación (si se cargó) es el verdadero punto de partida de la ON — de ahí
+  // sale la primera fecha de cupón (buildCouponDates ancla TODO el cronograma a "fechaEmision")
+  // y es la fecha contra la que se calcula su TIR. Pedido de Nico (22/09): "que afecte por
+  // completo la TIR" — sin esto, el cronograma arrancaba de "ahora mismo" (momento en que se
+  // tipea el formulario) sin importar cuándo la ON realmente empieza a devengar para el cliente.
+  var fechaEmision = fechaLiquidacion || new Date();
 
   var esNY = document.getElementById('lic-ley').value === 'ny';
   var brechaPct = parseFloat(document.getElementById('lic-brecha').value);
@@ -1836,7 +1845,7 @@ function leerNuevaON(){
     tir:tasa, duration:null,
     cuponAnual:tasa, freq:freq,
     fechaEmision:fechaEmision, fechaVenc:fechaVenc,
-    fechaLicitacion:fechaLicitacion,
+    fechaLicitacion:fechaLicitacion, fechaLiquidacion:fechaLiquidacion,
     amortType:amortType, amortStart:fechaEmision,
     ley: esNY ? 'NY' : 'Argentina', calif:calif,
     precio: precioEfectivo, precioBruto: precio, factorMep: factorMep,
@@ -1872,7 +1881,7 @@ function licOnLaminaChange(){
 // (igual que buscarCandidatosLicitacion) así queda disponible en "Bono a comprar" al toque.
 var LIC_ESTADO_KEY = 'fcn-licitacion-estado';
 var LIC_ESTADO_CAMPOS = ['lic-ticker','lic-emisor','lic-tasa','lic-precio','lic-venc','lic-calif',
-  'lic-freq','lic-amort','lic-fecha-lic','lic-ley','lic-brecha','lic-tir-manual','lic-lamina-min',
+  'lic-freq','lic-amort','lic-fecha-lic','lic-fecha-liq','lic-ley','lic-brecha','lic-tir-manual','lic-lamina-min',
   'lic-tenencia-min','lic-ventaja-min','lic-calnotch','lic-dias-min','lic-ganancia-override'];
 function guardarEstadoLicitacion(){
   var o = {};
@@ -2122,10 +2131,15 @@ function buscarCandidatosLicitacion(){
   var tenenciaMinPos = num('lic-tenencia-min',null); // null = no filtra por tamaño de posición
   var nuevaRank = calificacionRank(nuevaON.calif);
 
+  // La ON nueva se valúa desde SU propia fecha de liquidación (si se cargó) — no desde "hoy" —
+  // porque hasta ese día el cliente no la tiene en cartera. El bono que se vende (más abajo)
+  // sigue valuándose desde "hoy": es la posición que el cliente ya tiene y decide rotar ahora.
+  var hoyON = nuevaON.fechaLiquidacion || hoy;
+
   // TIR real de la ON nueva a su propio vencimiento — se calcula una sola vez, limpia, para
   // mostrar en un cartel aparte (pedido explícito: "a veces es difícil calcular la TIR" a ojo).
-  var aniosNueva = yearFrac(hoy, nuevaON.fechaVenc);
-  var nuevaONInfo = aniosNueva>0 ? pctRetornoAHorizonte(Object.assign({}, nuevaON, {nominales:100}), hoy, comisionPct, aniosNueva) : null;
+  var aniosNueva = yearFrac(hoyON, nuevaON.fechaVenc);
+  var nuevaONInfo = aniosNueva>0 ? pctRetornoAHorizonte(Object.assign({}, nuevaON, {nominales:100}), hoyON, comisionPct, aniosNueva) : null;
   nuevaON.tirSolved = nuevaONInfo ? nuevaONInfo.tir : nuevaON.tir;
 
   // La registra en BOND_DB/FLUJO_DB ANTES del corte por "sin Tenencia" — así queda cargable en
@@ -2167,7 +2181,7 @@ function buscarCandidatosLicitacion(){
         var compraBond = Object.assign({}, nuevaON, {nominales:100});
         retCache[pos.ticker] = {
           retVenta: pctRetornoAHorizonte(ventaBond, hoy, comisionPct, anios),
-          retCompra: pctRetornoAHorizonte(compraBond, hoy, comisionPct, anios)
+          retCompra: pctRetornoAHorizonte(compraBond, hoyON, comisionPct, anios) // hoyON: ver más arriba
         };
       }
       var retVenta = retCache[pos.ticker].retVenta;
@@ -2388,6 +2402,9 @@ function renderResultadosLicitacion(){
       (nuevaON.fechaLicitacion
         ? '<span class="chip">Se licita <b>'+fmtDateAR(nuevaON.fechaLicitacion)+'</b></span>'
         : '<span class="chip" style="background:rgba(229,115,115,.18);color:#e57373;">⚠ falta la fecha de licitación (obligatoria para el mail)</span>')+
+      (nuevaON.fechaLiquidacion
+        ? '<span class="chip" title="La TIR y el cronograma de cupones de la ON nueva se calculan desde esta fecha, no desde hoy.">Liquida <b>'+fmtDateAR(nuevaON.fechaLiquidacion)+'</b></span>'
+        : '<span class="chip" style="opacity:.6;" title="Sin cargar, la TIR se calcula como si el cliente ya la tuviera desde hoy.">Liquidación: sin cargar (usa hoy)</span>')+
     '</div>'+
     (nuevaON.ley==='NY' && nuevaON.tirManual==null && nuevaON.brechaPct==null
       ? '<div style="font-size:10px;color:#e57373;margin-top:6px;">⚠ Marcaste Ley NY pero no cargaste la brecha CCL/MEP — la TIR está sin ajustar (sale igual que Ley Argentina).</div>'
