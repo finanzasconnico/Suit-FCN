@@ -542,7 +542,13 @@ def row_from_cache(ticker, e):
     r["Sector"]  = e.get("sector")
     r["Moneda"]  = e.get("moneda")
     r["Precio_actual"] = e.get("precio")
-    r["Actualizado"]   = e.get("fetched")
+    # "Actualizado" es lo que ve el panel para el cartelito de "hace X días" -- toma la fecha
+    # más reciente entre la corrida semanal completa (fetched) y el refresco diario de precio
+    # (fetched_precio, ver valuacion_multiplos_precio.py). is_fresh() de MÁS ABAJO sigue usando
+    # solo "fetched" a propósito -- si acá se pisara "fetched" con la fecha de hoy, la corrida
+    # semanal completa creería que YA actualizó fundamentales/promedios históricos y los dejaría
+    # de refrescar para siempre.
+    r["Actualizado"] = max(filter(None, [e.get("fetched"), e.get("fetched_precio")]), default=None)
     series = e.get("series", {})
     actual = e.get("actual", {})
     any_mult = False

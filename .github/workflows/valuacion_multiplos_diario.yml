@@ -1,0 +1,62 @@
+name: Actualizar precio diario (Valuacion por Multiplos)
+
+# Corre TODOS LOS DIAS HABILES despues del cierre de mercado (21:30 UTC = 18:30 ART) y tambien a
+# mano desde la pestaña "Actions" (boton "Run workflow"). Complementa a valuacion_multiplos.yml
+# (que corre 1 vez por semana, los lunes, y hace TODO: multiplos historicos + fundamentales +
+# tecnico). Este job es liviano: SOLO re-baja precio + medias moviles de yfinance (ver
+# .github/scripts/valuacion_multiplos_precio.py para el detalle) para que la Tendencia y el
+# Rebote tecnico del puntaje -- los ejes que mas pesan en el horizonte "Corto plazo" -- no se
+# queden con el precio del lunes toda la semana. Los promedios de 3/5/10 años y los datos de
+# negocio se tocan solo en la corrida semanal completa.
+#
+# Corre en el runner de GitHub (la nube de GitHub Actions) -- no depende de que la compu de Nico
+# esté prendida ni de tener el navegador abierto.
+on:
+  schedule:
+    - cron: '30 21 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+# mismo grupo que la corrida semanal completa: si algun dia coinciden, se ejecutan una despues
+# de la otra (nunca las dos a la vez tocando el mismo cache/xlsx).
+concurrency:
+  group: valuacion-multiplos
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install yfinance pandas openpyxl --upgrade
+
+      - name: Refrescar precio y técnico de hoy
+        run: python .github/scripts/valuacion_multiplos_precio.py
+
+      - name: Commitear y pushear si cambió
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/valuacion_multiplos.xlsx data/valuacion_multiplos_prev.xlsx .github/scripts/.cache_valuacion_multiplos.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios, no hay nada para commitear."
+            exit 0
+          fi
+          git commit -m "Precio diario de Valuacion por Multiplos ($(date +%Y-%m-%d))"
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            echo "push rechazado, reintento $i ..."
+            sleep 5
+          done
+          echo "no se pudo pushear tras 5 intentos" && exit 1

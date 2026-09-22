@@ -61,6 +61,7 @@ body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
 .ts-info{font-size:10px;color:var(--muted);}
 .badge-warn{font-size:9px;font-family:var(--font-m);letter-spacing:.06em;padding:2px 8px;border-radius:2px;border:1px solid rgba(219,160,60,.4);color:var(--ambar);background:var(--ambar-d);}
+.hor-fresh{font-size:10.5px;color:var(--ambar);white-space:nowrap;}
 
 /* ── TABS ── */
 .tabs{flex-shrink:0;display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
@@ -414,6 +415,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         <option value="corto">Corto plazo</option>
       </select>
     </label>
+    <span class="hor-fresh" id="hor-fresh" style="display:none"></span>
     <div class="filter-chips" id="sector-chips"></div>
     <button class="chip chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia, según el Horizonte elegido): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
@@ -456,7 +458,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>✉ Avisar a los que lo tienen</b><p>En la ficha de una empresa, si tus clientes la tienen en cartera, el botón <b>"Avisar a los N"</b> arma un mensaje por cada tenedor: los primeros por tenencia como borrador de WhatsApp 1×1, el resto como mail masivo (CSV + Word, igual que Licitaciones). El texto compara su múltiplo contra su historia y contra los pares del sector, y podés elegir una alternativa del mismo rubro para proponer la rotación. Queda anotado en el Registro. Si el papel hoy no se ve caro, te avisa antes de mandar.</p></div>
       <div><b>Rebote (pestaña Técnico)</b><p>Puntos de análisis técnico clásico: cuando el precio se acerca a una media clave, suele rebotar ahí. Arriba de la media y acercándose = está testeando un <b>soporte</b> (posible compra). Abajo de la media y acercándose = está testeando una <b>resistencia</b> (posible venta). Se mira en 3 plazos — corto (media de 200 ruedas diarias), mediano (media de 20 semanas) y largo (media de 20 y 50 meses) — más los niveles de Fibonacci entre el máximo y el mínimo del último año. Si el rebote técnico no tiene el negocio detrás (o el techo aparece con el negocio sólido), te lo marca con un aviso ámbar al lado. Filtrable desde el selector <b>"Señal" → Técnico (rebote)</b>.</p></div>
       <div><b>🔗 Correlación</b><p>Botón <b>🔗 Correlación</b> de la barra: elegís la cartera de un cliente (o sumás tickers a mano) y te muestra si sus activos se mueven juntos. Una matriz con colores (rojo = se mueven casi iguales, verde = independientes), una lectura en palabras ("Bien diversificada" … "Muy concentrada"), cuánto baja el riesgo por diversificar y qué pares duplican la misma apuesta. Usa los retornos semanales de ~3 años; es solo renta variable.</p></div>
-      <div><b>🏆 Puntaje, Horizonte y Ranking</b><p>Cada activo con los tres ejes completos tiene un <b>puntaje de −100 a +100</b> (positivo = conviene comprar, negativo = conviene vender). El selector <b>Horizonte</b> de la barra cambia cómo se pesa: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia) para comprar y mantener — manda la calidad del negocio y si está barato, el momento de entrada pesa poco. <b>Mediano plazo</b> (35/35/30) es el equilibrado de siempre y el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico) para un trade de días o semanas — ahí el negocio casi no pesa y lo que manda es el momento: la tendencia y si está tocando un soporte o una resistencia ahora mismo. Se ve en la columna <b>Puntaje</b> de Panorama (pasá el mouse para ver el desglose) y se ordena tocando el título. El chip <b>🏆 Ranking de puntaje</b> lo deja ordenado de una: 1er clic lo que más conviene comprar, 2º clic lo que más conviene vender. ETFs, índices y lo que no tiene todos los datos quedan afuera, sea cual sea el horizonte.</p></div>
+      <div><b>🏆 Puntaje, Horizonte y Ranking</b><p>Cada activo con los tres ejes completos tiene un <b>puntaje de −100 a +100</b> (positivo = conviene comprar, negativo = conviene vender). El selector <b>Horizonte</b> de la barra cambia cómo se pesa: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia) para comprar y mantener — manda la calidad del negocio y si está barato, el momento de entrada pesa poco. <b>Mediano plazo</b> (35/35/30) es el equilibrado de siempre y el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico) para un trade de días o semanas — ahí el negocio casi no pesa y lo que manda es el momento: la tendencia y si está tocando un soporte o una resistencia ahora mismo. Se ve en la columna <b>Puntaje</b> de Panorama (pasá el mouse para ver el desglose) y se ordena tocando el título. El chip <b>🏆 Ranking de puntaje</b> lo deja ordenado de una: 1er clic lo que más conviene comprar, 2º clic lo que más conviene vender. ETFs, índices y lo que no tiene todos los datos quedan afuera, sea cual sea el horizonte. El precio y las medias se actualizan solos todos los días hábiles (los promedios históricos y el negocio, una vez por semana); en Corto plazo, si ese dato tiene 2 días o más, aparece un aviso ⚠ al lado del selector — ahí conviene confirmar el precio de hoy antes de operar.</p></div>
       <div><b>⇄ Comparar</b><p>Elegí dos activos (desde el botón de arriba o "Comparar con otro activo" en la ficha) y te arma una tabla lado a lado con todo — múltiplo, tendencia, negocio, valuación, analistas, rebote — y un veredicto según la misma lectura de "Qué hacer" que ya usás en el resto de la herramienta. Si conviene rotar, un botón arma el mensaje simple para el cliente (mail o WhatsApp); si hay un cliente enfocado y tiene la posición, se completa solo con su ganancia real.</p></div>
     </div>
     <p class="help-foot">La pestaña <b>Panorama</b> junta todo. Para ver cada análisis por separado y con más detalle: <b>Técnico</b> (el precio y las medias), <b>Negocio</b> (crecimiento, rentabilidad, deuda) y <b>Múltiplos</b> (caro o barato vs. su historia). La opinión de los analistas tiene su propia herramienta, "Precios Objetivo".<br><br>Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b>. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
@@ -1103,6 +1105,7 @@ function setHorizonte(h){
 function actualizarHorizonteUI(){
   const sel=document.getElementById('hor-sel');
   if(sel) sel.value=horizonteActual;
+  actualizarHorizonteFrescura();
 }
 function puntajeDetalle(r){
   const t=tendencia(r), n=fundamental(r), v=valuacion5y(r);
@@ -2740,7 +2743,7 @@ const AYUDA={
   rebote:'<b>Rebote técnico.</b> Mira si el precio está cerca de una media móvil o de un nivel de Fibonacci, que son zonas donde suele frenar y rebotar. Precio arriba de la media y acercándose = posible soporte (compra); abajo y acercándose = posible resistencia (venta).',
   correlacion:'<b>Correlación.</b> Mide si dos activos se mueven juntos. <b>+100</b> = suben y bajan idéntico · <b>0</b> = no tienen relación · <b>negativo</b> = uno tiende a subir cuando el otro baja. Una cartera con todo muy correlacionado es como tener una sola apuesta; con activos poco correlacionados, las caídas de uno se compensan en parte con los otros. Se calcula con los retornos semanales de los últimos ~3 años.',
   cartera:'<b>En cartera.</b> Cuánto suman entre todos tus clientes en este activo (USD) y cuántos clientes lo tienen.',
-  horizonte:'<b>Horizonte.</b> Para qué plazo estás mirando el activo — cambia cómo se pesa el puntaje: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia): entrar en el momento exacto importa poco si vas a sostenerlo años, así que manda la calidad del negocio y si está barato. <b>Mediano plazo</b> (35/35/30, el de siempre): equilibrado, es el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico): para un trade de días o semanas el negocio casi no importa — lo que manda es el momento (tendencia + si está tocando un soporte o una resistencia ahora mismo). Cambiarlo reordena Puntaje, el Ranking, la ficha y Comparar — no cambia "Qué hacer".'
+  horizonte:'<b>Horizonte.</b> Para qué plazo estás mirando el activo — cambia cómo se pesa el puntaje: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia): entrar en el momento exacto importa poco si vas a sostenerlo años, así que manda la calidad del negocio y si está barato. <b>Mediano plazo</b> (35/35/30, el de siempre): equilibrado, es el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico): para un trade de días o semanas el negocio casi no importa — lo que manda es el momento (tendencia + si está tocando un soporte o una resistencia ahora mismo). Cambiarlo reordena Puntaje, el Ranking, la ficha y Comparar — no cambia "Qué hacer". El precio y las medias se refrescan solos todos los días hábiles (no hace falta re-cargar el archivo), pero en Corto plazo igual conviene mirar el precio de hoy antes de operar — la Tendencia y el Rebote son los que más rápido se mueven.'
 };
 function ayq(k){ return `<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="${k}">?</span>`; }
 (function(){
@@ -2979,16 +2982,35 @@ function render(){
 // ══════════════════════════════════════════
 //  TIMESTAMP
 // ══════════════════════════════════════════
+let _diasActualizado=null;
 function showTimestamp(ts,rows){
-  // preferí la fecha "Actualizado" de los datos si está; si no, el mtime del archivo
+  // preferí la fecha "Actualizado" de los datos si está; si no, el mtime del archivo. Desde el
+  // 23/09/2026 esa fecha puede venir del refresco DIARIO de precio (más nueva que la corrida
+  // semanal completa) — ver valuacion_multiplos_precio.py y el comentario en row_from_cache.
   let base=ts;
   const fechas=(rows||[]).map(r=>r.actualizado).filter(Boolean).sort();
   if(fechas.length){ const d=new Date(fechas[fechas.length-1]+'T12:00:00'); if(!isNaN(d)) base=d.getTime(); }
   if(!base) return;
   const dias=Math.floor((Date.now()-base)/86400000);
+  _diasActualizado=dias;
   const txt=dias<=0?'hoy':dias===1?'hace 1 día':`hace ${dias} días`;
   document.getElementById('ts-info').textContent=`Última actualización: ${txt}`;
   if(dias>14) document.getElementById('badge-warn').style.display='inline';
+  actualizarHorizonteFrescura();
+}
+// en Corto plazo, Tendencia y Rebote técnico pesan 75% del puntaje y son justo los ejes que
+// más rápido se quedan viejos con el precio — acá el "hace 14 días" del badge de arriba es
+// demasiado laxo, así que al lado del selector se avisa aparte con un umbral mucho más chico.
+function actualizarHorizonteFrescura(){
+  const el=document.getElementById('hor-fresh');
+  if(!el) return;
+  if(horizonteActual==='corto' && _diasActualizado!==null && _diasActualizado>=2){
+    el.textContent=`⚠ precio de hace ${_diasActualizado} días`;
+    el.title='En Corto plazo el Rebote técnico y la Tendencia pesan más y son los que primero se desactualizan. Si vas a operar hoy, confirmá el precio actual antes.';
+    el.style.display='inline';
+  } else {
+    el.style.display='none';
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3024,7 +3046,7 @@ async function loadAndRender(){
 
   const semilla=allRows.length && allRows.every(r=>r.fuente==='SEMILLA');
   FOOT_BASE=(semilla?'⚠ Datos de ejemplo (8 tickers de los Excel de referencia). El bot los reemplaza con la cartera completa en la próxima actualización. ':'')
-    +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. En "Según sector" cada empresa muestra el múltiplo más relevante para su rubro; con el selector podés fijar uno para toda la lista. Ojo: un P/E actual muy por encima de su promedio (ej. >100) casi siempre es una ganancia TTM golpeada por un cargo puntual, no una sobrevaluación real — mirá también P/S y EV/EBITDA. Los promedios de 10 años (y la serie histórica) salen de los balances oficiales presentados a la SEC para las empresas de EE.UU.; en los papeles sin reporte a la SEC (ADR argentinos, .BA) la columna 10Y puede quedar vacía.';
+    +'% corrección = (múltiplo promedio ÷ múltiplo actual) − 1. Negativo = el precio debería bajar para volver al promedio histórico; positivo = margen de suba. En "Según sector" cada empresa muestra el múltiplo más relevante para su rubro; con el selector podés fijar uno para toda la lista. Ojo: un P/E actual muy por encima de su promedio (ej. >100) casi siempre es una ganancia TTM golpeada por un cargo puntual, no una sobrevaluación real — mirá también P/S y EV/EBITDA. Los promedios de 10 años (y la serie histórica) salen de los balances oficiales presentados a la SEC para las empresas de EE.UU.; en los papeles sin reporte a la SEC (ADR argentinos, .BA) la columna 10Y puede quedar vacía. Precio y medias móviles se refrescan solos todos los días hábiles; los promedios históricos y los datos de negocio, una vez por semana (los lunes).';
   document.getElementById('foot-note').innerHTML=FOOT_BASE;
 
   buildTabs();
