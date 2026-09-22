@@ -407,8 +407,15 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         </optgroup>
       </select>
     </label>
+    <label class="mult-pick" id="hor-pick" title="Para qué horizonte pesa el puntaje: cambia los pesos de Negocio/Valuación/Tendencia (y suma el Rebote técnico en Corto plazo). Afecta la columna Puntaje, el Ranking, la ficha y Comparar.">Horizonte<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="horizonte">?</span>
+      <select id="hor-sel" onchange="setHorizonte(this.value)">
+        <option value="largo">Largo plazo</option>
+        <option value="mediano" selected>Mediano plazo</option>
+        <option value="corto">Corto plazo</option>
+      </select>
+    </label>
     <div class="filter-chips" id="sector-chips"></div>
-    <button class="chip chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
+    <button class="chip chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia, según el Horizonte elegido): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
     <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
     <div class="ten-min-wrap" id="ten-min-wrap" style="display:none">
       <input type="number" id="ten-min-input" min="0" step="500" placeholder="Tenencia mín. USD" oninput="onTenMinChange()" title="Ocultar lo que tengo por debajo de este monto">
@@ -449,7 +456,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <div><b>✉ Avisar a los que lo tienen</b><p>En la ficha de una empresa, si tus clientes la tienen en cartera, el botón <b>"Avisar a los N"</b> arma un mensaje por cada tenedor: los primeros por tenencia como borrador de WhatsApp 1×1, el resto como mail masivo (CSV + Word, igual que Licitaciones). El texto compara su múltiplo contra su historia y contra los pares del sector, y podés elegir una alternativa del mismo rubro para proponer la rotación. Queda anotado en el Registro. Si el papel hoy no se ve caro, te avisa antes de mandar.</p></div>
       <div><b>Rebote (pestaña Técnico)</b><p>Puntos de análisis técnico clásico: cuando el precio se acerca a una media clave, suele rebotar ahí. Arriba de la media y acercándose = está testeando un <b>soporte</b> (posible compra). Abajo de la media y acercándose = está testeando una <b>resistencia</b> (posible venta). Se mira en 3 plazos — corto (media de 200 ruedas diarias), mediano (media de 20 semanas) y largo (media de 20 y 50 meses) — más los niveles de Fibonacci entre el máximo y el mínimo del último año. Si el rebote técnico no tiene el negocio detrás (o el techo aparece con el negocio sólido), te lo marca con un aviso ámbar al lado. Filtrable desde el selector <b>"Señal" → Técnico (rebote)</b>.</p></div>
       <div><b>🔗 Correlación</b><p>Botón <b>🔗 Correlación</b> de la barra: elegís la cartera de un cliente (o sumás tickers a mano) y te muestra si sus activos se mueven juntos. Una matriz con colores (rojo = se mueven casi iguales, verde = independientes), una lectura en palabras ("Bien diversificada" … "Muy concentrada"), cuánto baja el riesgo por diversificar y qué pares duplican la misma apuesta. Usa los retornos semanales de ~3 años; es solo renta variable.</p></div>
-      <div><b>🏆 Puntaje y Ranking</b><p>Cada activo con los tres ejes completos tiene un <b>puntaje de −100 a +100</b> (positivo = conviene comprar, negativo = conviene vender): 35% Negocio + 35% Valuación + 30% Tendencia. Se ve en la columna <b>Puntaje</b> de Panorama (pasá el mouse para ver el desglose) y se ordena tocando el título. El chip <b>🏆 Ranking de puntaje</b> lo deja ordenado de una: 1er clic lo que más conviene comprar, 2º clic lo que más conviene vender. ETFs, índices y lo que no tiene todos los datos quedan afuera.</p></div>
+      <div><b>🏆 Puntaje, Horizonte y Ranking</b><p>Cada activo con los tres ejes completos tiene un <b>puntaje de −100 a +100</b> (positivo = conviene comprar, negativo = conviene vender). El selector <b>Horizonte</b> de la barra cambia cómo se pesa: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia) para comprar y mantener — manda la calidad del negocio y si está barato, el momento de entrada pesa poco. <b>Mediano plazo</b> (35/35/30) es el equilibrado de siempre y el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico) para un trade de días o semanas — ahí el negocio casi no pesa y lo que manda es el momento: la tendencia y si está tocando un soporte o una resistencia ahora mismo. Se ve en la columna <b>Puntaje</b> de Panorama (pasá el mouse para ver el desglose) y se ordena tocando el título. El chip <b>🏆 Ranking de puntaje</b> lo deja ordenado de una: 1er clic lo que más conviene comprar, 2º clic lo que más conviene vender. ETFs, índices y lo que no tiene todos los datos quedan afuera, sea cual sea el horizonte.</p></div>
       <div><b>⇄ Comparar</b><p>Elegí dos activos (desde el botón de arriba o "Comparar con otro activo" en la ficha) y te arma una tabla lado a lado con todo — múltiplo, tendencia, negocio, valuación, analistas, rebote — y un veredicto según la misma lectura de "Qué hacer" que ya usás en el resto de la herramienta. Si conviene rotar, un botón arma el mensaje simple para el cliente (mail o WhatsApp); si hay un cliente enfocado y tiene la posición, se completa solo con su ganancia real.</p></div>
     </div>
     <p class="help-foot">La pestaña <b>Panorama</b> junta todo. Para ver cada análisis por separado y con más detalle: <b>Técnico</b> (el precio y las medias), <b>Negocio</b> (crecimiento, rentabilidad, deuda) y <b>Múltiplos</b> (caro o barato vs. su historia). La opinión de los analistas tiene su propia herramienta, "Precios Objetivo".<br><br>Nada de esto predice el futuro. Son fotos de lo que <b>ya está pasando</b>. Sirven para ordenar la conversación con el cliente, no para reemplazarla.</p>
@@ -471,7 +478,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 
   <div class="foot-note" id="foot-note" style="display:none"></div>
 
-  <div class="holders-overlay" id="holdersOverlay" onclick="if(event.target===this) cerrarHolders()">
+  <div class="holders-overlay" id="holdersOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarHolders()">
     <div class="holders-modal">
       <div class="hm-head">
         <div><div class="hm-title" id="hmTicker">—</div><div class="hm-sub" id="hmSub"></div></div>
@@ -481,7 +488,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="guiaOverlay" onclick="if(event.target===this) cerrarGuia()">
+  <div class="holders-overlay" id="guiaOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarGuia()">
     <div class="guia-modal">
       <div class="hm-head">
         <div class="hm-title">Guía de múltiplos</div>
@@ -585,7 +592,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="msgOverlay" onclick="if(event.target===this) cerrarMsg()">
+  <div class="holders-overlay" id="msgOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarMsg()">
     <div class="msg-modal">
       <div class="hm-head">
         <div><div class="hm-title">Mensaje al cliente</div><div class="hm-sub" id="msg-sub"></div></div>
@@ -619,7 +626,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="clientesOverlay" onclick="if(event.target===this) cerrarClientes()">
+  <div class="holders-overlay" id="clientesOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarClientes()">
     <div class="holders-modal cli-modal">
       <div class="hm-head">
         <div><div class="hm-title">Tus clientes</div><div class="hm-sub" id="cli-sub"></div></div>
@@ -629,7 +636,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="novedadesOverlay" onclick="if(event.target===this) cerrarNovedades()">
+  <div class="holders-overlay" id="novedadesOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarNovedades()">
     <div class="holders-modal cli-modal">
       <div class="hm-head">
         <div><div class="hm-title">Qué cambió</div><div class="hm-sub" id="nv-sub"></div></div>
@@ -639,7 +646,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="avisoOverlay" onclick="if(event.target===this) cerrarAviso()">
+  <div class="holders-overlay" id="avisoOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarAviso()">
     <div class="msg-modal">
       <div class="hm-head">
         <div><div class="hm-title" id="av-title">Avisar sobre el ticker</div><div class="hm-sub" id="av-sub"></div></div>
@@ -686,7 +693,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 
   <datalist id="ticker-datalist"></datalist>
 
-  <div class="holders-overlay" id="corrOverlay" onclick="if(event.target===this) cerrarCorr()">
+  <div class="holders-overlay" id="corrOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarCorr()">
     <div class="msg-modal" style="max-width:860px;">
       <div class="hm-head">
         <div><div class="hm-title">Correlación de la cartera <span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="correlacion">?</span></div><div class="hm-sub">¿Qué tan diversificados están estos activos? ¿Se mueven juntos o no?</div></div>
@@ -713,7 +720,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="compararOverlay" onclick="if(event.target===this) cerrarComparar()">
+  <div class="holders-overlay" id="compararOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarComparar()">
     <div class="msg-modal" style="max-width:640px;">
       <div class="hm-head">
         <div><div class="hm-title">Comparar dos activos</div><div class="hm-sub" id="cmp-sub">¿Conviene rotar de uno al otro?</div></div>
@@ -1043,32 +1050,80 @@ function lecturaRebote(r){
   }
   return {...base, pts, alerta};
 }
+// puntaje numérico del rebote técnico (−100…+100), para pesarlo en el horizonte "Corto plazo".
+// +100 = está justo tocando un soporte (candidato fuerte a rebote de compra); −100 = tocando una
+// resistencia (posible techo). Si no está cerca de ningún nivel da null — el puntaje combinado lo
+// toma como neutral (0), no como dato faltante: la mayoría de los activos no están en un punto de
+// rebote en un día cualquiera, y eso no debería sacarlos del ranking de corto plazo.
+function reboteScore(r){
+  const pts=puntosRebote(r);
+  if(!pts.length) return null;
+  const banda=p=>REBOTE_BANDAS[p.plazo]||REBOTE_BANDAS.fibo;
+  const vals=pts.map(p=>{
+    const fuerza=clamp(1-Math.abs(p.dist)/banda(p),0,1)*100;   // más cerca del nivel = más fuerte
+    return p.tipo==='soporte'?fuerza:-fuerza;
+  });
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+}
 
 // ══════════════════════════════════════════
 //  PUNTAJE COMBINADO −100 … +100 (Nico, 18/09/2026): un solo número para ORDENAR la lista.
-//  Positivo = conviene comprar, negativo = conviene vender. Junta los tres ejes que ya
-//  existen — Negocio, Valuación y Tendencia — con los mismos puntajes que se ven en cada
-//  columna; no inventa datos nuevos. NO reemplaza al veredicto ("Qué hacer"): el veredicto
-//  dice POR QUÉ, el puntaje solo ordena. Los analistas no entran (igual que en el veredicto).
-//  Solo se calcula si están los TRES ejes — sin eso (ETFs/índices sin balances, papeles en
-//  ARS sin tendencia, sin promedio histórico) da null y la fila queda afuera del ranking.
+//  Positivo = conviene comprar, negativo = conviene vender. Junta los ejes que ya existen —
+//  Negocio, Valuación, Tendencia y (en Corto plazo) Rebote técnico — con los mismos puntajes
+//  que se ven en cada columna; no inventa datos nuevos. NO reemplaza al veredicto ("Qué
+//  hacer"): el veredicto dice POR QUÉ, el puntaje solo ordena. Los analistas no entran
+//  (igual que en el veredicto). Solo se calcula si están Negocio, Valuación y Tendencia —
+//  sin eso (ETFs/índices sin balances, papeles en ARS sin tendencia, sin promedio histórico)
+//  da null y la fila queda afuera del ranking, sea cual sea el horizonte.
+//
+//  HORIZONTE (Nico, 22/09/2026): los mismos tres ejes pesan distinto según para qué se está
+//  mirando el activo — comprar y mantener no es lo mismo que un trade de 2 semanas. "Mediano
+//  plazo" es el original (35/35/30) y sigue siendo el default: si nunca se toca el selector,
+//  nada cambia. En "Corto plazo" entra también el Rebote técnico (las mismas alertas de swing
+//  trading de más arriba), porque a días/semanas importa más el momento de entrada que si la
+//  empresa es sólida a 5 años.
 // ══════════════════════════════════════════
-const PUNTAJE_PESOS={negocio:0.35, valuacion:0.35, tendencia:0.30};
+const HORIZONTES={
+  largo:  {label:'Largo plazo',   sub:'Meses a años — cartera core, entrar en cualquier momento importa poco',
+    pesos:{negocio:.45, valuacion:.40, tendencia:.15, rebote:0}},
+  mediano:{label:'Mediano plazo', sub:'Semanas a pocos meses (el de siempre, sin cambios)',
+    pesos:{negocio:.35, valuacion:.35, tendencia:.30, rebote:0}},
+  corto:  {label:'Corto plazo',   sub:'Días a ~30 días — trading, como la estrategia de CEDEARs',
+    pesos:{negocio:.10, valuacion:.15, tendencia:.35, rebote:.40}},
+};
+let horizonteActual='mediano';
+try{ const _h=localStorage.getItem('vm_horizonte'); if(_h && HORIZONTES[_h]) horizonteActual=_h; }catch(e){}
+function setHorizonte(h){
+  if(!HORIZONTES[h] || h===horizonteActual){ if(HORIZONTES[h]) actualizarHorizonteUI(); return; }
+  horizonteActual=h;
+  try{ localStorage.setItem('vm_horizonte',h); }catch(e){}
+  actualizarHorizonteUI();
+  render();
+}
+function actualizarHorizonteUI(){
+  const sel=document.getElementById('hor-sel');
+  if(sel) sel.value=horizonteActual;
+}
 function puntajeDetalle(r){
   const t=tendencia(r), n=fundamental(r), v=valuacion5y(r);
   if(t===null||n===null||v===null) return null;
   // valuación: +40% más barata que su promedio de 5 años = +100, 40% más cara = −100
   // (−40% es el mismo corte que usa el veredicto para llamarla "cara")
   const v100=Math.round(clamp(v/0.40,-1,1)*100);
-  const total=Math.round(clamp(n*PUNTAJE_PESOS.negocio + v100*PUNTAJE_PESOS.valuacion + t*PUNTAJE_PESOS.tendencia,-100,100));
-  return {total, negocio:n, valuacion:v100, tendencia:t};
+  const reb=reboteScore(r);
+  const pesos=HORIZONTES[horizonteActual].pesos;
+  const total=Math.round(clamp(n*pesos.negocio + v100*pesos.valuacion + t*pesos.tendencia + (reb||0)*pesos.rebote,-100,100));
+  return {total, negocio:n, valuacion:v100, tendencia:t, rebote:reb, horizonte:horizonteActual};
 }
 function puntaje(r){ const d=puntajeDetalle(r); return d?d.total:null; }
 function puntajeTitle(r){
   const d=puntajeDetalle(r);
   if(!d) return 'Sin puntaje: faltan datos (ETF o índice sin balances, papel en ARS sin tendencia, o sin promedio histórico).';
   const s=x=>(x>0?'+':'')+x;
-  return `Negocio ${s(d.negocio)} (35%) · Valuación ${s(d.valuacion)} (35%) · Tendencia ${s(d.tendencia)} (30%)`;
+  const p=HORIZONTES[d.horizonte].pesos, pc=x=>Math.round(x*100);
+  let t=`${HORIZONTES[d.horizonte].label} · Negocio ${s(d.negocio)} (${pc(p.negocio)}%) · Valuación ${s(d.valuacion)} (${pc(p.valuacion)}%) · Tendencia ${s(d.tendencia)} (${pc(p.tendencia)}%)`;
+  if(p.rebote>0) t+=` · Rebote técnico ${d.rebote===null?'sin señal (0)':s(d.rebote)} (${pc(p.rebote)}%)`;
+  return t;
 }
 function puntajeCell(r){
   const p=puntaje(r);
@@ -2684,7 +2739,8 @@ const AYUDA={
   analistas:'<b>Analistas.</b> La opinión de los analistas de Wall Street que siguen la acción: su recomendación de consenso y cuánto por encima (o por debajo) del precio de hoy está su precio objetivo promedio. Es una opinión externa: <b>no entra en el puntaje</b>.',
   rebote:'<b>Rebote técnico.</b> Mira si el precio está cerca de una media móvil o de un nivel de Fibonacci, que son zonas donde suele frenar y rebotar. Precio arriba de la media y acercándose = posible soporte (compra); abajo y acercándose = posible resistencia (venta).',
   correlacion:'<b>Correlación.</b> Mide si dos activos se mueven juntos. <b>+100</b> = suben y bajan idéntico · <b>0</b> = no tienen relación · <b>negativo</b> = uno tiende a subir cuando el otro baja. Una cartera con todo muy correlacionado es como tener una sola apuesta; con activos poco correlacionados, las caídas de uno se compensan en parte con los otros. Se calcula con los retornos semanales de los últimos ~3 años.',
-  cartera:'<b>En cartera.</b> Cuánto suman entre todos tus clientes en este activo (USD) y cuántos clientes lo tienen.'
+  cartera:'<b>En cartera.</b> Cuánto suman entre todos tus clientes en este activo (USD) y cuántos clientes lo tienen.',
+  horizonte:'<b>Horizonte.</b> Para qué plazo estás mirando el activo — cambia cómo se pesa el puntaje: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia): entrar en el momento exacto importa poco si vas a sostenerlo años, así que manda la calidad del negocio y si está barato. <b>Mediano plazo</b> (35/35/30, el de siempre): equilibrado, es el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico): para un trade de días o semanas el negocio casi no importa — lo que manda es el momento (tendencia + si está tocando un soporte o una resistencia ahora mismo). Cambiarlo reordena Puntaje, el Ranking, la ficha y Comparar — no cambia "Qué hacer".'
 };
 function ayq(k){ return `<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="${k}">?</span>`; }
 (function(){
@@ -2973,6 +3029,7 @@ async function loadAndRender(){
 
   buildTabs();
   buildSectorChips();
+  actualizarHorizonteUI();
   showTimestamp(entry.ts,allRows);
   render();
   vmCheckCorrPend();
