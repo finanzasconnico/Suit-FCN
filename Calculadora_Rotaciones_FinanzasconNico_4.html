@@ -431,95 +431,6 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
 
   <div class="byma-estado advisor-only" id="byma-estado" style="display:none;"></div>
 
-  <!-- ── LICITACIÓN / OPORTUNIDAD MASIVA ──────────────────────────────────
-       Barre la Tenencia de TODOS los clientes (no uno a la vez) buscando a quién le
-       conviene rotar hacia una ON nueva que todavía no está en el Monitor (recién
-       licita). Reusa el MISMO motor de cálculo que la comparación individual de acá
-       arriba (getScheduleForLeg/tirDesdePrecio/retornoAHorizonteAnios) — no es una
-       fórmula nueva, es la misma aplicada a muchos clientes a la vez. Para el número
-       exacto en USD de un caso puntual, seguí usando el comparador de arriba con ese
-       cliente — esto es para EL TRIAGE (¿a quién le conviene, aunque sea de forma
-       aproximada?), no para el mensaje final con el monto exacto. -->
-  <div class="leg-card advisor-only" id="lic-panel" style="margin-bottom:18px;">
-    <div class="lic-toggle-head" onclick="toggleLicitacionPanel()">
-      <div class="leg-title" style="text-align:center;">🎯 Licitación / oportunidad masiva</div>
-      <div class="leg-sub" style="text-align:center;margin-bottom:2px;">Cargá una ON nueva y encontrá a qué clientes les conviene rotar — mensajes en lote</div>
-      <span id="lic-toggle-arrow" class="lic-toggle-arrow">▾</span>
-    </div>
-    <div id="lic-body" style="display:none;margin-top:16px;">
-      <div class="field-row">
-        <div class="field"><label>Ticker / nombre provisorio</label><input type="text" id="lic-ticker" placeholder="Ej: TECPETROL 2032" style="text-transform:uppercase;"></div>
-        <div class="field"><label>Emisor</label><input type="text" id="lic-emisor" placeholder="Tecpetrol"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Tasa / cupón anual (%)</label><input type="number" step="0.01" id="lic-tasa" placeholder="7.25"></div>
-        <div class="field"><label>Precio de licitación (1,00 = a la par)</label><input type="number" step="0.0001" id="lic-precio" value="1" title="Misma escala que el resto de la calculadora: 1,00 = a la par, NO 100. Una licitación nueva casi siempre sale a la par (1,00) salvo que se indique lo contrario."></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Vencimiento</label><input type="date" id="lic-venc"></div>
-        <div class="field"><label>Calificación</label><input type="text" id="lic-calif" placeholder="AAA" style="text-transform:uppercase;"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Fecha de la licitación <span style="color:var(--cream-dim);">— último día para entrar</span></label><input type="date" id="lic-fecha-lic" title="Las licitaciones suelen ser un solo día. Va en el mail como la única fecha para suscribir. Obligatorio para generar el envío masivo."></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Pagos por año</label>
-          <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option><option value="12">12 (mensual)</option></select>
-        </div>
-        <div class="field"><label>Amortización</label>
-          <select id="lic-amort" onchange="licOnAmortTypeChange()"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Ley</label>
-          <select id="lic-ley" onchange="licOnLeyChange()"><option value="arg" selected>Argentina — sin conversión</option><option value="ny">Nueva York — convertir cable → MEP</option></select>
-        </div>
-        <div class="field" id="lic-brecha-wrap" style="display:none;">
-          <label>Brecha CCL/MEP (%) <span style="color:var(--cream-dim);">+ 1% de canje vía AL30 (fijo)</span></label>
-          <input type="number" step="0.1" id="lic-brecha" placeholder="Ej: 2.0">
-        </div>
-      </div>
-      <div class="field">
-        <label>TIR de la ON (%) — opcional, a mano <span style="color:var(--cream-dim);">si ya la sabés (planilla, banco colocador) se usa esta y no se calcula ni se ajusta por brecha</span></label>
-        <input type="number" step="0.01" id="lic-tir-manual" placeholder="Vacío = se calcula sola del precio y los flujos">
-      </div>
-      <div class="field" id="lic-amort-custom-wrap" style="display:none;">
-        <label>Cronograma de amortización <span style="color:var(--cream-dim);">— opcional, solo para el cálculo (no va en el mail). Si no cargás fechas, se reparte en partes iguales entre todos los pagos.</span></label>
-        <div id="lic-amort-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
-        <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
-          <button type="button" class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 10px;" onclick="licAmortAgregarFila()">+ Agregar fecha</button>
-          <span id="lic-amort-suma" style="font-size:10px;color:var(--cream-dim);"></span>
-        </div>
-      </div>
-      <div class="field">
-        <label>Lámina mínima de suscripción — opcional</label>
-        <input type="number" step="1" id="lic-lamina-min" placeholder="Ej: 1000" oninput="licOnLaminaChange()">
-        <div style="font-size:10px;color:var(--cream-dim);margin-top:3px;">Sirve para tres cosas: en el comparador redondea los nominales de la ON a múltiplos de esta lámina; ofrece la licitación a clientes con liquidez USD sin invertir por encima de este monto; y (abajo) se usa como piso de tenencia mínima para no sugerir rotar posiciones que no llegan ni a una lámina.</div>
-      </div>
-
-      <div class="lic-rule-sub">Reglas del filtro (editables)</div>
-      <div class="field-row">
-        <div class="field"><label>Ventaja mínima de TIR para sugerir (p.p.)</label><input type="number" step="0.1" id="lic-ventaja-min" value="0.5"></div>
-        <div class="field">
-          <label>Notches de calificación tolerados <span style="cursor:help;opacity:.7;" title="Cuánto puede diferir la calificación del bono nuevo respecto al que el cliente ya tiene, medido en 'escalones' de la escala AAA · AA+ · AA · AA- · A+ · A · A- · BBB+ · BBB · ... Con 1 (el default), si el cliente tiene un bono AA+ se le puede ofrecer algo entre AAA y AA — un escalón para arriba o para abajo. Con 0 solo se ofrece exactamente la misma calificación. Subilo si querés ser más permisivo.">ⓘ</span></label>
-          <input type="number" step="1" id="lic-calnotch" value="1">
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>Días mínimos de tenencia</label><input type="number" step="1" id="lic-dias-min" value="90"></div>
-        <div class="field"><label>… salvo que ya ganó (USD, %)</label><input type="number" step="0.1" id="lic-ganancia-override" value="1.5"></div>
-      </div>
-      <div class="field">
-        <label>Tenencia mínima del bono a rotar (USD) — opcional <span style="color:var(--cream-dim);">no sugiere rotar posiciones más chicas (ej: si no llega ni a una lámina de suscripción)</span></label>
-        <input type="number" step="100" id="lic-tenencia-min" placeholder="Se autocompleta con la lámina mínima; podés cambiarlo">
-      </div>
-
-      <button class="btn btn-primary" style="width:100%;" onclick="buscarCandidatosLicitacion()">🔍 Buscar candidatos</button>
-
-      <div id="lic-resultados" style="margin-top:16px;"></div>
-    </div>
-  </div>
-
   <!-- ── RADAR DE ROTACIONES — TODO EL LIBRO ──────────────────────────────
        Vista de entrada única: escanea la renta fija de TODOS los clientes y agrupa por ticker
        tenido, ordenando por tipo de oportunidad (mejorar TIR / acortar duration / tomar
@@ -799,6 +710,97 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       </div>
     </details>
 
+  </div>
+
+  <!-- ── LICITACIÓN / OPORTUNIDAD MASIVA ──────────────────────────────────
+       Barre la Tenencia de TODOS los clientes (no uno a la vez) buscando a quién le
+       conviene rotar hacia una ON nueva que todavía no está en el Monitor (recién
+       licita). Reusa el MISMO motor de cálculo que la comparación individual de acá
+       arriba (getScheduleForLeg/tirDesdePrecio/retornoAHorizonteAnios) — no es una
+       fórmula nueva, es la misma aplicada a muchos clientes a la vez. Para el número
+       exacto en USD de un caso puntual, seguí usando el comparador de arriba con ese
+       cliente — esto es para EL TRIAGE (¿a quién le conviene, aunque sea de forma
+       aproximada?), no para el mensaje final con el monto exacto.
+       Reubicado al final de la página (16/09) — pedido de Nico, antes quedaba arriba de
+       todo y competía con el comparador principal por la atención. -->
+  <div class="leg-card advisor-only" id="lic-panel" style="margin-bottom:18px;">
+    <div class="lic-toggle-head" onclick="toggleLicitacionPanel()">
+      <div class="leg-title" style="text-align:center;">🎯 Licitación / oportunidad masiva</div>
+      <div class="leg-sub" style="text-align:center;margin-bottom:2px;">Cargá una ON nueva y encontrá a qué clientes les conviene rotar — mensajes en lote</div>
+      <span id="lic-toggle-arrow" class="lic-toggle-arrow">▾</span>
+    </div>
+    <div id="lic-body" style="display:none;margin-top:16px;">
+      <div class="field-row">
+        <div class="field"><label>Ticker / nombre provisorio</label><input type="text" id="lic-ticker" placeholder="Ej: TECPETROL 2032" style="text-transform:uppercase;"></div>
+        <div class="field"><label>Emisor</label><input type="text" id="lic-emisor" placeholder="Tecpetrol"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Tasa / cupón anual (%)</label><input type="number" step="0.01" id="lic-tasa" placeholder="7.25"></div>
+        <div class="field"><label>Precio de licitación (1,00 = a la par)</label><input type="number" step="0.0001" id="lic-precio" value="1" title="Misma escala que el resto de la calculadora: 1,00 = a la par, NO 100. Una licitación nueva casi siempre sale a la par (1,00) salvo que se indique lo contrario."></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Vencimiento</label><input type="date" id="lic-venc"></div>
+        <div class="field"><label>Calificación</label><input type="text" id="lic-calif" placeholder="AAA" style="text-transform:uppercase;"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Fecha de la licitación <span style="color:var(--cream-dim);">— último día para entrar</span></label><input type="date" id="lic-fecha-lic" title="Las licitaciones suelen ser un solo día. Va en el mail como la única fecha para suscribir. Obligatorio para generar el envío masivo."></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Pagos por año</label>
+          <select id="lic-freq"><option value="1">1 (anual)</option><option value="2" selected>2 (semestral)</option><option value="4">4 (trimestral)</option><option value="12">12 (mensual)</option></select>
+        </div>
+        <div class="field"><label>Amortización</label>
+          <select id="lic-amort" onchange="licOnAmortTypeChange()"><option value="bullet" selected>Bullet (todo al final)</option><option value="amortizable">Amortizable</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Ley</label>
+          <select id="lic-ley" onchange="licOnLeyChange()"><option value="arg" selected>Argentina — sin conversión</option><option value="ny">Nueva York — convertir cable → MEP</option></select>
+        </div>
+        <div class="field" id="lic-brecha-wrap" style="display:none;">
+          <label>Brecha CCL/MEP (%) <span style="color:var(--cream-dim);">+ 1% de canje vía AL30 (fijo)</span></label>
+          <input type="number" step="0.1" id="lic-brecha" placeholder="Ej: 2.0">
+        </div>
+      </div>
+      <div class="field">
+        <label>TIR de la ON (%) — opcional, a mano <span style="color:var(--cream-dim);">si ya la sabés (planilla, banco colocador) se usa esta y no se calcula ni se ajusta por brecha</span></label>
+        <input type="number" step="0.01" id="lic-tir-manual" placeholder="Vacío = se calcula sola del precio y los flujos">
+      </div>
+      <div class="field" id="lic-amort-custom-wrap" style="display:none;">
+        <label>Cronograma de amortización <span style="color:var(--cream-dim);">— opcional, solo para el cálculo (no va en el mail). Si no cargás fechas, se reparte en partes iguales entre todos los pagos.</span></label>
+        <div id="lic-amort-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:6px;">
+          <button type="button" class="btn btn-outline" style="width:auto;font-size:11px;padding:4px 10px;" onclick="licAmortAgregarFila()">+ Agregar fecha</button>
+          <span id="lic-amort-suma" style="font-size:10px;color:var(--cream-dim);"></span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Lámina mínima de suscripción — opcional</label>
+        <input type="number" step="1" id="lic-lamina-min" placeholder="Ej: 1000" oninput="licOnLaminaChange()">
+        <div style="font-size:10px;color:var(--cream-dim);margin-top:3px;">Sirve para tres cosas: en el comparador redondea los nominales de la ON a múltiplos de esta lámina; ofrece la licitación a clientes con liquidez USD sin invertir por encima de este monto; y (abajo) se usa como piso de tenencia mínima para no sugerir rotar posiciones que no llegan ni a una lámina.</div>
+      </div>
+
+      <div class="lic-rule-sub">Reglas del filtro (editables)</div>
+      <div class="field-row">
+        <div class="field"><label>Ventaja mínima de TIR para sugerir (p.p.)</label><input type="number" step="0.1" id="lic-ventaja-min" value="0.5"></div>
+        <div class="field">
+          <label>Notches de calificación tolerados <span style="cursor:help;opacity:.7;" title="Cuánto puede diferir la calificación del bono nuevo respecto al que el cliente ya tiene, medido en 'escalones' de la escala AAA · AA+ · AA · AA- · A+ · A · A- · BBB+ · BBB · ... Con 1 (el default), si el cliente tiene un bono AA+ se le puede ofrecer algo entre AAA y AA — un escalón para arriba o para abajo. Con 0 solo se ofrece exactamente la misma calificación. Subilo si querés ser más permisivo.">ⓘ</span></label>
+          <input type="number" step="1" id="lic-calnotch" value="1">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Días mínimos de tenencia</label><input type="number" step="1" id="lic-dias-min" value="90"></div>
+        <div class="field"><label>… salvo que ya ganó (USD, %)</label><input type="number" step="0.1" id="lic-ganancia-override" value="1.5"></div>
+      </div>
+      <div class="field">
+        <label>Tenencia mínima del bono a rotar (USD) — opcional <span style="color:var(--cream-dim);">no sugiere rotar posiciones más chicas (ej: si no llega ni a una lámina de suscripción)</span></label>
+        <input type="number" step="100" id="lic-tenencia-min" placeholder="Se autocompleta con la lámina mínima; podés cambiarlo">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;" onclick="buscarCandidatosLicitacion()">🔍 Buscar candidatos</button>
+
+      <div id="lic-resultados" style="margin-top:16px;"></div>
+    </div>
   </div>
 
 </div>

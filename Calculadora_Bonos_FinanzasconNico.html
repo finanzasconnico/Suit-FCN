@@ -369,24 +369,24 @@ function daysBetween(d1,d2){ return Math.round((d2-d1)/86400000); }
 // ═══════════════════════════════════════════════════════
 // LIQUIDACIÓN
 // ═══════════════════════════════════════════════════════
+// La fecha de liquidación SIEMPRE es editable a mano — antes quedaba con "readOnly" salvo que
+// primero se cambiara "Plazo" a MANUAL, lo que la hacía parecer bloqueada (pedido real de Nico:
+// "poder poner la fecha de liquidación que afecta por completo la TIR" — ya afectaba la TIR por
+// debajo, pero no se podía escribir). Ahora "Plazo" es solo un atajo que PRECARGA la fecha
+// (T+0/T+1 = hoy+N días); tocar la fecha a mano pasa el selector a MANUAL para que no se la
+// pisemos de vuelta si después cambia "Fecha de hoy" o se vuelve a tocar el selector.
 function onPlazoChange(){
   var plazo = document.getElementById('l-plazo').value;
+  if(plazo === 'manual'){ renderAll(); return; }
   var fechaHoy = parseISO(document.getElementById('l-hoy').value) || new Date();
-  var fechaLiqInput = document.getElementById('l-fecha');
-  if(plazo === 'manual'){
-    fechaLiqInput.readOnly = false;
-  } else {
-    fechaLiqInput.readOnly = true;
-    var d = new Date(fechaHoy.getTime());
-    d.setDate(d.getDate() + parseInt(plazo));
-    fechaLiqInput.value = isoDate(d);
-  }
+  var d = new Date(fechaHoy.getTime());
+  d.setDate(d.getDate() + parseInt(plazo));
+  document.getElementById('l-fecha').value = isoDate(d);
   renderAll();
 }
 function onSettlementChange(){
-  var plazo = document.getElementById('l-plazo').value;
-  if(plazo !== 'manual') onPlazoChange();
-  else renderAll();
+  document.getElementById('l-plazo').value = 'manual';
+  renderAll();
 }
 
 // Publica el archivo recién elegido en el storage compartido (fcn_shared_v1) además de
