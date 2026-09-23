@@ -88,7 +88,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .field label{display:block;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:4px;}
 .field input,.field select{width:100%;padding:7px 10px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--radius);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:12px;outline:none;transition:border-color .2s;}
 .field input:focus,.field select:focus{border-color:var(--balanz);}
-.field select option{background:#0E2622;}
+.field select option{background:var(--navy-mid);}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .field-big input{font-size:16px;font-weight:600;padding:9px 10px;}
 .ac-wrap{position:relative;}
@@ -144,6 +144,14 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .rot-comp-row .rc-dur{color:var(--cream-dim);width:48px;text-align:right;flex-shrink:0;}
 .rot-comp-row .rc-calif{width:44px;text-align:right;color:var(--cream-dim);flex-shrink:0;}
 .rot-comp-row .rc-liq{width:20px;text-align:center;flex-shrink:0;font-size:12px;cursor:help;}
+/* "Qué vender para comprar X" — mismo look que Alternativas para rotar */
+.vpc-scope{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.vpc-scope .preset-chip{font-size:10.5px;padding:3px 9px;}
+.rot-comp-row .rc-tir.peor,.rot-comp-row .rc-dur.peor,.rot-comp-row .rc-calif.peor{color:var(--critical);font-weight:600;}
+.rot-comp-row .rc-tir.neutro{color:var(--cream-dim);font-weight:400;}
+.rot-comp-row .rc-extra{color:var(--cream-dim);width:92px;text-align:right;flex-shrink:0;font-size:10.5px;white-space:nowrap;}
+.vpc-head{cursor:default;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--cream-dim);}
+.vpc-head:hover{background:none;}
 
 #cliente-picker-wrap .chip-row:empty{margin:0;}
 #cliente-activo-label{font-size:10.5px;color:var(--cream-dim);margin-top:8px;}
@@ -593,6 +601,34 @@ table.compare-table td.mejor{background:rgba(12,163,12,.07);box-shadow:inset 0 0
       </div>
       <div class="chip-row" id="c-chips"></div>
       <div class="ticker-holders" id="c-holders"></div>
+
+      <div class="rot-comp-wrap advisor-only" id="vpc-wrap" style="display:none;margin-top:10px;">
+        <div class="rot-comp-header">
+          <span>🔄 Qué vender para comprar <b id="vpc-target"></b> <span class="rot-comp-count" id="vpc-count"></span></span>
+          <span class="rot-comp-toggle" onclick="toggleFiltrosVPC()">⚙ Filtros</span>
+        </div>
+        <div class="vpc-scope" id="vpc-scope"></div>
+        <div class="rot-comp-filtros" id="vpc-filtros" style="display:none;">
+          <label title="Dominado = no le gana al bono a comprar en NADA (TIR, duration ni calificación) y pierde en al menos una. 'Peor en alguna' es más amplio: incluye, por ejemplo, un bono con más TIR pero peor calificación (rotar para ganar calidad).">Criterio
+            <select id="vpc-modo" onchange="renderVenderParaComprar(true)" style="padding:3px 4px;background:var(--wash-1);border:1px solid var(--border);border-radius:4px;color:var(--cream);font-size:10.5px;">
+              <option value="dominado" selected>Dominados (peor o igual en todo)</option>
+              <option value="alguno">Peor en al menos una</option>
+            </select></label>
+          <label><input type="checkbox" id="vpc-c-tir" checked onchange="renderVenderParaComprar(true)" style="width:auto;"> TIR</label>
+          <label><input type="checkbox" id="vpc-c-dur" checked onchange="renderVenderParaComprar(true)" style="width:auto;"> Duration</label>
+          <label><input type="checkbox" id="vpc-c-cal" checked onchange="renderVenderParaComprar(true)" style="width:auto;"> Calificación</label>
+          <label title="Diferencias menores a esto se consideran 'iguales' (ni mejor ni peor)">Empate TIR ± <input type="number" step="0.1" min="0" id="vpc-tol-tir" value="0.25" oninput="renderVenderParaComprar(true)"> p.p.</label>
+          <label title="Diferencias de duration menores a esto se consideran 'iguales'">Empate duration ± <input type="number" step="0.1" min="0" id="vpc-tol-dur" value="0.5" oninput="renderVenderParaComprar(true)"> años</label>
+          <label>Tipo:
+            <span><input type="checkbox" id="vpc-t-on" checked onchange="renderVenderParaComprar(true)" style="width:auto;"> ONs</span>
+            <span><input type="checkbox" id="vpc-t-sob" checked onchange="renderVenderParaComprar(true)" style="width:auto;"> Soberanos</span>
+            <span><input type="checkbox" id="vpc-t-prov" checked onchange="renderVenderParaComprar(true)" style="width:auto;"> Provinciales</span></label>
+          <label title="Solo mostrar bonos donde rotar suma al menos esta TIR (vacío = sin mínimo). Deja afuera los que solo están peor en duration o calificación.">Ganar TIR ≥ <input type="number" step="0.25" id="vpc-min-dtir" placeholder="—" oninput="renderVenderParaComprar(true)"> p.p.</label>
+          <label title="Solo en Cartera del cliente / Todo el libro: descarta posiciones chicas (en el libro, se mira la suma de todos los clientes)">Tenencia ≥ USD <input type="number" step="500" min="0" id="vpc-min-ten" placeholder="—" style="width:70px;" oninput="renderVenderParaComprar(true)"></label>
+          <label>Buscar <input type="text" id="vpc-q" placeholder="ticker o emisor" style="width:110px;" oninput="renderVenderParaComprar(true)"></label>
+        </div>
+        <div class="rot-comp-list" id="vpc-list"></div>
+      </div>
 
       <details class="cond-details" id="c-details">
         <summary>Condiciones (autocompletadas) — editar si hace falta</summary>
@@ -1526,6 +1562,9 @@ function renderAll(){
     document.getElementById('rot-comp-wrap').style.display='none';
   }
   _skipComparablesRerender=false;
+  // "Qué vender para comprar X" — solo depende del ticker a comprar (no necesita la venta cargada,
+  // justamente sirve para elegirla). Tiene su propio cache, así que el slider no lo recalcula.
+  renderVenderParaComprar(false);
 
   if(!venta || !compra){
     document.getElementById('empty-state').style.display='';
@@ -3045,6 +3084,195 @@ function liqBadgeMini(ticker){
   return '<span class="rc-liq" title="'+lq.label+' (BYMA '+(BYMA_STORE.asOfText||'')+')">'+lq.emoji+'</span>';
 }
 
+// ═══════════════════════════════════════════════════════
+// "QUÉ VENDER PARA COMPRAR X" — el espejo de "Alternativas para rotar": se parte del bono a
+// COMPRAR y se listan los bonos que conviene vender para entrar en él porque están peor en TIR
+// (menos), duration (más larga = más riesgo de tasa) o calificación (peor). Pedido de Nico (23/09).
+// Alcance: cartera del cliente activo | todo el libro (tickers que tiene algún cliente) | todo
+// el universo del Monitor. Mismas fuentes de datos que el Radar (tirActualDeTicker con 'venta'
+// para lo que se vende y 'compra' para lo que se compra, durationBond, califBond) — así los
+// números coinciden con los chips y el Radar.
+// ═══════════════════════════════════════════════════════
+var vpcScope = null;        // 'cliente' | 'libro' | 'universo' — null = automático (cliente si hay, si no libro)
+var _vpcUltimaClave = null; // evita recalcular en cada movimiento del slider de horizonte (renderAll)
+
+// Calificación estricta: el token tiene que estar suelto (no pegado a letras/números). Con
+// calificacionRank() a secas, una calificación mal cargada como "D30S6" (el ticker de una letra)
+// se leía como "D" (default) y la letra aparecía como "peor calificación".
+function _vpcRank(calif){
+  if(!calif) return null;
+  var m = String(calif).toUpperCase().match(/(^|[^A-Z0-9])(AAA|AA[+-]?|A[+-]?|BBB[+-]?|BB[+-]?|B[+-]?|CCC[+-]?|CC|C|D)(?![A-Z0-9])/);
+  return m ? ESCALA_CALIF.indexOf(m[2]) : null;
+}
+function toggleFiltrosVPC(){
+  var el = document.getElementById('vpc-filtros');
+  el.style.display = el.style.display==='none' ? '' : 'none';
+}
+function setVpcScope(s){ vpcScope = s; renderVenderParaComprar(true); }
+
+// Datos del bono a comprar: Monitor/BYMA primero (mismo criterio que el resto de la lista);
+// si no está (cargado a mano), lo que diga el formulario.
+function _vpcDatosCompra(tk){
+  var b = BOND_DB[tk] || FLUJO_DB[tk] ? (BOND_DB[tk] || {ticker:tk}) : null;
+  var tir = b ? tirActualDeTicker(tk, 'compra') : null;
+  var dur = b ? durationBond(b) : null;
+  var calif = b ? califBond(b) : null;
+  // c-tir/c-duration pueden venir crudos ("7.25", de seleccionarBono) o formateados es-AR ("7,25", de renderAll)
+  var num = function(id){ var s = String(document.getElementById(id).value||''); if(s.indexOf(',')>=0) s = s.replace(/\./g,'').replace(',', '.'); var v = parseFloat(s); return isNaN(v) ? null : v; };
+  if(tir==null) tir = num('c-tir');
+  if(dur==null) dur = num('c-duration');
+  if(!calif) calif = document.getElementById('c-calif').value || null;
+  return {ticker:tk, tir:tir, duration:dur, calif:calif, rank:_vpcRank(calif)};
+}
+
+// Compara un candidato a vender contra el bono a comprar. Devuelve por dimensión:
+// 1 = el candidato está PEOR, 0 = empate / sin dato, -1 = el candidato está MEJOR.
+function _vpcComparar(x, c, crit, tolTir, tolDur){
+  var r = {tir:0, dur:0, cal:0};
+  if(crit.tir && x.tir!=null && c.tir!=null){
+    var d = c.tir - x.tir; r.tir = d>tolTir ? 1 : (d<-tolTir ? -1 : 0);
+  }
+  if(crit.dur && x.duration!=null && c.duration!=null){
+    var dd = x.duration - c.duration; r.dur = dd>tolDur ? 1 : (dd<-tolDur ? -1 : 0);
+  }
+  if(crit.cal && x.rank!=null && c.rank!=null){
+    r.cal = x.rank>c.rank ? 1 : (x.rank<c.rank ? -1 : 0);
+  }
+  return r;
+}
+
+function renderVenderParaComprar(forzar){
+  var wrap = document.getElementById('vpc-wrap');
+  if(!wrap) return;
+  var tk = document.getElementById('c-ticker').value.trim().toUpperCase();
+  if(!tk){ wrap.style.display='none'; _vpcUltimaClave=null; return; }
+
+  var scope = vpcScope || (clienteActivoNombre ? 'cliente' : 'libro');
+  if(scope==='cliente' && !clienteActivoNombre) scope = 'libro';
+  var modo = document.getElementById('vpc-modo').value;
+  var crit = {tir:document.getElementById('vpc-c-tir').checked, dur:document.getElementById('vpc-c-dur').checked, cal:document.getElementById('vpc-c-cal').checked};
+  var tolTir = _rNum('vpc-tol-tir', 0.25), tolDur = _rNum('vpc-tol-dur', 0.5);
+  var tipoPrecio = document.getElementById('p-precio-tipo').value;
+  var tipos = {on:document.getElementById('vpc-t-on').checked, sob:document.getElementById('vpc-t-sob').checked, prov:document.getElementById('vpc-t-prov').checked};
+  var minDTir = _rNum('vpc-min-dtir', null), minTen = _rNum('vpc-min-ten', null);
+  var q = String(document.getElementById('vpc-q').value||'').trim().toUpperCase();
+  var clave = [tk, scope, tipos.on, tipos.sob, tipos.prov, minDTir, minTen, q, clienteActivoNombre, modo, crit.tir, crit.dur, crit.cal, tolTir, tolDur, tipoPrecio, document.getElementById('c-precio').value, Object.keys(TENENCIA_POR_TICKER).length, (BYMA_STORE&&BYMA_STORE.ready)?1:0].join('|');
+  if(!forzar && clave===_vpcUltimaClave) return;
+  _vpcUltimaClave = clave;
+  wrap.style.display = '';
+  document.getElementById('vpc-target').textContent = tk;
+
+  var hayCliente = !!clienteActivoNombre, hayLibro = Object.keys(TENENCIA_POR_TICKER).length>0;
+  var chips = [];
+  if(hayCliente) chips.push(['cliente', '👤 Cartera de '+clienteActivoNombre]);
+  if(hayLibro) chips.push(['libro', '📚 Todo el libro (tus clientes)']);
+  chips.push(['universo', '🌐 Todo el Monitor']);
+  if(!hayLibro && scope==='libro') scope = 'universo';
+  document.getElementById('vpc-scope').innerHTML = chips.map(function(c){
+    return '<span class="preset-chip'+(c[0]===scope?' active':'')+'" onclick="setVpcScope(\''+c[0]+'\')">'+_rEsc(c[1])+'</span>';
+  }).join('');
+
+  var C = _vpcDatosCompra(tk);
+  var list = document.getElementById('vpc-list'), countEl = document.getElementById('vpc-count');
+  if(!tipos.on && !tipos.sob && !tipos.prov){
+    countEl.textContent=''; list.innerHTML = '<div class="rot-comp-empty">Tildá al menos un tipo de bono en ⚙ Filtros.</div>'; return;
+  }
+  if(!crit.tir && !crit.dur && !crit.cal){
+    countEl.textContent=''; list.innerHTML = '<div class="rot-comp-empty">Tildá al menos un criterio en ⚙ Filtros.</div>'; return;
+  }
+
+  // Universo de candidatos a vender según el alcance.
+  var fuente = [];
+  if(scope==='cliente'){
+    fuente = (TENENCIA_POR_CLIENTE[clienteActivoNombre]||[]).map(function(p){ return {ticker:p.ticker, nominales:p.nominales, tenencia:p.tenencia}; });
+  } else if(scope==='libro'){
+    fuente = Object.keys(TENENCIA_POR_TICKER).map(function(t){
+      var hs = TENENCIA_POR_TICKER[t];
+      return {ticker:t, clientes:hs.length, tenencia:hs.reduce(function(s,h){ return s+h.tenencia; },0)};
+    });
+  } else {
+    fuente = universoBonos().map(function(b){ return {ticker:b.ticker}; });
+  }
+
+  var filas = [];
+  fuente.forEach(function(f){
+    if(f.ticker===tk) return;
+    var b = BOND_DB[f.ticker] || (FLUJO_DB[f.ticker] ? {ticker:f.ticker} : null);
+    if(!b) return; // no está en el Monitor: sin datos para comparar
+    var emisorX = (FLUJO_DB[f.ticker]&&FLUJO_DB[f.ticker].emisor) || b.emisor || '';
+    // Tipo: el Monitor solo separa ON vs "Soberano" (hoja de soberanos, que incluye provincias y
+    // CABA) — las provinciales se reconocen por el emisor.
+    var tipoX = b.categoria==='ON' ? 'on' : (/provincia|ciudad|municipalidad|c\.?a\.?b\.?a/i.test(emisorX) ? 'prov' : 'sob');
+    if(!b.categoria && FLUJO_DB[f.ticker]) tipoX = /provincia|ciudad|municipalidad/i.test(emisorX) ? 'prov' : 'on';
+    if(!tipos[tipoX]) return;
+    if(q && f.ticker.toUpperCase().indexOf(q)<0 && emisorX.toUpperCase().indexOf(q)<0) return;
+    if(minTen!=null && scope!=='universo' && (f.tenencia||0) < minTen) return;
+    var tir = tirActualDeTicker(f.ticker, 'venta');
+    // Mismo techo de sanidad que el resto (TIR >20% casi siempre es dato roto o default).
+    // TIR negativa = letra en pesos/dollar-linked mal leída o precio roto, no un bono comparable.
+    if(tir!=null && (tir>20 || tir<0)) return;
+    var dur = durationBond(b);
+    if(dur!=null && dur<0.25) return; // a semanas de vencer: no tiene sentido venderlo para rotar
+    var calif = califBond(b);
+    var X = {tir:tir, duration:dur, calif:calif, rank:_vpcRank(calif)};
+    var cmp = _vpcComparar(X, C, crit, tolTir, tolDur);
+    var peores = (cmp.tir>0) + (cmp.dur>0) + (cmp.cal>0);
+    var mejores = (cmp.tir<0) + (cmp.dur<0) + (cmp.cal<0);
+    if(peores===0) return;
+    if(modo==='dominado' && mejores>0) return;
+    if(minDTir!=null && (tir==null || C.tir==null || C.tir-tir < minDTir)) return;
+    filas.push({ticker:f.ticker, emisor:emisorX, tir:tir, duration:dur,
+      calif:X.rank!=null?calif:null, cmp:cmp, peores:peores, mejores:mejores,
+      dTir:(tir!=null && C.tir!=null) ? C.tir-tir : null,
+      nominales:f.nominales, tenencia:f.tenencia, clientes:f.clientes});
+  });
+  // Primero los que pierden en más dimensiones; después por cuánta TIR se gana al rotar;
+  // en el libro/cliente, a igualdad, lo que más plata mueve.
+  filas.sort(function(a,b2){
+    if(b2.peores!==a.peores) return b2.peores-a.peores;
+    var da = a.dTir!=null?a.dTir:-99, db = b2.dTir!=null?b2.dTir:-99;
+    if(db!==da) return db-da;
+    return (b2.tenencia||0)-(a.tenencia||0);
+  });
+
+  var faltan = [];
+  if(crit.tir && C.tir==null) faltan.push('TIR');
+  if(crit.dur && C.duration==null) faltan.push('duration');
+  if(crit.cal && C.rank==null) faltan.push('calificación');
+  var aviso = faltan.length ? '<div class="rot-comp-empty">⚠ '+_rEsc(tk)+' no tiene '+faltan.join(' ni ')+' — ese criterio no se está usando.</div>' : '';
+
+  if(!filas.length){
+    countEl.textContent = '';
+    list.innerHTML = aviso + '<div class="rot-comp-empty">Nada '+(scope==='cliente'?'en la cartera de este cliente':scope==='libro'?'en el libro':'en el Monitor')+' está peor que '+_rEsc(tk)+' con estos criterios'+(modo==='dominado'?' — probá "Peor en al menos una" en ⚙ Filtros.':' — revisá ⚙ Filtros.')+'</div>';
+    return;
+  }
+  countEl.textContent = '('+filas.length+')';
+  var MAX = 40;
+  var extraLbl = scope==='cliente' ? 'Tenencia' : scope==='libro' ? 'Clientes' : '';
+  var head = '<div class="rot-comp-row vpc-head"><span class="rc-ticker">Vender</span><span class="rc-emisor">Emisor</span>'+
+    '<span class="rc-tir neutro">TIR</span><span class="rc-dur">Dur.</span><span class="rc-calif">Calif.</span>'+
+    (extraLbl?'<span class="rc-extra">'+extraLbl+'</span>':'')+'<span class="rc-liq"></span></div>';
+  var cTxt = '<div class="rot-comp-empty" style="padding-bottom:2px;">'+_rEsc(tk)+': TIR '+(C.tir!=null?fmtNum(C.tir,2)+'%':'—')+' · Dur. '+(C.duration!=null?fmtNum(C.duration,1)+'a':'—')+' · '+(C.rank!=null?_rEsc(C.calif):'sin calif.')+' — en rojo, en qué está peor cada uno. Clic = cargarlo como bono a VENDER.</div>';
+  list.innerHTML = aviso + cTxt + head + filas.slice(0,MAX).map(function(r){
+    var t = r.ticker.replace(/'/g,"\\'");
+    var onclick = scope==='cliente'
+      ? 'autofillClienteBono(\''+t+'\','+r.nominales+','+r.tenencia+')'
+      : 'seleccionarBono(\'venta\',\''+t+'\')';
+    var extra = scope==='cliente' ? fmtUSD(r.tenencia)
+      : scope==='libro' ? (r.clientes+' · '+fmtUSD(r.tenencia)) : '';
+    var tit = 'Vender '+r.ticker+' para comprar '+tk+(r.dTir!=null?' — '+(r.dTir>=0?'+':'')+fmtNum(r.dTir,2)+' p.p. de TIR':'');
+    return '<div class="rot-comp-row" onclick="'+onclick+'" title="'+_rEsc(tit)+'">'+
+      '<span class="rc-ticker">'+_rEsc(r.ticker)+'</span>'+
+      '<span class="rc-emisor">'+_rEsc(r.emisor||'—')+'</span>'+
+      '<span class="rc-tir '+(r.cmp.tir>0?'peor':'neutro')+'">'+(r.tir!=null?fmtNum(r.tir,2)+'%':'—')+'</span>'+
+      '<span class="rc-dur'+(r.cmp.dur>0?' peor':'')+'">'+(r.duration!=null?fmtNum(r.duration,1)+'a':'—')+'</span>'+
+      '<span class="rc-calif'+(r.cmp.cal>0?' peor':'')+'">'+_rEsc(r.calif||'—')+'</span>'+
+      (extraLbl?'<span class="rc-extra">'+extra+'</span>':'')+
+      liqBadgeMini(r.ticker)+
+    '</div>';
+  }).join('') + (filas.length>MAX ? '<div class="rot-comp-empty">…y '+(filas.length-MAX)+' más (ajustá los filtros para acotar).</div>' : '');
+}
+
 function onHorizonSlide(){
   currentHorizonAnios = parseFloat(document.getElementById('horizon-slider').value);
   document.querySelectorAll('.preset-chip').forEach(function(c){ c.classList.remove('active'); });
@@ -3733,13 +3961,14 @@ function seleccionarClienteActivo(nombre){
   renderClienteTickerChips();
   var rc = document.getElementById('reporte-cliente-input');
   if(rc) rc.value = nombre;
-  if(lastCtx) renderAll();
+  if(vpcScope==='libro' || vpcScope==='universo') vpcScope = null; // al elegir cliente, mostrar su cartera
+  if(lastCtx) renderAll(); else renderVenderParaComprar(true);
 }
 function limpiarClienteActivo(){
   clienteActivoNombre = null;
   document.getElementById('cliente-activo-label').style.display = 'none';
   document.getElementById('cliente-ticker-chips').innerHTML = '';
-  if(lastCtx) renderAll();
+  if(lastCtx) renderAll(); else renderVenderParaComprar(true);
 }
 // TIR "actual" de un ticker fuera de una rotación puntual — mismo orden de prioridad que usa
 // seleccionarBono() al autocompletar (cronograma real > MEP/Cable según el tipo elegido).

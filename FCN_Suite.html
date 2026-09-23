@@ -393,6 +393,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inac-badge.seg{background:var(--wash-2);color:var(--muted);}
 .inac-done{border:1px solid var(--jade);background:var(--jade-d);}
 .inac-done ol{margin:6px 0 0;padding-left:18px;font-size:11.5px;line-height:1.9;color:var(--text);}
+.inac-pts{display:inline-block;min-width:30px;text-align:center;padding:2px 7px;border-radius:12px;font-family:var(--font-m);font-size:11.5px;font-weight:600;cursor:help;}
+.inac-pts.alta{background:var(--jade);color:#fff;}
+.inac-pts.media{background:rgba(219,160,60,.18);color:var(--ambar);border:1px solid rgba(219,160,60,.4);}
+.inac-pts.baja{background:var(--wash-2);color:var(--muted);}
+.inac-motivos{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.inac-badge.zona{background:var(--jade-d);color:var(--jade);}
+.inac-cfg{margin-bottom:12px;border:1px dashed var(--border);border-radius:var(--r);padding:8px 12px;}
+.inac-cfg summary{cursor:pointer;font-size:11.5px;color:var(--muted);}
+.inac-cfg-body{margin-top:10px;}
 @media (max-width:640px){.inac-card{padding:12px;}.inac-textarea{min-height:200px;}}
 .aliq-help{font-size:10px;color:var(--muted);line-height:1.6;}
 .aliq-help a{color:var(--jade);}
@@ -996,6 +1005,22 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
               <option value="nunca">Nunca contactados</option>
               <option value="todos">Todos (con y sin mails)</option>
             </select>
+            <select id="inacPuntajeMin" onchange="renderInactivos()" title="Calificación estimada (ver ⚙ Cómo se calcula)">
+              <option value="">Todos los puntajes</option>
+              <option value="alta">🔥 Puntaje alto (55+)</option>
+              <option value="media">Medio o más (35+)</option>
+            </select>
+            <select id="inacZonaF" onchange="renderInactivos()">
+              <option value="">Todas las zonas</option>
+              <option value="A">Zona premium A</option>
+              <option value="AB">Zona premium A + B</option>
+              <option value="ABC">Premium + ciudades grandes</option>
+            </select>
+            <select id="inacFondeo" onchange="renderInactivos()" title="Si alguna vez ingresó plata a la cuenta (columna Primer Fondeo)">
+              <option value="">Fondeo: todos</option>
+              <option value="si">Fondearon alguna vez</option>
+              <option value="no">Nunca fondearon</option>
+            </select>
             <select id="inacActividad" onchange="renderInactivos()" title="Actividad AFIP del Stock"></select>
             <label for="inacEdadMin">Edad</label>
             <input type="number" id="inacEdadMin" min="0" max="120" placeholder="desde" style="width:74px;" oninput="renderInactivos()">
@@ -1003,12 +1028,30 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <label for="inacAumMin">AUM mín.</label>
             <input type="number" id="inacAumMin" min="0" step="100" placeholder="0" style="width:90px;" oninput="renderInactivos()">
             <select id="inacOrden" onchange="renderInactivos()" title="Orden de la lista (y de la tanda)">
+              <option value="puntaje">Mejor puntaje primero</option>
               <option value="edad">Mayor edad primero</option>
               <option value="aum">Mayor AUM primero</option>
               <option value="login">Último login más reciente</option>
               <option value="nombre">Nombre A-Z</option>
             </select>
           </div>
+          <details class="inac-cfg">
+            <summary>⚙ Cómo se calcula el puntaje · barrios premium</summary>
+            <div class="inac-cfg-body">
+              <div class="aliq-help" style="margin-bottom:10px;">El Stock no dice cuánta plata tiene un inactivo (el AUM casi siempre es 0), así que el puntaje (0–100) estima potencial:
+                <b>zona</b> premium A +25 / B +15 / ciudad grande +6, +5 si tus clientes activos de esa localidad tienen AUM mediano ≥ 5K ·
+                <b>edad</b> 55–74 +20, 45–54 +17, 75+ +14, 35–44 +11 ·
+                <b>actividad</b> rentista, directivo, contador, abogado… +20, profesional independiente / jubilado / comercio +15, empleado +8, estudiante 0 ·
+                <b>fondeó alguna vez</b> +15 · <b>operó en el último año</b> +8 · entró en los últimos 6 meses +5 ·
+                <b>convenio corporativo</b> +6 · <b>mail de empresa</b> +4 · tiene saldo +3 · persona jurídica +8.
+                🔥 Alto = 55+, medio = 35–54. Pasá el mouse por el número de cada cliente para ver el detalle.</div>
+              <div class="aliq-row" style="flex-wrap:wrap;">
+                <div class="aliq-field" style="min-width:220px;"><label>Zona premium A (una por línea · "barrio" o "barrio, provincia")</label><textarea class="inac-textarea" id="inacZonaA" style="min-height:160px;font-family:var(--font-m);font-size:11px;" onchange="inacGuardarZonas()"></textarea></div>
+                <div class="aliq-field" style="min-width:220px;"><label>Zona premium B</label><textarea class="inac-textarea" id="inacZonaB" style="min-height:160px;font-family:var(--font-m);font-size:11px;" onchange="inacGuardarZonas()"></textarea></div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:6px;"><button class="aliq-btn-cancel" onclick="inacRestaurarZonas()">↺ Barrios originales</button></div>
+            </div>
+          </details>
           <div class="inac-actions" style="margin-bottom:10px;">
             <span class="inac-selinfo" id="inacSelInfo"></span>
             <label style="font-size:11px;color:var(--muted);">Tanda:</label>
@@ -1726,7 +1769,8 @@ function parseStockFCN(entry) {
         edad: parseInt(row['Edad'], 10) || null,
         actividad: String(row['Actividad AFIP'] || '').trim(),
         localidad: String(row['Localidad'] || '').trim(),
-        fj: String(row['F/J'] || '').trim() };
+        fj: String(row['F/J'] || '').trim(),
+        arancel: String(row['Arancel'] || '').trim() };
     });
     return mapa;
   } catch (e) { console.warn('[Dashboard] error leyendo stock de cuentas', e); return null; }
@@ -2818,10 +2862,205 @@ async function generarDatosLiquidez() {
 const INAC_MAILS_KEY = 'fcn_inac_mails_v1';
 const INAC_ENVIOS_KEY = 'fcn_inac_envios_v1';
 const INAC_UNSUB_URL = 'https://suit-fcn.vercel.app/unsubscribe.html';
-const INAC_COLS = ['Saludo', 'Nombre', 'Email', 'Comitente', 'Cuenta', 'Edad', 'Actividad', 'Localidad'];
+const INAC_COLS = ['Saludo', 'Nombre', 'Email', 'Comitente', 'Cuenta', 'Puntaje', 'Zona', 'Edad', 'Actividad', 'Localidad'];
 // Actividades AFIP que suelen tener más capacidad de ahorro (el AUM de un inactivo casi siempre es 0).
 const INAC_ACT_POTENCIAL = ['jubilado', 'profesional independiente', 'ejecutivo', 'rentista', 'contador',
   'comercio', 'agricultura', 'abogado', 'productor', 'inmobiliari', 'despachante', 'deportista profesional'];
+
+// ── Calificación (puntaje 0–100) ── El AUM de un inactivo casi siempre es 0, así que el
+// puntaje estima potencial con lo que sí trae el Stock: zona, edad, actividad, si alguna vez
+// fondeó, actividad reciente, convenio corporativo, mail de empresa y persona jurídica.
+// Zonas: una por línea, "barrio" o "barrio, provincia" (la provincia desambigua: San Isidro
+// de Catamarca, Pilar de Córdoba). Se comparan contra la localidad SIN la provincia del final.
+const INAC_ZONAS_KEY = 'fcn_inac_zonas_v1';
+const INAC_ZONA_A_DEF = `puerto madero
+recoleta
+palermo
+belgrano, caba
+nuñez
+barrio parque
+las cañitas
+retiro, caba
+colegiales
+villa devoto
+san isidro, buenos aires
+martinez, buenos aires
+acassuso
+beccar
+la lucila
+olivos, buenos aires
+vicente lopez, buenos aires
+florida, buenos aires
+nordelta
+villa allende
+mendiolaza
+cerro de las rosas
+villa belgrano, cordoba
+urca, cordoba
+valle escondido
+yerba buena, tucuman
+funes, santa fe
+fisherton
+chacras de coria
+dalvian`;
+const INAC_ZONA_B_DEF = `caballito
+villa urquiza
+coghlan
+saavedra, caba
+villa crespo
+almagro
+villa del parque
+villa pueyrredon
+parque chas
+villa ortuzar
+boulogne
+victoria, buenos aires
+san fernando, buenos aires
+tigre, buenos aires
+benavidez
+pilar, buenos aires
+del viso
+manzanares
+escobar, buenos aires
+maschwitz
+bella vista, buenos aires
+castelar
+haedo
+ramos mejia
+villa ballester
+adrogue
+banfield
+temperley
+lomas de zamora
+canning
+city bell
+gonnet
+godoy cruz
+lujan de cuyo
+tres cerritos
+bariloche
+pinamar
+carilo
+nueva cordoba`;
+// Ciudades grandes / CABA sin barrio: suma poco, pero más que el resto del país.
+const INAC_CIUDADES = ['caba', 'ciudad de buenos aires', 'capital federal', 'ciudad autonoma de buenos aires', 'buenos aires',
+  'la plata', 'rosario', 'cordoba', 'cordoba capital', 'capital', 'mar del plata', 'mendoza', 'neuquen', 'bahia blanca',
+  'santa fe', 'san miguel de tucuman', 'salta', 'salta capital', 'parana'];
+const INAC_PROVINCIAS = ['caba', 'buenos aires', 'cordoba', 'santa fe', 'mendoza', 'tucuman', 'salta', 'entre rios', 'neuquen',
+  'rio negro', 'chubut', 'jujuy', 'la pampa', 'misiones', 'chaco', 'corrientes', 'catamarca', 'la rioja', 'san juan', 'san luis',
+  'santiago del estero', 'formosa', 'santa cruz', 'tierra del fuego'];
+const INAC_MAIL_GENERICOS = /^(gmail|hotmail|yahoo|outlook|live|icloud|msn|aol|protonmail|me|fibertel|speedy|arnet|ciudad|uolsinectis)\./;
+// Actividades por nivel (se busca el texto dentro de la Actividad AFIP).
+const INAC_ACT_ALTA = ['rentista', 'ejecutivo', 'directivo', 'contador', 'abogado', 'despachante', 'productor', 'inmobiliari',
+  'agricultura', 'deportista profesional', 'medico', 'escribano', 'arquitecto', 'ingeniero'];
+const INAC_ACT_MEDIA_ALTA = ['profesional independiente', 'jubilado', 'comercio'];
+const INAC_ACT_BAJA = ['estudiante', 'desempleado'];
+
+function _inacNorm(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+// "Palermo CABA" → { lugar:'palermo', prov:'caba' }. "CABA CABA" → { lugar:'caba', prov:'caba' }.
+function _inacSepararLocalidad(loc) {
+  const n = _inacNorm(loc);
+  for (const p of INAC_PROVINCIAS) {
+    if (n === p) return { lugar: p, prov: p };
+    if (n.endsWith(' ' + p)) return { lugar: n.slice(0, -p.length - 1).trim(), prov: p };
+  }
+  return { lugar: n, prov: '' };
+}
+function _inacReglasZona(txt) {
+  return String(txt || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const [b, p] = l.split(',');
+    return { b: _inacNorm(b), p: _inacNorm(p || '') };
+  }).filter(r => r.b);
+}
+let _inacZonasCache = null;
+function _inacZonas() {
+  if (_inacZonasCache) return _inacZonasCache;
+  const s = _inacLS(INAC_ZONAS_KEY, {});
+  const a = s.a != null ? s.a : INAC_ZONA_A_DEF, b = s.b != null ? s.b : INAC_ZONA_B_DEF;
+  return (_inacZonasCache = { txtA: a, txtB: b, A: _inacReglasZona(a), B: _inacReglasZona(b) });
+}
+function _inacMatchZona(lp, reglas) {
+  const l = ' ' + lp.lugar + ' ';
+  return reglas.find(r => l.includes(' ' + r.b + ' ') && (!r.p || r.p === lp.prov));
+}
+// { nivel:'A'|'B'|'C'|'', nombre }
+function _inacZonaDe(loc) {
+  const lp = _inacSepararLocalidad(loc), z = _inacZonas();
+  let m = _inacMatchZona(lp, z.A); if (m) return { nivel: 'A', nombre: m.b };
+  m = _inacMatchZona(lp, z.B); if (m) return { nivel: 'B', nombre: m.b };
+  if (lp.prov === 'caba' || INAC_CIUDADES.includes(lp.lugar)) return { nivel: 'C', nombre: lp.prov === 'caba' ? 'CABA' : lp.lugar };
+  return { nivel: '', nombre: lp.lugar };
+}
+// AUM mediano de tus clientes ACTIVOS por localidad (mín. 3) — "acá ya tenés clientes con plata".
+let _inacAumZonaCache = { map: null, src: null };
+function _inacAumPorZona() {
+  if (_inacAumZonaCache.src === currentStockMap && _inacAumZonaCache.map) return _inacAumZonaCache.map;
+  const g = {};
+  for (const s of Object.values(currentStockMap || {})) {
+    if (!/^activ/i.test(s.ai || '')) continue;
+    const k = _inacNorm(s.localidad); if (!k) continue;
+    (g[k] = g[k] || []).push(s.aum || 0);
+  }
+  const map = {};
+  for (const [k, v] of Object.entries(g)) {
+    if (v.length < 3) continue;
+    v.sort((a, b) => a - b);
+    map[k] = { mediana: v[Math.floor(v.length / 2)], n: v.length };
+  }
+  _inacAumZonaCache = { map, src: currentStockMap };
+  return map;
+}
+function _inacMesesDesde(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T12:00:00');
+  return isNaN(d) ? null : (Date.now() - d.getTime()) / (30.44 * 864e5);
+}
+// Devuelve { pts, nivel:'alta'|'media'|'baja', zona, motivos:[{t,p}] }
+function _inacPuntaje(s, mail, mas1) {
+  const m = [];
+  const add = (p, t) => { if (p) m.push({ p, t }); };
+  const zona = _inacZonaDe(s.localidad);
+  add({ A: 25, B: 15, C: 6 }[zona.nivel] || 0, zona.nivel ? `Zona ${zona.nivel === 'C' ? 'ciudad grande' : 'premium ' + zona.nivel}` : '');
+  const az = _inacAumPorZona()[_inacNorm(s.localidad)];
+  if (az && az.mediana >= 5000) add(5, `Tus ${az.n} clientes activos de ahí tienen AUM mediano ${fmtK(az.mediana)}`);
+  const e = s.edad;
+  if (e) add(e >= 55 && e < 75 ? 20 : e >= 45 && e < 55 ? 17 : e >= 75 ? 14 : e >= 35 ? 11 : e >= 25 ? 5 : 0, `Edad ${e}`);
+  const act = _inacNorm(s.actividad);
+  if (act) {
+    const pAct = INAC_ACT_BAJA.some(k => act.includes(k)) ? 0
+      : INAC_ACT_ALTA.some(k => act.includes(k)) ? 20
+      : INAC_ACT_MEDIA_ALTA.some(k => act.includes(k)) ? 15
+      : act === 'otro' ? 3 : 8;
+    add(pAct, s.actividad);
+  }
+  if (s.primerFondeo) add(15, 'Fondeó alguna vez');
+  if (!mas1) add(8, 'Operó en el último año');
+  const ml = _inacMesesDesde(s.ultLogin);
+  if (ml != null) add(ml <= 6 ? 5 : ml <= 12 ? 2 : 0, ml <= 6 ? 'Entró en los últimos 6 meses' : 'Entró en el último año');
+  if (/^acuerdo/i.test(s.arancel || '')) add(6, 'Convenio ' + s.arancel.replace(/^acuerdo\s*/i, ''));
+  const dom = String(mail || '').split('@')[1] || '';
+  if (dom && !INAC_MAIL_GENERICOS.test(dom)) add(4, 'Mail de empresa (' + dom + ')');
+  if ((s.aum || 0) > 0) add(3, 'Tiene saldo');
+  if (/jur/i.test(s.fj || '')) add(8, 'Persona jurídica');
+  const pts = Math.min(100, m.reduce((a, x) => a + x.p, 0));
+  return { pts, nivel: pts >= 55 ? 'alta' : pts >= 35 ? 'media' : 'baja', zona, motivos: m.sort((a, b) => b.p - a.p) };
+}
+function inacGuardarZonas() {
+  _inacLSset(INAC_ZONAS_KEY, { a: document.getElementById('inacZonaA').value, b: document.getElementById('inacZonaB').value });
+  _inacZonasCache = null;
+  renderInactivos();
+}
+function inacRestaurarZonas() {
+  if (!confirm('¿Volver las listas de barrios a las originales?')) return;
+  try { localStorage.removeItem(INAC_ZONAS_KEY); } catch {}
+  _inacZonasCache = null;
+  const z = _inacZonas();
+  document.getElementById('inacZonaA').value = z.txtA;
+  document.getElementById('inacZonaB').value = z.txtB;
+  renderInactivos();
+}
 
 // Asuntos del bot. Word pone el MISMO asunto a todos (no admite campos), por eso van sin {nombre}.
 const INAC_ASUNTOS = {
@@ -2915,6 +3154,9 @@ async function abrirInactivos() {
   document.getElementById('inacWpp').value = p.wpp;
   document.getElementById('inacInstagram').value = p.instagram;
   document.getElementById('inacTestMail').value = p.testMail;
+  const z = _inacZonas();
+  document.getElementById('inacZonaA').value = z.txtA;
+  document.getElementById('inacZonaB').value = z.txtB;
   inacElegirMail(_inacMail);
   if (!_inacBajasCargadas) {
     _inacBajasCargadas = true;
@@ -2980,7 +3222,8 @@ function _inacFilasBase() {
       comitente, s, mail, mailOk,
       baja: !!(mailOk && _inacBajas && _inacBajas.has(mail)),
       env: envios[comitente] || {},
-      mas1: /m[aá]s de un a/i.test(s.actUlt || '')
+      mas1: /m[aá]s de un a/i.test(s.actUlt || ''),
+      get cal() { return this._cal || (this._cal = _inacPuntaje(s, mail, this.mas1)); }
     });
   }
   return out;
@@ -3009,6 +3252,9 @@ function _inacFiltrar(base) {
   const eMin = parseInt(document.getElementById('inacEdadMin').value, 10);
   const eMax = parseInt(document.getElementById('inacEdadMax').value, 10);
   const aumMin = parseFloat(document.getElementById('inacAumMin').value) || 0;
+  const pMin = { alta: 55, media: 35 }[document.getElementById('inacPuntajeMin').value] || 0;
+  const zonaF = document.getElementById('inacZonaF').value;
+  const fondeo = document.getElementById('inacFondeo').value;
   const n = _inacMail;
   const f = base.filter(r => {
     if (seg === 'mas1' && !r.mas1) return false;
@@ -3021,6 +3267,12 @@ function _inacFiltrar(base) {
     if (Number.isFinite(eMin) && !(r.s.edad >= eMin)) return false;
     if (Number.isFinite(eMax) && !(r.s.edad != null && r.s.edad <= eMax)) return false;
     if (aumMin > 0 && !(r.s.aum >= aumMin)) return false;
+    if (pMin && r.cal.pts < pMin) return false;
+    if (zonaF === 'A' && r.cal.zona.nivel !== 'A') return false;
+    if (zonaF === 'AB' && !['A', 'B'].includes(r.cal.zona.nivel)) return false;
+    if (zonaF === 'ABC' && !r.cal.zona.nivel) return false;
+    if (fondeo === 'si' && !r.s.primerFondeo) return false;
+    if (fondeo === 'no' && r.s.primerFondeo) return false;
     if (q) {
       const hay = [r.s.nombre, r.s.denominacion, r.comitente, r.mail, r.s.localidad, r.s.actividad].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -3029,6 +3281,7 @@ function _inacFiltrar(base) {
   });
   const orden = document.getElementById('inacOrden').value;
   const cmp = {
+    puntaje: (a, b) => b.cal.pts - a.cal.pts || (b.s.edad || 0) - (a.s.edad || 0),
     edad: (a, b) => (b.s.edad || 0) - (a.s.edad || 0) || b.s.aum - a.s.aum,
     aum: (a, b) => b.s.aum - a.s.aum || (b.s.edad || 0) - (a.s.edad || 0),
     login: (a, b) => String(b.s.ultLogin).localeCompare(String(a.s.ultLogin)),
@@ -3067,8 +3320,9 @@ function renderInactivos() {
       <td><input type="checkbox" ${eleg ? '' : 'disabled'} ${_inacSel.has(r.comitente) && eleg ? 'checked' : ''} onchange="inacToggle('${escHtml(r.comitente)}',this.checked)"></td>
       <td><b>${escHtml(tcNombre(s.nombre) || '—')}</b><div class="sub">${escHtml(s.denominacion)} · ${escHtml(r.comitente)}</div></td>
       <td>${escHtml(r.mail || '—')}</td>
+      <td><span class="inac-pts ${r.cal.nivel}" title="${escHtml(r.cal.motivos.map(x => `+${x.p} ${x.t}`).join('\n'))}">${r.cal.pts}</span><div class="sub inac-motivos">${escHtml(r.cal.motivos.slice(0, 3).map(x => x.t).join(' · '))}</div></td>
       <td class="num">${s.edad || '—'}</td>
-      <td>${escHtml(s.actividad || '—')}<div class="sub">${escHtml(s.localidad)}</div></td>
+      <td>${escHtml(s.actividad || '—')}<div class="sub">${escHtml(s.localidad)}${r.cal.zona.nivel === 'A' || r.cal.zona.nivel === 'B' ? ` <span class="inac-badge zona">${r.cal.zona.nivel}</span>` : ''}</div></td>
       <td class="num">${s.aum ? fmtMonto(s.aum) : '0'}</td>
       <td class="num">${_inacFechaCorta(s.ultLogin)}</td>
       <td><span class="inac-badge seg">${r.mas1 ? '+1 año' : 'reciente'}</span>${badges}${extra}</td>
@@ -3078,7 +3332,7 @@ function renderInactivos() {
   const todos = eleg.length > 0 && eleg.every(r => _inacSel.has(r.comitente));
   body.innerHTML = `<table class="inac-table"><thead><tr>
       <th><input type="checkbox" title="Tildar / destildar todos los de la lista" ${todos ? 'checked' : ''} onchange="inacToggleTodos(this.checked)"></th>
-      <th>Cliente</th><th>Mail</th><th style="text-align:right">Edad</th><th>Actividad · Localidad</th><th style="text-align:right">AUM</th><th style="text-align:right">Últ. login</th><th>Estado</th>
+      <th>Cliente</th><th>Mail</th><th title="Pasá el mouse por el número para ver de dónde sale">Puntaje</th><th style="text-align:right">Edad</th><th>Actividad · Localidad</th><th style="text-align:right">AUM</th><th style="text-align:right">Últ. login</th><th>Estado</th>
     </tr></thead><tbody>${rows}</tbody></table>` +
     (filas.length > MAX ? `<div class="dash-empty" style="padding:8px 4px;">Mostrando ${MAX} de ${filas.length} — afiná con los filtros. "Tildar todos" y "Tildar primeros N" igual usan la lista completa.</div>` : '');
   _inacActualizarAcciones();
@@ -3199,6 +3453,7 @@ function inacDescargar(prueba) {
     rows = sel.map(r => {
       const nom = tcNombre(r.s.nombre);
       return { Saludo: _inacSaludo(nom), Nombre: nom, Email: r.mail, Comitente: r.comitente, Cuenta: r.s.denominacion,
+        Puntaje: r.cal.pts, Zona: r.cal.zona.nivel ? (r.cal.zona.nivel === 'C' ? 'Ciudad grande' : 'Premium ' + r.cal.zona.nivel) : '',
         Edad: r.s.edad || '', Actividad: r.s.actividad, Localidad: r.s.localidad };
     });
   }
