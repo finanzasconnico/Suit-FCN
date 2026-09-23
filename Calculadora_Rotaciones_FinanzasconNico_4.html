@@ -1532,6 +1532,10 @@ function readBond(pata){
 // RENDER PRINCIPAL
 // ═══════════════════════════════════════════════════════
 var currentHorizonAnios = 2;
+var _horizonteTickerCompra = null; // último ticker de compra para el que se fijó el horizonte por defecto
+// Horizonte para textos (mensajes/resúmenes): desde que arranca en el vencimiento exacto del bono a
+// comprar ya no es múltiplo de 0,25 — concatenarlo crudo daba "4.402739726027397 año(s)".
+function fmtHorizonteAnios(){ return fmtNum(currentHorizonAnios,2).replace(',00','').replace(/,(\d)0$/,',$1'); }
 var lastCtx = null;
 var chartViewMode = 'total'; // 'total' = capital + interés recibido | 'neta' = ganancia por encima de lo invertido
 function setChartViewMode(mode){ chartViewMode = mode; renderAll(); }
@@ -1612,6 +1616,14 @@ function renderAll(){
   var vencAniosV = yearFrac(hoy, venta.fechaVenc);
   var vencAniosC = yearFrac(hoy, compra.fechaVenc);
   var tMax = Math.max(vencAniosV, vencAniosC, 1);
+  // Horizonte por defecto = plazo al vencimiento del bono a COMPRAR (pedido de Nico, 23/09). Solo
+  // se fija cuando CAMBIA el ticker de compra — después el slider/presets quedan libres para
+  // editarlo y un re-render (tocar nominales, precio, etc.) no le pisa el valor elegido.
+  if(compra.ticker !== _horizonteTickerCompra){
+    _horizonteTickerCompra = compra.ticker;
+    // Valor exacto (no redondeado a 0,25) para que coincida con el preset "Vto." y se marque activo.
+    if(vencAniosC > 0) currentHorizonAnios = Math.max(0.25, vencAniosC);
+  }
 
   // tMax se redondea al mismo paso de 0,25 que usa el slider — si no, el slider llevado al
   // tope quedaba en un valor (ej. 1,25) más allá del rango real usado para graficar (ej.
@@ -3347,6 +3359,19 @@ function alertaSinStock(){
   alert('Para poder enviar la rotación directo por WhatsApp, primero subí el "Stock de cuentas" en el FCN Suite (pestaña Archivos) — de ahí sale el teléfono del cliente.');
 }
 
+// "Acortás el plazo" — pedido de Nico (23/09): cuando el bono nuevo vence ANTES que el que se vende
+// y aun así la rotación gana plata, decirlo explícito en el mensaje (ganás más teniendo la plata
+// inmovilizada menos tiempo — el argumento más fácil de vender al cliente). Solo si la diferencia es
+// de al menos 3 meses (menos que eso no es un argumento real). Devuelve '' si no aplica.
+function fraseAcortaPlazo(venta, compra){
+  if(!venta || !compra || !venta.fechaVenc || !compra.fechaVenc) return '';
+  var meses = Math.round((venta.fechaVenc - compra.fechaVenc) / (1000*60*60*24*30.4375));
+  if(meses < 3) return '';
+  var a = Math.floor(meses/12), m = meses%12;
+  var dif = (a ? a+' año'+(a===1?'':'s') : '') + (a && m ? ' y ' : '') + (m ? m+' mes'+(m===1?'':'es') : '');
+  return 'Además acortás el plazo: '+compra.ticker+' vence el '+fmtDateAR(compra.fechaVenc)+', '+dif+' antes que '+venta.ticker+' ('+fmtDateAR(venta.fechaVenc)+'). Ganás más plata teniendo la inversión menos tiempo.';
+}
+
 function construirMensajeRotacion(ctx){
   var lineas = [];
   lineas.push('*Rotar de '+ctx.venta.ticker+' a '+ctx.compra.ticker+'*');
@@ -3354,6 +3379,8 @@ function construirMensajeRotacion(ctx){
   lineas.push('• TIR actual ('+ctx.venta.ticker+'): '+fmtNum(ctx.venta.tir)+'%');
   lineas.push('• TIR nueva ('+ctx.compra.ticker+'): '+fmtNum(ctx.compra.tir)+'%');
   lineas.push('• A '+fmtNum(ctx.horizonAnios,2)+' años ('+fmtDateAR(ctx.horizDate)+'), rotar te deja *'+fmtUSD(ctx.absVentaja)+' más*'+(ctx.pctVentaja!=null?' ('+fmtNum(Math.abs(ctx.pctVentaja))+'% más)':'')+' que quedarte como estás.');
+  var acorta = fraseAcortaPlazo(ctx.venta, ctx.compra);
+  if(acorta) lineas.push('• '+acorta);
   if(Math.abs(ctx.difCash) >= 1){
     lineas.push(ctx.difCash>0
       ? '• Además, hoy la rotación libera '+fmtUSD(ctx.difCash)+' de cash.'
@@ -4662,7 +4689,7 @@ function abrirRotacionMasiva(){
   rotMasFilas = calcularFilasRotacionMasiva();
   if(!rotMasFilas.length){ alert('No se pudo calcular la mejora — revisá que ambos bonos tengan TIR válida.'); return; }
   document.getElementById('rotmas-titulo').textContent = '📣 Avisar rotación '+lastCtx.venta.ticker+' → '+lastCtx.compra.ticker;
-  document.getElementById('rotmas-sub').textContent = rotMasFilas.length+' cliente'+(rotMasFilas.length===1?'':'s')+' con '+lastCtx.venta.ticker+' en cartera — mejora estimada a '+currentHorizonAnios+' año(s): '+(rotMasFilas[0].diffPct>=0?'+':'')+fmtNum(rotMasFilas[0].diffPct)+' p.p. para todos por igual';
+  document.getElementById('rotmas-sub').textContent = rotMasFilas.length+' cliente'+(rotMasFilas.length===1?'':'s')+' con '+lastCtx.venta.ticker+' en cartera — mejora estimada a '+fmtHorizonteAnios()+' año(s): '+(rotMasFilas[0].diffPct>=0?'+':'')+fmtNum(rotMasFilas[0].diffPct)+' p.p. para todos por igual';
   document.getElementById('rotmas-msg-box').classList.remove('open');
   rotMasClienteActivo = null;
   renderRotacionMasivaTabla();
@@ -4692,7 +4719,7 @@ function renderRotacionMasivaTabla(){
   }).join('');
   var incluidas = rotMasFilas.filter(function(f){ return f.incluir; });
   var totalGan = incluidas.reduce(function(a,f){ return a+f.gananciaUSD; }, 0);
-  document.getElementById('rotmas-resumen').innerHTML = '<b>'+incluidas.length+'</b> de '+rotMasFilas.length+' cliente(s) seleccionado(s) · ganancia estimada total a '+currentHorizonAnios+' año(s): <b style="color:'+(totalGan>=0?'var(--good)':'var(--neg-text)')+';">'+(totalGan>=0?'+':'-')+'$'+Math.round(Math.abs(totalGan)).toLocaleString('es-AR')+'</b>';
+  document.getElementById('rotmas-resumen').innerHTML = '<b>'+incluidas.length+'</b> de '+rotMasFilas.length+' cliente(s) seleccionado(s) · ganancia estimada total a '+fmtHorizonteAnios()+' año(s): <b style="color:'+(totalGan>=0?'var(--good)':'var(--neg-text)')+';">'+(totalGan>=0?'+':'-')+'$'+Math.round(Math.abs(totalGan)).toLocaleString('es-AR')+'</b>';
   var checkAllM = document.getElementById('rotmas-check-all');
   if(checkAllM){
     checkAllM.checked = rotMasFilas.length>0 && incluidas.length===rotMasFilas.length;
@@ -4705,7 +4732,9 @@ function renderRotacionMasivaTabla(){
 function textoRotacionMasivaFila(f){
   var venta = lastCtx.venta, compra = lastCtx.compra;
   var ganTxt = (f.gananciaUSD>=0?'+':'-')+'USD '+Math.round(Math.abs(f.gananciaUSD)).toLocaleString('es-AR');
-  return 'Hola'+_nomSaludoLic(f.cliente)+', estaba revisando tu cartera y vi que tenés '+Math.round(f.nominales).toLocaleString('es-AR')+' nominales de '+venta.ticker+' (TIR actual ~'+fmtNum(f.tirVenta,1)+'% anual). Rotando a '+compra.ticker+' estarías ganando alrededor de '+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct,1)+' puntos de retorno — unos '+ganTxt+' más de acá a '+currentHorizonAnios+' año(s). Si te interesa, avisame y lo coordinamos.';
+  return 'Hola'+_nomSaludoLic(f.cliente)+', estaba revisando tu cartera y vi que tenés '+Math.round(f.nominales).toLocaleString('es-AR')+' nominales de '+venta.ticker+' (TIR actual ~'+fmtNum(f.tirVenta,1)+'% anual). Rotando a '+compra.ticker+' estarías ganando alrededor de '+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct,1)+' puntos de retorno — unos '+ganTxt+' más de acá a '+fmtHorizonteAnios()+' año(s).'+
+    (f.diffPct>0 && fraseAcortaPlazo(venta, compra) ? ' '+fraseAcortaPlazo(venta, compra) : '')+
+    ' Si te interesa, avisame y lo coordinamos.';
 }
 function verMensajeRotacionMasiva(i){
   rotMasClienteActivo = i;
@@ -4754,7 +4783,8 @@ function _rotNombreCompra(compra){
 function _rotDetalleCliente(f){
   var venta = lastCtx.venta, compra = lastCtx.compra;
   var ganTxt = (f.gananciaUSD>=0?'+':'-')+'USD '+Math.round(Math.abs(f.gananciaUSD)).toLocaleString('es-AR');
-  return 'Tenés '+Math.round(f.nominales).toLocaleString('es-AR')+' nominales de '+venta.ticker+' (TIR actual ~'+fmtNum(f.tirVenta,1)+'% anual).\nRotando a '+compra.ticker+' vendrías ganando alrededor de '+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct,1)+' puntos de retorno — unos '+ganTxt+' más de acá a '+currentHorizonAnios+' año(s).';
+  return 'Tenés '+Math.round(f.nominales).toLocaleString('es-AR')+' nominales de '+venta.ticker+' (TIR actual ~'+fmtNum(f.tirVenta,1)+'% anual).\nRotando a '+compra.ticker+' vendrías ganando alrededor de '+(f.diffPct>=0?'+':'')+fmtNum(f.diffPct,1)+' puntos de retorno — unos '+ganTxt+' más de acá a '+fmtHorizonteAnios()+' año(s).'+
+    (f.diffPct>0 && fraseAcortaPlazo(venta, compra) ? '\n'+fraseAcortaPlazo(venta, compra) : '');
 }
 // { rows:[{Saludo,Email,Detalle}], excl:{sinMail,baja} } — mismas columnas que LIC_MAIL_COLS,
 // así _licToCSV() se reutiliza sin cambios.

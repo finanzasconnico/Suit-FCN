@@ -3121,6 +3121,74 @@ function downloadReport(modo){
     '<th class="num">Valor actual</th><th class="num">G/P USD</th><th class="num">G/P %</th></tr></thead>'+
     '<tbody>'+topTableRows+'</tbody></table></section>'+
 
+    // ── RENDIMIENTO DEL PERÍODO ──
+    (function(){
+      if(!S.movData||!S.periodFrom||!S.periodTo)return '';
+      var md=S.movData;
+      var from=S.periodFrom, to=S.periodTo;
+      var incInP=md.income.filter(function(i){return i.fecha>=from&&i.fecha<=to;});
+      var depInP=md.deposits.filter(function(d){return d.fecha>=from&&d.fecha<=to;});
+      var witInP=md.withdrawals.filter(function(d){return d.fecha>=from&&d.fecha<=to;});
+      var rebInP=(md.rebates||[]).filter(function(r){return r.fecha>=from&&r.fecha<=to;});
+      var tInc=incInP.reduce(function(s,i){return s+i.usd;},0);
+      var tDep=depInP.reduce(function(s,d){return s+d.usd;},0);
+      var tWit=witInP.reduce(function(s,d){return s+d.usd;},0);
+      var tReb=rebInP.reduce(function(s,r){return s+r.usd;},0);
+      // Monthly income
+      var monthly={};
+      incInP.forEach(function(i){var ym=i.fecha.slice(0,7);if(!monthly[ym])monthly[ym]=0;monthly[ym]+=i.usd;});
+      var months=Object.keys(monthly).sort();
+      var maxInc=Math.max.apply(null,months.map(function(m){return monthly[m];})||[1]);
+      if(maxInc<=0)maxInc=1;
+      // By ticker
+      var byTk={};
+      incInP.forEach(function(i){if(!byTk[i.ticker])byTk[i.ticker]=0;byTk[i.ticker]+=i.usd;});
+      var tkList=Object.entries(byTk).sort(function(a,b){return b[1]-a[1];});
+      // Monthly bar SVG
+      var labels=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      var bW=Math.min(28,Math.floor(320/Math.max(months.length,1))-4);
+      var svgH=60, svgW=Math.max(months.length*Math.max(bW+4,16),60);
+      var barsSVG='';
+      months.forEach(function(ym,idx){
+        var v=monthly[ym];
+        var h2=Math.max(2,Math.round(v/maxInc*svgH));
+        var x=idx*(bW+6)+2;
+        var parts=ym.split('-');
+        var lbl=labels[parseInt(parts[1])-1]+"'"+parts[0].slice(2);
+        barsSVG+='<rect x="'+x+'" y="'+(svgH-h2)+'" width="'+bW+'" height="'+h2+'" rx="2" fill="#3b82f6"/>';
+        barsSVG+='<text x="'+(x+bW/2)+'" y="'+(svgH+9)+'" text-anchor="middle" font-size="6.5" fill="#64748b">'+lbl+'</text>';
+        if(h2>12)barsSVG+='<text x="'+(x+bW/2)+'" y="'+(svgH-h2-3)+'" text-anchor="middle" font-size="6" fill="#3b82f6">'+U2(v).replace('USD ','')+'</text>';
+      });
+      var periodLabel=from+' → '+to;
+      var out='<section class="compact"><h2>Rendimiento del período <span style="font-size:9px;font-weight:400;color:#64748b;">('+periodLabel+')</span></h2>';
+      out+='<div class="cards">';
+      out+='<div class="card"><div class="lbl">Income cobrado</div><div class="val" style="color:#f59e0b;">'+U2(tInc)+'</div><div class="sub">'+incInP.length+' cobros</div></div>';
+      out+='<div class="card"><div class="lbl">Depósitos</div><div class="val" style="color:#16a34a;">'+U2(tDep)+'</div></div>';
+      out+='<div class="card"><div class="lbl">Retiros</div><div class="val" style="color:#dc2626;">'+U2(tWit)+'</div></div>';
+      out+='<div class="card"><div class="lbl">Capital neto</div><div class="val">'+U2(tDep-tWit)+'</div></div>';
+      if(tReb>0)out+='<div class="card"><div class="lbl">Rebate Executive</div><div class="val" style="color:#f59e0b;">'+U2(tReb,2)+'</div></div>';
+      out+='</div>';
+      if(months.length){
+        out+='<div style="margin-top:14px;">';
+        out+='<div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Income mensual en el período</div>';
+        out+='<svg viewBox="0 -14 '+(svgW+4)+' '+(svgH+20)+'" width="100%" height="70" style="overflow:visible;">'+barsSVG+'</svg>';
+        out+='</div>';
+      }
+      if(tkList.length){
+        out+='<div style="margin-top:10px;">';
+        out+='<div style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Income por instrumento</div>';
+        out+='<table style="max-width:400px;"><thead><tr><th>Ticker</th><th class="num">Income USD</th><th class="num">%</th></tr></thead><tbody>';
+        tkList.forEach(function(e){
+          out+='<tr><td>'+e[0]+'</td><td class="num" style="color:#f59e0b;">'+U2(e[1],2)+'</td><td class="num">'+N(tInc>0?e[1]/tInc*100:0,1)+'%</td></tr>';
+        });
+        out+='<tr class="tot-r"><td><strong>Total</strong></td><td class="num"><strong>'+U2(tInc,2)+'</strong></td><td></td></tr>';
+        out+='</tbody></table>';
+        out+='</div>';
+      }
+      out+='</section>';
+      return out;
+    })()+
+
     // ── RENTABILIDAD ESTIMADA ──
     (function(){
       var r=_rCalcRentabilidad(pos);
