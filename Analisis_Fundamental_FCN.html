@@ -135,7 +135,7 @@ window.addEventListener('unhandledrejection', function(e){
 <body>
 <div class="wrap">
   <div id="jsError" class="msg error" style="display:none;margin:0 0 16px;"></div>
-  <h1>Análisis Fundamental <span style="font-size:11px;font-weight:500;color:var(--soft);">v21/09-d</span></h1>
+  <h1>Análisis Fundamental <span style="font-size:11px;font-weight:500;color:var(--soft);">v22/09-a</span></h1>
   <div class="sub">Elegí la empresa (ticker de EE.UU.) y el informe se arma solo con datos de la SEC y Yahoo Finance. Si tenés los Excel, subilos: tienen prioridad y lo que falte se completa solo.</div>
 
   <div class="panel controls">
@@ -959,9 +959,23 @@ async function armarRaizPDF(){
   }
   return raiz;
 }
+let _pdfEnCurso = false;
+// Muestrea el canvas capturado: si casi todo quedó blanco, html2canvas no llegó a dibujar el
+// contenido (visto en algunas máquinas/navegadores) — mejor avisar y caer a Imprimir que
+// entregar un PDF vacío sin que el usuario se dé cuenta.
+function canvasCasiBlanco(canvas){
+  const ctx = canvas.getContext('2d');
+  const paso = 37;   // primo, para no pegarle siempre a la misma columna/fila
+  const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let noBlanco = 0, muestras = 0;
+  for(let i = 0; i < d.length; i += paso*4){ muestras++; if(d[i] < 250 || d[i+1] < 250 || d[i+2] < 250) noBlanco++; }
+  return muestras === 0 || (noBlanco / muestras) < 0.01;
+}
 async function descargarPDF(){
   const btn = document.getElementById('pdfBtn');
   if(typeof html2pdf === 'undefined'){ window.print(); return; }   // sin la librería (bloqueada): cae al diálogo de imprimir
+  if(_pdfEnCurso) return;   // evita doble clic / carrera con otra generación en curso
+  _pdfEnCurso = true;
   const textoBtn = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = 'Armando PDF…'; }
   const y0 = window.scrollY;
@@ -969,16 +983,33 @@ async function descargarPDF(){
   try{
     raiz = await armarRaizPDF();
     document.body.appendChild(raiz);      // html2canvas necesita el nodo en el flujo normal del documento
+    // esperar a que las imágenes (gráficos ya convertidos) terminen de decodificarse, y a que el
+    // navegador pinte al menos un frame, antes de que html2canvas mida y capture el nodo.
+    // ¡OJO! requestAnimationFrame se pausa con la pestaña/el panel en segundo plano (puede colgar
+    // el botón para siempre) — se usa setTimeout, que sigue disparando aunque esté oculta.
+    await Promise.all([...raiz.querySelectorAll('img')].map(img => img.decode ? img.decode().catch(()=>{}) : Promise.resolve()));
+    await new Promise(r => setTimeout(r, 60));
+
     const t = (document.querySelector('#report h1')||{}).innerText || 'informe';
     const nombreArch = 'Analisis_' + t.split(' — ')[0].replace(/[^\w\-]+/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
-    await html2pdf().set({
+    const worker = html2pdf().set({
       margin: [10,8,10,8],
       filename: nombreArch,
       image: { type:'jpeg', quality:0.96 },
       html2canvas: { scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:760 },
       jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
       pagebreak: { mode:['css','legacy'], avoid:['.chart-card','.score-card','h2','.masthead'] }
-    }).from(raiz).save();
+    }).from(raiz);
+    await worker.toCanvas();
+    const canvas = await worker.get('canvas');
+    if(canvasCasiBlanco(canvas)){
+      alert('El PDF salió en blanco (pasa en algunos navegadores). Se abre el diálogo de imprimir: elegí "Guardar como PDF" ahí.');
+      if(raiz && raiz.parentNode) raiz.parentNode.removeChild(raiz);
+      raiz = null;
+      window.print();
+      return;
+    }
+    await worker.save();
   }catch(e){
     console.error('[PDF]', e);
     alert('No se pudo armar el PDF automáticamente. Se abre el diálogo de imprimir: elegí "Guardar como PDF".');
@@ -987,6 +1018,7 @@ async function descargarPDF(){
     if(raiz && raiz.parentNode) raiz.parentNode.removeChild(raiz);
     window.scrollTo(0, y0);
     if(btn){ btn.disabled = false; btn.textContent = textoBtn; }
+    _pdfEnCurso = false;
   }
 }
 
