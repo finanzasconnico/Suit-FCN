@@ -223,6 +223,17 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .dcat-table td{padding:6px 10px;border-bottom:1px solid #EEE8DA;}
 .dcat-table tr:last-child td{border-bottom:none;}
 .dcat-table .tot-row td{font-weight:700;background:#F9F6EE;}
+/* Correlación de Renta Variable */
+.dcorr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#0F3A34;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;}
+.dcorr-btn:disabled{opacity:.6;cursor:default;}
+.dcorr-note{font-size:9.5px;color:#999;margin-top:6px;}
+.dcorr-warn{font-size:9.5px;color:#D9892B;margin-bottom:6px;}
+.dcorr-table{border-collapse:collapse;font-size:9.5px;margin-top:6px;}
+.dcorr-table th,.dcorr-table td{padding:5px 8px;text-align:center;border:1px solid #EEE8DA;min-width:42px;}
+.dcorr-table th{background:#0F3A34;color:#fff;font-size:8.5px;}
+.dcorr-table td.diag{background:#F1ECFB;color:#999;}
+.dcorr-legend{display:flex;gap:12px;margin-top:8px;font-size:9px;color:#666;align-items:center;}
+.dcorr-legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:3px;}
 /* Secciones del PDF asignables a página */
 .doc-block{position:relative;}
 .doc-block[hidden]{display:none!important;}
@@ -461,6 +472,11 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
                 <div class="dblock-pagepick">Pág. <select data-blkpick="rv" onchange="setBlockPage('rv',this.value)"></select></div>
                 <div class="dsh">Renta Variable <span id="dsh-rv-sub" style="font-weight:400;font-size:10px;color:#999;"></span></div>
                 <table class="dt"><thead><tr><th>Activo</th><th>Categoría</th><th>%</th><th id="th-amt-rv" style="display:none;">Monto</th><th>Retorno Est.</th><th>Moneda</th></tr></thead><tbody id="doc-tbody-rv"></tbody></table>
+              </div>
+              <div class="doc-block" data-blk="correl" id="doc-block-correl" hidden>
+                <div class="dblock-pagepick">Pág. <select data-blkpick="correl" onchange="setBlockPage('correl',this.value)"></select></div>
+                <div class="dsh">Correlación entre Activos de Renta Variable</div>
+                <div id="doc-correl"></div>
               </div>
               <div class="doc-block" data-blk="rf" id="doc-block-rf" hidden>
                 <div class="dblock-pagepick">Pág. <select data-blkpick="rf" onchange="setBlockPage('rf',this.value)"></select></div>
@@ -1684,6 +1700,7 @@ function updateDoc(){
     document.getElementById('doc-tbody-rv').innerHTML=rvRows.join('')+rvTot;
     document.getElementById('dsh-rv-sub').textContent=rvPct.toFixed(1)+'% · '+rvA.length+' activo'+(rvA.length===1?'':'s');
   }
+  renderCorrelBlock(rvA);
   if(rfA.length){
     var wY=0,allY=true;
     var rfRows=rfA.map(function(a){var r=buildRow(a,'rf');if(r.y&&rfPct>0)wY+=(a.pct/rfPct)*r.y.val;else if(!r.y)allY=false;return r.html;});
@@ -1719,6 +1736,143 @@ function updateDoc(){
 var docDonutMacro=null,docDonutCat=null;
 function destroyDocDonuts(){if(docDonutMacro){docDonutMacro.destroy();docDonutMacro=null;}if(docDonutCat){docDonutCat.destroy();docDonutCat=null;}}
 
+// ══════════════════════════════════════════════════════════════
+//  CORRELACIÓN ENTRE ACTIVOS DE RENTA VARIABLE — pedido de Nico (23/09): si hay 3 o más
+//  activos de RV con ticker, mostrar qué tan parecido se mueven entre sí (retornos diarios,
+//  6 meses, Yahoo Finance vía fetchYFArmador/TICKERS_AR_AC — mismo mecanismo que ya usa
+//  onTickerBlur() para precio actual/objetivo, ahora aplicado a una serie histórica en vez de
+//  al último precio). Es GATILLO MANUAL (botón), no automático en cada updateDoc(): son N
+//  llamadas a un proxy CORS gratuito por cada cálculo, no tiene sentido dispararlas en cada
+//  tecla mientras se arma la cartera.
+// ══════════════════════════════════════════════════════════════
+var corrCache=null; // {sig, tickers:[...], names:{tk:name}, matrix:{tk1:{tk2:val}}, failed:[...], asOf:Date}
+
+function _rvUniqueWithTicker(rvA){
+  var seen={};
+  return rvA.filter(function(a){var t=(a.ticker||'').trim().toUpperCase();if(!t||seen[t])return false;seen[t]=true;return true;});
+}
+
+function renderCorrelBlock(rvA){
+  var withTicker=_rvUniqueWithTicker(rvA);
+  var blk=document.getElementById('doc-block-correl');
+  if(withTicker.length<3){blk.hidden=true;return;}
+  blk.hidden=false;
+  var sig=withTicker.map(function(a){return a.ticker.trim().toUpperCase();}).sort().join(',');
+  var box=document.getElementById('doc-correl');
+  if(corrCache&&corrCache.sig===sig){box.innerHTML=_corrTableHTML(corrCache);return;}
+  var stale=corrCache&&corrCache.sig!==sig;
+  box.innerHTML=(stale?'<div class="dcorr-warn">⚠ La cartera cambió desde el último cálculo — recalculá para actualizar.</div>':'')+
+    '<div style="font-size:10px;color:#888;margin-bottom:8px;">Correlación histórica (6 meses) entre los '+withTicker.length+' activos de RV con ticker — ayuda a ver si la cartera está realmente diversificada.</div>'+
+    '<button type="button" class="dcorr-btn" id="btn-calc-correl" onclick="calcularCorrelacionRV()">📊 Calcular correlación (Yahoo Finance)</button>';
+}
+
+function pearsonCorr(x,y){
+  var n=x.length;if(!n||y.length!==n)return 0;
+  var mx=x.reduce(function(a,b){return a+b;},0)/n,my=y.reduce(function(a,b){return a+b;},0)/n;
+  var num=0,dx=0,dy=0;
+  for(var i=0;i<n;i++){var a=x[i]-mx,b=y[i]-my;num+=a*b;dx+=a*a;dy+=b*b;}
+  var den=Math.sqrt(dx*dy);
+  return den===0?0:num/den;
+}
+
+// Cierres diarios de los últimos 6 meses (mismo candidatos/proxy que fetchTickerData, adaptado
+// a serie histórica en vez de a un solo precio). Devuelve [{d:'YYYY-MM-DD',c:precio},...] o null.
+async function fetchHistCloses(ticker){
+  var candidatos=TICKERS_AR_AC.has(ticker)?[ticker,ticker+'.BA']:[ticker];
+  for(var i=0;i<candidatos.length;i++){
+    try{
+      var url='https://query1.finance.yahoo.com/v8/finance/chart/'+candidatos[i]+'?interval=1d&range=6mo';
+      var data=await fetchYFArmador(url);
+      var res=data&&data.chart&&data.chart.result&&data.chart.result[0];
+      var ts=res&&res.timestamp;
+      var closes=res&&res.indicators&&res.indicators.quote&&res.indicators.quote[0]&&res.indicators.quote[0].close;
+      if(!ts||!closes)continue;
+      var out=[];
+      for(var j=0;j<ts.length;j++){
+        if(closes[j]==null)continue;
+        out.push({d:new Date(ts[j]*1000).toISOString().slice(0,10),c:closes[j]});
+      }
+      if(out.length>=30)return out;
+    }catch(e){continue;}
+  }
+  return null;
+}
+
+async function calcularCorrelacionRV(){
+  function bucketOf(a){return(a.type||'').split(' | ')[0];}
+  var withTicker=_rvUniqueWithTicker(assets.filter(function(a){return bucketOf(a)==='Renta Variable';}));
+  if(withTicker.length<3)return;
+  var sig=withTicker.map(function(a){return a.ticker.trim().toUpperCase();}).sort().join(',');
+  var btn=document.getElementById('btn-calc-correl');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Consultando Yahoo Finance…';}
+  var series={},names={},failed=[];
+  for(var i=0;i<withTicker.length;i++){
+    var tk=withTicker[i].ticker.trim().toUpperCase();
+    names[tk]=withTicker[i].name;
+    var h=await fetchHistCloses(tk);
+    if(h&&h.length>=30)series[tk]=h;else failed.push(tk);
+  }
+  var tks=Object.keys(series);
+  var box=document.getElementById('doc-correl');
+  if(tks.length<3){
+    box.innerHTML='<div class="dcorr-warn">No se pudo traer suficiente historial de precios ('+(failed.length?'sin datos: '+failed.join(', '):'error de red')+'). Probá de nuevo en un momento.</div>'+
+      '<button type="button" class="dcorr-btn" onclick="calcularCorrelacionRV()">↻ Reintentar</button>';
+    return;
+  }
+  var common=null;
+  tks.forEach(function(tk){
+    var dates=series[tk].map(function(p){return p.d;});
+    common=common?common.filter(function(d){return dates.indexOf(d)>=0;}):dates;
+  });
+  common.sort();
+  if(common.length<20){
+    box.innerHTML='<div class="dcorr-warn">Muy pocas fechas de cotización en común entre estos activos para calcular una correlación confiable.</div>';
+    return;
+  }
+  var rets={};
+  tks.forEach(function(tk){
+    var byDate={};series[tk].forEach(function(p){byDate[p.d]=p.c;});
+    var closes=common.map(function(d){return byDate[d];});
+    var r=[];for(var i=1;i<closes.length;i++)r.push(closes[i]/closes[i-1]-1);
+    rets[tk]=r;
+  });
+  var matrix={};
+  tks.forEach(function(a){matrix[a]={};tks.forEach(function(b){matrix[a][b]=a===b?1:pearsonCorr(rets[a],rets[b]);});});
+  corrCache={sig:sig,tickers:tks,names:names,matrix:matrix,failed:failed,asOf:new Date()};
+  box.innerHTML=_corrTableHTML(corrCache);
+}
+
+function _corrColor(v){
+  var av=Math.abs(v);
+  if(v<=0)return{bg:'rgba(28,140,95,'+(0.10+av*0.35).toFixed(2)+')',fg:'#0F3A34'};
+  if(av>=0.7)return{bg:'rgba(192,69,59,'+(0.15+av*0.35).toFixed(2)+')',fg:'#7a2a24'};
+  if(av>=0.4)return{bg:'rgba(217,137,43,'+(0.12+av*0.3).toFixed(2)+')',fg:'#8a5a1f'};
+  return{bg:'rgba(74,144,217,'+(0.08+av*0.3).toFixed(2)+')',fg:'#2a4f7a'};
+}
+function _corrTableHTML(cache){
+  var tks=cache.tickers;
+  var head='<tr><th></th>'+tks.map(function(t){return'<th>'+t+'</th>';}).join('')+'</tr>';
+  var rows=tks.map(function(a){
+    return'<tr><th>'+a+'</th>'+tks.map(function(b){
+      if(a===b)return'<td class="diag">1.00</td>';
+      var v=cache.matrix[a][b],col=_corrColor(v);
+      return'<td style="background:'+col.bg+';color:'+col.fg+';font-weight:600;">'+v.toFixed(2)+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  var offDiag=[];
+  tks.forEach(function(a,i){tks.forEach(function(b,j){if(j>i)offDiag.push(cache.matrix[a][b]);});});
+  var avg=offDiag.reduce(function(s,v){return s+v;},0)/offDiag.length;
+  var lectura=avg>=0.6?'Los activos se mueven de forma muy parecida — la diversificación real es menor de lo que sugiere la cantidad de posiciones.':
+    avg>=0.35?'Diversificación moderada — hay cierta correlación entre los activos.':
+    'Buena diversificación — los activos no se mueven en la misma dirección.';
+  var failedNote=cache.failed&&cache.failed.length?'<div class="dcorr-note">Sin datos suficientes para: '+cache.failed.join(', ')+'.</div>':'';
+  return'<table class="dcorr-table">'+head+rows+'</table>'+
+    '<div class="dcorr-legend"><i style="background:rgba(28,140,95,.4)"></i>Baja/negativa <i style="background:rgba(74,144,217,.4)"></i>Baja-media <i style="background:rgba(217,137,43,.4)"></i>Media <i style="background:rgba(192,69,59,.4)"></i>Alta</div>'+
+    '<div class="dcorr-note">Correlación promedio: <b>'+avg.toFixed(2)+'</b> · '+lectura+' · Retornos diarios, últimos 6 meses (Yahoo Finance) · al '+cache.asOf.toLocaleDateString('es-AR')+'.</div>'+
+    failedNote+
+    '<button type="button" class="dcorr-btn" style="margin-top:8px;" onclick="calcularCorrelacionRV()">↻ Recalcular</button>';
+}
+
 // ── Cartera en Pesos: mini-lista independiente del pool principal de `assets` ──
 var assetsARS=[],arsIdSeq=1;
 function addAssetARS(){
@@ -1741,7 +1895,7 @@ function renderARSList(){
 }
 
 // ── Página del PDF asignada a cada sección (solo afecta el export, no la vista previa) ──
-var docBlockPages={resumen:1,rv:2,rf:2,otros:2,flujo:2,calidad:1,ars:3};
+var docBlockPages={resumen:1,rv:2,correl:2,rf:2,otros:2,flujo:2,calidad:1,ars:3};
 function setBlockPage(key,val){docBlockPages[key]=parseInt(val)||1;}
 function populateBlockPageSelects(){
   document.querySelectorAll('[data-blkpick]').forEach(function(sel){

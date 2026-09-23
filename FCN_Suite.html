@@ -358,6 +358,42 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .aliq-btn-gen{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:var(--jade);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-s);font-size:11px;font-weight:600;cursor:pointer;}
 .aliq-btn-gen:hover{background:#22a870;}
 .aliq-btn-gen:disabled{opacity:.4;cursor:not-allowed;}
+/* ── Inactivos (panel nativo) ── */
+.inac-wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
+.inac-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;}
+.inac-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.inac-tab{padding:6px 14px;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:20px;font-family:var(--font-s);font-size:11.5px;cursor:pointer;}
+.inac-tab.active{background:var(--jade-d);border-color:var(--jade);color:var(--jade);font-weight:600;}
+.inac-asunto-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.inac-asunto-row select,.inac-asunto-row input,.inac-filtros select,.inac-filtros input{padding:8px 10px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;outline:none;}
+.inac-asunto-row input{flex:1;min-width:220px;font-weight:600;}
+.inac-asunto-row select{max-width:100%;}
+.inac-filtros select option,.inac-asunto-row select option{background:var(--surface);color:var(--text);}
+.inac-textarea{width:100%;min-height:260px;padding:10px 12px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;line-height:1.6;resize:vertical;outline:none;box-sizing:border-box;}
+.inac-textarea:focus,.inac-asunto-row input:focus{border-color:var(--jade);}
+.inac-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:10.5px;color:var(--muted);}
+.inac-chip{padding:3px 9px;border:1px dashed var(--jade);color:var(--jade);background:transparent;border-radius:12px;font-family:var(--font-m);font-size:10.5px;cursor:pointer;}
+.inac-chip:hover{background:var(--jade-d);}
+.inac-saved{margin-left:auto;font-size:10.5px;color:var(--muted);}
+.inac-filtros{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.inac-filtros input[type=text]{flex:1;min-width:160px;border-radius:20px;padding:8px 14px;}
+.inac-filtros label{font-size:11px;color:var(--muted);white-space:nowrap;}
+.inac-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.inac-actions .inac-selinfo{font-size:12px;color:var(--text);margin-right:auto;}
+.inac-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+.inac-table th{position:sticky;top:0;background:var(--surface);text-align:left;font-family:var(--font-m);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.inac-table td{padding:7px 6px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+.inac-table tr.off td{opacity:.45;}
+.inac-table td.num{text-align:right;font-family:var(--font-m);white-space:nowrap;}
+.inac-table .sub{font-size:10px;color:var(--muted);}
+.inac-scroll{max-height:62vh;overflow:auto;}
+.inac-badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:9.5px;font-family:var(--font-m);margin:1px 3px 1px 0;white-space:nowrap;}
+.inac-badge.env{background:var(--jade-d);color:var(--jade);border:1px solid rgba(28,140,95,.3);cursor:pointer;}
+.inac-badge.baja{background:rgba(200,60,60,.12);color:var(--danger);border:1px solid rgba(200,60,60,.3);}
+.inac-badge.seg{background:var(--wash-2);color:var(--muted);}
+.inac-done{border:1px solid var(--jade);background:var(--jade-d);}
+.inac-done ol{margin:6px 0 0;padding-left:18px;font-size:11.5px;line-height:1.9;color:var(--text);}
+@media (max-width:640px){.inac-card{padding:12px;}.inac-textarea{min-height:200px;}}
 .aliq-help{font-size:10px;color:var(--muted);line-height:1.6;}
 .aliq-help a{color:var(--jade);}
 
@@ -903,6 +939,92 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="ranking-body"></div>
     </div>
 
+    <div class="hub-panel" id="inactivos-panel">
+      <div class="files-header">
+        <h2>📭 Cuentas inactivas</h2>
+        <p>Todas tus cuentas marcadas como "Inactiva" en el Stock de cuentas. Elegí Mail 1, 2 o 3, ajustá el asunto y el texto (quedan guardados en este navegador), tildá a quién mandarle y descargá el Excel (CSV) + el Word para la combinación de correspondencia.</p>
+      </div>
+      <div class="inac-wrap">
+
+        <div class="inac-card">
+          <div class="inac-tabs" id="inacTabs">
+            <button class="inac-tab" data-n="1" onclick="inacElegirMail(1)">Mail 1 · Reactivación</button>
+            <button class="inac-tab" data-n="2" onclick="inacElegirMail(2)">Mail 2 · Seguimiento</button>
+            <button class="inac-tab" data-n="3" onclick="inacElegirMail(3)">Mail 3 · Contacto directo</button>
+          </div>
+          <div class="aliq-legend">Asunto</div>
+          <div class="inac-asunto-row">
+            <select id="inacAsuntoSug" onchange="inacUsarAsuntoSugerido(this.value)" title="Asuntos del bot de reactivación"></select>
+            <input type="text" id="inacAsunto" oninput="inacGuardarMail()" placeholder="Asunto del mail">
+          </div>
+          <div class="aliq-legend">Texto del mail</div>
+          <textarea class="inac-textarea" id="inacCuerpo" oninput="inacGuardarMail()"></textarea>
+          <div class="inac-chips">
+            Insertar:
+            <button class="inac-chip" onclick="inacInsertar('{Saludo}')" title="«Hola Juan,» — o «Hola,» si el Stock no tiene nombre">{Saludo}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Nombre}')" title="Nombre de pila del Stock (columna Nombre)">{Nombre}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Asesor}')" title="Tu nombre y apellido">{Asesor}</button>
+            <button class="inac-chip" onclick="inacInsertar('{WhatsApp}')" title="Tu WhatsApp, con link">{WhatsApp}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Instagram}')" title="Tu Instagram, con link">{Instagram}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Baja}')" title="Link «darte de baja acá»">{Baja}</button>
+            <span style="margin-left:6px;">· <b>**negrita**</b> · los links https://… quedan clickeables</span>
+            <span class="inac-saved" id="inacSaved"></span>
+            <button class="aliq-btn-cancel" onclick="inacRestaurarMail()" title="Vuelve al texto y asunto originales del bot">↺ Texto original</button>
+          </div>
+        </div>
+
+        <div class="inac-card">
+          <div class="aliq-legend">Tu perfil (el mismo del aviso de liquidez)</div>
+          <div class="aliq-row" style="flex-wrap:wrap;">
+            <div class="aliq-field" style="min-width:180px;"><label>Nombre y apellido (firma)</label><input type="text" id="inacFirma" oninput="inacGuardarPerfil()" placeholder="Nombre Apellido"></div>
+            <div class="aliq-field" style="min-width:150px;"><label>WhatsApp</label><input type="text" id="inacWpp" oninput="inacGuardarPerfil()" placeholder="+54 9 11 ..."></div>
+            <div class="aliq-field" style="min-width:180px;"><label>Instagram (opcional)</label><input type="text" id="inacInstagram" oninput="inacGuardarPerfil()" placeholder="https://www.instagram.com/..."></div>
+            <div class="aliq-field" style="min-width:180px;"><label>Mail para la prueba</label><input type="text" id="inacTestMail" oninput="inacGuardarPerfil()" placeholder="tumail@balanz.com"></div>
+          </div>
+        </div>
+
+        <div class="inac-card">
+          <div class="inac-filtros" style="margin-bottom:12px;">
+            <input type="text" id="inacBuscar" placeholder="Buscar nombre, cuenta, comitente, mail o localidad…" oninput="renderInactivos()">
+            <select id="inacSegmento" onchange="renderInactivos()">
+              <option value="todos">Todos los inactivos</option>
+              <option value="mas1">Inactivos hace más de un año</option>
+              <option value="reciente">Inactivos recientes (activos en el último año)</option>
+            </select>
+            <select id="inacEstado" onchange="renderInactivos()">
+              <option value="pendientes">Pendientes de este mail</option>
+              <option value="nunca">Nunca contactados</option>
+              <option value="todos">Todos (con y sin mails)</option>
+            </select>
+            <select id="inacActividad" onchange="renderInactivos()" title="Actividad AFIP del Stock"></select>
+            <label for="inacEdadMin">Edad</label>
+            <input type="number" id="inacEdadMin" min="0" max="120" placeholder="desde" style="width:74px;" oninput="renderInactivos()">
+            <input type="number" id="inacEdadMax" min="0" max="120" placeholder="hasta" style="width:74px;" oninput="renderInactivos()">
+            <label for="inacAumMin">AUM mín.</label>
+            <input type="number" id="inacAumMin" min="0" step="100" placeholder="0" style="width:90px;" oninput="renderInactivos()">
+            <select id="inacOrden" onchange="renderInactivos()" title="Orden de la lista (y de la tanda)">
+              <option value="edad">Mayor edad primero</option>
+              <option value="aum">Mayor AUM primero</option>
+              <option value="login">Último login más reciente</option>
+              <option value="nombre">Nombre A-Z</option>
+            </select>
+          </div>
+          <div class="inac-actions" style="margin-bottom:10px;">
+            <span class="inac-selinfo" id="inacSelInfo"></span>
+            <label style="font-size:11px;color:var(--muted);">Tanda:</label>
+            <input type="number" id="inacTanda" min="1" step="50" value="200" style="width:80px;padding:7px 9px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:12px;">
+            <button class="aliq-btn-cancel" onclick="inacSeleccionarTanda()" title="Tilda los primeros N de la lista, en el orden elegido">Tildar primeros N</button>
+            <button class="aliq-btn-cancel" onclick="inacLimpiarSeleccion()">Destildar</button>
+            <button class="aliq-btn-cancel" onclick="inacDescargar(true)" title="Word + CSV con 2 filas de ejemplo a tu mail de prueba (con y sin nombre)">🧪 Prueba a mi mail</button>
+            <button class="aliq-btn-gen" id="inacBtnGen" onclick="inacDescargar(false)">⬇ Descargar Excel + Word</button>
+          </div>
+          <div class="inac-card inac-done" id="inacDone" style="display:none;margin-bottom:10px;"></div>
+          <div class="inac-scroll" id="inacBody"></div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- LOADING OVERLAY -->
     <div class="frame-loading" id="frame-loading" style="display:none;">
       <div class="spinner"></div>
@@ -1242,7 +1364,7 @@ function showApp() {
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
   { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos','fundamental'] },
-  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','armador','monitor'] },
+  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','armador','monitor'] },
   { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
 ];
@@ -1252,6 +1374,7 @@ const NATIVE_PANELS = {
   files:      { icon:'🗂', label:'Archivos',  show: showFiles },
   cliente360: { icon:'🧭', label:'Vista 360', show: showCliente360 },
   ranking:    { icon:'🏆', label:'Ranking Rentabilidad', show: showRanking },
+  inactivos:  { icon:'📭', label:'Inactivos', show: showInactivos },
 };
 function categoryOf(toolId) {
   if (toolId === 'files') return 'utilidades';
@@ -1564,6 +1687,20 @@ function parsePreciosObjetivo(entry) {
 // Adaptado de Scanner_ONs_FCN.html → cargarStock(), sin las llamadas de UI propias de esa herramienta.
 // Nunca tiene fallback publicado (a diferencia de monitor/precios_objetivo) — Stock de cuentas tiene
 // datos de clientes (teléfono, mail) y solo debe vivir en el navegador de cada asesor.
+// Fecha del Stock → 'YYYY-MM-DD' ('' si no hay). XLSX sin cellDates devuelve serial de Excel.
+function _stockFechaISO(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number' && isFinite(v) && v > 1) {
+    const d = new Date(Math.round((v - 25569) * 864e5));
+    return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  return '';
+}
 function parseStockFCN(entry) {
   if (!entry || !entry.data) return null;
   try {
@@ -1579,7 +1716,17 @@ function parseStockFCN(entry) {
       let tel = String(row['Teléfono'] || row['Telefono'] || '').replace(/\s/g, '');
       if (tel && !tel.startsWith('+')) tel = '+' + tel;
       const mail = String(row['Mails'] || row['Mail'] || row['Email'] || '').trim();
-      mapa[comitente] = { tel: tel || null, nombre, denominacion, mail: mail || null };
+      // Campos extra para el panel de Inactivos (A/I, actividad, AUM, fechas).
+      const ai = String(row['A/I'] || '').trim();
+      const actUlt = String(row['Act ult año'] || row['Act ult ano'] || '').trim();
+      const aum = parseFloat(String(row['AUM'] == null ? '' : row['AUM']).replace(',', '.')) || 0;
+      mapa[comitente] = { tel: tel || null, nombre, denominacion, mail: mail || null,
+        ai, actUlt, aum, ultLogin: _stockFechaISO(row['Ult loguin']), primerFondeo: _stockFechaISO(row['Primer Fondeo']),
+        fechaAlta: _stockFechaISO(row['Fecha de Alta']),
+        edad: parseInt(row['Edad'], 10) || null,
+        actividad: String(row['Actividad AFIP'] || '').trim(),
+        localidad: String(row['Localidad'] || '').trim(),
+        fj: String(row['F/J'] || '').trim() };
     });
     return mapa;
   } catch (e) { console.warn('[Dashboard] error leyendo stock de cuentas', e); return null; }
@@ -2660,6 +2807,431 @@ async function generarDatosLiquidez() {
   _avisoMostrarPaso('done');
 }
 
+// ══════════════════════════════════════════════════════════════
+//  INACTIVOS — secuencia de reactivación Mail 1 / 2 / 3 por Combinación de correspondencia.
+//  Fuente: Stock de cuentas (columna A/I = "Inactiva"). Asunto y texto de cada mail
+//  editables y guardados en este navegador; por defecto, los del bot de reactivación
+//  (C:\Users\naico\reactivacion-inactivas\content). El Word se arma ACÁ desde el texto
+//  (mini-zip STORED de arriba), con campos «Saludo»/«Nombre»; el CSV lleva los clientes.
+//  Qué mail recibió cada comitente también queda guardado acá (marcado a mano al enviar).
+// ══════════════════════════════════════════════════════════════
+const INAC_MAILS_KEY = 'fcn_inac_mails_v1';
+const INAC_ENVIOS_KEY = 'fcn_inac_envios_v1';
+const INAC_UNSUB_URL = 'https://suit-fcn.vercel.app/unsubscribe.html';
+const INAC_COLS = ['Saludo', 'Nombre', 'Email', 'Comitente', 'Cuenta', 'Edad', 'Actividad', 'Localidad'];
+// Actividades AFIP que suelen tener más capacidad de ahorro (el AUM de un inactivo casi siempre es 0).
+const INAC_ACT_POTENCIAL = ['jubilado', 'profesional independiente', 'ejecutivo', 'rentista', 'contador',
+  'comercio', 'agricultura', 'abogado', 'productor', 'inmobiliari', 'despachante', 'deportista profesional'];
+
+// Asuntos del bot. Word pone el MISMO asunto a todos (no admite campos), por eso van sin {nombre}.
+const INAC_ASUNTOS = {
+  1: ['Una idea rápida para cuidar tu dinero este mes', '¿Tu dinero le está ganando a la inflación?', 'Hay novedades en tu cuenta de Balanz'],
+  2: ['Acceso preferencial: Obligaciones Negociables en dólares', 'Te reservé un lugar en esto', 'Tu cuenta de Balanz tiene un beneficio disponible'],
+  3: ['Quedo disponible esta semana para vos', 'Tu asesor en Balanz está a un mensaje de distancia']
+};
+const _INAC_FIRMA = `Un saludo,
+**{Asesor}**
+Asesor Financiero · Balanz
+WhatsApp: {WhatsApp}`;
+const INAC_TEXTOS = {
+  1: `{Saludo}
+
+Soy {Asesor}, tu asesor financiero en Balanz. Te escribo porque vi que en algún momento abriste tu cuenta con nosotros, pero hace un tiempo que no la usás — y me pareció valioso escribirte antes de que seas vos el que tenga que buscarme a mí.
+
+Con la inflación y el tipo de cambio moviéndose como vienen moviéndose, mantener pesos "quietos" es, en la práctica, perder poder de compra mes a mes — y tener dólares guardados sin que rindan tampoco te salva del todo, porque el dólar también pierde poder adquisitivo con la inflación de Estados Unidos. Hoy hay formas simples de armar una cartera en dólares que te dé un ingreso distribuido durante el año, en vez de dejarlos parados, sin necesidad de estar todo el día mirando el mercado.
+
+No te escribo para venderte nada puntual — en Balanz el asesoramiento no tiene costo, y solo cobro si vos decidís operar. Si te interesa, respondé este mail y coordinamos unos minutos para ver cómo aplica a tu situación puntual.
+
+${_INAC_FIRMA}
+
+Si preferís no recibir más comunicaciones como esta, podés {Baja}.`,
+  2: `{Saludo}
+
+Te cuento algo puntual: en Balanz hay bastante movimiento con Obligaciones Negociables (ONs) en dólares — bonos de empresas argentinas que hoy pagan una tasa interesante, con intereses que cobrás de forma periódica.
+
+Como cliente nuestro no tenés costo de mantenimiento — es simplemente aprovechar algo que ya tenés disponible.
+
+Si te interesa, te armo 2-3 opciones según el monto que tengas. Respondeme un "sí" y lo vemos.
+
+${_INAC_FIRMA}
+
+Si no querés recibir más mails de este tipo, podés {Baja}.`,
+  3: `{Saludo}
+
+Te mandé un par de mails estos días y quiero cerrar siendo bien directo: soy tu asesor asignado en Balanz, y estoy para ayudarte con lo que necesites — desde entender qué opciones tenés hoy con tu cuenta, hasta armar una cartera que se ajuste a tu perfil.
+
+No hace falta tener mucha experiencia ni un monto grande para arrancar. Te ofrezco una revisión de tu cuenta sin costo, para mostrarte qué alternativas tenés hoy en Balanz — y vos decidís si seguimos o no.
+
+**Guardá este mail — acá me encontrás siempre:**
+📞 WhatsApp directo: {WhatsApp}
+🔐 Tu cuenta Balanz: https://clientes.balanz.com/auth/login
+📷 Instagram: {Instagram}
+
+Podés responder directamente este mail o escribirme por cualquiera de esos medios — estoy disponible en horario de mercado.
+
+${_INAC_FIRMA}
+
+Si preferís no recibir más comunicaciones, podés {Baja}.`
+};
+
+let _inacMail = 1;
+let _inacSel = new Set();          // comitentes tildados
+let _inacBajas = null;             // Set de mails dados de baja (null = no se pudo leer)
+let _inacBajasCargadas = false;
+let _inacUltimaLista = [];         // filas filtradas visibles (para "Tildar primeros N")
+let _inacUltimaDescarga = null;    // { n, comitentes } para marcar como enviados
+
+function _inacLS(key, def) { try { return JSON.parse(localStorage.getItem(key) || 'null') || def; } catch { return def; } }
+function _inacLSset(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { console.warn('[Inactivos] no se pudo guardar', e); } }
+function _inacMailCfg(n) {
+  const s = _inacLS(INAC_MAILS_KEY, {})[n] || {};
+  return { asunto: s.asunto != null ? s.asunto : INAC_ASUNTOS[n][0], cuerpo: s.cuerpo != null ? s.cuerpo : INAC_TEXTOS[n] };
+}
+function _inacEnvios() { return _inacLS(INAC_ENVIOS_KEY, {}); }
+function _inacHoyISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function _inacFechaCorta(iso) { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y.slice(2)}`; }
+
+function _inacPerfil() {
+  const p = getAvisoPerfil();
+  let firma = (p.firma || '').trim();
+  if (!firma) { const u = getDisplayUser().displayName; firma = (u && u !== '?') ? u : getSavedUsername(); }
+  return { firma: (firma || '').trim(), wpp: (p.wpp || '').trim(), instagram: (p.instagram || '').trim(), testMail: (p.testMail || '').trim() };
+}
+function inacGuardarPerfil() {
+  let s = {}; try { s = JSON.parse(localStorage.getItem(AVISO_PERFIL_KEY) || '{}'); } catch {}
+  Object.assign(s, getAvisoPerfil(), {
+    firma: document.getElementById('inacFirma').value.trim(),
+    wpp: document.getElementById('inacWpp').value.trim(),
+    instagram: document.getElementById('inacInstagram').value.trim(),
+    testMail: document.getElementById('inacTestMail').value.trim()
+  });
+  _inacLSset(AVISO_PERFIL_KEY, s);
+  _inacActualizarAcciones();
+}
+
+async function abrirInactivos() {
+  const p = _inacPerfil();
+  document.getElementById('inacFirma').value = p.firma;
+  document.getElementById('inacWpp').value = p.wpp;
+  document.getElementById('inacInstagram').value = p.instagram;
+  document.getElementById('inacTestMail').value = p.testMail;
+  inacElegirMail(_inacMail);
+  if (!_inacBajasCargadas) {
+    _inacBajasCargadas = true;
+    _inacBajas = await fetchBajasSet();
+    renderInactivos();
+  }
+}
+
+function inacElegirMail(n) {
+  _inacMail = n;
+  document.querySelectorAll('#inacTabs .inac-tab').forEach(b => b.classList.toggle('active', +b.dataset.n === n));
+  const cfg = _inacMailCfg(n);
+  const sel = document.getElementById('inacAsuntoSug');
+  sel.innerHTML = '<option value="">Asuntos sugeridos…</option>' +
+    INAC_ASUNTOS[n].map(a => `<option value="${escHtml(a)}">${escHtml(a)}</option>`).join('');
+  document.getElementById('inacAsunto').value = cfg.asunto;
+  document.getElementById('inacCuerpo').value = cfg.cuerpo;
+  document.getElementById('inacSaved').textContent = '';
+  document.getElementById('inacBtnGen').textContent = `⬇ Descargar Excel + Word — Mail ${n}`;
+  document.getElementById('inacDone').style.display = 'none';
+  renderInactivos();
+}
+function inacUsarAsuntoSugerido(v) {
+  if (!v) return;
+  document.getElementById('inacAsunto').value = v;
+  document.getElementById('inacAsuntoSug').value = '';
+  inacGuardarMail();
+}
+let _inacSavedT = null;
+function inacGuardarMail() {
+  const all = _inacLS(INAC_MAILS_KEY, {});
+  all[_inacMail] = { asunto: document.getElementById('inacAsunto').value, cuerpo: document.getElementById('inacCuerpo').value };
+  _inacLSset(INAC_MAILS_KEY, all);
+  const el = document.getElementById('inacSaved');
+  el.textContent = '✓ Guardado en este navegador';
+  clearTimeout(_inacSavedT); _inacSavedT = setTimeout(() => { el.textContent = ''; }, 1800);
+}
+function inacRestaurarMail() {
+  if (!confirm(`¿Volver el Mail ${_inacMail} al texto y asunto originales? Se pierde lo que editaste.`)) return;
+  const all = _inacLS(INAC_MAILS_KEY, {});
+  delete all[_inacMail];
+  _inacLSset(INAC_MAILS_KEY, all);
+  inacElegirMail(_inacMail);
+}
+function inacInsertar(tok) {
+  const ta = document.getElementById('inacCuerpo');
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  ta.value = ta.value.slice(0, a) + tok + ta.value.slice(b);
+  ta.focus(); ta.selectionStart = ta.selectionEnd = a + tok.length;
+  inacGuardarMail();
+}
+
+// Todas las cuentas inactivas del Stock, con su estado de envíos y baja.
+function _inacFilasBase() {
+  if (!currentStockMap) return [];
+  const envios = _inacEnvios();
+  const out = [];
+  for (const [comitente, s] of Object.entries(currentStockMap)) {
+    if (!/^inactiv/i.test(s.ai || '')) continue;
+    const mail = String(s.mail || '').trim().toLowerCase();
+    const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
+    out.push({
+      comitente, s, mail, mailOk,
+      baja: !!(mailOk && _inacBajas && _inacBajas.has(mail)),
+      env: envios[comitente] || {},
+      mas1: /m[aá]s de un a/i.test(s.actUlt || '')
+    });
+  }
+  return out;
+}
+function _inacActividadPotencial(act) {
+  const a = String(act || '').toLowerCase();
+  return INAC_ACT_POTENCIAL.some(k => a.includes(k));
+}
+function _inacPoblarActividades(base) {
+  const sel = document.getElementById('inacActividad');
+  const prev = sel.value;
+  const cnt = {};
+  base.forEach(r => { const a = r.s.actividad || '(sin dato)'; cnt[a] = (cnt[a] || 0) + 1; });
+  const nPot = base.filter(r => _inacActividadPotencial(r.s.actividad)).length;
+  sel.innerHTML = `<option value="">Todas las actividades</option>` +
+    `<option value="__pot">⭐ Perfiles con más capacidad de ahorro (${nPot})</option>` +
+    Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([a, n]) => `<option value="${escHtml(a)}">${escHtml(a)} (${n})</option>`).join('');
+  sel.value = [...sel.options].some(o => o.value === prev) ? prev : '';
+}
+
+function _inacFiltrar(base) {
+  const q = (document.getElementById('inacBuscar').value || '').trim().toLowerCase();
+  const seg = document.getElementById('inacSegmento').value;
+  const est = document.getElementById('inacEstado').value;
+  const act = document.getElementById('inacActividad').value;
+  const eMin = parseInt(document.getElementById('inacEdadMin').value, 10);
+  const eMax = parseInt(document.getElementById('inacEdadMax').value, 10);
+  const aumMin = parseFloat(document.getElementById('inacAumMin').value) || 0;
+  const n = _inacMail;
+  const f = base.filter(r => {
+    if (seg === 'mas1' && !r.mas1) return false;
+    if (seg === 'reciente' && r.mas1) return false;
+    if (est === 'nunca' && Object.keys(r.env).length) return false;
+    // Pendientes: Mail 1 → no lo recibió; Mail 2/3 → recibió el anterior y no este.
+    if (est === 'pendientes' && (r.env[n] || (n > 1 && !r.env[n - 1]))) return false;
+    if (act === '__pot' && !_inacActividadPotencial(r.s.actividad)) return false;
+    if (act && act !== '__pot' && (r.s.actividad || '(sin dato)') !== act) return false;
+    if (Number.isFinite(eMin) && !(r.s.edad >= eMin)) return false;
+    if (Number.isFinite(eMax) && !(r.s.edad != null && r.s.edad <= eMax)) return false;
+    if (aumMin > 0 && !(r.s.aum >= aumMin)) return false;
+    if (q) {
+      const hay = [r.s.nombre, r.s.denominacion, r.comitente, r.mail, r.s.localidad, r.s.actividad].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const orden = document.getElementById('inacOrden').value;
+  const cmp = {
+    edad: (a, b) => (b.s.edad || 0) - (a.s.edad || 0) || b.s.aum - a.s.aum,
+    aum: (a, b) => b.s.aum - a.s.aum || (b.s.edad || 0) - (a.s.edad || 0),
+    login: (a, b) => String(b.s.ultLogin).localeCompare(String(a.s.ultLogin)),
+    nombre: (a, b) => String(a.s.denominacion).localeCompare(String(b.s.denominacion), 'es')
+  }[orden] || (() => 0);
+  return f.sort(cmp);
+}
+const _inacElegible = r => r.mailOk && !r.baja;
+
+function renderInactivos() {
+  const body = document.getElementById('inacBody');
+  if (!body) return;
+  if (!currentStockMap) {
+    body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Sin datos todavía — subí el <a onclick="showFiles()">Stock de cuentas</a> en Archivos. De ahí salen las cuentas inactivas (columna A/I), el nombre, el mail, la edad y la actividad.</div>`;
+    _inacUltimaLista = []; _inacActualizarAcciones(); return;
+  }
+  const base = _inacFilasBase();
+  _inacPoblarActividades(base);
+  const filas = _inacFiltrar(base);
+  _inacUltimaLista = filas;
+  if (!base.length) {
+    body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Tu Stock no tiene cuentas marcadas como "Inactiva" (o le falta la columna A/I — volvé a subir el export completo de Power BI).</div>`;
+    _inacActualizarAcciones(); return;
+  }
+  if (!filas.length) {
+    body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Ninguna cuenta con esos filtros${document.getElementById('inacEstado').value === 'pendientes' && _inacMail > 1 ? ` — el Mail ${_inacMail} se muestra solo a quienes ya recibieron el Mail ${_inacMail - 1} (cambiá "Pendientes de este mail" a "Todos" para verlos a todos)` : ''}.</div>`;
+    _inacActualizarAcciones(); return;
+  }
+  const MAX = 1500;
+  const rows = filas.slice(0, MAX).map(r => {
+    const s = r.s, eleg = _inacElegible(r);
+    const badges = [1, 2, 3].filter(k => r.env[k]).map(k =>
+      `<span class="inac-badge env" title="Clic para desmarcar" onclick="inacDesmarcarEnvio('${escHtml(r.comitente)}',${k})">M${k} · ${_inacFechaCorta(r.env[k])}</span>`).join('');
+    const extra = r.baja ? '<span class="inac-badge baja">dado de baja</span>' : (!r.mailOk ? '<span class="inac-badge baja">sin mail</span>' : '');
+    return `<tr class="${eleg ? '' : 'off'}">
+      <td><input type="checkbox" ${eleg ? '' : 'disabled'} ${_inacSel.has(r.comitente) && eleg ? 'checked' : ''} onchange="inacToggle('${escHtml(r.comitente)}',this.checked)"></td>
+      <td><b>${escHtml(tcNombre(s.nombre) || '—')}</b><div class="sub">${escHtml(s.denominacion)} · ${escHtml(r.comitente)}</div></td>
+      <td>${escHtml(r.mail || '—')}</td>
+      <td class="num">${s.edad || '—'}</td>
+      <td>${escHtml(s.actividad || '—')}<div class="sub">${escHtml(s.localidad)}</div></td>
+      <td class="num">${s.aum ? fmtMonto(s.aum) : '0'}</td>
+      <td class="num">${_inacFechaCorta(s.ultLogin)}</td>
+      <td><span class="inac-badge seg">${r.mas1 ? '+1 año' : 'reciente'}</span>${badges}${extra}</td>
+    </tr>`;
+  }).join('');
+  const eleg = filas.filter(_inacElegible);
+  const todos = eleg.length > 0 && eleg.every(r => _inacSel.has(r.comitente));
+  body.innerHTML = `<table class="inac-table"><thead><tr>
+      <th><input type="checkbox" title="Tildar / destildar todos los de la lista" ${todos ? 'checked' : ''} onchange="inacToggleTodos(this.checked)"></th>
+      <th>Cliente</th><th>Mail</th><th style="text-align:right">Edad</th><th>Actividad · Localidad</th><th style="text-align:right">AUM</th><th style="text-align:right">Últ. login</th><th>Estado</th>
+    </tr></thead><tbody>${rows}</tbody></table>` +
+    (filas.length > MAX ? `<div class="dash-empty" style="padding:8px 4px;">Mostrando ${MAX} de ${filas.length} — afiná con los filtros. "Tildar todos" y "Tildar primeros N" igual usan la lista completa.</div>` : '');
+  _inacActualizarAcciones();
+}
+
+function _inacSeleccionados() {
+  // Solo cuenta lo tildado que además está en la lista filtrada actual y es mandable.
+  return _inacUltimaLista.filter(r => _inacElegible(r) && _inacSel.has(r.comitente));
+}
+function _inacActualizarAcciones() {
+  const info = document.getElementById('inacSelInfo');
+  const btn = document.getElementById('inacBtnGen');
+  if (!info || !btn) return;
+  const lista = _inacUltimaLista, sel = _inacSeleccionados();
+  const nEleg = lista.filter(_inacElegible).length;
+  const p = _inacPerfil();
+  let html = `<b>${sel.length}</b> tildado${sel.length === 1 ? '' : 's'} para el <b>Mail ${_inacMail}</b> · ${lista.length} en la lista (${nEleg} con mail válido y sin baja)`;
+  const faltan = [];
+  if (!p.firma) faltan.push('tu nombre');
+  if (!p.wpp) faltan.push('tu WhatsApp');
+  if (faltan.length) html += ` · <span style="color:var(--danger)">⚠ completá ${faltan.join(' y ')} en "Tu perfil"</span>`;
+  if (_inacBajasCargadas && _inacBajas === null) html += ` · <span style="color:var(--danger)">⚠ no se pudo leer la lista de bajas</span>`;
+  info.innerHTML = html;
+  btn.disabled = !sel.length || faltan.length > 0;
+}
+function inacToggle(com, on) { on ? _inacSel.add(com) : _inacSel.delete(com); renderInactivos(); }
+function inacToggleTodos(on) {
+  _inacUltimaLista.filter(_inacElegible).forEach(r => on ? _inacSel.add(r.comitente) : _inacSel.delete(r.comitente));
+  renderInactivos();
+}
+function inacSeleccionarTanda() {
+  const n = Math.max(1, parseInt(document.getElementById('inacTanda').value, 10) || 200);
+  _inacSel = new Set(_inacUltimaLista.filter(_inacElegible).slice(0, n).map(r => r.comitente));
+  renderInactivos();
+}
+function inacLimpiarSeleccion() { _inacSel.clear(); renderInactivos(); }
+function inacDesmarcarEnvio(com, k) {
+  if (!confirm(`¿Desmarcar el Mail ${k} de este cliente? (vuelve a aparecer como pendiente)`)) return;
+  const e = _inacEnvios();
+  if (e[com]) { delete e[com][k]; if (!Object.keys(e[com]).length) delete e[com]; }
+  _inacLSset(INAC_ENVIOS_KEY, e);
+  renderInactivos();
+}
+function inacMarcarEnviados() {
+  if (!_inacUltimaDescarga) return;
+  const { n, comitentes } = _inacUltimaDescarga, hoy = _inacHoyISO(), e = _inacEnvios();
+  comitentes.forEach(c => { e[c] = e[c] || {}; e[c][n] = hoy; });
+  _inacLSset(INAC_ENVIOS_KEY, e);
+  comitentes.forEach(c => _inacSel.delete(c));
+  _inacUltimaDescarga = null;
+  document.getElementById('inacDone').innerHTML = `<b>✓ ${comitentes.length} marcado${comitentes.length === 1 ? '' : 's'} con el Mail ${n} (${_inacFechaCorta(hoy)}).</b> ${n < 3 ? `En la pestaña Mail ${n + 1}, "Pendientes de este mail" te muestra a quiénes les toca el siguiente.` : 'Secuencia completa para ellos.'}`;
+  renderInactivos();
+}
+
+// ── Word desde el texto: párrafos, **negrita**, links, campos de combinación ──
+function _inacDigits(s) { return String(s || '').replace(/\D/g, ''); }
+function _inacIgHandle(url) { const m = String(url || '').match(/instagram\.com\/([^/?#\s]+)/i); return m ? '@' + m[1] : url; }
+function _inacDocx(texto, perfil) {
+  const rels = [];
+  const relId = url => { let i = rels.indexOf(url); if (i < 0) { rels.push(url); i = rels.length - 1; } return 'rIdL' + (i + 1); };
+  const rPr = (b, link) => `<w:rPr>${link ? '<w:rStyle w:val="Hyperlink"/>' : ''}${b ? '<w:b/>' : ''}</w:rPr>`;
+  const run = (t, b) => t ? `<w:r>${rPr(b)}<w:t xml:space="preserve">${_xmlEsc(t)}</w:t></w:r>` : '';
+  const link = (url, t, b) => `<w:hyperlink r:id="${relId(url)}" w:history="1"><w:r>${rPr(b, true)}<w:t xml:space="preserve">${_xmlEsc(t)}</w:t></w:r></w:hyperlink>`;
+  const campo = (f, b) => `<w:fldSimple w:instr=" MERGEFIELD ${f} "><w:r>${rPr(b)}<w:t>«${f}»</w:t></w:r></w:fldSimple>`;
+  const ig = perfil.instagram || AVISO_IG_DEFAULT;
+  const tokens = (seg, b) => {
+    let out = '', last = 0, m;
+    const re = /\{(Saludo|Nombre|Asesor|WhatsApp|Instagram|Baja)\}|(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)])/g;
+    while ((m = re.exec(seg))) {
+      out += run(seg.slice(last, m.index), b);
+      if (m[2]) out += link(m[2], m[2].replace(/^https?:\/\//, ''), b);
+      else if (m[1] === 'Saludo' || m[1] === 'Nombre') out += campo(m[1], b);
+      else if (m[1] === 'Asesor') out += run(perfil.firma, b);
+      else if (m[1] === 'WhatsApp') out += perfil.wpp ? link('https://wa.me/' + _inacDigits(perfil.wpp), perfil.wpp, b) : '';
+      else if (m[1] === 'Instagram') out += link(ig, _inacIgHandle(ig), b);
+      else if (m[1] === 'Baja') out += link(INAC_UNSUB_URL, 'darte de baja acá', b);
+      last = re.lastIndex;
+    }
+    return out + run(seg.slice(last), b);
+  };
+  const linea = l => l.split('**').map((seg, i) => tokens(seg, i % 2 === 1)).join('');
+  const parrafos = String(texto || '').replace(/\r/g, '').split(/\n{2,}/).map(p =>
+    `<w:p>${p.split('\n').map(linea).join('<w:r><w:br/></w:r>')}</w:p>`).join('');
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${parrafos}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="es-AR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="200" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="character" w:styleId="Hyperlink"><w:name w:val="Hyperlink"/><w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style></w:styles>`;
+  const docRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdS" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${rels.map((u, i) => `<Relationship Id="rIdL${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${_xmlEsc(u).replace(/"/g, '&quot;')}" TargetMode="External"/>`).join('')}</Relationships>`;
+  const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+  const enc = new TextEncoder();
+  const files = { '[Content_Types].xml': enc.encode(ct), '_rels/.rels': enc.encode(rootRels),
+    'word/document.xml': enc.encode(doc), 'word/_rels/document.xml.rels': enc.encode(docRels), 'word/styles.xml': enc.encode(styles) };
+  return _zipWrite(files, Object.keys(files));
+}
+function _inacCSV(rows) {
+  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  return '\uFEFF' + [INAC_COLS.map(esc).join(','), ...rows.map(r => INAC_COLS.map(c => esc(r[c])).join(','))].join('\r\n') + '\r\n';
+}
+const _inacSaludo = nombre => nombre ? `Hola ${nombre},` : 'Hola,';
+
+function inacDescargar(prueba) {
+  const p = _inacPerfil(), n = _inacMail;
+  if (!p.firma || !p.wpp) { showToast('Completá tu nombre y tu WhatsApp en "Tu perfil" antes de generar.'); return; }
+  const cfg = { asunto: document.getElementById('inacAsunto').value.trim(), cuerpo: document.getElementById('inacCuerpo').value };
+  if (!cfg.cuerpo.trim()) { showToast('El texto del mail está vacío.'); return; }
+  let rows, sel = [];
+  if (prueba) {
+    const dest = (p.testMail || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+    if (!dest.length) { showToast('Cargá tu mail de prueba en "Tu perfil".'); return; }
+    rows = [
+      { Saludo: _inacSaludo('María José'), Nombre: 'María José', Email: dest[0], Comitente: 'PRUEBA-1', Cuenta: 'EJEMPLO MARIA JOSE', Edad: 58, Actividad: 'Jubilado', Localidad: 'CABA' },
+      { Saludo: _inacSaludo(''), Nombre: '', Email: dest[1 % dest.length], Comitente: 'PRUEBA-2', Cuenta: 'EJEMPLO SIN NOMBRE', Edad: '', Actividad: '', Localidad: '' }
+    ];
+  } else {
+    if (_inacBajas === null && !confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi generás igual, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Generar de todos modos?')) return;
+    sel = _inacSeleccionados();
+    if (!sel.length) { showToast('Tildá al menos un cliente.'); return; }
+    rows = sel.map(r => {
+      const nom = tcNombre(r.s.nombre);
+      return { Saludo: _inacSaludo(nom), Nombre: nom, Email: r.mail, Comitente: r.comitente, Cuenta: r.s.denominacion,
+        Edad: r.s.edad || '', Actividad: r.s.actividad, Localidad: r.s.localidad };
+    });
+  }
+  const suf = prueba ? '-PRUEBA' : '';
+  try {
+    _descargar(_inacDocx(cfg.cuerpo, p), `Inactivos-Mail${n}${suf}.docx`);
+    _descargar(new Blob([_inacCSV(rows)], { type: 'text/csv;charset=utf-8' }), `inactivos-mail${n}${suf}.csv`);
+  } catch (e) {
+    console.error('[Inactivos]', e); showToast('No se pudo armar el Word: ' + e.message); return;
+  }
+  _inacUltimaDescarga = prueba ? null : { n, comitentes: sel.map(r => r.comitente) };
+  const done = document.getElementById('inacDone');
+  done.style.display = '';
+  done.innerHTML = `<b>✓ Descargados <code>Inactivos-Mail${n}${suf}.docx</code> y <code>inactivos-mail${n}${suf}.csv</code> — ${rows.length} ${prueba ? 'filas de prueba' : 'cliente' + (rows.length === 1 ? '' : 's')}.</b>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--muted);">Asunto:</span>
+      <input type="text" readonly value="${escHtml(cfg.asunto)}" id="inacAsuntoCopia" style="flex:1;min-width:200px;padding:7px 9px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:12px;">
+      <button class="aliq-btn-cancel" onclick="inacCopiarAsunto(this)">Copiar asunto</button>
+    </div>
+    <ol>
+      <li>Abrí <b>Outlook (classic)</b> y esperá el "Conectado a Microsoft Exchange".</li>
+      <li>Abrí <code>Inactivos-Mail${n}${suf}.docx</code> → <b>Correspondencia</b> → <b>Seleccionar destinatarios</b> → <b>Usar una lista existente</b> → <code>inactivos-mail${n}${suf}.csv</code> (codificación <b>UTF-8</b>).</li>
+      <li>Revisá con <b>Vista previa de resultados</b> que el saludo salga bien.</li>
+      <li><b>Finalizar y combinar</b> → <b>Enviar mensajes de correo electrónico</b>: Para = <code>Email</code>, Asunto = el de arriba, Formato = <b>HTML</b>.</li>
+    </ol>
+    ${prueba ? '' : `<div style="margin-top:8px;"><button class="aliq-btn-gen" onclick="inacMarcarEnviados()">✓ Ya los mandé — marcar ${rows.length} con el Mail ${n}</button> <span style="font-size:10.5px;color:var(--muted);">Así no se repiten y el Mail ${Math.min(n + 1, 3)} te muestra a quién le toca.</span></div>`}`;
+}
+function inacCopiarAsunto(btn) {
+  const v = document.getElementById('inacAsuntoCopia').value;
+  navigator.clipboard.writeText(v).then(() => { btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = 'Copiar asunto'; }, 1500); })
+    .catch(() => { const i = document.getElementById('inacAsuntoCopia'); i.select(); document.execCommand('copy'); btn.textContent = '✓ Copiado'; });
+}
+
 function holdersCount(ticker) {
   if (!currentTenencia || !currentTenencia.holdersByTicker) return 0;
   const h = currentTenencia.holdersByTicker[String(ticker).toUpperCase()] || currentTenencia.holdersByTicker[ticker];
@@ -3033,6 +3605,7 @@ const SEARCH_SECCIONES = [
   { id: 'files', nombre: 'Archivos', icon: '🗂' },
   { id: 'cliente360', nombre: 'Vista 360', icon: '👤' },
   { id: 'ranking', nombre: 'Ranking', icon: '🏆' },
+  { id: 'inactivos', nombre: 'Inactivos (cuentas sin actividad)', icon: '📭' },
 ];
 let _searchActiveIdx = -1;
 
@@ -3142,6 +3715,7 @@ function irAResultadoBusqueda(tipo, id) {
     else if (id === 'files') showFiles();
     else if (id === 'cliente360') showCliente360();
     else if (id === 'ranking') showRanking();
+    else if (id === 'inactivos') showInactivos();
   }
   else if (tipo === 'cliente') abrirCarteraCliente(id);
   else if (tipo === 'ticker') abrirHolders(id);
@@ -3718,6 +4292,7 @@ function renderDashboardAll() {
   renderDashRFRotar(monitor, tenencia);
   renderCliente360();
   renderRanking();
+  if (document.getElementById('inactivos-panel')?.classList.contains('active')) renderInactivos();
 }
 
 async function refreshFilesStatusBits() {
@@ -4035,7 +4610,7 @@ async function pasteFromClipboard(key) {
 // Paneles "nativos" del propio FCN_Suite.html (no son iframes de otra herramienta) — Inicio,
 // Archivos, y ahora Vista 360. hideAllPanels() centraliza el show/hide para no repetir la
 // misma lista de ids en cada show*() cada vez que se agrega un panel nuevo.
-const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel', 'ranking-panel'];
+const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel', 'ranking-panel', 'inactivos-panel'];
 function hideAllPanels() {
   document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
   NATIVE_PANEL_IDS.forEach(id => document.getElementById(id)?.classList.remove('active'));
@@ -4067,6 +4642,7 @@ function _abrirVistaDesdeUrl(){
     else if(panel==='files') showFiles();
     else if(panel==='cliente360') showCliente360();
     else if(panel==='ranking') showRanking();
+    else if(panel==='inactivos') showInactivos();
     else showHome();
   } finally { _suiteUrlSuprimir = false; }
 }
@@ -4101,6 +4677,14 @@ function showRanking() {
   document.getElementById('ranking-panel').classList.add('active');
   renderRanking();
   _setSuiteUrl('panel', 'ranking');
+}
+
+function showInactivos() {
+  setActiveTab('inactivos');
+  hideAllPanels();
+  document.getElementById('inactivos-panel').classList.add('active');
+  abrirInactivos();
+  _setSuiteUrl('panel', 'inactivos');
 }
 
 function openTool(toolId) {
