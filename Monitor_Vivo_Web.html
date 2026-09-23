@@ -205,7 +205,7 @@ table.hm-table td { padding:7px 9px; border-bottom:1px solid var(--wash-1); }
   <div class="foot-note" id="footNote"></div>
 </div>
 
-<div class="holders-overlay" id="holdersOverlay" onclick="if(event.target===this) cerrarHolders()">
+<div class="holders-overlay" id="holdersOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarHolders()">
   <div class="holders-modal">
     <div class="hm-head">
       <div>

@@ -1,0 +1,122 @@
+{
+  "name": "FCN - WhatsApp masivo (rotación Radar)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "1. Arrancar a mano",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-100, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/data/n8n-input/whatsapp-envio.json",
+        "options": {}
+      },
+      "id": "read-file",
+      "name": "2. Leer el JSON exportado",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [120, 0],
+      "notes": "Renombrá SIEMPRE el archivo descargado de la Calculadora de Rotaciones a whatsapp-envio.json en esta carpeta antes de correr el flujo. Ajustá la ruta a como esté montada en tu servidor de n8n."
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "id": "extract-json",
+      "name": "3. Parsear JSON",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [340, 0]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "filas",
+        "options": {}
+      },
+      "id": "split-filas",
+      "name": "4. Separar filas (una por cliente)",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [560, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.telefono }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-tel",
+      "name": "5. Descartar sin teléfono",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [780, 0],
+      "notes": "Los clientes sin teléfono cargado en Stock ya vienen con telefono:null desde la Calculadora — acá se saltean en vez de fallar el HTTP Request."
+    },
+    {
+      "parameters": { "batchSize": 1, "options": {} },
+      "id": "loop",
+      "name": "6. Uno por uno (rate limit)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.WA_PHONE_NUMBER_ID }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $json.telefono.replace(/[^0-9]/g, ''),\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": $json.plantilla,\n    \"language\": { \"code\": \"es_AR\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": $json.var1_nombre || 'que tal' },\n          { \"type\": \"text\", \"text\": $json.var2_ticker_actual },\n          { \"type\": \"text\", \"text\": String($json.var3_tir_actual) },\n          { \"type\": \"text\", \"text\": $json.var5_ticker_alt },\n          { \"type\": \"text\", \"text\": String($json.var6_tir_alt) }\n        ]\n      }\n    ]\n  }\n} }}",
+        "options": {}
+      },
+      "id": "http-whatsapp",
+      "name": "7. Mandar plantilla (Meta Cloud API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, -80],
+      "notes": "Credencial httpHeaderAuth = header 'Authorization: Bearer <tu token de acceso de Meta>'. Variable de entorno WA_PHONE_NUMBER_ID = el Phone Number ID de tu WhatsApp Business Platform (Meta Business → WhatsApp → Configuración de la API). El cuerpo de arriba usa solo 5 variables (nombre, ticker actual, TIR actual, ticker alternativa, TIR alternativa) — tienen que coincidir EXACTO con las variables {{1}}..{{5}} de la plantilla 'rotacion_tir_v1' que apruebes en Meta. Si armás también 'rotacion_duration_v1', duplicá este nodo con var4/var7/var8."
+    },
+    {
+      "parameters": { "amount": 1, "unit": "seconds" },
+      "id": "wait",
+      "name": "8. Esperar 1s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1440, -80]
+    }
+  ],
+  "connections": {
+    "1. Arrancar a mano": { "main": [[{ "node": "2. Leer el JSON exportado", "type": "main", "index": 0 }]] },
+    "2. Leer el JSON exportado": { "main": [[{ "node": "3. Parsear JSON", "type": "main", "index": 0 }]] },
+    "3. Parsear JSON": { "main": [[{ "node": "4. Separar filas (una por cliente)", "type": "main", "index": 0 }]] },
+    "4. Separar filas (una por cliente)": { "main": [[{ "node": "5. Descartar sin teléfono", "type": "main", "index": 0 }]] },
+    "5. Descartar sin teléfono": { "main": [[{ "node": "6. Uno por uno (rate limit)", "type": "main", "index": 0 }]] },
+    "6. Uno por uno (rate limit)": { "main": [[], [{ "node": "7. Mandar plantilla (Meta Cloud API)", "type": "main", "index": 0 }]] },
+    "7. Mandar plantilla (Meta Cloud API)": { "main": [[{ "node": "8. Esperar 1s", "type": "main", "index": 0 }]] },
+    "8. Esperar 1s": { "main": [[{ "node": "6. Uno por uno (rate limit)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

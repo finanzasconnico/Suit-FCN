@@ -360,6 +360,28 @@ tbody tr.row-perdida:hover{background:rgba(192,69,59,.09);}
   </div>
 </div>
 
+<!-- ── ENVÍO MASIVO POR WHATSAPP A LOS TENEDORES DE UN TICKER ── -->
+<div class="wpp-modal-overlay" id="wpp-masivo-overlay" style="display:none" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true')cerrarWppMasivo()">
+  <div class="wpp-modal" style="max-width:720px;max-height:85vh;overflow-y:auto;">
+    <div class="wpp-modal-header">
+      <div>
+        <div class="wpp-modal-title" id="wpp-masivo-title">—</div>
+        <div class="wpp-modal-sub" id="wpp-masivo-sub">—</div>
+      </div>
+      <button class="wpp-modal-close" onclick="cerrarWppMasivo()">✕</button>
+    </div>
+    <div style="font-size:10px;color:var(--ink-muted);margin-bottom:6px;">Plantilla para todos (pisa el texto de los que todavía no se enviaron):</div>
+    <div id="wpp-masivo-tpl-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+      <button class="wpp-tpl-btn" onclick="usarTemplateMasivo('ganancia')">🎉 Ganancia</button>
+      <button class="wpp-tpl-btn" onclick="usarTemplateMasivo('caida')">⚠️ Caída</button>
+      <button class="wpp-tpl-btn" onclick="usarTemplateMasivo('acumular')">📈 Acumular</button>
+      <button class="wpp-tpl-btn" onclick="usarTemplateMasivo('mantener')">⏳ Mantener</button>
+      <button class="wpp-tpl-btn" onclick="usarTemplateMasivo('stop')">🛑 Stop-loss</button>
+    </div>
+    <div id="wpp-masivo-cards" style="display:flex;flex-direction:column;gap:14px;"></div>
+  </div>
+</div>
+
 <!-- ── TOAST ── -->
 <div class="rv-toast hidden" id="rv-toast">
   <span class="rv-toast-msg"></span>
@@ -1256,6 +1278,7 @@ document.addEventListener('keydown', function(e){
     'mail-modal-overlay': cerrarMailModal,
     'mail-masivo-overlay': cerrarMailMasivo,
     'holders-modal-overlay': cerrarHoldersTicker,
+    'wpp-masivo-overlay': cerrarWppMasivo,
   };
   Object.keys(overlays).forEach(function(id){
     var el = document.getElementById(id);
@@ -1300,6 +1323,101 @@ function descargarMailMasivoTxt() {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+// ── ENVÍO MASIVO POR WHATSAPP (todos los tenedores de un ticker en una sola cola) ──
+// Pedido real de Nico (22/09): quiso vender META de todos sus clientes y terminó copiando
+// teléfonos a mano porque no había un botón acá y la app de escritorio de WhatsApp no le andaba.
+// Este flujo arma la cola completa de un saque (uno por cliente, editable) y cada "Abrir
+// WhatsApp" usa SOLO el link web (wa.me) — nunca whatsapp://, que es justo lo que dependía de la
+// app de escritorio rota. Nada se manda solo: cada mensaje lo dispara un clic de Nico.
+let wppMasivoState = null; // { ticker, filas:[{cliente,nombre,tel,tenencia,rent,nota,senal,enviado}] }
+
+function abrirWppMasivoTicker(ticker) {
+  const holders = posiciones.filter(p => p.ticker === ticker).sort((a,b) => b.tenencia - a.tenencia);
+  if (!holders.length) { showToast('Ningún cliente tuyo tiene este ticker en cartera actualmente.'); return; }
+  wppMasivoState = {
+    ticker,
+    filas: holders.map(p => {
+      const r = aplicarReglas(p);
+      return { cliente: p.cliente, nombre: p.nombre||'', tel: p.tel||null, tenencia: p.tenencia,
+                rent: getRentEfectiva(p), nota: r.nota, senal: r.senal, enviado: false };
+    })
+  };
+  document.getElementById('wpp-masivo-title').textContent = `📲 Envío masivo — ${ticker}`;
+  document.querySelectorAll('#wpp-masivo-tpl-bar .wpp-tpl-btn').forEach(b=>b.classList.remove('sel'));
+  renderWppMasivoCards();
+  document.getElementById('wpp-masivo-overlay').style.display = 'flex';
+}
+function cerrarWppMasivo() { document.getElementById('wpp-masivo-overlay').style.display = 'none'; }
+
+function _wppMasivoCtx(fila) {
+  return { ticker: wppMasivoState.ticker, cliente: fila.cliente, nombre: fila.nombre, rent: fila.rent, nota: fila.nota };
+}
+
+// La decisión de vender/acumular/etc. para TODO el ticker es de Nico, no la que tira la regla
+// automática posición por posición — por eso este botón pisa el texto de todos de una en vez de
+// obligarlo a cambiar plantilla fila por fila. No toca las filas ya enviadas.
+function usarTemplateMasivo(tipo) {
+  if (!wppMasivoState) return;
+  document.querySelectorAll('#wpp-masivo-tpl-bar .wpp-tpl-btn').forEach(b=>b.classList.remove('sel'));
+  event?.target?.classList.add('sel');
+  wppMasivoState.filas.forEach((fila, i) => {
+    if (fila.enviado) return;
+    const ta = document.getElementById('wpp-masivo-texto-'+i);
+    if (ta) ta.value = TEMPLATES[tipo]?.(_wppMasivoCtx(fila)) || '';
+  });
+}
+
+function renderWppMasivoCards() {
+  const st = wppMasivoState;
+  const enviados = st.filas.filter(f=>f.enviado).length;
+  document.getElementById('wpp-masivo-sub').textContent = `${st.filas.length} cliente(s) · ${enviados}/${st.filas.length} enviados`;
+  const cardsEl = document.getElementById('wpp-masivo-cards');
+  cardsEl.innerHTML = st.filas.map((fila, i) => {
+    const rentStr = fila.rent!==null ? (fila.rent>=0?'+':'')+fila.rent.toFixed(1)+'%' : '—';
+    const texto = TEMPLATES[SENAL_TPL_MAP[fila.senal]||'mantener']?.(_wppMasivoCtx(fila)) || '';
+    return `<div class="cliente-card" style="margin-bottom:0;${fila.enviado?'opacity:.55;':''}">
+      <div class="cliente-card-head" style="cursor:default;">
+        <div>
+          <div class="cliente-card-name">${fila.cliente}${fila.enviado?' · <span style="color:var(--verde);">✓ Enviado</span>':''}</div>
+          <div class="cliente-card-meta">USD ${fmtN(fila.tenencia)} · ${rentStr}${fila.tel?'':' · <span style="color:#e0555a;">sin teléfono</span>'}</div>
+        </div>
+      </div>
+      <div class="cliente-card-body open" style="display:block;">
+        <textarea class="wpp-textarea" id="wpp-masivo-texto-${i}" style="min-height:90px;" ${fila.enviado?'disabled':''}>${texto}</textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+          <button class="btn-sm" onclick="copiarWppMasivoItem(${i},this)">📋 Copiar</button>
+          <button class="wpp-send-btn" ${fila.tel?'':'disabled'} onclick="enviarWppMasivoItem(${i})">${fila.enviado?'↻ Reenviar':'📲 Abrir WhatsApp'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function copiarWppMasivoItem(i, btnEl) {
+  const texto = document.getElementById('wpp-masivo-texto-'+i).value;
+  navigator.clipboard.writeText(texto).then(() => {
+    if (!btnEl) return;
+    const original = btnEl.textContent;
+    btnEl.textContent = '✓ Copiado';
+    setTimeout(() => { btnEl.textContent = original; }, 1800);
+  }).catch(() => showToast('No se pudo copiar. Seleccioná el texto manualmente.', { err: true }));
+}
+
+// SOLO wa.me (WhatsApp Web) — a propósito, sin intentar whatsapp:// primero. La fricción que
+// reportó Nico fue justo la app de escritorio trabada; el link web no depende de ella y abre
+// directo en el navegador (o en WhatsApp Web si ya está logueado ahí).
+function enviarWppMasivoItem(i) {
+  const fila = wppMasivoState?.filas[i];
+  if (!fila?.tel) return;
+  const ta = document.getElementById('wpp-masivo-texto-'+i);
+  const texto = ta.value.trim();
+  if (!texto) { showToast('Escribí un mensaje primero.'); return; }
+  const tel = fila.tel.replace(/\D/g,'');
+  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
+  fila.enviado = true;
+  renderWppMasivoCards();
+}
+
 // ── HOLDERS POR TICKER (pestaña "Precios & Targets" → qué clientes tienen cada uno) ──
 // La rentabilidad "proyectada a target" es POR CLIENTE, no del ticker en general — el precio
 // objetivo es el mismo para todos, pero cada uno compró a un precio distinto (ppc), así que el
@@ -1317,6 +1435,7 @@ function abrirHoldersTicker(ticker) {
   document.getElementById('holders-modal-sub').innerHTML = holders.length
     ? `${holders.length} cliente(s) · Tenencia total USD ${fmtN(total)}` + (targetEfectivo ? ` · Precio objetivo: $${targetEfectivo.toFixed(2)}` : '')
       + ` · <a href="javascript:void(0)" onclick="abrirMailMasivoTicker('${ticker}')" style="color:var(--verde);text-decoration:underline;">✉ Mail a todos</a>`
+      + ` · <a href="javascript:void(0)" onclick="abrirWppMasivoTicker('${ticker}')" style="color:var(--verde);text-decoration:underline;">📲 WhatsApp a todos</a>`
     : '';
   const body = document.getElementById('holders-modal-body');
   if (!holders.length) {

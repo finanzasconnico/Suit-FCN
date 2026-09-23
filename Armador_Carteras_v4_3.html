@@ -203,6 +203,40 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .pct-toggle{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
 .pct-toggle-btn{font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--cream-dim);font-family:'Hanken Grotesk',sans-serif;transition:all .15s;}
 .pct-toggle-btn.active{background:var(--balanz);color:#fff;border-color:var(--balanz);}
+/* KPI CARDS (portada del PDF) */
+.dkpis{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:16px;border:1px solid #EEE8DA;border-radius:6px;overflow:hidden;}
+.dkpi{padding:11px 16px;border-left:1px solid #EEE8DA;}
+.dkpi:first-child{border-left:none;}
+.dkpi-lbl{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:#999;}
+.dkpi-val{font-family:'Spectral',serif;font-size:19px;font-weight:600;color:#102E2A;margin:2px 0 1px;}
+.dkpi-sub{font-size:9px;color:#999;}
+/* DONUTS por categoría */
+.ddonuts{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-start;}
+.ddonut-box{text-align:center;}
+.ddonut-title{font-size:10.5px;font-weight:600;color:#102E2A;margin-bottom:6px;}
+.ddonut-leg{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:center;margin-top:6px;max-width:210px;}
+.ddonut-leg span{font-size:8.5px;color:#666;display:flex;align-items:center;gap:4px;}
+.ddonut-leg i{width:7px;height:7px;border-radius:50%;display:inline-block;}
+/* Tabla de categoría (portada) */
+.dcat-table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:4px;}
+.dcat-table th{background:#0F3A34;color:#fff;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;}
+.dcat-table td{padding:6px 10px;border-bottom:1px solid #EEE8DA;}
+.dcat-table tr:last-child td{border-bottom:none;}
+.dcat-table .tot-row td{font-weight:700;background:#F9F6EE;}
+/* Secciones del PDF asignables a página */
+.doc-block{position:relative;}
+.doc-block[hidden]{display:none!important;}
+.dblock-pagepick{position:absolute;top:-2px;right:0;font-size:8.5px;color:#aaa;display:flex;align-items:center;gap:4px;background:#fff;padding:1px 4px;border-radius:3px;}
+.dblock-pagepick select{font-size:9px;border:1px solid #ddd;border-radius:3px;padding:1px 3px;background:#fff;color:#555;}
+/* Cartera en pesos (bucket ARS aparte, independiente del pool principal) */
+.dars-hd{background:#5B3FA8;color:#fff;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border-radius:4px 4px 0 0;display:flex;justify-content:space-between;}
+.dars-table{width:100%;border-collapse:collapse;font-size:10.5px;}
+.dars-table th{background:#F1ECFB;color:#5B3FA8;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;}
+.dars-table td{padding:6px 10px;border-bottom:1px solid #EEE8DA;}
+.dars-table .tot-row td{font-weight:700;background:#F9F6EE;}
+.ars-asset-row{display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--wash-1);font-size:11px;}
+.ars-asset-row input{flex:1;min-width:0;}
+.ars-asset-row .pct{width:52px;flex:0 0 52px;}
 /* DOC VIZ */
 #doc-viz-wrap{margin-bottom:18px;}
 .dviz-title{font-family:'Spectral',serif;font-size:14px;font-weight:600;color:#102E2A;margin-bottom:10px;}
@@ -305,6 +339,16 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
       <div class="port-pill" id="port-pill" style="display:none;"><span class="lbl">Total</span><span class="val" id="port-pill-val">—</span></div>
     </div>
     <div>
+      <div class="section-title">Cartera en Pesos <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--cream-dim);">(opcional, independiente)</span></div>
+      <div class="field"><label>Monto en ARS</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="port-size-ars" placeholder="0" min="0" style="padding-left:22px;" oninput="updateDoc()"></div></div>
+      <div id="ars-asset-list" style="margin:8px 0;"></div>
+      <div class="field-row">
+        <div class="field" style="flex:2;"><input type="text" id="ars-f-name" placeholder="Ej: Balanz Ahorro FCI"></div>
+        <div class="field ars-asset-row" style="flex:0 0 60px;"><input type="number" id="ars-f-pct" placeholder="%" min="0" max="100" step="0.5"></div>
+      </div>
+      <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:4px;font-size:11px;" onclick="addAssetARS()">+ Agregar a Cartera en Pesos</button>
+    </div>
+    <div>
       <div class="section-title">Nota Estratégica</div>
       <div class="field"><textarea id="strategy-note" rows="3" placeholder="Contexto de mercado, objetivos…" oninput="updateDoc()"></textarea></div>
       <div class="field-row">
@@ -404,18 +448,46 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
             </div>
             <div id="dnotew" style="display:none;"><div class="dsh">Nota Estratégica</div><div class="dsn" id="dnotet"></div></div>
             <div id="dnextrevieww" style="display:none;margin-bottom:10px;"><span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;">Próxima revisión: </span><span id="dnextreview" style="font-size:9px;font-weight:600;color:#0F3A34;"></span></div>
-            <div class="dsh">Composición de Cartera</div>
             <div id="doc-empty" class="empty-state"><p>Agregá activos desde el panel izquierdo.</p></div>
             <div id="doc-content" style="display:none;">
-              <div class="dpg">
-                <div id="doc-viz-wrap"></div>
-                <table class="dt"><thead><tr><th>Activo</th><th>Categoría</th><th>%</th><th id="th-amt" style="display:none;">Monto</th><th>Vencimiento</th><th>Cupón / Papel</th><th id="th-yield-col">TIR / TNA</th><th>Moneda</th></tr></thead><tbody id="doc-tbody"></tbody></table>
+              <div class="doc-block" data-blk="resumen">
+                <div class="dblock-pagepick">Pág. <select data-blkpick="resumen" onchange="setBlockPage('resumen',this.value)"></select></div>
+                <div class="dsh">Propuesta de Cartera</div>
+                <div class="dkpis" id="doc-kpis"></div>
+                <div class="ddonuts" id="doc-donuts"></div>
+                <table class="dcat-table" id="doc-cat-table"></table>
               </div>
-              <div style="margin-bottom:12px;" id="quality-summary-wrap" style="display:none;"><div class="dsh">Resumen de Calidad</div><div id="quality-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"></div></div>
-              <div style="margin-bottom:20px;"><div class="dsh">Distribución por Clase de Activo</div><div class="dab" id="doc-bars"></div></div>
+              <div class="doc-block" data-blk="rv" id="doc-block-rv" hidden>
+                <div class="dblock-pagepick">Pág. <select data-blkpick="rv" onchange="setBlockPage('rv',this.value)"></select></div>
+                <div class="dsh">Renta Variable <span id="dsh-rv-sub" style="font-weight:400;font-size:10px;color:#999;"></span></div>
+                <table class="dt"><thead><tr><th>Activo</th><th>Categoría</th><th>%</th><th id="th-amt-rv" style="display:none;">Monto</th><th>Retorno Est.</th><th>Moneda</th></tr></thead><tbody id="doc-tbody-rv"></tbody></table>
+              </div>
+              <div class="doc-block" data-blk="rf" id="doc-block-rf" hidden>
+                <div class="dblock-pagepick">Pág. <select data-blkpick="rf" onchange="setBlockPage('rf',this.value)"></select></div>
+                <div class="dsh">Renta Fija <span id="dsh-rf-sub" style="font-weight:400;font-size:10px;color:#999;"></span></div>
+                <table class="dt"><thead><tr><th>Activo</th><th>Categoría</th><th>%</th><th id="th-amt-rf" style="display:none;">Monto</th><th>Vencimiento</th><th>Cupón / Papel</th><th>TIR / TNA</th><th>Moneda</th></tr></thead><tbody id="doc-tbody-rf"></tbody></table>
+              </div>
+              <div class="doc-block" data-blk="otros" id="doc-block-otros" hidden>
+                <div class="dblock-pagepick">Pág. <select data-blkpick="otros" onchange="setBlockPage('otros',this.value)"></select></div>
+                <div class="dsh">Otros</div>
+                <table class="dt"><thead><tr><th>Activo</th><th>Categoría</th><th>%</th><th id="th-amt-ot" style="display:none;">Monto</th><th>Moneda</th></tr></thead><tbody id="doc-tbody-otros"></tbody></table>
+              </div>
+              <div class="doc-block" data-blk="flujo">
+                <div class="dblock-pagepick">Pág. <select data-blkpick="flujo" onchange="setBlockPage('flujo',this.value)"></select></div>
+                <div id="doc-viz-wrap"></div>
+              </div>
+              <div class="doc-block" data-blk="calidad" id="quality-summary-wrap" hidden>
+                <div class="dblock-pagepick">Pág. <select data-blkpick="calidad" onchange="setBlockPage('calidad',this.value)"></select></div>
+                <div class="dsh">Resumen de Calidad</div><div id="quality-summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"></div>
+              </div>
+              <div class="doc-block" data-blk="ars" id="doc-block-ars" hidden>
+                <div class="dblock-pagepick">Pág. <select data-blkpick="ars" onchange="setBlockPage('ars',this.value)"></select></div>
+                <div class="dars-hd"><span>Cartera en Pesos</span><span id="dars-hd-tot"></span></div>
+                <table class="dars-table"><thead><tr><th>Ticker</th><th>Fondo / Activo</th><th>% Cartera</th><th>Monto ARS</th></tr></thead><tbody id="doc-tbody-ars"></tbody></table>
+              </div>
             </div>
           </div>
-          <div class="df"><div class="df-firm" id="doc-firm-footer">Firma Financiera</div><div class="df-page">Página 1 de 1</div></div>
+          <div class="df"><div class="df-firm" id="doc-firm-footer">Firma Financiera</div><div class="df-page" id="doc-page-x">Página 1 de 1</div></div>
         </div>
       </div>
     </div>
@@ -1523,57 +1595,160 @@ function updateDoc(){
   if(ps>0){sw.style.display='';drawBadge(fmt(ps,pc));}else sw.style.display='none';
   var nw=document.getElementById('dnotew');
   if(note){nw.style.display='';document.getElementById('dnotet').textContent=note;}else nw.style.display='none';
-  document.getElementById('th-amt').style.display=ps>0?'':'none';
   render();
-  if(!assets.length){document.getElementById('doc-empty').style.display='';document.getElementById('doc-content').style.display='none';if(docChart){docChart.destroy();docChart=null;}return;}
+  if(!assets.length){
+    document.getElementById('doc-empty').style.display='';document.getElementById('doc-content').style.display='none';
+    if(docChart){docChart.destroy();docChart=null;}destroyDocDonuts();
+    return;
+  }
   document.getElementById('doc-empty').style.display='none';document.getElementById('doc-content').style.display='';
   var totalAlloc=assets.reduce(function(s,a){return s+a.pct;},0);
-  var wY=0,allY=true;
-  var rows=assets.map(function(a){
+
+  function bucketOf(a){var m=(a.type||'').split(' | ')[0];if(m==='Renta Variable')return'rv';if(m==='Renta Fija')return'rf';return'otros';}
+  var rvA=assets.filter(function(a){return bucketOf(a)==='rv';});
+  var rfA=assets.filter(function(a){return bucketOf(a)==='rf';});
+  var otA=assets.filter(function(a){return bucketOf(a)==='otros';});
+  var rvPct=rvA.reduce(function(s,a){return s+a.pct;},0);
+  var rfPct=rfA.reduce(function(s,a){return s+a.pct;},0);
+  var otPct=otA.reduce(function(s,a){return s+a.pct;},0);
+
+  // ── KPIs de portada ──
+  function kpiHTML(lbl,pct,ps,pc){return'<div class="dkpi"><div class="dkpi-lbl">'+lbl+'</div><div class="dkpi-val">'+(ps>0?fmt(ps*pct/100,pc):pct.toFixed(1)+'%')+'</div><div class="dkpi-sub">'+pct.toFixed(1)+'% del objetivo</div></div>';}
+  document.getElementById('doc-kpis').innerHTML=
+    kpiHTML('Renta Variable',rvPct,ps,pc)+kpiHTML('Renta Fija',rfPct,ps,pc)+kpiHTML('Total Asignado',totalAlloc,ps,pc);
+
+  // ── Donuts RV/RF y por categoría ──
+  document.getElementById('doc-donuts').innerHTML=
+    '<div class="ddonut-box"><div class="ddonut-title">RV vs RF'+(otPct>0?' vs Otros':'')+'</div><canvas id="ddonut-macro" width="130" height="130"></canvas></div>'+
+    '<div class="ddonut-box"><div class="ddonut-title">Por categoría</div><canvas id="ddonut-cat" width="130" height="130"></canvas><div class="ddonut-leg" id="ddonut-cat-leg"></div></div>';
+  destroyDocDonuts();
+  if(totalAlloc>0){
+    var macroLabels=['Renta Variable','Renta Fija'],macroData=[rvPct,rfPct],macroColors=['#4a90d9','#1C8C5F'];
+    if(otPct>0){macroLabels.push('Otros');macroData.push(otPct);macroColors.push('#999');}
+    docDonutMacro=new Chart(document.getElementById('ddonut-macro').getContext('2d'),{type:'doughnut',data:{labels:macroLabels,datasets:[{data:macroData,backgroundColor:macroColors,borderColor:'#fff',borderWidth:2}]},options:{responsive:false,devicePixelRatio:3,plugins:{legend:{display:false}},cutout:'60%',animation:false}});
+    var catAgg={};assets.forEach(function(a){var sub=(a.type||'Otro').split(' | ')[1]||(a.type||'Otro');if(!catAgg[sub])catAgg[sub]={total:0,color:a.color};catAgg[sub].total+=a.pct;});
+    var catEntries=Object.entries(catAgg).sort(function(x,y){return y[1].total-x[1].total;});
+    docDonutCat=new Chart(document.getElementById('ddonut-cat').getContext('2d'),{type:'doughnut',data:{labels:catEntries.map(function(e){return e[0];}),datasets:[{data:catEntries.map(function(e){return e[1].total;}),backgroundColor:catEntries.map(function(e){return e[1].color;}),borderColor:'#fff',borderWidth:2}]},options:{responsive:false,devicePixelRatio:3,plugins:{legend:{display:false}},cutout:'60%',animation:false}});
+    document.getElementById('ddonut-cat-leg').innerHTML=catEntries.map(function(e){return'<span><i style="background:'+e[1].color+'"></i>'+e[0]+'</span>';}).join('');
+  }
+
+  // ── Tabla por categoría con subtotal ──
+  var tm={};assets.forEach(function(a){if(!tm[a.type])tm[a.type]={total:0,color:a.color,n:0};tm[a.type].total+=a.pct;tm[a.type].n++;});
+  var catRows=Object.entries(tm).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){
+    return'<tr><td><i style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+e[1].color+';margin-right:6px;"></i>'+e[0].replace(' | ',' · ')+'</td><td>'+(ps>0?fmt(ps*e[1].total/100,pc):'—')+'</td><td>'+e[1].total.toFixed(1)+'%</td><td>'+e[1].n+'</td></tr>';
+  }).join('');
+  document.getElementById('doc-cat-table').innerHTML='<thead><tr><th>Categoría</th><th>Monto</th><th>%</th><th>Activos</th></tr></thead><tbody>'+catRows+
+    '<tr class="tot-row"><td>Total</td><td>'+(ps>0?fmt(ps*totalAlloc/100,pc):'—')+'</td><td>'+totalAlloc.toFixed(1)+'%</td><td>'+assets.length+'</td></tr></tbody>';
+
+  // ── Filas de detalle por bucket (RV / RF / Otros) ──
+  function buildRow(a,kind){
     var rn=a.name.replace(/\s+[\d.]+%\s+\d{4}-\d{2}/g,'').replace(/\s*\([A-Z0-9]{4,10}\)\s*$/,'').trim();
     var tk=a.ticker?'<span style="color:#aaa;font-size:9px;font-weight:400;">('+a.ticker+')</span>':'';
+    var nameCell='<div style="display:flex;align-items:center;gap:6px;"><div style="width:7px;height:7px;border-radius:50%;background:'+a.color+';flex-shrink:0;"></div>'+rn+' '+tk+'</div>';
     var amtCell=ps>0?'<td style="font-size:10px;color:#555;">'+fmt(ps*(a.pct/100),pc)+'</td>':'';
-    var isLet=a.type&&a.type.includes('Letras');
-    var onD=a.ticker&&ON_DB[a.ticker]?ON_DB[a.ticker]:null;
-    var sovD=a.ticker&&SOV_DB[a.ticker]?SOV_DB[a.ticker]:null;
-    var letD=a.ticker&&LET_DB[a.ticker]?LET_DB[a.ticker]:null;
-    var vencDisp='—',cupDisp='—';
-    if(onD){vencDisp=onD.vencimiento?onD.vencimiento.slice(0,7):'—';cupDisp=onD.meses_cupon||'—';}
-    else if(sovD){vencDisp=sovD.venc?sovD.venc.slice(0,7):'—';cupDisp=sovD.meses||'—';}
-    else if(letD){vencDisp=letD.venc?letD.venc.slice(0,7):'—';cupDisp=letD.tipo||letD.seccion||'—';if(letD.dias)cupDisp+=' ('+letD.dias+'d)';}
-    else{vencDisp=a.venc?String(a.venc).slice(0,7):'—';cupDisp=isLet?(a.papel||'—'):a.meses||'—';}
-    var y=getTIRorTNA(a);
-    var yDisp=y?y.val.toFixed(2)+'% <span style="font-size:9px;color:#aaa;">'+y.label+'</span>':'—';
-    // Monthly TIR sub-line: compute frequency from meses field
-    var mesesSrc=(onD?onD.meses_cupon:null)||(sovD?sovD.meses:null)||a.meses||'';
-    var cm=parseMeses(mesesSrc);
-    if(y&&cm.length>1){
-      var tirMens=(Math.pow(1+y.val/100,1/cm.length)-1)*100;
-      yDisp+='<div style="font-size:9px;color:#888;margin-top:1px;">'+tirMens.toFixed(3)+'%/pago · '+cm.length+'×/año</div>';
+    if(kind==='rf'){
+      var isLet=a.type&&a.type.includes('Letras');
+      var onD=a.ticker&&ON_DB[a.ticker]?ON_DB[a.ticker]:null;
+      var sovD=a.ticker&&SOV_DB[a.ticker]?SOV_DB[a.ticker]:null;
+      var letD=a.ticker&&LET_DB[a.ticker]?LET_DB[a.ticker]:null;
+      var vencDisp='—',cupDisp='—';
+      if(onD){vencDisp=onD.vencimiento?onD.vencimiento.slice(0,7):'—';cupDisp=onD.meses_cupon||'—';}
+      else if(sovD){vencDisp=sovD.venc?sovD.venc.slice(0,7):'—';cupDisp=sovD.meses||'—';}
+      else if(letD){vencDisp=letD.venc?letD.venc.slice(0,7):'—';cupDisp=letD.tipo||letD.seccion||'—';if(letD.dias)cupDisp+=' ('+letD.dias+'d)';}
+      else{vencDisp=a.venc?String(a.venc).slice(0,7):'—';cupDisp=isLet?(a.papel||'—'):a.meses||'—';}
+      var y=getTIRorTNA(a);
+      var yDisp=y?y.val.toFixed(2)+'% <span style="font-size:9px;color:#aaa;">'+y.label+'</span>':'—';
+      var mesesSrc=(onD?onD.meses_cupon:null)||(sovD?sovD.meses:null)||a.meses||'';
+      var cm=parseMeses(mesesSrc);
+      if(y&&cm.length>1){var tirMens=(Math.pow(1+y.val/100,1/cm.length)-1)*100;yDisp+='<div style="font-size:9px;color:#888;margin-top:1px;">'+tirMens.toFixed(3)+'%/pago · '+cm.length+'×/año</div>';}
+      return{y:y,html:'<tr><td>'+nameCell+'</td><td>'+getCatBadge(a.type)+'</td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;">'+a.pct+'%</td>'+amtCell+
+        '<td style="font-size:10px;color:#aaa;">'+vencDisp+'</td><td style="font-size:10px;color:#aaa;">'+cupDisp+'</td>'+
+        '<td style="font-weight:600;color:#1C8C5F;font-size:11px;">'+yDisp+'</td><td style="font-size:10px;">'+a.curr+'</td></tr>'};
     }
-    if(y&&totalAlloc>0)wY+=(a.pct/totalAlloc)*y.val;else allY=false;
-    return'<tr><td><div style="display:flex;align-items:center;gap:6px;"><div style="width:7px;height:7px;border-radius:50%;background:'+a.color+';flex-shrink:0;"></div>'+rn+' '+tk+'</div></td>'+
-      '<td>'+getCatBadge(a.type)+'</td>'+
-      '<td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;">'+a.pct+'%</td>'+
-      amtCell+
-      '<td style="font-size:10px;color:#aaa;">'+vencDisp+'</td>'+
-      '<td style="font-size:10px;color:#aaa;">'+cupDisp+'</td>'+
-      '<td style="font-weight:600;color:#1C8C5F;font-size:11px;">'+yDisp+'</td>'+
-      '<td style="font-size:10px;">'+a.curr+'</td></tr>';
-  });
-  var totRow='<tr style="background:#F9F6EE;"><td style="font-weight:600;border-top:1px solid #EEE8DA;">Rendimiento total</td><td style="border-top:1px solid #EEE8DA;"></td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;border-top:1px solid #EEE8DA;">'+totalAlloc+'%</td>'+(ps>0?'<td style="border-top:1px solid #EEE8DA;"></td>':'')+
-    '<td style="border-top:1px solid #EEE8DA;"></td><td style="border-top:1px solid #EEE8DA;"></td>'+
-    '<td style="font-weight:700;color:#1C8C5F;border-top:1px solid #EEE8DA;">'+(allY&&totalAlloc>0?wY.toFixed(2)+'%':'—')+'</td>'+
-    '<td style="border-top:1px solid #EEE8DA;"></td></tr>';
-  document.getElementById('doc-tbody').innerHTML=rows.join('')+totRow;
-  // Category bars
-  var tm={};assets.forEach(function(a){if(!tm[a.type]){tm[a.type]={total:0,color:a.color};}tm[a.type].total+=a.pct;});
-  document.getElementById('doc-bars').innerHTML=Object.entries(tm).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){var aa=ps>0?'<div style="font-size:9px;color:#888;width:75px;text-align:right;">'+fmt(ps*(e[1].total/100),pc)+'</div>':'';return'<div style="display:flex;align-items:center;gap:9px;"><div style="font-size:10px;color:#444;width:155px;flex-shrink:0;">'+e[0].replace(' | ',' · ')+'</div><div style="flex:1;height:6px;background:#EEE8DA;border-radius:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+e[1].color+';width:'+e[1].total+'%;"></div></div><div style="font-size:10px;color:#0F3A34;font-weight:600;width:34px;text-align:right;">'+e[1].total.toFixed(1)+'%</div>'+aa+'</div>';}).join('');
-  // Quality summary
+    if(kind==='rv'){
+      return{html:'<tr><td>'+nameCell+'</td><td>'+getCatBadge(a.type)+'</td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;">'+a.pct+'%</td>'+amtCell+
+        '<td style="font-size:10px;color:#aaa;">'+(a.ret||'—')+'</td><td style="font-size:10px;">'+a.curr+'</td></tr>'};
+    }
+    return{html:'<tr><td>'+nameCell+'</td><td>'+getCatBadge(a.type)+'</td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;">'+a.pct+'%</td>'+amtCell+
+      '<td style="font-size:10px;">'+a.curr+'</td></tr>'};
+  }
+  document.getElementById('th-amt-rv').style.display=ps>0?'':'none';
+  document.getElementById('th-amt-rf').style.display=ps>0?'':'none';
+  document.getElementById('th-amt-ot').style.display=ps>0?'':'none';
+  document.getElementById('doc-block-rv').hidden=rvA.length===0;
+  document.getElementById('doc-block-rf').hidden=rfA.length===0;
+  document.getElementById('doc-block-otros').hidden=otA.length===0;
+  if(rvA.length){
+    var rvRows=rvA.map(function(a){return buildRow(a,'rv').html;});
+    var rvTot='<tr style="background:#F9F6EE;"><td style="font-weight:600;border-top:1px solid #EEE8DA;">Subtotal</td><td style="border-top:1px solid #EEE8DA;"></td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;border-top:1px solid #EEE8DA;">'+rvPct.toFixed(1)+'%</td>'+(ps>0?'<td style="border-top:1px solid #EEE8DA;">'+fmt(ps*rvPct/100,pc)+'</td>':'')+'<td style="border-top:1px solid #EEE8DA;"></td><td style="border-top:1px solid #EEE8DA;"></td></tr>';
+    document.getElementById('doc-tbody-rv').innerHTML=rvRows.join('')+rvTot;
+    document.getElementById('dsh-rv-sub').textContent=rvPct.toFixed(1)+'% · '+rvA.length+' activo'+(rvA.length===1?'':'s');
+  }
+  if(rfA.length){
+    var wY=0,allY=true;
+    var rfRows=rfA.map(function(a){var r=buildRow(a,'rf');if(r.y&&rfPct>0)wY+=(a.pct/rfPct)*r.y.val;else if(!r.y)allY=false;return r.html;});
+    var rfTot='<tr style="background:#F9F6EE;"><td style="font-weight:600;border-top:1px solid #EEE8DA;">Subtotal</td><td style="border-top:1px solid #EEE8DA;"></td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;border-top:1px solid #EEE8DA;">'+rfPct.toFixed(1)+'%</td>'+(ps>0?'<td style="border-top:1px solid #EEE8DA;">'+fmt(ps*rfPct/100,pc)+'</td>':'')+'<td style="border-top:1px solid #EEE8DA;"></td><td style="border-top:1px solid #EEE8DA;"></td><td style="font-weight:700;color:#1C8C5F;border-top:1px solid #EEE8DA;">'+(allY&&rfPct>0?wY.toFixed(2)+'%':'—')+'</td><td style="border-top:1px solid #EEE8DA;"></td></tr>';
+    document.getElementById('doc-tbody-rf').innerHTML=rfRows.join('')+rfTot;
+    document.getElementById('dsh-rf-sub').textContent=rfPct.toFixed(1)+'% · '+rfA.length+' activo'+(rfA.length===1?'':'s')+(allY&&rfPct>0?' · TIR ponderada '+wY.toFixed(2)+'%':'');
+  }
+  if(otA.length){
+    document.getElementById('doc-tbody-otros').innerHTML=otA.map(function(a){return buildRow(a,'otros').html;}).join('');
+  }
+
+  // ── Quality summary ──
   var quals={};assets.forEach(function(a){var q=(a.ticker&&ON_DB&&ON_DB[a.ticker]&&ON_DB[a.ticker].calificacion)?ON_DB[a.ticker].calificacion:(a.ticker&&SOV_DB&&SOV_DB[a.ticker]&&SOV_DB[a.ticker].calif)?SOV_DB[a.ticker].calif:(a.calif||'');if(q&&q!=='NaN')quals[q]=(quals[q]||0)+1;});
   var qsW=document.getElementById('quality-summary-wrap');
-  if(qsW&&Object.keys(quals).length>0){qsW.style.display='';var qC={'AAA':'#1C8C5F','AA':'#DBA03C','A':'#ff9f43','BBB':'#e86a6a'};document.getElementById('quality-summary').innerHTML=Object.entries(quals).sort().map(function(e){var col=qC[e[0]]||'var(--cream-dim)';return'<span style="font-size:10px;font-weight:600;background:var(--wash-1);border:1px solid '+col+';border-radius:4px;padding:3px 10px;color:'+col+';">'+e[0]+' × '+e[1]+'</span>';}).join('');}else if(qsW)qsW.style.display='none';
+  if(qsW&&Object.keys(quals).length>0){qsW.hidden=false;var qC={'AAA':'#1C8C5F','AA':'#DBA03C','A':'#ff9f43','BBB':'#e86a6a'};document.getElementById('quality-summary').innerHTML=Object.entries(quals).sort().map(function(e){var col=qC[e[0]]||'var(--cream-dim)';return'<span style="font-size:10px;font-weight:600;background:var(--wash-1);border:1px solid '+col+';border-radius:4px;padding:3px 10px;color:'+col+';">'+e[0]+' × '+e[1]+'</span>';}).join('');}else if(qsW)qsW.hidden=true;
+
+  // ── Cartera en Pesos (bucket ARS independiente) ──
+  var psArs=parseFloat(document.getElementById('port-size-ars').value)||0;
+  var blkArs=document.getElementById('doc-block-ars');
+  if(assetsARS.length){
+    blkArs.hidden=false;
+    var arsTot=assetsARS.reduce(function(s,a){return s+a.pct;},0);
+    document.getElementById('doc-tbody-ars').innerHTML=assetsARS.map(function(a){
+      return'<tr><td>—</td><td>'+a.name+'</td><td>'+a.pct+'%</td><td>'+(psArs>0?fmt(psArs*a.pct/100,'ARS'):'—')+'</td></tr>';
+    }).join('')+'<tr class="tot-row"><td colspan="2">Subtotal</td><td>'+arsTot.toFixed(1)+'%</td><td>'+(psArs>0?fmt(psArs*arsTot/100,'ARS'):'—')+'</td></tr>';
+    document.getElementById('dars-hd-tot').textContent=(psArs>0?fmt(psArs,'ARS')+' · ':'')+arsTot.toFixed(1)+'%';
+  } else { blkArs.hidden=true; }
+
+  populateBlockPageSelects();
   buildDocViz(ps,pc);
+}
+
+var docDonutMacro=null,docDonutCat=null;
+function destroyDocDonuts(){if(docDonutMacro){docDonutMacro.destroy();docDonutMacro=null;}if(docDonutCat){docDonutCat.destroy();docDonutCat=null;}}
+
+// ── Cartera en Pesos: mini-lista independiente del pool principal de `assets` ──
+var assetsARS=[],arsIdSeq=1;
+function addAssetARS(){
+  var name=document.getElementById('ars-f-name').value.trim();
+  var pct=parseFloat(document.getElementById('ars-f-pct').value);
+  if(!name){alert('Ingresá un nombre para el fondo/activo en pesos.');return;}
+  if(isNaN(pct)||pct<=0){alert('Ingresá un % válido.');return;}
+  assetsARS.push({id:arsIdSeq++,name:name,pct:pct});
+  document.getElementById('ars-f-name').value='';document.getElementById('ars-f-pct').value='';
+  renderARSList();updateDoc();
+}
+function removeAssetARS(id){assetsARS=assetsARS.filter(function(a){return a.id!==id;});renderARSList();updateDoc();}
+function renderARSList(){
+  var wrap=document.getElementById('ars-asset-list');
+  if(!assetsARS.length){wrap.innerHTML='';return;}
+  var tot=assetsARS.reduce(function(s,a){return s+a.pct;},0);
+  wrap.innerHTML=assetsARS.map(function(a){
+    return'<div class="ars-asset-row"><span style="flex:1;">'+a.name+'</span><span class="pct">'+a.pct+'%</span><span onclick="removeAssetARS('+a.id+')" style="cursor:pointer;color:var(--cream-dim);" title="Quitar">✕</span></div>';
+  }).join('')+'<div style="font-size:10px;color:var(--cream-dim);margin-top:4px;text-align:right;">Total: '+tot.toFixed(1)+'%'+(Math.abs(tot-100)>0.5?' <span style="color:#D9892B;">(debería sumar 100%)</span>':'')+'</div>';
+}
+
+// ── Página del PDF asignada a cada sección (solo afecta el export, no la vista previa) ──
+var docBlockPages={resumen:1,rv:2,rf:2,otros:2,flujo:2,calidad:1,ars:3};
+function setBlockPage(key,val){docBlockPages[key]=parseInt(val)||1;}
+function populateBlockPageSelects(){
+  document.querySelectorAll('[data-blkpick]').forEach(function(sel){
+    var key=sel.getAttribute('data-blkpick');
+    if(!sel.options.length){for(var i=1;i<=4;i++){var o=document.createElement('option');o.value=i;o.textContent='Pág. '+i;sel.appendChild(o);}}
+    sel.value=String(docBlockPages[key]||1);
+  });
 }
 
 function buildDocViz(ps,pc){
@@ -1797,88 +1972,90 @@ async function _prefetchFonts(){
   return _fontCSSCache;
 }
 
+// Fixups de onclone (fuentes embebidas + colores forzados del badge + resolver var() CSS) —
+// factorizado de la única versión anterior porque ahora se llama una vez POR PÁGINA, no una sola vez.
+function _onCloneDocFixups(fontCSS){
+  return function(doc){
+    if(fontCSS){var st=doc.createElement('style');st.textContent=fontCSS;doc.head.insertBefore(st,doc.head.firstChild);}
+    var badgeWrap=doc.getElementById('dsizev-canvas');
+    if(badgeWrap){badgeWrap.style.background='#0F3A34';badgeWrap.style.borderRadius='5px';badgeWrap.style.width='240px';badgeWrap.style.height='62px';badgeWrap.style.boxSizing='border-box';badgeWrap.style.padding='11px 18px';badgeWrap.style.display='block';}
+    var badgeText=doc.getElementById('dsizev-text');
+    if(badgeText){badgeText.style.color='#ffffff';badgeText.style.webkitTextFillColor='#ffffff';badgeText.style.fontFamily="'Spectral',serif";badgeText.style.fontSize='22px';badgeText.style.fontWeight='600';}
+    var badgeLbl=badgeWrap?badgeWrap.querySelector('div:first-child'):null;
+    if(badgeLbl){badgeLbl.style.color='rgba(255,255,255,0.55)';badgeLbl.style.webkitTextFillColor='rgba(255,255,255,0.55)';badgeLbl.style.fontFamily="'Hanken Grotesk',sans-serif";}
+    var pdfDoc=doc.getElementById('pdf-doc');
+    if(pdfDoc){
+      pdfDoc.querySelectorAll('*').forEach(function(e){
+        var cs=window.getComputedStyle(e);
+        if(e.style.color&&e.style.color.includes('var('))e.style.color=cs.color;
+        if(e.style.background&&e.style.background.includes('var('))e.style.background=cs.background;
+        if(e.style.borderColor&&e.style.borderColor.includes('var('))e.style.borderColor=cs.borderColor;
+      });
+    }
+  };
+}
+
+// Agrega UNA imagen (canvas) como página del PDF, ajustada al tamaño de hoja — misma lógica de
+// fit/slice que ya existía, ahora reusable por página en vez de una sola vez para todo el doc.
+function _addCanvasAsPdfPages(pdf,canvas,pW,pH,isFirstOverall){
+  var img=canvas.toDataURL('image/png');
+  var ih=(canvas.height*pW)/canvas.width;
+  if(ih<=pH){
+    pdf.addImage(img,'PNG',0,0,pW,ih,undefined,'FAST');
+  } else if(ih<=pH*1.65){
+    var ratio=pH/ih,fw=pW*ratio,margin=(pW-fw)/2;
+    pdf.addImage(img,'PNG',margin,0,fw,pH,undefined,'FAST');
+  } else {
+    var y=0,first=true;
+    while(y<ih){
+      if(!first)pdf.addPage();
+      pdf.addImage(img,'PNG',0,-y,pW,ih,undefined,'FAST');
+      y+=pH;first=false;
+    }
+  }
+}
+
+// Exporta #pdf-doc a PDF respetando qué sección (.doc-block) va en qué página (docBlockPages,
+// elegido con los selects "Pág." de cada sección) — en vez de cortar arbitrariamente cada
+// pH milímetros como antes (podía partir una fila de tabla al medio). El header/footer de marca
+// y los datos del cliente quedan siempre visibles, se repiten en cada página como en el PDF
+// de referencia de Balanz; solo las secciones de contenido (KPIs/donuts, RV, RF, Otros, flujo de
+// cupones, calidad, cartera en pesos) se muestran/ocultan una por vez para cada captura.
 async function doExport(el,prefix){
   var btn=document.getElementById('export-btn'),orig=btn.textContent;
   btn.textContent='⏳ Generando…';btn.disabled=true;
   try{
     await document.fonts.ready;
-    // Pre-cargar fuentes como data-URIs
     var fontCSS=await _prefetchFonts();
 
-    var canvas=await html2canvas(el,{
-      scale:3,
-      backgroundColor:'#ffffff',
-      useCORS:true,
-      logging:false,
-      imageTimeout:0,
-      onclone:function(doc){
-        // 1. Inyectar fuentes embebidas para que html2canvas las renderice
-        if(fontCSS){
-          var st=doc.createElement('style');
-          st.textContent=fontCSS;
-          doc.head.insertBefore(st,doc.head.firstChild);
-        }
-        // 2. Fix badge monto — forzar colores para html2canvas
-        var badgeWrap=doc.getElementById('dsizev-canvas');
-        if(badgeWrap){
-          badgeWrap.style.background='#0F3A34';
-          badgeWrap.style.borderRadius='5px';
-          badgeWrap.style.width='240px';
-          badgeWrap.style.height='62px';
-          badgeWrap.style.boxSizing='border-box';
-          badgeWrap.style.padding='11px 18px';
-          badgeWrap.style.display='block';
-        }
-        var badgeText=doc.getElementById('dsizev-text');
-        if(badgeText){
-          badgeText.style.color='#ffffff';
-          badgeText.style.webkitTextFillColor='#ffffff';
-          badgeText.style.fontFamily="'Spectral',serif";
-          badgeText.style.fontSize='22px';
-          badgeText.style.fontWeight='600';
-        }
-        var badgeLbl=badgeWrap?badgeWrap.querySelector('div:first-child'):null;
-        if(badgeLbl){
-          badgeLbl.style.color='rgba(255,255,255,0.55)';
-          badgeLbl.style.webkitTextFillColor='rgba(255,255,255,0.55)';
-          badgeLbl.style.fontFamily="'Hanken Grotesk',sans-serif";
-        }
-        // 3. Resolver variables CSS en el documento PDF
-        var pdfDoc=doc.getElementById('pdf-doc');
-        if(pdfDoc){
-          pdfDoc.querySelectorAll('*').forEach(function(e){
-            var cs=window.getComputedStyle(e);
-            if(e.style.color&&e.style.color.includes('var('))e.style.color=cs.color;
-            if(e.style.background&&e.style.background.includes('var('))e.style.background=cs.background;
-            if(e.style.borderColor&&e.style.borderColor.includes('var('))e.style.borderColor=cs.borderColor;
-          });
-        }
-      }
-    });
+    var blocks=Array.prototype.slice.call(el.querySelectorAll('.doc-block'));
+    var wasHidden=blocks.map(function(b){return b.hidden;});
+    var pageNums=[];
+    blocks.forEach(function(b,i){if(wasHidden[i])return;var p=docBlockPages[b.getAttribute('data-blk')]||1;if(pageNums.indexOf(p)<0)pageNums.push(p);});
+    pageNums.sort(function(a,b){return a-b;});
+    if(!pageNums.length)pageNums=[1];
 
+    var pageXEl=document.getElementById('doc-page-x'),origPageXText=pageXEl.textContent;
     var j=window.jspdf,pdf=new j.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     var pW=pdf.internal.pageSize.getWidth(),pH=pdf.internal.pageSize.getHeight();
-    var img=canvas.toDataURL('image/png');
-    var ih=(canvas.height*pW)/canvas.width;
-    if(ih<=pH){
-      // Fits on 1 page at full width
-      pdf.addImage(img,'PNG',0,0,pW,ih,undefined,'FAST');
-    } else if(ih<=pH*1.65){
-      // Slightly over 1 page: scale down to fit on 1 page (maintains aspect ratio)
-      var ratio=pH/ih;
-      var fw=pW*ratio;
-      var margin=(pW-fw)/2;
-      pdf.addImage(img,'PNG',margin,0,fw,pH,undefined,'FAST');
-    } else {
-      // Genuinely multi-page: slice between rows instead of mid-content
-      // Find best cut point within ±40mm of page boundary
-      var y=0;
-      while(y<ih){
-        if(y>0)pdf.addPage();
-        pdf.addImage(img,'PNG',0,-y,pW,ih,undefined,'FAST');
-        y+=pH;
-      }
+    var onclone=_onCloneDocFixups(fontCSS);
+
+    for(var pi=0;pi<pageNums.length;pi++){
+      blocks.forEach(function(b,i){
+        if(wasHidden[i])return; // ya oculto por no tener datos (ej: sin activos de RV) — sigue oculto siempre
+        b.hidden=(docBlockPages[b.getAttribute('data-blk')]||1)!==pageNums[pi];
+      });
+      pageXEl.textContent='Página '+(pi+1)+' de '+pageNums.length;
+      // Esperar un frame para que el navegador aplique los hidden antes de capturar.
+      await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});
+      var canvas=await html2canvas(el,{scale:3,backgroundColor:'#ffffff',useCORS:true,logging:false,imageTimeout:0,onclone:onclone});
+      if(pi>0)pdf.addPage();
+      _addCanvasAsPdfPages(pdf,canvas,pW,pH);
     }
+
+    blocks.forEach(function(b,i){b.hidden=wasHidden[i];});
+    pageXEl.textContent=origPageXText;
+
     var cname=document.getElementById('client-name').value.trim()||'cliente';
     pdf.save(prefix+'-'+cname.toLowerCase().replace(/\s+/g,'-')+'.pdf');
   }catch(e){alert('Error al exportar: '+e.message);}
@@ -1887,10 +2064,10 @@ async function doExport(el,prefix){
 // ═══ RESET / NAV ═══
 function resetAll(){
   if(assets.length&&!confirm('Borrar todo y empezar de nuevo?'))return;
-  assets=[];editingId=null;setPctMode('pct');
-  ['client-name','firm-name','strategy-note','f-name','f-ticker','f-pct','f-amt','f-return','port-size','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  assets=[];assetsARS=[];editingId=null;setPctMode('pct');
+  ['client-name','firm-name','strategy-note','f-name','f-ticker','f-pct','f-amt','f-return','port-size','port-size-ars','ars-f-name','ars-f-pct','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('price-target-row').style.display='none';document.getElementById('letras-row').style.display='none';document.getElementById('cupon-row').style.display='';
-  updateLamRow();
+  updateLamRow();renderARSList();
   document.getElementById('client-risk').value='';document.getElementById('client-horizon').value='';
   document.getElementById('cancel-edit-btn').style.display='none';document.getElementById('edit-mode-indicator').style.display='none';
   render();updateDoc();updateYield();

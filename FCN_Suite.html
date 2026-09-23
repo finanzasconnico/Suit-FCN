@@ -650,7 +650,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- ── MODAL: CLIENTES QUE TIENEN UN TICKER ── -->
-    <div class="holders-overlay" id="holdersOverlay" onclick="if(event.target===this) cerrarHolders()">
+    <div class="holders-overlay" id="holdersOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarHolders()">
       <div class="holders-modal">
         <div class="hm-head">
           <div>
@@ -664,7 +664,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- ── MODAL: CARTERA COMPLETA DE UN CLIENTE ── -->
-    <div class="cc-overlay" id="ccOverlay" onclick="if(event.target===this) cerrarCarteraCliente()">
+    <div class="cc-overlay" id="ccOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarCarteraCliente()">
       <div class="cc-modal">
         <div class="cc-head">
           <div>
@@ -678,7 +678,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- ── MODAL: BUSCADOR GLOBAL (clientes, ONs, herramientas) ── -->
-    <div class="search-overlay" id="searchOverlay" onclick="if(event.target===this) cerrarBusquedaGlobal()">
+    <div class="search-overlay" id="searchOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarBusquedaGlobal()">
       <div class="search-modal">
         <div class="search-input-row">
           <span class="search-icon">🔍</span>
@@ -690,7 +690,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- ── MODAL: WHATSAPP A CLIENTE (desde caja de Liquidez) ── -->
-    <div class="wpp-liq-overlay" id="wppLiqOverlay" onclick="if(event.target===this) cerrarWppLiquidez()">
+    <div class="wpp-liq-overlay" id="wppLiqOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarWppLiquidez()">
       <div class="wpp-liq-modal">
         <div class="wpp-liq-head">
           <div>
@@ -717,7 +717,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- ── MODAL: MENSAJE POR ACCIÓN DE RENTA VARIABLE (cajas "momento de sumar" / "revisar con clientes") ── -->
-    <div class="wpp-liq-overlay" id="rvMsgOverlay" onclick="if(event.target===this) cerrarRvMsg()">
+    <div class="wpp-liq-overlay" id="rvMsgOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarRvMsg()">
       <div class="wpp-liq-modal">
         <div class="wpp-liq-head">
           <div>
@@ -745,7 +745,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
 
     <!-- ── MODAL: AVISO MENSUAL DE LIQUIDEZ POR MAIL ── -->
-    <div class="aviso-liq-overlay" id="avisoLiqOverlay" onclick="if(event.target===this) cerrarAvisoLiquidez()">
+    <div class="aviso-liq-overlay" id="avisoLiqOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarAvisoLiquidez()">
       <div class="aviso-liq-modal">
         <div class="aviso-liq-head">
           <div>

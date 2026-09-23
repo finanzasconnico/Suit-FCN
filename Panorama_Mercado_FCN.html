@@ -279,7 +279,7 @@ table.holders tr:hover td{background:var(--wash-1);}
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this) closeModal()">
+<div class="modal-overlay" id="modal-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') closeModal()">
   <div class="modal-box">
     <div class="modal-head">
       <div>

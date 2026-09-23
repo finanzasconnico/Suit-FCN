@@ -180,7 +180,7 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="holdersOverlay" onclick="if(event.target===this) cerrarHolders()">
+  <div class="holders-overlay" id="holdersOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarHolders()">
     <div class="holders-modal">
       <div class="hm-head">
         <div>

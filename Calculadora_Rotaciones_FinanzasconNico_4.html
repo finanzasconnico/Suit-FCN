@@ -3333,6 +3333,15 @@ function mejorLado(valV, valC, higherIsBetter){
   if(higherIsBetter) return valV>valC ? 'v' : 'c';
   return valV<valC ? 'v' : 'c';
 }
+// Ley no es numérica — se compara si es "Nueva York" (mejor, jurisdicción más protegida
+// para el tenedor) contra cualquier otra cosa (típicamente Argentina). Texto libre (viene del
+// Excel o de la licitación), por eso el chequeo es case-insensitive y por patrón, no exacto.
+function mejorLadoLey(leyV, leyC){
+  var esNYv = /ny|nueva\s*york|new\s*york/i.test(leyV||'');
+  var esNYc = /ny|nueva\s*york|new\s*york/i.test(leyC||'');
+  if(esNYv===esNYc) return null;
+  return esNYv ? 'v' : 'c';
+}
 // Fila de tabla comparativa: si ladoMejor es 'v'/'c', esa celda se resalta en verde con un ✓.
 // filaClase (opcional) marca la fila para poder filtrarla después (ej. "fila-comision" para
 // sacar esas filas del PDF cuando se pide la ficha sin comisiones).
@@ -3356,14 +3365,14 @@ function renderCondiciones(v, c, difCash, comisionPct){
     filaCompHTML('Emisor', v.emisor||'—', c.emisor||'—', null) +
     filaCompHTML('TIR', fmtNum(v.tir)+'%', fmtNum(c.tir)+'%', mejorLado(v.tir, c.tir, true)) +
     filaCompHTML('Duration', v.duration!=null?fmtNum(v.duration,3):'—', c.duration!=null?fmtNum(c.duration,3):'—', mejorLado(v.duration, c.duration, false)) +
-    filaCompHTML('Vencimiento', fmtDateAR(v.fechaVenc), fmtDateAR(c.fechaVenc), null) +
+    filaCompHTML('Vencimiento', fmtDateAR(v.fechaVenc), fmtDateAR(c.fechaVenc), mejorLado(v.fechaVenc?v.fechaVenc.getTime():null, c.fechaVenc?c.fechaVenc.getTime():null, false)) +
     filaCompHTML('Cupón anual', fmtNum(v.cuponAnual)+'%', fmtNum(c.cuponAnual)+'%', mejorLado(v.cuponAnual, c.cuponAnual, true)) +
     filaCompHTML('Pagos por año', v.freq, c.freq, null) +
     filaCompHTML('Amortización', v.amortType==='bullet'?'Bullet':'Amortizable', c.amortType==='bullet'?'Bullet':'Amortizable', null) +
-    filaCompHTML('Ley', v.ley||'—', c.ley||'—', null) +
+    filaCompHTML('Ley', v.ley||'—', c.ley||'—', mejorLadoLey(v.ley, c.ley)) +
     filaCompHTML('Calificación', v.calif||'—', c.calif||'—', null) +
-    filaCompHTML('Precio referencia', fmtNum(v.precio,4), fmtNum(c.precio,4), null) +
-    filaCompHTML('Nominales', fmtNum(v.nominales,0), fmtNum(c.nominales,0), null) +
+    filaCompHTML('Precio referencia', fmtNum(v.precio,4), fmtNum(c.precio,4), mejorLado(v.precio, c.precio, false)) +
+    filaCompHTML('Nominales', fmtNum(v.nominales,0), fmtNum(c.nominales,0), mejorLado(v.nominales, c.nominales, true)) +
     filaCompHTML('Monto operado (bruto)', fmtUSD(montoV), fmtUSD(montoC), null) +
     filaCompHTML('Comisión aplicada (%, c/punta)', fmtNum(comisionPct,2)+'%', fmtNum(comisionPct,2)+'%', null, 'fila-comision') +
     filaCompHTML('Comisión en USD', '-'+fmtUSD(comV), '-'+fmtUSD(comC), null, 'fila-comision') +
@@ -3488,11 +3497,11 @@ function renderVistaAvanzada(venta, compra, difCash, atH, ventajaHoy, schedV, sc
   var statsHTML = '<div class="av-subhead">Ficha comparativa</div>'+
     '<table class="compare-table"><thead><tr><th>Diferencias</th><th class="col-head-venta">'+venta.ticker+'</th><th class="col-head-compra">'+compra.ticker+'</th></tr></thead><tbody>' +
     filaCompHTML('Emisor', venta.emisor||'—', compra.emisor||'—', null) +
-    filaCompHTML('Vencimiento', fmtDateAR(venta.fechaVenc), fmtDateAR(compra.fechaVenc), null) +
-    filaCompHTML('Ley', venta.ley||'—', compra.ley||'—', null) +
+    filaCompHTML('Vencimiento', fmtDateAR(venta.fechaVenc), fmtDateAR(compra.fechaVenc), mejorLado(venta.fechaVenc?venta.fechaVenc.getTime():null, compra.fechaVenc?compra.fechaVenc.getTime():null, false)) +
+    filaCompHTML('Ley', venta.ley||'—', compra.ley||'—', mejorLadoLey(venta.ley, compra.ley)) +
     filaCompHTML('Calificación', venta.calif||'—', compra.calif||'—', null) +
-    filaCompHTML('Precio', fmtNum(venta.precio,4), fmtNum(compra.precio,4), null) +
-    filaCompHTML('Nominales', fmtNum(venta.nominales,0), fmtNum(compra.nominales,0), null) +
+    filaCompHTML('Precio', fmtNum(venta.precio,4), fmtNum(compra.precio,4), mejorLado(venta.precio, compra.precio, false)) +
+    filaCompHTML('Nominales', fmtNum(venta.nominales,0), fmtNum(compra.nominales,0), mejorLado(venta.nominales, compra.nominales, true)) +
     filaCompHTML('Monto operado', fmtUSD(montoV), fmtUSD(montoC), null) +
     filaCompHTML('Comisión', fmtUSD(comV), fmtUSD(comC), null) +
     filaCompHTML('Valor total a '+fmtNum(horizonElegido,1)+' a. (capital + interés)', fmtUSD(valorHorizV), fmtUSD(valorHorizC), mejorLado(valorHorizV, valorHorizC, true)) +
@@ -4069,6 +4078,7 @@ function radarAltsHTML(g, alts, modo){
         '<td class="acc"><button type="button" class="btn btn-outline small" data-act="cmp"'+at+'>⇄ Comparar</button>'+
         '<button type="button" class="btn btn-outline small" data-act="msg"'+at+'>📋 Copiar msg</button>'+
         (nH ? '<button type="button" class="btn btn-outline small" data-act="avisar"'+at+' title="Abre el aviso masivo a todos los que tienen '+_rEsc(g.ticker)+'">📣 Avisar a '+nH+'</button>' : '')+
+        (nH ? '<button type="button" class="btn btn-outline small" data-act="wa"'+at+' title="Descarga un JSON con teléfono + variables de plantilla para los '+nH+' tenedores — listo para un flujo de n8n con la API de WhatsApp Business (ver plantillas-whatsapp/INSTRUCCIONES.md)">📲 WhatsApp masivo</button>' : '')+
         '</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
@@ -4110,6 +4120,7 @@ function radarClick(e){
   if(act==='cmp') return radarComparar(tk, alt, false);
   if(act==='avisar') return radarComparar(tk, alt, true);
   if(act==='msg') return radarCopiarMensaje(tk, alt, t.getAttribute('data-modo'));
+  if(act==='wa') return radarExportarWhatsAppMasivo(tk, alt, t.getAttribute('data-modo'));
   if(act==='cli') return radarAbrirCliente(tk, t.getAttribute('data-cli'));
 }
 
@@ -4145,6 +4156,45 @@ function radarCopiarMensaje(tk, altTk, modo){
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(txt).then(function(){ showToastRF('Mensaje copiado.'); }, function(){ prompt('Copiá el mensaje:', txt); });
   } else { prompt('Copiá el mensaje:', txt); }
+}
+
+// Exporta, para UN grupo de tenedores de "tk" y la alternativa "altTk", un JSON listo para
+// alimentar un flujo de n8n que llame a la API oficial de WhatsApp Business (Meta Cloud API).
+// Cada fila trae el teléfono en E.164 (mismo dato que ya usa el link wa.me de "Avisar a N") y
+// las variables numeradas {{1}}..{{5}} en el MISMO orden que espera la plantilla de ejemplo de
+// plantillas-whatsapp/INSTRUCCIONES.md — así el nodo HTTP Request de n8n arma el body sin tocar
+// texto libre (WhatsApp exige plantilla pre-aprobada para mensajes que la empresa inicia).
+// No manda nada — solo arma y descarga el archivo. El envío real lo hace n8n con las credenciales
+// de Meta que Nico carga ahí (nunca en este HTML).
+function radarExportarWhatsAppMasivo(tk, altTk, modo){
+  var g = radarUltimo && radarUltimo.grupos.filter(function(x){ return x.ticker===tk; })[0];
+  var a = g && (modo==='dur' ? g.altsDur : g.altsTir).filter(function(x){ return x.ticker===altTk; })[0];
+  if(!g || !a){ alert('No encontré los datos de '+tk+' → '+altTk+'. Volvé a abrir el Radar e intentá de nuevo.'); return; }
+  var plantilla = modo==='dur' ? 'rotacion_duration_v1' : 'rotacion_tir_v1';
+  var sinTel = 0;
+  var filas = g.holders.map(function(h){
+    var tel = telParaCliente(h.cliente);
+    if(!tel) sinTel++;
+    var nombre = _nomSaludoLic(h.cliente).trim();
+    return {
+      cliente: h.cliente,                       // solo para que Nico identifique la fila, no va a la plantilla
+      telefono: tel,                             // E.164 con "+", null si Stock no tiene el teléfono cargado
+      plantilla: plantilla,
+      var1_nombre: nombre || '',
+      var2_ticker_actual: tk,
+      var3_tir_actual: fmtNum(g.tir,1),
+      var4_duration_actual: g.duration!=null ? fmtNum(g.duration,1) : '',
+      var5_ticker_alt: altTk,
+      var6_tir_alt: fmtNum(a.tir,1),
+      var7_duration_alt: a.duration!=null ? fmtNum(a.duration,1) : '',
+      var8_mejora_pp: fmtNum(a.tir-g.tir,1)
+    };
+  });
+  if(sinTel){
+    if(!confirm(sinTel+' de '+filas.length+' clientes no tienen teléfono cargado en Stock y van a quedar sin mensaje (n8n los va a saltear). ¿Descargar igual con los que sí tienen?')) return;
+  }
+  var payload = { generado: new Date().toISOString(), tickerActual: tk, tickerAlternativa: altTk, modo: modo||'tir', filas: filas };
+  _licDescargar(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'}), 'whatsapp-masivo-'+tk+'-a-'+altTk+'.json');
 }
 
 // Ganancia estimada de UNA fila (vender ticker actual, comprar el candidato) al horizonte
@@ -5405,7 +5455,7 @@ async function descargarReportePDF(modo){
 </script>
 
 <!-- ── MODAL ENVIAR ROTACIÓN POR WHATSAPP ── -->
-<div class="wpp-rot-overlay" id="wpp-rot-overlay" onclick="if(event.target===this) cerrarWppRotacion()">
+<div class="wpp-rot-overlay" id="wpp-rot-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarWppRotacion()">
   <div class="wpp-rot-modal">
     <div class="wpp-rot-head">
       <div>
@@ -5432,7 +5482,7 @@ async function descargarReportePDF(modo){
 </div>
 
 <!-- ── MODAL REVISIÓN COMPLETA DE RENTA FIJA DEL CLIENTE ── -->
-<div class="rfrev-overlay" id="rfrev-overlay" onclick="if(event.target===this) cerrarRevisionRFCliente()">
+<div class="rfrev-overlay" id="rfrev-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarRevisionRFCliente()">
   <div class="rfrev-modal">
     <div class="rfrev-head">
       <div>
@@ -5481,7 +5531,7 @@ async function descargarReportePDF(modo){
 </div>
 
 <!-- ── MODAL AVISAR ROTACIÓN A TODOS LOS TENEDORES DEL TICKER A VENDER ── -->
-<div class="rfrev-overlay" id="rotmas-overlay" onclick="if(event.target===this) cerrarRotacionMasiva()">
+<div class="rfrev-overlay" id="rotmas-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarRotacionMasiva()">
   <div class="rfrev-modal">
     <div class="rfrev-head">
       <div>
@@ -5524,7 +5574,7 @@ async function descargarReportePDF(modo){
 </div>
 
 <!-- ── MODAL ENVÍO MASIVO POR MAIL — ROTACIÓN ── -->
-<div class="lic-drafts-overlay" id="rotmas-mail-overlay" onclick="if(event.target===this) cerrarMailMasivoRotacion()">
+<div class="lic-drafts-overlay" id="rotmas-mail-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarMailMasivoRotacion()">
   <div class="lic-drafts-modal">
     <div class="wpp-rot-head">
       <div>
@@ -5572,7 +5622,7 @@ async function descargarReportePDF(modo){
 </div>
 
 <!-- ── MODAL BORRADORES MASIVOS — LICITACIÓN ── -->
-<div class="lic-drafts-overlay" id="lic-drafts-overlay" onclick="if(event.target===this) cerrarBorradoresLicitacion()">
+<div class="lic-drafts-overlay" id="lic-drafts-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarBorradoresLicitacion()">
   <div class="lic-drafts-modal">
     <div class="wpp-rot-head">
       <div>
@@ -5586,7 +5636,7 @@ async function descargarReportePDF(modo){
 </div>
 
 <!-- ── MODAL ENVÍO MASIVO POR MAIL (Word + CSV) — LICITACIÓN ── -->
-<div class="lic-drafts-overlay" id="lic-mail-overlay" onclick="if(event.target===this) cerrarMailMasivoLicitacion()">
+<div class="lic-drafts-overlay" id="lic-mail-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarMailMasivoLicitacion()">
   <div class="lic-drafts-modal">
     <div class="wpp-rot-head">
       <div>

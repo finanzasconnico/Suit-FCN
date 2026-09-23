@@ -665,7 +665,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 </div>
 
 <!-- ── MODAL WHATSAPP ── -->
-<div class="wpp-modal-overlay" id="wpp-overlay" style="display:none" onclick="if(event.target===this)cerrarWpp()">
+<div class="wpp-modal-overlay" id="wpp-overlay" style="display:none" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarWpp()">
   <div class="wpp-modal">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
@@ -696,7 +696,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 </div>
 
 <!-- ── MODAL CARTERA COMPLETA CLIENTE ── -->
-<div class="cc-modal-overlay" id="cc-overlay" onclick="if(event.target===this) cerrarCarteraCliente()">
+<div class="cc-modal-overlay" id="cc-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarCarteraCliente()">
   <div class="cc-modal">
     <div class="cc-head">
       <div>
@@ -709,7 +709,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
   </div>
 </div>
 
-<div class="cc-modal-overlay" id="to-overlay" onclick="if(event.target===this) cerrarHoldersON()">
+<div class="cc-modal-overlay" id="to-overlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarHoldersON()">
   <div class="cc-modal">
     <div class="cc-head">
       <div>
