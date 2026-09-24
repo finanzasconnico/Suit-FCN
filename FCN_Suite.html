@@ -1038,6 +1038,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
               <option value="login">Último login más reciente</option>
               <option value="nombre">Nombre A-Z</option>
             </select>
+            <button class="aliq-btn-cancel" onclick="inacLimpiarFiltros()" title="Vuelve todos los filtros a su valor por defecto">✕ Limpiar filtros</button>
+            <button class="aliq-btn-cancel" onclick="inacDescargarExcel()" title="Excel de la lista filtrada (no toca la seleccion ni genera mails) - util para depurar cuentas sin potencial">⬇ Descargar Excel</button>
           </div>
           <details class="inac-cfg">
             <summary>⚙ Cómo se calcula el puntaje · barrios premium</summary>
@@ -3362,6 +3364,20 @@ function _inacActualizarAcciones() {
   info.innerHTML = html;
   btn.disabled = !sel.length || faltan.length > 0;
 }
+function inacLimpiarFiltros() {
+  document.getElementById('inacBuscar').value = '';
+  document.getElementById('inacSegmento').value = 'todos';
+  document.getElementById('inacEstado').value = 'pendientes';
+  document.getElementById('inacPuntajeMin').value = '';
+  document.getElementById('inacZonaF').value = '';
+  document.getElementById('inacFondeo').value = '';
+  document.getElementById('inacActividad').value = '';
+  document.getElementById('inacEdadMin').value = '';
+  document.getElementById('inacEdadMax').value = '';
+  document.getElementById('inacAumMin').value = '';
+  document.getElementById('inacOrden').value = 'puntaje';
+  renderInactivos();
+}
 function inacToggle(com, on) { on ? _inacSel.add(com) : _inacSel.delete(com); renderInactivos(); }
 function inacToggleTodos(on) {
   _inacUltimaLista.filter(_inacElegible).forEach(r => on ? _inacSel.add(r.comitente) : _inacSel.delete(r.comitente));
@@ -3434,6 +3450,33 @@ function _inacDocx(texto, perfil) {
 function _inacCSV(rows) {
   const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
   return '\uFEFF' + [INAC_COLS.map(esc).join(','), ...rows.map(r => INAC_COLS.map(c => esc(r[c])).join(','))].join('\r\n') + '\r\n';
+}
+// Excel (CSV) de la lista FILTRADA tal cual se ve en pantalla - independiente de la
+// tilde/seleccion y sin generar ningun mail. Pensado para revisar/depurar aparte
+// (ej. armar la lista de cuentas sin potencial para pedir que te las saquen de la cartera).
+const INAC_EXPORT_COLS = ['Nombre', 'Comitente', 'Cuenta', 'Mail', 'Puntaje', 'Motivos del puntaje', 'Zona',
+  'Edad', 'Actividad', 'Localidad', 'AUM', '\u00DAltimo login', 'Inactivo +1 a\u00F1o', 'Fonde\u00F3 alguna vez',
+  'Mail 1 enviado', 'Mail 2 enviado', 'Mail 3 enviado', 'Dado de baja'];
+function _inacExportFilas(filas) {
+  return filas.map(r => ({
+    'Nombre': tcNombre(r.s.nombre) || '', 'Comitente': r.comitente, 'Cuenta': r.s.denominacion || '',
+    'Mail': r.mail || '', 'Puntaje': r.cal.pts,
+    'Motivos del puntaje': r.cal.motivos.map(x => `+${x.p} ${x.t}`).join(' \u00B7 '),
+    'Zona': r.cal.zona.nivel ? (r.cal.zona.nivel === 'C' ? 'Ciudad grande' : 'Premium ' + r.cal.zona.nivel) : '',
+    'Edad': r.s.edad || '', 'Actividad': r.s.actividad || '', 'Localidad': r.s.localidad || '',
+    'AUM': r.s.aum || 0, '\u00DAltimo login': _inacFechaCorta(r.s.ultLogin),
+    'Inactivo +1 a\u00F1o': r.mas1 ? 'S\u00ED' : 'No', 'Fonde\u00F3 alguna vez': r.s.primerFondeo ? 'S\u00ED' : 'No',
+    'Mail 1 enviado': r.env[1] ? _inacFechaCorta(r.env[1]) : '', 'Mail 2 enviado': r.env[2] ? _inacFechaCorta(r.env[2]) : '',
+    'Mail 3 enviado': r.env[3] ? _inacFechaCorta(r.env[3]) : '', 'Dado de baja': r.baja ? 'S\u00ED' : 'No'
+  }));
+}
+function inacDescargarExcel() {
+  if (!_inacUltimaLista.length) { showToast('No hay ninguna cuenta con los filtros actuales.'); return; }
+  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const filas = _inacExportFilas(_inacUltimaLista);
+  const csv = '\uFEFF' + [INAC_EXPORT_COLS.map(esc).join(','), ...filas.map(r => INAC_EXPORT_COLS.map(c => esc(r[c])).join(','))].join('\r\n') + '\r\n';
+  _descargar(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `inactivos-lista-${new Date().toISOString().slice(0, 10)}.csv`);
+  showToast(`Descargado: ${filas.length} cuentas (con los filtros actuales).`);
 }
 const _inacSaludo = nombre => nombre ? `Hola ${nombre},` : 'Hola,';
 

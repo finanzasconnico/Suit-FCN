@@ -68,6 +68,17 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .money-prefix{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--cream-dim);font-size:11px;pointer-events:none;}
 /* MONITOR PANEL */
 .monitor-panel{background:var(--wash-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:4px;}
+/* Pill de Monitor en la topbar — Nico (24/09): con todo cargado ya desde el Suite, el panel
+   grande de Monitor obligaba a scrollear antes de poder empezar a armar la cartera y casi no
+   se interactúa con él. Se lo movió acá: chico, siempre visible, sin ocupar el panel izquierdo. */
+.monitor-pill{position:relative;flex-shrink:0;}
+.monitor-pill-btn{display:flex;align-items:center;gap:6px;background:var(--wash-1);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;color:var(--cream-dim);cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:all .2s;}
+.monitor-pill-btn:hover{border-color:var(--wash-3);color:var(--text-strong);}
+.monitor-pill-dot{width:7px;height:7px;border-radius:50%;background:var(--cream-dim);flex-shrink:0;}
+.monitor-pill-dot.ok{background:#1C8C5F;}
+.monitor-pill-dot.warn{background:#D9892B;}
+.monitor-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;width:280px;background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.45);padding:14px;z-index:300;}
+.monitor-dropdown.open{display:block;}
 .monitor-panel-title{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:8px;}
 .monitor-upload-btn{display:flex;align-items:center;gap:7px;background:var(--wash-1);border:1px dashed var(--wash-2);border-radius:var(--radius);padding:8px 12px;color:var(--cream-dim);font-size:11px;cursor:pointer;width:100%;transition:all .2s;font-family:'Hanken Grotesk',sans-serif;margin-bottom:8px;}
 .monitor-upload-btn:hover{border-color:var(--wash-3);color:var(--text-strong);background:var(--wash-2);}
@@ -257,6 +268,21 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .dcomp-legend{display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:9px;}
 .dcomp-leg-item{display:flex;align-items:center;gap:5px;font-size:9px;color:#444;}
 .dcomp-leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+/* FAVORITOS + ARMADO AUTOMÁTICO */
+.fav-chips{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0;}
+.fav-chip{display:inline-flex;align-items:center;gap:5px;background:var(--wash-1);border:1px solid var(--border);border-radius:14px;padding:3px 6px 3px 10px;font-size:10.5px;color:var(--cream);}
+.fav-chip b{color:var(--text-strong);}
+.fav-chip span{cursor:pointer;color:var(--cream-dim);width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;}
+.fav-chip span:hover{background:var(--wash-2);color:var(--cream);}
+.fav-empty{font-size:10px;color:var(--cream-dim);font-style:italic;}
+.fav-presets{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 6px;}
+.fav-preset{padding:5px 11px;border-radius:14px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--wash-1);color:var(--cream-dim);}
+.fav-preset:hover{border-color:var(--wash-3);color:var(--text-strong);}
+.fav-preset.active{background:var(--balanz);color:#fff;border-color:var(--balanz);}
+.fav-pct-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.fav-pct-row .field{flex:1;}
+.fav-warn{font-size:10.5px;color:#D9892B;padding:3px 0;}
+.fav-ok{font-size:10.5px;color:#1C8C5F;padding:3px 0;}
 /* MODEL CARDS */
 .model-card{background:var(--wash-1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color .2s;}
 .model-card:hover{border-color:var(--wash-2);}
@@ -305,6 +331,29 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
     <button class="psw-btn active" onclick="switchPage('cartera',this)">📊 Cartera</button>
   </div>
   <div class="topbar-actions">
+    <div class="monitor-pill" id="monitor-pill">
+      <button class="monitor-pill-btn" type="button" onclick="toggleMonitorDropdown(event)" title="Estado del Monitor de Individuos">
+        <span class="monitor-pill-dot" id="monitor-pill-dot"></span>
+        <span id="monitor-pill-text">Monitor</span>
+      </button>
+      <div class="monitor-dropdown" id="monitor-dropdown">
+        <div class="monitor-panel-title">📂 Monitor Individuos</div>
+        <label class="monitor-upload-btn" for="monitor-upload">
+          <span>📂</span>
+          <div style="flex:1;"><span id="monitor-label">Cargar Monitor_Individuos (.xlsm/.xlsx)</span>
+          <div id="monitor-last-date" style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:1px;display:none;"></div></div>
+        </label>
+        <input type="file" id="monitor-upload" accept=".xlsx,.xlsm,.xls" style="display:none;" onchange="loadMonitorFull(this)">
+        <div class="monitor-progress" id="mon-prog-wrap"><div class="monitor-progress-bar" id="mon-prog-bar" style="width:0%"></div></div>
+        <div class="monitor-stats" id="monitor-stats" style="display:none;">
+          <div class="monitor-stat" id="mstat-corp"><div class="monitor-stat-val" id="mstat-corp-val">—</div><div class="monitor-stat-lbl">Corp.</div></div>
+          <div class="monitor-stat" id="mstat-sov"><div class="monitor-stat-val" id="mstat-sov-val">—</div><div class="monitor-stat-lbl">Sob.</div></div>
+          <div class="monitor-stat" id="mstat-let"><div class="monitor-stat-val" id="mstat-let-val">—</div><div class="monitor-stat-lbl">Letras</div></div>
+        </div>
+        <div class="monitor-log" id="monitor-log"></div>
+        <div id="monitor-badge" class="monitor-badge none">Monitor no cargado</div>
+      </div>
+    </div>
     <button class="btn btn-outline" id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro">🌙</button>
     <button class="btn btn-outline" onclick="resetAll()">↺ Nuevo</button>
     <button class="btn btn-outline" id="share-btn" onclick="shareCartera()">🔗 Compartir</button>
@@ -315,23 +364,6 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 
 <div class="page-view active" id="page-cartera">
   <div class="left-panel">
-    <div class="monitor-panel">
-      <div class="monitor-panel-title">📂 Monitor Individuos</div>
-      <label class="monitor-upload-btn" for="monitor-upload">
-        <span>📂</span>
-        <div style="flex:1;"><span id="monitor-label">Cargar Monitor_Individuos (.xlsm/.xlsx)</span>
-        <div id="monitor-last-date" style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:1px;display:none;"></div></div>
-      </label>
-      <input type="file" id="monitor-upload" accept=".xlsx,.xlsm,.xls" style="display:none;" onchange="loadMonitorFull(this)">
-      <div class="monitor-progress" id="mon-prog-wrap"><div class="monitor-progress-bar" id="mon-prog-bar" style="width:0%"></div></div>
-      <div class="monitor-stats" id="monitor-stats" style="display:none;">
-        <div class="monitor-stat" id="mstat-corp"><div class="monitor-stat-val" id="mstat-corp-val">—</div><div class="monitor-stat-lbl">Corp.</div></div>
-        <div class="monitor-stat" id="mstat-sov"><div class="monitor-stat-val" id="mstat-sov-val">—</div><div class="monitor-stat-lbl">Sob.</div></div>
-        <div class="monitor-stat" id="mstat-let"><div class="monitor-stat-val" id="mstat-let-val">—</div><div class="monitor-stat-lbl">Letras</div></div>
-      </div>
-      <div class="monitor-log" id="monitor-log"></div>
-      <div id="monitor-badge" class="monitor-badge none">Monitor no cargado</div>
-    </div>
     <div>
       <div class="section-title">Datos del Cliente</div>
       <div class="field"><label>Nombre / Empresa</label><input type="text" id="client-name" placeholder="Ej: Juan Pérez" oninput="updateDoc()"></div>
@@ -366,6 +398,23 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
         <div class="field"><label>Fecha del documento</label><input type="date" id="doc-date-input" oninput="updateDoc()"></div>
         <div class="field"><label>Próxima revisión</label><input type="date" id="doc-next-review" oninput="updateDoc()"></div>
       </div>
+    </div>
+    <div>
+      <div class="section-title">⭐ Favoritos — Armado Automático</div>
+      <div style="font-size:10px;color:var(--cream-dim);margin-bottom:6px;">Marcá tus tickers de cabecera una vez y armá carteras nuevas en segundos repartiendo parejo entre ellos.</div>
+      <div class="field ac-wrap"><label>Agregar a Favoritos</label><input type="text" id="fav-search" placeholder="Ticker o nombre…" autocomplete="off" oninput="favS(this.value)" onblur="setTimeout(closeFavAC,180)"><div class="ac-dropdown" id="fav-dd"></div></div>
+      <div style="font-size:9.5px;color:var(--cream-dim);margin-top:6px;">Renta Variable</div>
+      <div class="fav-chips" id="fav-chips-rv"></div>
+      <div style="font-size:9.5px;color:var(--cream-dim);margin-top:4px;">Renta Fija</div>
+      <div class="fav-chips" id="fav-chips-rf"></div>
+
+      <div class="fav-presets" id="fav-presets"></div>
+      <div class="fav-pct-row">
+        <div class="field"><label>% Renta Variable</label><input type="number" id="fav-pct-rv" min="0" max="100" step="5" value="60" oninput="onFavPctChange('rv')"></div>
+        <div class="field"><label>% Renta Fija</label><input type="number" id="fav-pct-rf" min="0" max="100" step="5" value="40" oninput="onFavPctChange('rf')"></div>
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="armarConFavoritos()">⚡ Armar cartera con Favoritos</button>
+      <div id="fav-build-status" style="margin-top:6px;"></div>
     </div>
     <div>
       <div class="section-title">Agregar Activo</div>
@@ -870,11 +919,11 @@ function loadMonitorFull(input){
       if(cInfo){
         var rows=cInfo.rows, tCol=cInfo.tCol;
         var findCol=buildColFinder(rows[cInfo.hdrRow]||[]);
-        var iE=findCol(tCol+1,'Emisor','Empresa'), iVto=findCol(tCol+3,'Vencimiento','Vto','Vto.'),
+        var iE=findCol(tCol+1,'Emisor','Empresa'), iPrecio=findCol(tCol+2,'Precio MEP','Precio Mep','Precio'), iVto=findCol(tCol+3,'Vencimiento','Vto','Vto.'),
             iTIR=findCol(tCol+4,'TIR','TIR%','TIR %'), iCup=findCol(tCol+7,'Cupón','Cupon','Cupón %','Cupon %'),
             iMeses=findCol(tCol+8,'Mes cupón','Meses cupón','Mes cupon'), iMon=findCol(tCol+9,'Moneda','Dólar','Dolar'),
             iLey=findCol(tCol+10,'Ley'), iCal=findCol(tCol+11,'Calificación','Calificacion','Rating'),
-            iLam=findCol(tCol+12,'Lámina','Lamina');
+            iLam=findCol(tCol+12,'Lámina','Lamina'), iPrecioCable=findCol(tCol+15,'Precio Cable','P. Cable','Precio Cable USD');
         for(var di=cInfo.hdrRow+1;di<rows.length;di++){
           var dr=rows[di];
           var tk=String(dr[tCol]||'').trim();
@@ -896,7 +945,12 @@ function loadMonitorFull(input){
             moneda:String(dr[iMon]||'').trim(),
             ley:String(dr[iLey]||'').trim(),
             calificacion:String(dr[iCal]||'').trim(),
-            lamina:parseFloat(dr[iLam])||null
+            lamina:parseFloat(dr[iLam])||null,
+            // Precio del nominal (misma convención que "Precio del nominal" manual: 1.03 = 103% de la par),
+            // MEP o Cable según cuál trae la fila — se usan para verificar lámina mínima en el armado
+            // automático con Favoritos, sin depender de que el asesor lo tipee a mano.
+            precioMep:parseFloat(dr[iPrecio])||null,
+            precioCable:parseFloat(dr[iPrecioCable])||null
           };
           corpCnt++;
           var v7=newON[tk].vencimiento?newON[tk].vencimiento.slice(0,7):'';
@@ -1060,12 +1114,27 @@ function updateMonitorBadge(ts){
   var total=Object.keys(ON_DB).length+Object.keys(SOV_DB).length+Object.keys(LET_DB).length;
   if(label)label.textContent=total>0?total+' instrumentos cargados':'Cargar Monitor_Individuos (.xlsm/.xlsx)';
   if(ld&&ts){ld.style.display='';ld.textContent='Actualizado: '+ts;}
-  if(!ts){badge.className='monitor-badge none';badge.textContent='Monitor no cargado';return;}
+  var pillDot=document.getElementById('monitor-pill-dot'),pillText=document.getElementById('monitor-pill-text');
+  if(!ts){
+    badge.className='monitor-badge none';badge.textContent='Monitor no cargado';
+    if(pillDot){pillDot.className='monitor-pill-dot';pillText.textContent=total>0?total+' instr.':'Monitor';}
+    return;
+  }
   var parts=ts.split('/');var upd=parts.length===3?new Date(parts[2],parseInt(parts[1])-1,parts[0]):new Date();
   var diff=(new Date()-upd)/(86400000);
-  if(diff>7){badge.className='monitor-badge warn';badge.textContent='⚠ Desactualizado · '+ts;}
+  var vieja=diff>7;
+  if(vieja){badge.className='monitor-badge warn';badge.textContent='⚠ Desactualizado · '+ts;}
   else{badge.className='monitor-badge ok';badge.textContent='✓ Monitor actualizado · '+ts;}
+  if(pillDot){pillDot.className='monitor-pill-dot '+(vieja?'warn':'ok');pillText.textContent=total+' instr.';}
 }
+function toggleMonitorDropdown(e){
+  if(e)e.stopPropagation();
+  document.getElementById('monitor-dropdown').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  var pill=document.getElementById('monitor-pill');
+  if(pill&&!pill.contains(e.target))document.getElementById('monitor-dropdown').classList.remove('open');
+});
 
 async function saveMonitorToCloud(ts){
   try{
@@ -1236,6 +1305,169 @@ function selAC(t,n,c,m){
 }
 
 function closeAC(){document.getElementById('ac-dd').classList.remove('open');}
+
+// ══════════════════════════════════════════════════════════════
+//  FAVORITOS + ARMADO AUTOMÁTICO — pedido de Nico (24/09), inspirado en el armador de Marian:
+//  marcar tickers de cabecera una vez (persistido en este navegador) y, dado un % RV / % RF,
+//  armar la cartera reparitendo PAREJO dentro de cada bucket — reemplaza el `assets[]` actual
+//  igual que "cargar un modelo". Único agregado real de datos: el parser de Corporativos ahora
+//  también lee precioMep/precioCable (antes solo se usaba para el hint manual de lámina en el
+//  alta de UN activo) — acá se usa para respetar la LÁMINA MÍNIMA de las ONs al repartir: si el
+//  % parejo le daría a una ON menos plata de la que pide su lámina, se la sube al mínimo y se
+//  achica proporcionalmente el resto de RF (o se la excluye, avisando, si ni el 100% de RF
+//  alcanza). Es una heurística (unas pocas pasadas), no un solver óptimo — para 3-8 favoritos
+//  (el uso real) converge bien.
+// ══════════════════════════════════════════════════════════════
+var FAV_LS_KEY='fcn-armador-favoritos';
+var favoritos={rv:[],rf:[]};
+function loadFavoritos(){
+  try{var raw=localStorage.getItem(FAV_LS_KEY);if(raw){var p=JSON.parse(raw);favoritos={rv:p.rv||[],rf:p.rf||[]};}}catch(e){}
+}
+function saveFavoritos(){try{localStorage.setItem(FAV_LS_KEY,JSON.stringify(favoritos));}catch(e){}}
+
+function favBucketOf(c){return(c||'').split(' | ')[0]==='Renta Variable'?'rv':'rf';}
+
+function favS(q){
+  var dd=document.getElementById('fav-dd');
+  if(!q||q.length<1){dd.classList.remove('open');return;}
+  var lq=q.toLowerCase();
+  var m=BYMA.filter(function(i){return i.t.toLowerCase().includes(lq)||i.n.toLowerCase().includes(lq);}).slice(0,12);
+  if(!m.length){dd.classList.remove('open');return;}
+  dd.innerHTML=m.map(function(i){
+    var b=favBucketOf(i.c);
+    var yaEsta=favoritos[b].indexOf(i.t)>=0;
+    return'<div class="ac-item" onmousedown="favAddTicker(\''+i.t+'\',\''+i.c.replace(/'/g,"\\'")+'\')">'+
+      '<span class="ac-ticker">'+i.t+'</span><span class="ac-name">'+i.n+'</span>'+
+      (yaEsta?'<span class="ac-extra">★ ya es favorito</span>':'')+'</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+function closeFavAC(){document.getElementById('fav-dd').classList.remove('open');}
+function favAddTicker(t,c){
+  var b=favBucketOf(c);
+  if(favoritos[b].indexOf(t)<0)favoritos[b].push(t);
+  document.getElementById('fav-search').value='';
+  closeFavAC();saveFavoritos();renderFavoritos();
+}
+function favRemove(b,t){favoritos[b]=favoritos[b].filter(function(x){return x!==t;});saveFavoritos();renderFavoritos();}
+function renderFavoritos(){
+  ['rv','rf'].forEach(function(b){
+    var wrap=document.getElementById('fav-chips-'+b);
+    if(!favoritos[b].length){wrap.innerHTML='<span class="fav-empty">Sin favoritos todavía.</span>';return;}
+    wrap.innerHTML=favoritos[b].map(function(t){
+      return'<span class="fav-chip"><b>'+t+'</b><span onclick="favRemove(\''+b+'\',\''+t+'\')" title="Quitar de favoritos">✕</span></span>';
+    }).join('');
+  });
+}
+
+var FAV_PRESETS=[[100,0,'100% RV'],[70,30,'70/30'],[60,40,'60/40'],[40,60,'40/60'],[0,100,'100% RF']];
+function renderFavPresets(){
+  document.getElementById('fav-presets').innerHTML=FAV_PRESETS.map(function(p,i){
+    return'<span class="fav-preset" data-i="'+i+'" onclick="applyFavPreset('+p[0]+','+p[1]+',this)">'+p[2]+'</span>';
+  }).join('');
+}
+function applyFavPreset(rv,rf,el){
+  document.getElementById('fav-pct-rv').value=rv;document.getElementById('fav-pct-rf').value=rf;
+  document.querySelectorAll('.fav-preset').forEach(function(p){p.classList.remove('active');});
+  if(el)el.classList.add('active');
+}
+function onFavPctChange(which){
+  var rvEl=document.getElementById('fav-pct-rv'),rfEl=document.getElementById('fav-pct-rf');
+  var v=Math.max(0,Math.min(100,parseFloat((which==='rv'?rvEl:rfEl).value)||0));
+  (which==='rv'?rvEl:rfEl).value=v;
+  (which==='rv'?rfEl:rvEl).value=100-v;
+  document.querySelectorAll('.fav-preset').forEach(function(p){p.classList.remove('active');});
+}
+
+async function armarConFavoritos(){
+  if(assets.length&&!confirm('Esto reemplaza la cartera actual por la armada automáticamente con Favoritos. ¿Continuar?'))return;
+  var pctRV=parseFloat(document.getElementById('fav-pct-rv').value)||0;
+  var pctRF=parseFloat(document.getElementById('fav-pct-rf').value)||0;
+  if(Math.abs(pctRV+pctRF-100)>0.5){alert('% Renta Variable + % Renta Fija tiene que sumar 100.');return;}
+  var ps=parseFloat(document.getElementById('port-size').value)||0;
+
+  function resolve(t){
+    var hit=BYMA.find(function(x){return x.t===t;});
+    return hit?{ticker:t,name:hit.n,type:hit.c,curr:hit.m||'USD'}:null;
+  }
+  var rvList=favoritos.rv.map(resolve).filter(Boolean);
+  var rfList=favoritos.rf.map(resolve).filter(Boolean);
+  var faltantesRV=favoritos.rv.filter(function(t){return!rvList.some(function(r){return r.ticker===t;});});
+  var faltantesRF=favoritos.rf.filter(function(t){return!rfList.some(function(r){return r.ticker===t;});});
+  if(pctRV>0&&!rvList.length){alert('No tenés favoritos de Renta Variable cargados (o no matchean con el Monitor actual).');return;}
+  if(pctRF>0&&!rfList.length){alert('No tenés favoritos de Renta Fija cargados (o no matchean con el Monitor actual).');return;}
+
+  var warnings=[];
+  var rvW=rvList.map(function(r){return{r:r,pct:pctRV/rvList.length};});
+  var rfW=rfList.map(function(r){return{r:r,pct:pctRF/rfList.length,locked:false};});
+
+  if(ps>0){
+    for(var iter=0;iter<6;iter++){
+      var idxViol=-1,minUSDViol=0;
+      for(var i=0;i<rfW.length;i++){
+        var it=rfW[i];if(it.locked)continue;
+        var on=ON_DB[it.r.ticker];
+        if(!on||!on.lamina)continue;
+        var precio=(on.moneda||'').toLowerCase().indexOf('cable')>=0?on.precioCable:on.precioMep;
+        if(!precio)continue; // sin precio conocido en el Monitor: no se puede verificar, se deja como está
+        var minUSD=on.lamina*precio;
+        var montoAsignado=ps*(it.pct/100);
+        if(montoAsignado<minUSD-0.01){idxViol=i;minUSDViol=minUSD;break;}
+      }
+      if(idxViol<0)break;
+      var minPct=(minUSDViol/ps)*100;
+      if(minPct>pctRF+0.01){
+        warnings.push(rfW[idxViol].r.ticker+': su lámina mínima ('+fmt(minUSDViol,'USD')+') supera todo el % de Renta Fija asignado — se excluyó. Subí el % de RF o el tamaño de la cartera para incluirla.');
+        rfW.splice(idxViol,1);
+        rfW.forEach(function(w){if(!w.locked)w.pct=0;}); // se recalcula abajo tras salir del for si hace falta, ver siguiente iter
+        var nLibres=rfW.filter(function(w){return!w.locked;}).length;
+        var usado=rfW.filter(function(w){return w.locked;}).reduce(function(s,w){return s+w.pct;},0);
+        var libre=pctRF-usado;
+        rfW.forEach(function(w){if(!w.locked)w.pct=nLibres?libre/nLibres:0;});
+        continue;
+      }
+      rfW[idxViol].pct=minPct;rfW[idxViol].locked=true;
+      var otros=rfW.filter(function(w){return!w.locked;});
+      var usadoPct=rfW.filter(function(w){return w.locked;}).reduce(function(s,w){return s+w.pct;},0);
+      var restante=pctRF-usadoPct;
+      otros.forEach(function(w){w.pct=otros.length?restante/otros.length:0;});
+    }
+  } else {
+    warnings.push('Sin "Monto Total" cargado no se pudo verificar la lámina mínima de las ONs — se repartió parejo, revisalo a mano antes de mandarlo.');
+  }
+
+  var out=[],ci=0;
+  function pushEntry(w){
+    var r=w.r,on=ON_DB[r.ticker],sov=SOV_DB[r.ticker],let_=LET_DB[r.ticker];
+    var ret='',venc='',meses='',ley='',calif='',curr=r.curr||'USD';
+    if(on){
+      if(on.tir!=null){var cp=on.cupon?Math.round(on.cupon*10000)/100:null;ret=(cp?cp+'% cup. | ':'')+'TIR '+(on.tir*100).toFixed(2)+'%';}
+      venc=on.vencimiento||'';meses=on.meses_cupon||'';ley=on.ley||'';calif=on.calificacion||'';curr='USD';
+    } else if(sov){
+      if(sov.tir!=null)ret='TIR '+(sov.tir*100).toFixed(2)+'%';
+      venc=sov.venc||'';meses=sov.meses||'';ley=sov.ley||'';calif=sov.calif||'';
+      curr=(sov.moneda==='Cable'||sov.moneda==='USD')?'USD':'ARS';
+    } else if(let_){
+      ret=let_.tna!=null?'TNA '+(let_.tna*100).toFixed(2)+'%':(let_.tir!=null?'TIR '+(let_.tir*100).toFixed(2)+'%':'');
+      venc=let_.venc||'';curr='ARS';
+    }
+    var cleanN=r.name.replace(/\s+[\d.]+%\s+\d{4}-\d{2}/g,'').replace(/\s*\([A-Z0-9]{4,10}\)\s*$/,'').trim();
+    out.push({id:'fav'+Date.now()+ci,name:cleanN,ticker:r.ticker,pct:Math.round(w.pct*10)/10,ret:ret,curr:curr,type:r.type,color:PALETTE[ci%PALETTE.length],venc:venc,meses:meses,ley:ley,calif:calif,nota:''});
+    ci++;
+  }
+  rvW.forEach(pushEntry);rfW.forEach(pushEntry);
+
+  assets=out;editingId=null;
+  render();updateDoc();updateYield();
+
+  var msgs=[];
+  if(faltantesRV.length)msgs.push('No encontrados en el Monitor cargado (RV): '+faltantesRV.join(', ')+'.');
+  if(faltantesRF.length)msgs.push('No encontrados en el Monitor cargado (RF): '+faltantesRF.join(', ')+'.');
+  msgs=msgs.concat(warnings);
+  document.getElementById('fav-build-status').innerHTML=msgs.length
+    ?msgs.map(function(m){return'<div class="fav-warn">⚠ '+m+'</div>';}).join('')
+    :'<div class="fav-ok">✓ Cartera armada con '+out.length+' activo'+(out.length===1?'':'s')+'.</div>';
+}
 
 // ═══ FORM HELPERS ═══
 // Nominales que alcanzan con `montoUSD` (monto asignado, en USD-equivalente del portafolio),
@@ -1737,109 +1969,55 @@ var docDonutMacro=null,docDonutCat=null;
 function destroyDocDonuts(){if(docDonutMacro){docDonutMacro.destroy();docDonutMacro=null;}if(docDonutCat){docDonutCat.destroy();docDonutCat=null;}}
 
 // ══════════════════════════════════════════════════════════════
-//  CORRELACIÓN ENTRE ACTIVOS DE RENTA VARIABLE — pedido de Nico (23/09): si hay 3 o más
-//  activos de RV con ticker, mostrar qué tan parecido se mueven entre sí (retornos diarios,
-//  6 meses, Yahoo Finance vía fetchYFArmador/TICKERS_AR_AC — mismo mecanismo que ya usa
-//  onTickerBlur() para precio actual/objetivo, ahora aplicado a una serie histórica en vez de
-//  al último precio). Es GATILLO MANUAL (botón), no automático en cada updateDoc(): son N
-//  llamadas a un proxy CORS gratuito por cada cálculo, no tiene sentido dispararlas en cada
-//  tecla mientras se arma la cartera.
+//  CORRELACIÓN ENTRE ACTIVOS DE RENTA VARIABLE — pedido de Nico (24/09): si hay 3 o más
+//  activos de RV con ticker, mostrar qué tan parecido se mueven entre sí. Antes pedía cada
+//  serie histórica a Yahoo Finance en vivo (fetchYFArmador, proxy CORS) al hacer clic en un
+//  botón dentro del documento exportable — poco confiable (falla de proxy/rate limit) y ese
+//  mismo botón quedaba visible en el PDF porque doExport() captura #pdf-doc con html2canvas
+//  tal cual está en pantalla (el CSS @media print nunca corre en ese camino). Ahora usa
+//  data/retornos_semanales.json — EL MISMO archivo estático que ya usa con éxito la pestaña
+//  "🔗 Correlación" de Valuación por Múltiplos (retornos semanales ~3 años, lo genera 1x/semana
+//  .github/scripts/retornos_semanales.py, mismo repo/data/ — no hace falta pedirle nada a
+//  Yahoo desde acá). Automático en cada updateDoc(), sin botón: es una cuenta local sobre un
+//  JSON de ~200 KB que se cachea en memoria la primera vez, no un fetch por ticker.
 // ══════════════════════════════════════════════════════════════
-var corrCache=null; // {sig, tickers:[...], names:{tk:name}, matrix:{tk1:{tk2:val}}, failed:[...], asOf:Date}
+var RETORNOS_DATA=null; // false = ya se intentó y falló (no reintentar en cada render); objeto = cache
 
 function _rvUniqueWithTicker(rvA){
   var seen={};
   return rvA.filter(function(a){var t=(a.ticker||'').trim().toUpperCase();if(!t||seen[t])return false;seen[t]=true;return true;});
 }
 
-function renderCorrelBlock(rvA){
-  var withTicker=_rvUniqueWithTicker(rvA);
-  var blk=document.getElementById('doc-block-correl');
-  if(withTicker.length<3){blk.hidden=true;return;}
-  blk.hidden=false;
-  var sig=withTicker.map(function(a){return a.ticker.trim().toUpperCase();}).sort().join(',');
-  var box=document.getElementById('doc-correl');
-  if(corrCache&&corrCache.sig===sig){box.innerHTML=_corrTableHTML(corrCache);return;}
-  var stale=corrCache&&corrCache.sig!==sig;
-  box.innerHTML=(stale?'<div class="dcorr-warn">⚠ La cartera cambió desde el último cálculo — recalculá para actualizar.</div>':'')+
-    '<div style="font-size:10px;color:#888;margin-bottom:8px;">Correlación histórica (6 meses) entre los '+withTicker.length+' activos de RV con ticker — ayuda a ver si la cartera está realmente diversificada.</div>'+
-    '<button type="button" class="dcorr-btn" id="btn-calc-correl" onclick="calcularCorrelacionRV()">📊 Calcular correlación (Yahoo Finance)</button>';
+async function _cargarRetornosSemanales(){
+  if(RETORNOS_DATA)return RETORNOS_DATA;
+  if(RETORNOS_DATA===false)return null;
+  try{
+    var r=await fetch('data/retornos_semanales.json',{cache:'no-cache'});
+    if(!r.ok)throw new Error(r.status);
+    var j=await r.json();
+    var serie={};
+    Object.keys(j.ret||{}).forEach(function(tk){
+      serie[tk.toUpperCase()]=Float64Array.from(j.ret[tk],function(v){return v==null?NaN:v/10000;});
+    });
+    RETORNOS_DATA={fechas:j.fechas||[],serie:serie,generado:j.generado||''};
+  }catch(e){RETORNOS_DATA=false;return null;}
+  return RETORNOS_DATA;
 }
 
-function pearsonCorr(x,y){
-  var n=x.length;if(!n||y.length!==n)return 0;
-  var mx=x.reduce(function(a,b){return a+b;},0)/n,my=y.reduce(function(a,b){return a+b;},0)/n;
-  var num=0,dx=0,dy=0;
-  for(var i=0;i<n;i++){var a=x[i]-mx,b=y[i]-my;num+=a*b;dx+=a*a;dy+=b*b;}
-  var den=Math.sqrt(dx*dy);
-  return den===0?0:num/den;
-}
-
-// Cierres diarios de los últimos 6 meses (mismo candidatos/proxy que fetchTickerData, adaptado
-// a serie histórica en vez de a un solo precio). Devuelve [{d:'YYYY-MM-DD',c:precio},...] o null.
-async function fetchHistCloses(ticker){
-  var candidatos=TICKERS_AR_AC.has(ticker)?[ticker,ticker+'.BA']:[ticker];
-  for(var i=0;i<candidatos.length;i++){
-    try{
-      var url='https://query1.finance.yahoo.com/v8/finance/chart/'+candidatos[i]+'?interval=1d&range=6mo';
-      var data=await fetchYFArmador(url);
-      var res=data&&data.chart&&data.chart.result&&data.chart.result[0];
-      var ts=res&&res.timestamp;
-      var closes=res&&res.indicators&&res.indicators.quote&&res.indicators.quote[0]&&res.indicators.quote[0].close;
-      if(!ts||!closes)continue;
-      var out=[];
-      for(var j=0;j<ts.length;j++){
-        if(closes[j]==null)continue;
-        out.push({d:new Date(ts[j]*1000).toISOString().slice(0,10),c:closes[j]});
-      }
-      if(out.length>=30)return out;
-    }catch(e){continue;}
+// Correlación de Pearson entre dos series de retornos semanales alineadas por índice (misma
+// fila = misma semana). Semanas donde a alguno le falta el dato (NaN) se descartan de a pares.
+function _corrParSemanal(a,b){
+  var n=0,sa=0,sb=0,saa=0,sbb=0,sab=0;
+  for(var i=0;i<a.length;i++){
+    var x=a[i],y=b[i];
+    if(x!==x||y!==y)continue; // NaN
+    n++;sa+=x;sb+=y;saa+=x*x;sbb+=y*y;sab+=x*y;
   }
-  return null;
-}
-
-async function calcularCorrelacionRV(){
-  function bucketOf(a){return(a.type||'').split(' | ')[0];}
-  var withTicker=_rvUniqueWithTicker(assets.filter(function(a){return bucketOf(a)==='Renta Variable';}));
-  if(withTicker.length<3)return;
-  var sig=withTicker.map(function(a){return a.ticker.trim().toUpperCase();}).sort().join(',');
-  var btn=document.getElementById('btn-calc-correl');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Consultando Yahoo Finance…';}
-  var series={},names={},failed=[];
-  for(var i=0;i<withTicker.length;i++){
-    var tk=withTicker[i].ticker.trim().toUpperCase();
-    names[tk]=withTicker[i].name;
-    var h=await fetchHistCloses(tk);
-    if(h&&h.length>=30)series[tk]=h;else failed.push(tk);
-  }
-  var tks=Object.keys(series);
-  var box=document.getElementById('doc-correl');
-  if(tks.length<3){
-    box.innerHTML='<div class="dcorr-warn">No se pudo traer suficiente historial de precios ('+(failed.length?'sin datos: '+failed.join(', '):'error de red')+'). Probá de nuevo en un momento.</div>'+
-      '<button type="button" class="dcorr-btn" onclick="calcularCorrelacionRV()">↻ Reintentar</button>';
-    return;
-  }
-  var common=null;
-  tks.forEach(function(tk){
-    var dates=series[tk].map(function(p){return p.d;});
-    common=common?common.filter(function(d){return dates.indexOf(d)>=0;}):dates;
-  });
-  common.sort();
-  if(common.length<20){
-    box.innerHTML='<div class="dcorr-warn">Muy pocas fechas de cotización en común entre estos activos para calcular una correlación confiable.</div>';
-    return;
-  }
-  var rets={};
-  tks.forEach(function(tk){
-    var byDate={};series[tk].forEach(function(p){byDate[p.d]=p.c;});
-    var closes=common.map(function(d){return byDate[d];});
-    var r=[];for(var i=1;i<closes.length;i++)r.push(closes[i]/closes[i-1]-1);
-    rets[tk]=r;
-  });
-  var matrix={};
-  tks.forEach(function(a){matrix[a]={};tks.forEach(function(b){matrix[a][b]=a===b?1:pearsonCorr(rets[a],rets[b]);});});
-  corrCache={sig:sig,tickers:tks,names:names,matrix:matrix,failed:failed,asOf:new Date()};
-  box.innerHTML=_corrTableHTML(corrCache);
+  if(n<40)return null; // menos de ~40 semanas en común: no confiable
+  var ma=sa/n,mb=sb/n,va=saa/n-ma*ma,vb=sbb/n-mb*mb;
+  if(va<=1e-12||vb<=1e-12)return null;
+  var rho=(sab/n-ma*mb)/Math.sqrt(va*vb);
+  return{rho:Math.max(-1,Math.min(1,rho)),n:n};
 }
 
 function _corrColor(v){
@@ -1849,28 +2027,64 @@ function _corrColor(v){
   if(av>=0.4)return{bg:'rgba(217,137,43,'+(0.12+av*0.3).toFixed(2)+')',fg:'#8a5a1f'};
   return{bg:'rgba(74,144,217,'+(0.08+av*0.3).toFixed(2)+')',fg:'#2a4f7a'};
 }
-function _corrTableHTML(cache){
-  var tks=cache.tickers;
-  var head='<tr><th></th>'+tks.map(function(t){return'<th>'+t+'</th>';}).join('')+'</tr>';
-  var rows=tks.map(function(a){
-    return'<tr><th>'+a+'</th>'+tks.map(function(b){
-      if(a===b)return'<td class="diag">1.00</td>';
-      var v=cache.matrix[a][b],col=_corrColor(v);
-      return'<td style="background:'+col.bg+';color:'+col.fg+';font-weight:600;">'+v.toFixed(2)+'</td>';
+
+// Lista de assets de Renta Variable, tal cual la filtra updateDoc() — reusada acá para poder
+// refrescar el bloque justo antes de exportar (ver doExport()), sin depender de que updateDoc()
+// ya haya corrido con los datos más recientes.
+function _rvAssetsList(){
+  return assets.filter(function(a){return(a.type||'').split(' | ')[0]==='Renta Variable';});
+}
+
+async function renderCorrelBlock(rvA){
+  var withTicker=_rvUniqueWithTicker(rvA);
+  var blk=document.getElementById('doc-block-correl');
+  if(withTicker.length<3){blk.hidden=true;return;}
+  blk.hidden=false;
+  var box=document.getElementById('doc-correl');
+  var D=await _cargarRetornosSemanales();
+  if(!D){
+    box.innerHTML='<div class="dcorr-warn">No se pudo cargar el historial de precios (data/retornos_semanales.json). Probá recargar la página.</div>';
+    return;
+  }
+  var items=withTicker.map(function(a){
+    var tk=a.ticker.trim().toUpperCase();
+    return{tk:tk,pct:a.pct||0,s:D.serie[tk]};
+  });
+  var sinDatos=items.filter(function(i){return!i.s;}).map(function(i){return i.tk;});
+  items=items.filter(function(i){return i.s;});
+  if(items.length<2){
+    box.innerHTML='<div class="dcorr-warn">'+(items.length?'Sumá al menos un activo más con historial de precios.':'Ninguno de estos activos tiene historial de precios.')+(sinDatos.length?' Sin datos: '+sinDatos.join(', ')+'.':'')+'</div>';
+    return;
+  }
+  var k=items.length;
+  var sw=items.reduce(function(a,i){return a+(i.pct>0?i.pct:0);},0);
+  var w=items.map(function(i){return sw>0?(i.pct>0?i.pct:0)/sw:1/k;});
+  var M=[];for(var i=0;i<k;i++)M.push(new Array(k).fill(null));
+  for(i=0;i<k;i++)for(var j=i+1;j<k;j++){var c=_corrParSemanal(items[i].s,items[j].s);M[i][j]=M[j][i]=c;}
+  var num=0,den=0;
+  for(i=0;i<k;i++)for(j=i+1;j<k;j++){var cc=M[i][j];if(!cc)continue;num+=2*w[i]*w[j]*cc.rho;den+=2*w[i]*w[j];}
+  var avg=den>0?num/den:null;
+  var lectura=avg===null?'Sin semanas en común suficientes entre estos activos.':
+    avg<0.30?'Buena diversificación — los activos no se mueven en la misma dirección.':
+    avg<0.50?'Diversificación moderada — hay cierta correlación entre los activos.':
+    avg<0.65?'Poco diversificada — muchos activos suben y bajan juntos.':
+    'Los activos se mueven de forma muy parecida — la diversificación real es menor de lo que sugiere la cantidad de posiciones.';
+  var head='<tr><th></th>'+items.map(function(a){return'<th>'+a.tk+'</th>';}).join('')+'</tr>';
+  var rows=items.map(function(a,ii){
+    return'<tr><th>'+a.tk+'</th>'+items.map(function(b,jj){
+      if(ii===jj)return'<td class="diag">1.00</td>';
+      var c=M[ii][jj];if(!c)return'<td class="diag">·</td>';
+      var col=_corrColor(c.rho);
+      return'<td style="background:'+col.bg+';color:'+col.fg+';font-weight:600;">'+c.rho.toFixed(2)+'</td>';
     }).join('')+'</tr>';
   }).join('');
-  var offDiag=[];
-  tks.forEach(function(a,i){tks.forEach(function(b,j){if(j>i)offDiag.push(cache.matrix[a][b]);});});
-  var avg=offDiag.reduce(function(s,v){return s+v;},0)/offDiag.length;
-  var lectura=avg>=0.6?'Los activos se mueven de forma muy parecida — la diversificación real es menor de lo que sugiere la cantidad de posiciones.':
-    avg>=0.35?'Diversificación moderada — hay cierta correlación entre los activos.':
-    'Buena diversificación — los activos no se mueven en la misma dirección.';
-  var failedNote=cache.failed&&cache.failed.length?'<div class="dcorr-note">Sin datos suficientes para: '+cache.failed.join(', ')+'.</div>':'';
-  return'<table class="dcorr-table">'+head+rows+'</table>'+
+  var rango=D.fechas.length?D.fechas[0]+' → '+D.fechas[D.fechas.length-1]:'';
+  var failedNote=sinDatos.length?'<div class="dcorr-note">Sin datos suficientes para: '+sinDatos.join(', ')+'.</div>':'';
+  box.innerHTML='<div style="font-size:10px;color:#888;margin-bottom:8px;">Correlación histórica (retornos semanales, '+rango+') entre los '+items.length+' activos de RV con ticker, ponderada por % de la cartera — ayuda a ver si la cartera está realmente diversificada.</div>'+
+    '<table class="dcorr-table">'+head+rows+'</table>'+
     '<div class="dcorr-legend"><i style="background:rgba(28,140,95,.4)"></i>Baja/negativa <i style="background:rgba(74,144,217,.4)"></i>Baja-media <i style="background:rgba(217,137,43,.4)"></i>Media <i style="background:rgba(192,69,59,.4)"></i>Alta</div>'+
-    '<div class="dcorr-note">Correlación promedio: <b>'+avg.toFixed(2)+'</b> · '+lectura+' · Retornos diarios, últimos 6 meses (Yahoo Finance) · al '+cache.asOf.toLocaleDateString('es-AR')+'.</div>'+
-    failedNote+
-    '<button type="button" class="dcorr-btn" style="margin-top:8px;" onclick="calcularCorrelacionRV()">↻ Recalcular</button>';
+    '<div class="dcorr-note">Correlación promedio: <b>'+(avg!=null?avg.toFixed(2):'—')+'</b> · '+lectura+'</div>'+
+    failedNote;
 }
 
 // ── Cartera en Pesos: mini-lista independiente del pool principal de `assets` ──
@@ -2139,6 +2353,7 @@ function _onCloneDocFixups(fontCSS){
     if(badgeLbl){badgeLbl.style.color='rgba(255,255,255,0.55)';badgeLbl.style.webkitTextFillColor='rgba(255,255,255,0.55)';badgeLbl.style.fontFamily="'Hanken Grotesk',sans-serif";}
     var pdfDoc=doc.getElementById('pdf-doc');
     if(pdfDoc){
+      pdfDoc.querySelectorAll('button').forEach(function(b){b.remove();});
       pdfDoc.querySelectorAll('*').forEach(function(e){
         var cs=window.getComputedStyle(e);
         if(e.style.color&&e.style.color.includes('var('))e.style.color=cs.color;
@@ -2181,6 +2396,7 @@ async function doExport(el,prefix){
   try{
     await document.fonts.ready;
     var fontCSS=await _prefetchFonts();
+    await renderCorrelBlock(_rvAssetsList()); // por si el fetch de retornos_semanales.json seguía en curso
 
     var blocks=Array.prototype.slice.call(el.querySelectorAll('.doc-block'));
     var wasHidden=blocks.map(function(b){return b.hidden;});
@@ -2248,6 +2464,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var strip=document.getElementById('color-strip');
   PALETTE.forEach(function(c,i){var sw=document.createElement('div');sw.className='color-swatch'+(i===0?' active':'');sw.style.background=c;sw.onclick=function(){document.querySelectorAll('.color-swatch').forEach(function(s){s.classList.remove('active');});sw.classList.add('active');selColor=c;};strip.appendChild(sw);});
   loadMonitorFromCloud();
+  loadFavoritos();renderFavoritos();renderFavPresets();
   // Auto-completar campo Creador con usuario logueado
   var u=getUsername();
   if(u){var authorEl=document.getElementById('model-save-author');if(authorEl)authorEl.value=u;}

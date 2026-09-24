@@ -48,6 +48,20 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .right-panel::-webkit-scrollbar{width:3px;}
 .right-panel::-webkit-scrollbar-thumb{background:var(--navy-light);}
 .section-title{font-size:9px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:8px;}
+/* Pill de estado del Monitor en la topbar — pedido de Nico (24/09): la carga del archivo casi
+   nunca se toca (se sube una vez por navegador) pero ocupaba todo el tope del panel izquierdo,
+   obligando a scrollear para llegar a "2 · Elegir bono" cada vez. Mismo patrón que ya usa
+   Armador_Carteras_v4_3.html: colapsa a una píldora con un punto de estado, el detalle vive en
+   un dropdown que se abre al click. */
+.monitor-pill{position:relative;flex-shrink:0;margin-left:auto;}
+.monitor-pill-btn{display:flex;align-items:center;gap:6px;background:var(--wash-1);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;color:var(--cream-dim);cursor:pointer;font-family:'Hanken Grotesk',sans-serif;transition:all .2s;}
+.monitor-pill-btn:hover{border-color:var(--wash-3);color:var(--text-strong);}
+.monitor-pill-dot{width:7px;height:7px;border-radius:50%;background:var(--cream-dim);flex-shrink:0;}
+.monitor-pill-dot.ok{background:var(--green);}
+.monitor-pill-dot.warn{background:var(--yellow);}
+.monitor-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.45);padding:14px;z-index:300;text-align:left;}
+.monitor-dropdown.open{display:block;}
+.monitor-dropdown .section-title{margin-bottom:8px;}
 .upload-card{background:var(--wash-1);border:1px dashed var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;transition:all .2s;text-align:center;position:relative;}
 .upload-card:hover{border-color:var(--wash-3);background:var(--wash-2);}
 .upload-card.loaded{border-style:solid;border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.05);}
@@ -127,13 +141,13 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
     <div class="topbar-title">finanzasconnico · <span>Calculadora de Bonos</span></div>
     <div class="topbar-subtitle">Precio ↔ TIR · Cronograma de flujos · Duration &amp; DV01</div>
   </div>
-  <button id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro" style="margin-left:auto;background:var(--navy-light);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--cream);">🌙</button>
-</div>
-
-<div class="main">
-  <div class="left-panel">
-    <div>
-      <div class="section-title">1 · Base de bonos (ONs y Soberanos)</div>
+  <div class="monitor-pill" id="monitor-pill">
+    <button class="monitor-pill-btn" type="button" onclick="toggleMonitorDropdown(event)" title="Estado del Monitor de Individuos">
+      <span class="monitor-pill-dot" id="monitor-pill-dot"></span>
+      <span id="monitor-pill-text">Monitor</span>
+    </button>
+    <div class="monitor-dropdown" id="monitor-dropdown">
+      <div class="section-title">📂 Base de bonos (ONs y Soberanos)</div>
       <div class="upload-card" id="card-excel" onclick="document.getElementById('inp-excel').click()">
         <input type="file" id="inp-excel" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="subirCompartido('monitor', this, cargarExcel)">
         <span class="upload-icon" id="icon-excel">📥</span>
@@ -143,9 +157,14 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
       </div>
       <div class="byma-estado" id="byma-estado" style="display:none;"></div>
     </div>
+  </div>
+  <button id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro" style="background:var(--navy-light);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--cream);">🌙</button>
+</div>
 
+<div class="main">
+  <div class="left-panel">
     <div>
-      <div class="section-title">2 · Elegir bono</div>
+      <div class="section-title">1 · Elegir bono</div>
       <div class="field ac-wrap">
         <input type="text" id="buscar-bono" placeholder="Ticker o emisor: YM40O, GD30, VSCXO…" autocomplete="off"
           oninput="buscarBonoInput(this.value)" onblur="setTimeout(cerrarAC,180)">
@@ -157,7 +176,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
     <div class="divider"></div>
 
     <div>
-      <div class="section-title">3 · Condiciones del bono</div>
+      <div class="section-title">2 · Condiciones del bono</div>
       <div class="field"><label>Ticker</label><input type="text" id="b-ticker" placeholder="Ej: YM40O" style="text-transform:uppercase;" oninput="onCondChange()"></div>
       <div class="field"><label>Emisor</label><input type="text" id="b-emisor" placeholder="Ej: YPF" oninput="onCondChange()"></div>
       <div class="field-row">
@@ -202,7 +221,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
     <div class="divider"></div>
 
     <div>
-      <div class="section-title">4 · Liquidación</div>
+      <div class="section-title">3 · Liquidación</div>
       <div class="field-row">
         <div class="field"><label>Fecha de hoy</label><input type="date" id="l-hoy" oninput="onSettlementChange()"></div>
         <div class="field"><label>Plazo</label>
@@ -219,7 +238,7 @@ table.data-table tbody tr.next-row{background:rgba(34,197,94,0.06);}
     <div class="divider"></div>
 
     <div>
-      <div class="section-title">5 · Precio / TIR</div>
+      <div class="section-title">4 · Precio / TIR</div>
       <div class="field">
         <div class="toggle-row">
           <button class="toggle-btn active" id="btn-mode-precio" onclick="setInputMode('precio')">Ingreso Precio</button>
@@ -411,6 +430,21 @@ function subirCompartido(key, input, cargarFn){
 // ═══════════════════════════════════════════════════════
 // EXCEL LOADER (mismo formato que Armador_Carteras / Scanner_ONs)
 // ═══════════════════════════════════════════════════════
+function toggleMonitorDropdown(e){
+  if(e)e.stopPropagation();
+  document.getElementById('monitor-dropdown').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  var pill=document.getElementById('monitor-pill');
+  if(pill&&!pill.contains(e.target))document.getElementById('monitor-dropdown').classList.remove('open');
+});
+function _syncMonitorPill(){
+  var dot=document.getElementById('monitor-pill-dot'),txt=document.getElementById('monitor-pill-text');
+  if(!dot)return;
+  var n=Object.keys(BOND_DB).length;
+  dot.className='monitor-pill-dot'+(n>0?' ok':'');
+  txt.textContent=n>0?n+' bonos':'Monitor';
+}
 function cargarExcel(input){
   var file = input.files[0];
   if(!file) return;
@@ -429,6 +463,7 @@ function cargarExcel(input){
       status.textContent = '✓ '+count+' bonos cargados en la base';
       document.getElementById('icon-excel').textContent = '✅';
       document.getElementById('card-excel').classList.add('loaded');
+      _syncMonitorPill();
       input.value = '';
     }catch(err){
       status.style.color = '#ff6b6b';
@@ -597,6 +632,7 @@ function loadDBFromStorage(){
     document.getElementById('icon-excel').textContent='✅';
     document.getElementById('card-excel').classList.add('loaded');
   }
+  _syncMonitorPill();
 }
 
 // ═══════════════════════════════════════════════════════

@@ -49,6 +49,18 @@
   --badge-amber: #E8B96A;
   --badge-red:   #E8837E;
 }
+/* Pill de estado de archivos en la topbar — pedido de Nico (24/09): la carga de Tenencia/
+   Monitor/Stock casi no se toca pero ocupaba todo el tope del panel de filtros, obligando a
+   scrollear para llegar a "Filtros" cada vez que se pineaba abierto. Mismo patrón que ya usan
+   Armador de Carteras, Calc. de Bonos y Calc. de Rotaciones. */
+.monitor-pill{position:relative;flex-shrink:0;}
+.monitor-pill-btn{display:flex;align-items:center;gap:6px;background:var(--wash-1);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;color:var(--ink-muted);cursor:pointer;font-family:var(--font-sans);transition:all .2s;}
+.monitor-pill-btn:hover{border-color:var(--wash-3);color:var(--text-strong);}
+.monitor-pill-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-muted);flex-shrink:0;}
+.monitor-pill-dot.ok{background:var(--success);}
+.monitor-pill-dot.warn{background:var(--warning);}
+.monitor-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.45);padding:14px;z-index:300;text-align:left;}
+.monitor-dropdown.open{display:block;}
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
     --bg:#FAF9F6;--surface:#FFFFFF;--text:#1C2B28;--text-strong:#0A130F;
@@ -375,6 +387,39 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
   </div>
   <div class="export-row">
+    <div class="monitor-pill" id="monitor-pill">
+      <button class="monitor-pill-btn" type="button" onclick="toggleMonitorDropdown(event)" title="Estado de los archivos cargados">
+        <span class="monitor-pill-dot" id="monitor-pill-dot"></span>
+        <span id="monitor-pill-text">Archivos</span>
+      </button>
+      <div class="monitor-dropdown" id="monitor-dropdown">
+        <div class="section-title" style="margin-bottom:10px;">📂 Cargar archivos</div>
+        <div class="upload-card" id="card-tenencia" onclick="document.getElementById('inp-tenencia').click()">
+          <input type="file" id="inp-tenencia" accept=".xlsx,.xls" style="display:none" onchange="subirCompartido('tenencia', this, cargarTenencia)">
+          <span class="upload-icon" id="icon-tenencia">📥</span>
+          <div class="upload-name">Tenencia por Ticker</div>
+          <div class="upload-hint">Exportar desde Balanz · hoja Export</div>
+          <div class="upload-status" id="status-tenencia"></div>
+        </div>
+        <div style="height:8px"></div>
+        <div class="upload-card" id="card-monitor" onclick="document.getElementById('inp-monitor').click()">
+          <input type="file" id="inp-monitor" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="subirCompartido('monitor', this, cargarMonitor)">
+          <span class="upload-icon" id="icon-monitor">📥</span>
+          <div class="upload-name">Monitor de Individuos</div>
+          <div class="upload-hint">.xlsm directo — extrae Corporativos automáticamente</div>
+          <div class="upload-status" id="status-monitor"></div>
+        </div>
+        <div style="height:8px"></div>
+        <div class="upload-card" id="card-stock" onclick="document.getElementById('inp-stock').click()">
+          <input type="file" id="inp-stock" accept=".xlsx,.xls" style="display:none" onchange="subirCompartido('stock', this, cargarStock)">
+          <span class="upload-icon" id="icon-stock">📋</span>
+          <div class="upload-name">Stock de cuentas</div>
+          <div class="upload-hint">Comitente → Teléfono · hoja Export</div>
+          <div class="upload-status" id="status-stock"></div>
+        </div>
+        <div class="byma-estado" id="byma-estado" style="display:none;"></div>
+      </div>
+    </div>
     <button class="btn btn-outline btn-sm" id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro">🌙</button>
     <button class="btn btn-outline btn-sm" onclick="exportarExcel()">⬇ Exportar Excel</button>
   </div>
@@ -386,35 +431,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     <button class="sb-toggle" id="sb-toggle" onclick="fcnToggleSidebarPin()" title="Mostrar u ocultar filtros">▸</button>
     <button class="btn btn-primary" id="btn-analizar" onclick="iniciarAnalisis()" disabled>🔍 Analizar carteras</button>
     <div>
-      <div class="section-title">1 · Cargar archivos</div>
-      <div class="upload-card" id="card-tenencia" onclick="document.getElementById('inp-tenencia').click()">
-        <input type="file" id="inp-tenencia" accept=".xlsx,.xls" style="display:none" onchange="subirCompartido('tenencia', this, cargarTenencia)">
-        <span class="upload-icon" id="icon-tenencia">📥</span>
-        <div class="upload-name">Tenencia por Ticker</div>
-        <div class="upload-hint">Exportar desde Balanz · hoja Export</div>
-        <div class="upload-status" id="status-tenencia"></div>
-      </div>
-      <div style="height:8px"></div>
-      <div class="upload-card" id="card-monitor" onclick="document.getElementById('inp-monitor').click()">
-        <input type="file" id="inp-monitor" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="subirCompartido('monitor', this, cargarMonitor)">
-        <span class="upload-icon" id="icon-monitor">📥</span>
-        <div class="upload-name">Monitor de Individuos</div>
-        <div class="upload-hint">.xlsm directo — extrae Corporativos automáticamente</div>
-        <div class="upload-status" id="status-monitor"></div>
-      </div>
-      <div style="height:8px"></div>
-      <div class="upload-card" id="card-stock" onclick="document.getElementById('inp-stock').click()">
-        <input type="file" id="inp-stock" accept=".xlsx,.xls" style="display:none" onchange="subirCompartido('stock', this, cargarStock)">
-        <span class="upload-icon" id="icon-stock">📋</span>
-        <div class="upload-name">Stock de cuentas</div>
-        <div class="upload-hint">Comitente → Teléfono · hoja Export</div>
-        <div class="upload-status" id="status-stock"></div>
-      </div>
-      <div class="byma-estado" id="byma-estado" style="display:none;"></div>
-    </div>
-    <div class="divider"></div>
-    <div>
-      <div class="section-title">2 · Filtros</div>
+      <div class="section-title">1 · Filtros</div>
       <div class="filter-group">
         <div class="field">
           <div class="field-label">Asesor</div>
@@ -462,7 +479,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">3 · Umbral TIR</div>
+      <div class="section-title">2 · Umbral TIR</div>
       <div class="range-block">
         <div class="range-row">
           <div class="range-dot" style="background:var(--danger)"></div>
@@ -487,7 +504,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">4 · Duration (años)</div>
+      <div class="section-title">3 · Duration (años)</div>
       <div class="range-block">
         <div class="range-row">
           <span class="range-lbl" style="width:28px;">Mín</span>
@@ -505,7 +522,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">5 · Tenencia (USD)</div>
+      <div class="section-title">4 · Tenencia (USD)</div>
       <div class="range-block">
         <div class="range-row">
           <span class="range-lbl" style="width:28px;">Mín</span>
@@ -523,7 +540,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
     </div>
     <div class="divider"></div>
     <div>
-      <div class="section-title">6 · Días de tenencia</div>
+      <div class="section-title">5 · Días de tenencia</div>
       <div class="range-block">
         <div class="range-row">
           <span class="range-lbl" style="width:28px;">Mín</span>
@@ -1022,9 +1039,23 @@ function marcarCardCargado(key, statusText) {
 }
 
 let _pendienteAutoAnalizar = false;
+function toggleMonitorDropdown(e){
+  if(e)e.stopPropagation();
+  document.getElementById('monitor-dropdown').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  var pill=document.getElementById('monitor-pill');
+  if(pill&&!pill.contains(e.target))document.getElementById('monitor-dropdown').classList.remove('open');
+});
 function checkReady() {
   const listo = dataTenencia.length>0 && Object.keys(dataMonitor).length>0;
   document.getElementById('btn-analizar').disabled = !listo;
+  const dot=document.getElementById('monitor-pill-dot'),txt=document.getElementById('monitor-pill-text');
+  if(dot){
+    const n=Object.keys(dataMonitor).length;
+    dot.className='monitor-pill-dot'+(listo?' ok':(n>0||dataTenencia.length>0?' warn':''));
+    txt.textContent=listo?n+' ONs':'Archivos';
+  }
   actualizarInstructivo();
   if (listo && _pendienteAutoAnalizar) {
     _pendienteAutoAnalizar = false;
