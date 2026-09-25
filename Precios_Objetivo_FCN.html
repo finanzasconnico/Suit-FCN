@@ -62,6 +62,21 @@ body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
 .ts-info{font-size:10px;color:var(--muted);}
 .badge-warn{font-size:9px;font-family:var(--font-m);letter-spacing:.06em;padding:2px 8px;border-radius:2px;border:1px solid rgba(219,160,60,.4);color:var(--ambar);background:var(--ambar-d);}
+/* Pill de estado unificado — mismo componente que ya usan Armador/Calc. Bonos/Calc. Rotaciones/
+   Scanner ONs/Rotador RV (24-25/09). Acá no hay carga local (los datos vienen publicados por el
+   bot precios_objetivo.py), así que el dropdown muestra frescura + un link a Archivos en vez de
+   una tarjeta de subida. */
+.monitor-pill{position:relative;flex-shrink:0;}
+.monitor-pill-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;color:var(--muted);cursor:pointer;font-family:var(--font-s);transition:all .2s;}
+.monitor-pill-btn:hover{border-color:var(--jade);color:var(--text-strong);}
+.monitor-pill-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.monitor-pill-dot.ok{background:var(--jade);}
+.monitor-pill-dot.warn{background:var(--ambar);}
+.monitor-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;width:260px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 12px 32px rgba(0,0,0,.45);padding:14px;z-index:300;text-align:left;}
+.monitor-dropdown.open{display:block;}
+.monitor-dropdown-title{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.monitor-dropdown-link{display:block;text-align:center;background:var(--jade-d);color:var(--jade);border-radius:var(--r);padding:8px;text-decoration:none;font-size:11px;font-weight:600;margin-top:10px;}
+.monitor-dropdown-link:hover{background:var(--jade);color:#fff;}
 
 /* ── LAYOUT ── */
 .page{display:flex;flex-direction:column;height:100vh;}
@@ -150,9 +165,18 @@ tbody td{padding:9px 12px;vertical-align:middle;}
     <span class="topbar-badge">Research</span>
     <div class="topbar-right">
       <button id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:13px;color:var(--text);">🌙</button>
-      <span class="ts-info" id="ts-info"></span>
-      <span class="badge-warn" id="badge-warn" style="display:none">⚠ Desactualizado — actualizá el Excel mensual</span>
-      <a href="FCN_Suite.html" onclick="fcnIrArchivos(event)" style="color:inherit;text-decoration:underline;font-size:11px;" title="Subir un Excel nuevo o publicarlo para todo el equipo">🗂 Archivos</a>
+      <div class="monitor-pill" id="monitor-pill">
+        <button class="monitor-pill-btn" type="button" onclick="toggleMonitorDropdown(event)" title="Estado de los datos">
+          <span class="monitor-pill-dot" id="monitor-pill-dot"></span>
+          <span id="monitor-pill-text">Datos</span>
+        </button>
+        <div class="monitor-dropdown" id="monitor-dropdown">
+          <div class="monitor-dropdown-title">🎯 Precios objetivo</div>
+          <span class="ts-info" id="ts-info" style="display:block;"></span>
+          <span class="badge-warn" id="badge-warn" style="display:none;margin-top:6px;">⚠ Desactualizado — actualizá el Excel mensual</span>
+          <a class="monitor-dropdown-link" href="FCN_Suite.html" onclick="fcnIrArchivos(event)" title="Subir un Excel nuevo o publicarlo para todo el equipo">🗂 Ir a FCN Suite → Archivos</a>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -522,13 +546,25 @@ function render() {
 // ══════════════════════════════════════════
 //  TIMESTAMP
 // ══════════════════════════════════════════
+function toggleMonitorDropdown(e){
+  if(e)e.stopPropagation();
+  document.getElementById('monitor-dropdown').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  var pill=document.getElementById('monitor-pill');
+  if(pill&&!pill.contains(e.target))document.getElementById('monitor-dropdown').classList.remove('open');
+});
 function showTimestamp(ts) {
   if (!ts) return;
   const diasPasados = Math.floor((Date.now() - ts) / 86400000);
   const txt = diasPasados === 0 ? 'hoy' : diasPasados === 1 ? 'hace 1 día' : `hace ${diasPasados} días`;
   document.getElementById('ts-info').textContent = `Última actualización: ${txt}`;
+  const dot=document.getElementById('monitor-pill-dot'),ptxt=document.getElementById('monitor-pill-text');
   if (diasPasados > 35) {
     document.getElementById('badge-warn').style.display = 'inline';
+    if(dot){dot.className='monitor-pill-dot warn';ptxt.textContent='Desactualizado';}
+  } else if(dot){
+    dot.className='monitor-pill-dot ok';ptxt.textContent=txt==='hoy'?'Al día':txt;
   }
 }
 

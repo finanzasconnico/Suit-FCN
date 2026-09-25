@@ -436,6 +436,9 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
         <div class="field"><label>Precio target (USD)</label><input type="number" id="f-price-target" placeholder="120" oninput="calcRetFromPrice()"></div>
       </div>
       <div id="yf-badge" style="display:none;margin-top:-4px;margin-bottom:6px;font-size:10px;"></div>
+      <div class="field-row" id="sector-row" style="display:none;">
+        <div class="field"><label>Sector <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--cream-dim);">(auto, editable)</span></label><input type="text" id="f-sector" placeholder="Ej: Tecnología"></div>
+      </div>
       <div class="field-row" id="lam-row" style="display:none;">
         <div class="field"><label>Precio del nominal</label><input type="number" id="f-lam-precio" placeholder="Ej: 1.03" step="0.0001" min="0" oninput="checkLaminaLive()"></div>
         <div class="field"><label>Cotiza en</label><select id="f-lam-moneda" onchange="toggleLamTC();checkLaminaLive()"><option value="MEP">USD MEP</option><option value="CABLE">USD Cable</option><option value="ARS">Pesos (ARS)</option></select></div>
@@ -675,6 +678,49 @@ async function fetchTargetPrice(ticker) {
   return null;
 }
 
+// ══ SECTOR (RV) — mismo mecanismo de siempre (candidatos + proxy + cache local), pedido de
+// Nico (25/09): agregar un donut "Por Sector" además del de categoría en el PDF, porque con
+// pocos activos categoría y RV/RF terminan mostrando casi lo mismo. Yahoo no trae sector en el
+// endpoint de precio (v8/chart) — hace falta el módulo assetProfile de quoteSummary (v10). ══
+var FCN_SECTOR_CACHE_KEY_AC = 'fcn-sector-cache-ac';
+function loadSectorCacheAC() {
+  try { return JSON.parse(localStorage.getItem(FCN_SECTOR_CACHE_KEY_AC) || '{}'); } catch(e) { return {}; }
+}
+function saveSectorToCacheAC(ticker, sector) {
+  try {
+    var cache = loadSectorCacheAC();
+    cache[ticker.toUpperCase()] = sector;
+    localStorage.setItem(FCN_SECTOR_CACHE_KEY_AC, JSON.stringify(cache));
+  } catch(e) {}
+}
+// Traducción de los sectores estándar (GICS, en inglés en Yahoo) a como los usa Nico en la
+// propuesta — si aparece uno no mapeado, se deja el original de Yahoo antes que mostrar nada.
+var SECTOR_ES = {
+  'Technology':'Tecnología','Financial Services':'Finanzas','Healthcare':'Salud',
+  'Consumer Cyclical':'Consumo Discrecional','Consumer Defensive':'Consumo Básico',
+  'Industrials':'Industria','Energy':'Energía','Basic Materials':'Materiales',
+  'Real Estate':'Real Estate','Utilities':'Servicios Públicos','Communication Services':'Comunicaciones'
+};
+async function fetchSector(ticker) {
+  var cache = loadSectorCacheAC();
+  if (cache[ticker.toUpperCase()]) return cache[ticker.toUpperCase()];
+  var candidatos = TICKERS_AR_AC.has(ticker) ? [ticker, ticker+'.BA'] : [ticker];
+  for (var i=0; i<candidatos.length; i++) {
+    try {
+      var url = 'https://query2.finance.yahoo.com/v10/finance/quoteSummary/'+candidatos[i]+'?modules=assetProfile';
+      var data = await fetchYFArmador(url);
+      var perfil = data && data.quoteSummary && data.quoteSummary.result && data.quoteSummary.result[0] && data.quoteSummary.result[0].assetProfile;
+      var sector = perfil && perfil.sector;
+      if (sector) {
+        var traducido = SECTOR_ES[sector] || sector;
+        saveSectorToCacheAC(ticker, traducido);
+        return traducido;
+      }
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
 // ══ PRECIOS OBJETIVO — cache local desde IndexedDB, con fallback estático ══
 // Dos bugs arreglados acá:
 // 1. Antes esto solo leía IndexedDB local (_getShared) — en una compu que nunca subió
@@ -784,6 +830,10 @@ async function onTickerBlur() {
   badgeEl.innerHTML = '<span style="color:var(--cream-dim)">⟳ Consultando Yahoo Finance...</span>';
   await _preciosObjReady; // espera a que termine de cargar Precios Objetivo (local o fallback) antes de decidir
   var local = _preciosObjMap[ticker];
+  var sectorEl = document.getElementById('f-sector');
+  if (sectorEl && !sectorEl.value) {
+    fetchSector(ticker).then(function(sector){ if (sector && !sectorEl.value) sectorEl.value = sector; });
+  }
   var data = await fetchTickerData(ticker);
   var precioActual = data.precioActual;
   var target = (local && local.target) ? local.target : data.targetPrice;
@@ -1452,7 +1502,8 @@ async function armarConFavoritos(){
       venc=let_.venc||'';curr='ARS';
     }
     var cleanN=r.name.replace(/\s+[\d.]+%\s+\d{4}-\d{2}/g,'').replace(/\s*\([A-Z0-9]{4,10}\)\s*$/,'').trim();
-    out.push({id:'fav'+Date.now()+ci,name:cleanN,ticker:r.ticker,pct:Math.round(w.pct*10)/10,ret:ret,curr:curr,type:r.type,color:PALETTE[ci%PALETTE.length],venc:venc,meses:meses,ley:ley,calif:calif,nota:''});
+    var sectorCache=loadSectorCacheAC(); // best-effort: solo lo que ya se consultó antes (sin fetch en vivo acá, para que el armado automático sea instantáneo)
+    out.push({id:'fav'+Date.now()+ci,name:cleanN,ticker:r.ticker,pct:Math.round(w.pct*10)/10,ret:ret,curr:curr,type:r.type,color:PALETTE[ci%PALETTE.length],venc:venc,meses:meses,ley:ley,calif:calif,nota:'',sector:sectorCache[r.ticker]||''});
     ci++;
   }
   rvW.forEach(pushEntry);rfW.forEach(pushEntry);
@@ -1530,6 +1581,7 @@ function togglePriceRow(){
   var isRV=type.includes('Renta Variable');
   var isLet=type.includes('Letras');
   document.getElementById('price-target-row').style.display=isRV?'':'none';
+  document.getElementById('sector-row').style.display=isRV?'':'none';
   document.getElementById('letras-row').style.display=isLet?'':'none';
   document.getElementById('cupon-row').style.display=isLet?'none':'';
   if(isLet){document.getElementById('ret-label').textContent='TNA';document.getElementById('f-curr').value='ARS';}
@@ -1586,6 +1638,7 @@ function addAsset(){
   var papel=document.getElementById('f-papel').value.trim();
   var priceCur=parseFloat(document.getElementById('f-price-current').value)||null;
   var priceTgt=parseFloat(document.getElementById('f-price-target').value)||null;
+  var sector=document.getElementById('f-sector').value.trim();
   var lamPrecio=parseFloat(document.getElementById('f-lam-precio').value)||null;
   var lamMoneda=document.getElementById('f-lam-moneda').value;
   var lamTC=parseFloat(document.getElementById('f-lam-tc').value)||null;
@@ -1608,7 +1661,7 @@ function addAsset(){
   // de la Suite; no se edita en el form). Se preserva al editar el resto del activo.
   var prevRentAct=null;
   if(editingId!==null){var pa=assets.find(function(a){return a.id===editingId;});if(pa&&pa.rentAct!=null)prevRentAct=pa.rentAct;}
-  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC,rentAct:prevRentAct};
+  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,sector:sector,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC,rentAct:prevRentAct};
   if(editingId!==null){assets=assets.map(function(a){return a.id===editingId?obj:a;});cancelEdit();}
   else{
     assets.push(obj);
@@ -1617,7 +1670,7 @@ function addAsset(){
     selColor=PALETTE[(ci+1)%PALETTE.length];
     document.querySelectorAll('.color-swatch').forEach(function(sw){sw.classList.toggle('active',sw.style.background===selColor||sw.style.backgroundColor===selColor);});
   }
-  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-sector','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('ret-label').textContent='Retorno Est.';
   togglePriceRow();updateLamRow();render();updateDoc();updateYield();
 }
@@ -1640,6 +1693,7 @@ function editAsset(id){
   togglePriceRow();updateLamRow();
   if(a.priceCur)document.getElementById('f-price-current').value=a.priceCur;
   if(a.priceTgt)document.getElementById('f-price-target').value=a.priceTgt;
+  document.getElementById('f-sector').value=a.sector||'';
   if(a.lamPrecio)document.getElementById('f-lam-precio').value=a.lamPrecio;
   if(a.lamMoneda)document.getElementById('f-lam-moneda').value=a.lamMoneda;
   if(a.lamTC)document.getElementById('f-lam-tc').value=a.lamTC;
@@ -1651,8 +1705,8 @@ function editAsset(id){
 }
 function cancelEdit(){
   editingId=null;
-  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('price-target-row').style.display='none';document.getElementById('letras-row').style.display='none';document.getElementById('cupon-row').style.display='';
+  ['f-name','f-ticker','f-pct','f-amt','f-return','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-sector','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('price-target-row').style.display='none';document.getElementById('sector-row').style.display='none';document.getElementById('letras-row').style.display='none';document.getElementById('cupon-row').style.display='';
   updateLamRow();
   document.getElementById('add-asset-btn').textContent='+ Agregar Activo';document.getElementById('add-asset-btn').style.background='';
   document.getElementById('cancel-edit-btn').style.display='none';document.getElementById('edit-mode-indicator').style.display='none';
@@ -1865,10 +1919,14 @@ function updateDoc(){
   document.getElementById('doc-kpis').innerHTML=
     kpiHTML('Renta Variable',rvPct,ps,pc)+kpiHTML('Renta Fija',rfPct,ps,pc)+kpiHTML('Total Asignado',totalAlloc,ps,pc);
 
-  // ── Donuts RV/RF y por categoría ──
+  // ── Donuts RV/RF, por categoría y por sector (RV) ──
+  // Categoría y RV/RF a veces muestran casi lo mismo cuando hay pocos activos por categoría
+  // (pedido de Nico, 25/09) — el de Sector agrupa solo la pata de Renta Variable por rubro
+  // (Tecnología, Finanzas, Energía…), un corte distinto que categoría no da.
   document.getElementById('doc-donuts').innerHTML=
     '<div class="ddonut-box"><div class="ddonut-title">RV vs RF'+(otPct>0?' vs Otros':'')+'</div><canvas id="ddonut-macro" width="130" height="130"></canvas></div>'+
-    '<div class="ddonut-box"><div class="ddonut-title">Por categoría</div><canvas id="ddonut-cat" width="130" height="130"></canvas><div class="ddonut-leg" id="ddonut-cat-leg"></div></div>';
+    '<div class="ddonut-box"><div class="ddonut-title">Por categoría</div><canvas id="ddonut-cat" width="130" height="130"></canvas><div class="ddonut-leg" id="ddonut-cat-leg"></div></div>'+
+    (rvPct>0?'<div class="ddonut-box"><div class="ddonut-title">Por sector (RV)</div><canvas id="ddonut-sector" width="130" height="130"></canvas><div class="ddonut-leg" id="ddonut-sector-leg"></div></div>':'');
   destroyDocDonuts();
   if(totalAlloc>0){
     var macroLabels=['Renta Variable','Renta Fija'],macroData=[rvPct,rfPct],macroColors=['#4a90d9','#1C8C5F'];
@@ -1878,6 +1936,12 @@ function updateDoc(){
     var catEntries=Object.entries(catAgg).sort(function(x,y){return y[1].total-x[1].total;});
     docDonutCat=new Chart(document.getElementById('ddonut-cat').getContext('2d'),{type:'doughnut',data:{labels:catEntries.map(function(e){return e[0];}),datasets:[{data:catEntries.map(function(e){return e[1].total;}),backgroundColor:catEntries.map(function(e){return e[1].color;}),borderColor:'#fff',borderWidth:2}]},options:{responsive:false,devicePixelRatio:3,plugins:{legend:{display:false}},cutout:'60%',animation:false}});
     document.getElementById('ddonut-cat-leg').innerHTML=catEntries.map(function(e){return'<span><i style="background:'+e[1].color+'"></i>'+e[0]+'</span>';}).join('');
+    if(rvPct>0){
+      var secAgg={};rvA.forEach(function(a){var sec=(a.sector||'').trim()||'Sin sector';if(!secAgg[sec])secAgg[sec]={total:0,color:a.color};secAgg[sec].total+=a.pct;});
+      var secEntries=Object.entries(secAgg).sort(function(x,y){return y[1].total-x[1].total;});
+      docDonutSector=new Chart(document.getElementById('ddonut-sector').getContext('2d'),{type:'doughnut',data:{labels:secEntries.map(function(e){return e[0];}),datasets:[{data:secEntries.map(function(e){return e[1].total;}),backgroundColor:secEntries.map(function(e){return e[1].color;}),borderColor:'#fff',borderWidth:2}]},options:{responsive:false,devicePixelRatio:3,plugins:{legend:{display:false}},cutout:'60%',animation:false}});
+      document.getElementById('ddonut-sector-leg').innerHTML=secEntries.map(function(e){return'<span><i style="background:'+e[1].color+'"></i>'+e[0]+'</span>';}).join('');
+    }
   }
 
   // ── Tabla por categoría con subtotal ──
@@ -1965,8 +2029,8 @@ function updateDoc(){
   buildDocViz(ps,pc);
 }
 
-var docDonutMacro=null,docDonutCat=null;
-function destroyDocDonuts(){if(docDonutMacro){docDonutMacro.destroy();docDonutMacro=null;}if(docDonutCat){docDonutCat.destroy();docDonutCat=null;}}
+var docDonutMacro=null,docDonutCat=null,docDonutSector=null;
+function destroyDocDonuts(){if(docDonutMacro){docDonutMacro.destroy();docDonutMacro=null;}if(docDonutCat){docDonutCat.destroy();docDonutCat=null;}if(docDonutSector){docDonutSector.destroy();docDonutSector=null;}}
 
 // ══════════════════════════════════════════════════════════════
 //  CORRELACIÓN ENTRE ACTIVOS DE RENTA VARIABLE — pedido de Nico (24/09): si hay 3 o más
@@ -2233,7 +2297,7 @@ function renderModelsGrid(models){
 function loadModelToCanvas(idx){
   var m=modelsCache[idx];if(!m)return;
   if(assets.length>0&&!confirm('Esto reemplazará la cartera actual. ¿Continuar?'))return;
-  assets=(m.assets||[]).map(function(a,i){return{id:Date.now()+i,name:a.name,ticker:a.ticker||'',pct:a.pct,ret:a.ret||'',curr:a.curr||'USD',type:a.type||'',color:a.color||selColor,venc:a.venc||'',meses:a.meses||'',ley:a.ley||'',calif:a.calif||'',nota:a.nota||'',dias:null,papel:null};});
+  assets=(m.assets||[]).map(function(a,i){return{id:Date.now()+i,name:a.name,ticker:a.ticker||'',pct:a.pct,ret:a.ret||'',curr:a.curr||'USD',type:a.type||'',color:a.color||selColor,venc:a.venc||'',meses:a.meses||'',ley:a.ley||'',calif:a.calif||'',nota:a.nota||'',sector:a.sector||'',dias:null,papel:null};});
   var pb=document.querySelector('#page-cartera .tab-btn');if(pb)switchTab('preview',pb);
   render();updateDoc();updateYield();document.getElementById('models-sync-status').textContent='✓ "'+m.name+'" cargada';setTimeout(function(){document.getElementById('models-sync-status').textContent='';},3000);
 }
@@ -2251,7 +2315,7 @@ async function saveCurrentAsModel(){
   var ta=assets.reduce(function(s,a){return s+a.pct;},0);var wT=0,tC=0;
   assets.forEach(function(a){var y=getTIRorTNA(a);if(y){wT+=(a.pct/ta)*y.val;tC++;}});
   var tag=wT>=9.5?'agresiva':wT>=7.5?'moderada':'conservadora';
-  var nm={id:'custom-'+Date.now(),name:name,tag:tag,desc:desc||'Modelo personalizado',author:author,updatedAt:new Date().toISOString().slice(0,10),tir:tC>0?wT.toFixed(2)+'%':'—',assets:assets.map(function(a){return{name:a.name,ticker:a.ticker,pct:a.pct,ret:a.ret,curr:a.curr,type:a.type,color:a.color,venc:a.venc,meses:a.meses,ley:a.ley,calif:a.calif,nota:a.nota};})};
+  var nm={id:'custom-'+Date.now(),name:name,tag:tag,desc:desc||'Modelo personalizado',author:author,updatedAt:new Date().toISOString().slice(0,10),tir:tC>0?wT.toFixed(2)+'%':'—',assets:assets.map(function(a){return{name:a.name,ticker:a.ticker,pct:a.pct,ret:a.ret,curr:a.curr,type:a.type,color:a.color,venc:a.venc,meses:a.meses,ley:a.ley,calif:a.calif,nota:a.nota,sector:a.sector};})};
   if(!modelsCache)modelsCache=DEFAULT_MODELS.slice();
   var ei=modelsCache.findIndex(function(m){return m.name.toLowerCase()===name.toLowerCase();});
   if(ei>=0){if(!confirm('Ya existe. ¿Sobreescribir?'))return;modelsCache[ei]=nm;}else modelsCache.push(nm);
@@ -2435,7 +2499,7 @@ async function doExport(el,prefix){
 function resetAll(){
   if(assets.length&&!confirm('Borrar todo y empezar de nuevo?'))return;
   assets=[];assetsARS=[];editingId=null;setPctMode('pct');
-  ['client-name','firm-name','strategy-note','f-name','f-ticker','f-pct','f-amt','f-return','port-size','port-size-ars','ars-f-name','ars-f-pct','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  ['client-name','firm-name','strategy-note','f-name','f-ticker','f-pct','f-amt','f-return','port-size','port-size-ars','ars-f-name','ars-f-pct','f-venc','f-meses','f-ley','f-calif','f-nota','f-price-current','f-price-target','f-sector','f-dias','f-papel','f-lam-precio','f-lam-tc'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('price-target-row').style.display='none';document.getElementById('letras-row').style.display='none';document.getElementById('cupon-row').style.display='';
   updateLamRow();renderARSList();
   document.getElementById('client-risk').value='';document.getElementById('client-horizon').value='';
