@@ -1853,7 +1853,10 @@ function autoConstruir(perfil,plazo,monto,rvRows){
   }
   function spy(pct){add(pct,autoAssetRV('SPY','SPDR S&P 500 ETF','Renta Variable | CEDEARs','USD','Índice S&P 500','','~10% hist.'));}
   var onAAA=function(){return autoCandidatosON(function(b){return autoGrupoCalif(b.calificacion)==='AAA';},plazo);};
-  var onHY=function(){return autoCandidatosON(function(b){return!!b.calificacion&&autoGrupoCalif(b.calificacion)==='menorA';},plazo);};
+  // Piso de calificación para recomendar (Nico, 30/09): A- como mínimo. La pata "de más riesgo"
+  // de Agresivo sale solo de ONs A+/A/A- — nunca BBB o menos, aunque rindan más (en la web es
+  // cualquier cosa debajo de A, acá no).
+  var onA=function(){return autoCandidatosON(function(b){return autoGrupoCalif(b.calificacion)==='A';},plazo);};
 
   if(perfil==='conservador'){
     bonos('ONs AAA',80,onAAA(),4,true);
@@ -1867,7 +1870,7 @@ function autoConstruir(perfil,plazo,monto,rvRows){
     locales(5,2);
   } else {
     bonos('ONs AAA',20,onAAA(),3,true);
-    bonos('ONs de mayor riesgo (HY)',10,onHY(),2,true);
+    bonos('ONs calificación A',10,onA(),2,true);
     // Los soberanos tienen su propio corte por duration: no usan el plazo elegido, para no vaciarse.
     bonos('Soberano corto (duration < 3)',5,autoCandidatosSOV(function(d){return d<3;}),2,false);
     bonos('Soberano largo (duration ≥ 3)',5,autoCandidatosSOV(function(d){return d>=3;}),2,false);
