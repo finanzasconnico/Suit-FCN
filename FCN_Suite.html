@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FCN Suite — FinanzasconNico</title>
+<!-- Google Analytics (GA4) — solo uso interno (qué herramientas/tareas usan los asesores),
+     nunca manda nombres de clientes ni texto de búsqueda, ver _ga()/_gaScreen() más abajo. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-L537Q76NRE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-L537Q76NRE');
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -245,6 +254,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .tool-card-desc{font-size:11px;color:var(--muted);line-height:1.6;}
 .tool-card-badge{display:inline-flex;align-items:center;gap:4px;margin-top:10px;font-family:var(--font-m);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);background:var(--jade-d);border:1px solid rgba(28,140,95,.25);padding:2px 8px;border-radius:10px;}
 .tool-card-badge.amber{color:var(--ambar);background:var(--ambar-d);border-color:rgba(219,160,60,.25);}
+.home-new-banner{max-width:960px;margin:0 0 18px;display:flex;gap:12px;align-items:center;background:var(--jade-d);border:1px solid rgba(28,140,95,.4);border-radius:10px;padding:13px 16px;}
+.home-new-banner-icon{font-size:19px;flex-shrink:0;line-height:1;}
+.home-new-banner-txt{flex:1;font-size:12px;color:var(--text);line-height:1.5;}
+.home-new-banner-close{background:transparent;border:none;color:var(--muted);font-size:15px;cursor:pointer;flex-shrink:0;padding:2px 6px;}
+.home-new-banner-close:hover{color:var(--text);}
+.home-search-btn{display:flex;align-items:center;gap:9px;width:100%;max-width:460px;margin-top:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer;text-align:left;transition:border-color .2s,color .2s;}
+.home-search-btn:hover{border-color:var(--jade);color:var(--text);}
+.task-section-title{max-width:960px;margin:0 auto 10px;font-family:var(--font-d);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.ver-todas-wrap{max-width:960px;margin:0 auto 32px;}
+.ver-todas-wrap summary{cursor:pointer;font-size:12px;color:var(--muted);padding:4px 0;}
+.ver-todas-wrap summary:hover{color:var(--jade);}
+.ver-todas-wrap .tools-grid{margin-top:16px;}
 
 /* ── DASHBOARD (panorama general) ── */
 .dash-section{max-width:960px;margin:0 auto 28px;}
@@ -629,10 +650,19 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
       </div>
       <div class="home-hero">
+        <div class="home-new-banner" id="homeNewBanner" style="display:none;">
+          <span class="home-new-banner-icon">🎉</span>
+          <span class="home-new-banner-txt">Rediseñamos el inicio — ahora elegís por <b>tarea</b>, no por nombre de herramienta. Todas las herramientas de siempre siguen ahí, abajo de todo ("Ver todas las herramientas").</span>
+          <button class="home-new-banner-close" onclick="cerrarHomeNewBanner()" title="Entendido">✕</button>
+        </div>
         <div class="home-greeting" id="home-greeting">Buen día</div>
-        <h1>¿Qué herramienta necesitás hoy?</h1>
-        <p>Seleccioná una herramienta del panel. Los archivos compartidos se cargan automáticamente en cada herramienta.</p>
+        <h1>¿Qué querés hacer hoy?</h1>
+        <p>Elegí una tarea de abajo, o buscá directo lo que necesitás — un cliente, un ticker o una herramienta.</p>
+        <button class="home-search-btn" onclick="abrirBusquedaGlobal()">🔍 Buscar cliente, ticker o herramienta…</button>
       </div>
+
+      <div class="task-section-title">¿Qué querés hacer?</div>
+      <div class="tools-grid" id="task-grid"></div>
 
       <div class="dash-section">
         <div class="dash-kpis" id="dash-stats"></div>
@@ -695,7 +725,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
       </div>
 
-      <div class="tools-grid" id="tools-grid"></div>
+      <details class="ver-todas-wrap" id="verTodasWrap" ontoggle="if(this.open) _ga('ver_todas_herramientas_open')">
+        <summary>Ver todas las herramientas (<span id="verTodasN"></span>)</summary>
+        <div class="tools-grid" id="tools-grid"></div>
+      </details>
     </div>
 
     <!-- ── MODAL: CLIENTES QUE TIENEN UN TICKER ── -->
@@ -1407,6 +1440,10 @@ function actualizarChipUsuario() {
 
 function userKey(k) { return k; }
 
+// Wrapper de GA4 — nunca manda texto libre (búsquedas, nombres de cliente): solo ids fijos
+// de herramientas/pantallas/tareas, para saber qué se usa sin mandar datos de clientes a Google.
+function _ga(name, params) { try { if (typeof gtag === 'function') gtag('event', name, params || {}); } catch (e) {} }
+
 // ══════════════════════════════════════════════════════════════
 //  SHELL
 // ══════════════════════════════════════════════════════════════
@@ -1602,6 +1639,42 @@ function addTab(container, id, icon, label, onclick, active = false, isFiles = f
   container.appendChild(btn);
 }
 
+// Portada por tarea (29/09→30/09) — pedido de Nico: los compañeros se perdían con 14
+// herramientas por NOMBRE. Cada tarea apunta a la herramienta que ya resuelve eso; nada nuevo,
+// solo una puerta de entrada distinta. La grilla de abajo con las 14 sigue existiendo entera,
+// ahora colapsada bajo "Ver todas las herramientas" en vez de ser lo primero que se ve.
+const HOME_TASKS = [
+  { id:'facturar_rf',          icon:'💰',  name:'Facturar con Renta Fija',                desc:'Encontrá ONs con TIR floja para proponer una rotación.',            action: () => openTool('scanner') },
+  { id:'rotacion_puntual',     icon:'🔁',  name:'Comparar una rotación puntual',           desc:'¿Conviene cambiar este bono por este otro? Directo y simple.',     action: () => openTool('calcrot') },
+  { id:'facturar_rv',          icon:'📈',  name:'Facturar con Renta Variable',             desc:'Señales de compra/venta en acciones y CEDEARs.',                   action: () => openTool('rotador') },
+  { id:'analizar_rf',          icon:'🗺️', name:'Analizar bonos y ONs',                    desc:'TIR vs. Duration de todo el universo, con curva de referencia.',   action: () => openTool('panorama') },
+  { id:'analizar_rv',          icon:'⚖️',  name:'Analizar acciones y CEDEARs',             desc:'Múltiplos actuales vs. promedio histórico, por sector.',           action: () => openTool('multiplos') },
+  { id:'atender_cliente',      icon:'👤',  name:'Atender a un cliente puntual',            desc:'Ver toda su cartera junta y mandarle algo directo.',               action: () => showCliente360() },
+  { id:'mail_marketing',       icon:'📧',  name:'Mandar mail masivo',                      desc:'A inactivos, activos o filtrado por tenencia, edad o zona.',       action: () => showInactivos() },
+  { id:'liquidez_mensual',     icon:'💧',  name:'Avisar liquidez del mes',                 desc:'Mail a todos los que tengan plata sin invertir todavía.',          action: () => { showHome(); abrirAvisoLiquidez(); } },
+  { id:'ranking',              icon:'🏆',  name:'Ver ranking de rentabilidad',             desc:'Quién rindió más y menos, en todo el libro.',                      action: () => showRanking() },
+  { id:'mostrar_rentabilidad', icon:'💵',  name:'Mostrarle rentabilidad a un cliente',     desc:'Posiciones, cupones y ganancias de su cartera.',                   action: () => openTool('monitor') },
+  { id:'armar_cartera',        icon:'📊',  name:'Armar una cartera nueva',                 desc:'Propuesta en PDF con gráficos, para un prospecto o cliente.',      action: () => openTool('armador') },
+];
+const HOME_BANNER_KEY = 'fcn_home_v2_visto';
+function cerrarHomeNewBanner() {
+  document.getElementById('homeNewBanner').style.display = 'none';
+  try { localStorage.setItem(HOME_BANNER_KEY, '1'); } catch (e) {}
+}
+function buildHomeTasks() {
+  const grid = document.getElementById('task-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  HOME_TASKS.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'tool-card';
+    card.innerHTML = `<span class="tool-card-icon">${t.icon}</span>
+      <div class="tool-card-name">${t.name}</div>
+      <div class="tool-card-desc">${t.desc}</div>`;
+    card.onclick = () => { _ga('task_card_click', { task: t.id }); t.action(); };
+    grid.appendChild(card);
+  });
+}
 function buildHomeDashboard() {
   const tools = getUserTools();
   const grid  = document.getElementById('tools-grid');
@@ -1610,6 +1683,11 @@ function buildHomeDashboard() {
   const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
   const name = getDisplayUser().displayName;
   document.getElementById('home-greeting').textContent = name && name !== '?' ? `${greeting}, ${name} 👋` : greeting;
+  let vistoBanner = false;
+  try { vistoBanner = localStorage.getItem(HOME_BANNER_KEY) === '1'; } catch (e) {}
+  document.getElementById('homeNewBanner').style.display = vistoBanner ? 'none' : 'flex';
+  buildHomeTasks();
+  document.getElementById('verTodasN').textContent = tools.length;
   tools.forEach(tool => {
     const card = document.createElement('div');
     card.className = 'tool-card';
@@ -3993,6 +4071,7 @@ const SEARCH_SECCIONES = [
 let _searchActiveIdx = -1;
 
 function abrirBusquedaGlobal() {
+  _ga('search_open');
   document.getElementById('searchOverlay').classList.add('open');
   const input = document.getElementById('global-search-input');
   input.value = '';
@@ -4091,6 +4170,7 @@ function renderBusquedaGlobal() {
 }
 
 function irAResultadoBusqueda(tipo, id) {
+  _ga('search_result_click', { tipo, id }); // nunca el texto tipeado — solo qué resultado eligió
   cerrarBusquedaGlobal();
   if (tipo === 'tool') openTool(id);
   else if (tipo === 'seccion') {
@@ -5098,6 +5178,7 @@ function openTool(toolId) {
 }
 
 function setActiveTab(toolId) {
+  _ga('screen_view', { screen_id: toolId });
   document.querySelectorAll('#topbar-tools .tool-tab').forEach(t => t.classList.remove('active'));
   if (toolId === 'home') {
     const btn = document.getElementById('tab-home');
