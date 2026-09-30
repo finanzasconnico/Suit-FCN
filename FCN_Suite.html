@@ -954,8 +954,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
     <div class="hub-panel" id="inactivos-panel">
       <div class="files-header">
-        <h2>📭 Cuentas inactivas</h2>
-        <p>Todas tus cuentas marcadas como "Inactiva" en el Stock de cuentas. Elegí Mail 1, 2 o 3, ajustá el asunto y el texto (quedan guardados en este navegador), tildá a quién mandarle y descargá el Excel (CSV) + el Word para la combinación de correspondencia.</p>
+        <h2>📧 Mail Marketing</h2>
+        <p>Campaña segmentada a tus clientes — elegí Activos, Inactivos o Todos y afiná con los filtros (tenencia, moneda, cartera, edad, antigüedad, zona, actividad). Elegí Mail 1, 2 o 3, ajustá el asunto y el texto (quedan guardados en este navegador), tildá a quién mandarle y descargá el Excel (CSV) + el Word para la combinación de correspondencia.</p>
       </div>
       <div class="inac-wrap">
 
@@ -998,9 +998,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
         <div class="inac-card">
           <div class="inac-filtros" style="margin-bottom:12px;">
+            <select id="inacAudiencia" onchange="renderInactivos()" title="A quién apunta la campaña" style="font-weight:600;">
+              <option value="inactivos">📭 Inactivos</option>
+              <option value="activos">✅ Activos</option>
+              <option value="todos">👥 Todos (activos + inactivos)</option>
+            </select>
             <input type="text" id="inacBuscar" placeholder="Buscar nombre, cuenta, comitente, mail o localidad…" oninput="renderInactivos()">
             <select id="inacSegmento" onchange="renderInactivos()">
-              <option value="todos">Todos los inactivos</option>
+              <option value="todos">Todos</option>
               <option value="mas1">Inactivos hace más de un año</option>
               <option value="reciente">Inactivos recientes (activos en el último año)</option>
             </select>
@@ -1029,8 +1034,24 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <label for="inacEdadMin">Edad</label>
             <input type="number" id="inacEdadMin" min="0" max="120" placeholder="desde" style="width:74px;" oninput="renderInactivos()">
             <input type="number" id="inacEdadMax" min="0" max="120" placeholder="hasta" style="width:74px;" oninput="renderInactivos()">
-            <label for="inacAumMin">AUM mín.</label>
-            <input type="number" id="inacAumMin" min="0" step="100" placeholder="0" style="width:90px;" oninput="renderInactivos()">
+            <label for="inacAumMin">Tenencia (USD)</label>
+            <input type="number" id="inacAumMin" min="0" step="100" placeholder="desde" style="width:90px;" oninput="renderInactivos()" title="AUM real (Tenencia por Ticker) si el cliente tiene posiciones cargadas; si no, el AUM del Stock — casi siempre 0 en inactivos.">
+            <input type="number" id="inacAumMax" min="0" step="100" placeholder="hasta" style="width:90px;" oninput="renderInactivos()">
+            <select id="inacMoneda" onchange="renderInactivos()" title="Moneda de la liquidez en cartera (Tenencia por Ticker)">
+              <option value="">Moneda: todas</option>
+              <option value="usd">Tiene USD</option>
+              <option value="ars">Tiene ARS</option>
+              <option value="ambas">Tiene ambas</option>
+            </select>
+            <select id="inacCartera" onchange="renderInactivos()" title="Qué tipo de instrumento tiene en cartera (Tenencia por Ticker)">
+              <option value="">Cartera: todas</option>
+              <option value="rf">Tiene Renta Fija</option>
+              <option value="rv">Tiene Renta Variable</option>
+              <option value="ninguna">Sin cartera cargada</option>
+            </select>
+            <label for="inacAntigMin">Antigüedad (años)</label>
+            <input type="number" id="inacAntigMin" min="0" step="1" placeholder="desde" style="width:74px;" oninput="renderInactivos()" title="Años desde la Fecha de Alta (Stock de cuentas)">
+            <input type="number" id="inacAntigMax" min="0" step="1" placeholder="hasta" style="width:74px;" oninput="renderInactivos()">
             <select id="inacOrden" onchange="renderInactivos()" title="Orden de la lista (y de la tanda)">
               <option value="puntaje">Mejor puntaje primero</option>
               <option value="edad">Mayor edad primero</option>
@@ -1423,7 +1444,7 @@ const NATIVE_PANELS = {
   files:      { icon:'🗂', label:'Archivos',  show: showFiles },
   cliente360: { icon:'🧭', label:'Vista 360', show: showCliente360 },
   ranking:    { icon:'🏆', label:'Ranking Rentabilidad', show: showRanking },
-  inactivos:  { icon:'📭', label:'Inactivos', show: showInactivos },
+  inactivos:  { icon:'📧', label:'Mail Marketing', show: showInactivos },
 };
 function categoryOf(toolId) {
   if (toolId === 'files') return 'utilidades';
@@ -1648,6 +1669,11 @@ function parseTenencia(entry) {
     const carteraPorCliente = {}; // cliente -> [{ticker, instrumento, tipo, grupo, tenencia, nominales}] — incluye liquidez
     const porClienteMoneda = {}; // cliente -> {ARS: val, USD: val} — solo filas de Efectivo
     const comitentePorCliente = {}; // cliente (Cuenta) -> comitente, para cruzar con Stock de cuentas
+    // Mismos tres de arriba pero por Comitente en vez de Cuenta — para cruzar directo con
+    // currentStockMap (Mail Marketing / ex-Inactivos), que solo tiene el comitente como key.
+    const porComitente = {};
+    const porComitenteMoneda = {};
+    const carteraPorComitente = {};
     let filasOmitidas = 0;
     let filasSinTickerConValor = 0;
     rows.forEach(r => {
@@ -1680,8 +1706,13 @@ function parseTenencia(entry) {
           if (!porClienteMoneda[cliente]) porClienteMoneda[cliente] = { ARS: 0, USD: 0 };
           porClienteMoneda[cliente][moneda] += val;
         }
+        if (comitente) {
+          if (!porComitenteMoneda[comitente]) porComitenteMoneda[comitente] = { ARS: 0, USD: 0 };
+          porComitenteMoneda[comitente][moneda] += val;
+        }
       }
       if (cliente) porCliente[cliente] = (porCliente[cliente] || 0) + val;
+      if (comitente) porComitente[comitente] = (porComitente[comitente] || 0) + val;
       if (cliente && comitente && !comitentePorCliente[cliente]) comitentePorCliente[cliente] = comitente;
       if (ticker) {
         if (!porTicker[ticker]) porTicker[ticker] = { tenencia: 0, instrumento };
@@ -1695,10 +1726,14 @@ function parseTenencia(entry) {
         if (!carteraPorCliente[cliente]) carteraPorCliente[cliente] = [];
         carteraPorCliente[cliente].push({ ticker, instrumento, tipo, grupo, tenencia: val, nominales, ppc, dias });
       }
+      if (comitente && ticker) {
+        if (!carteraPorComitente[comitente]) carteraPorComitente[comitente] = [];
+        carteraPorComitente[comitente].push({ ticker, instrumento, tipo, grupo, tenencia: val, nominales, ppc, dias });
+      }
     });
     if (filasOmitidas) console.log(`[Dashboard] ${filasOmitidas} fila(s) omitida(s) por parecer totales/resumen, no posiciones.`);
     if (filasSinTickerConValor) console.warn(`[Dashboard] ${filasSinTickerConValor} fila(s) sin Ticker pero con Tenencia distinta de cero fueron omitidas del AUM — revisar si son posiciones reales (ej. Fideicomiso/Opciones) que Balanz no exportó con Ticker.`);
-    return { aum, clientes: clientes.size, asesores: asesores.size, posiciones: rows.length - filasOmitidas, porTipo, porGrupo, porMoneda, porCliente, porTicker, holdersByTicker, carteraPorCliente, porClienteMoneda, comitentePorCliente };
+    return { aum, clientes: clientes.size, asesores: asesores.size, posiciones: rows.length - filasOmitidas, porTipo, porGrupo, porMoneda, porCliente, porTicker, holdersByTicker, carteraPorCliente, porClienteMoneda, comitentePorCliente, porComitente, porComitenteMoneda, carteraPorComitente };
   } catch (e) { console.warn('[Dashboard] error leyendo tenencia', e); return null; }
 }
 
@@ -3216,16 +3251,41 @@ function inacInsertar(tok) {
 }
 
 // Todas las cuentas inactivas del Stock, con su estado de envíos y baja.
+// Cruce Stock (por comitente) → Tenencia por Ticker (que ya trae sus propios mapas por
+// comitente, ver parseTenencia). Cacheado por referencia a currentTenencia — se recalcula solo
+// cuando se sube un Tenencia nuevo, no en cada tecla de filtro.
+let _inacTenCache = { map: null, src: null };
+function _inacTenPorComitente() {
+  if (_inacTenCache.src === currentTenencia && _inacTenCache.map) return _inacTenCache.map;
+  const map = {};
+  if (currentTenencia) {
+    if (currentTenencia.porComitente) for (const [c, v] of Object.entries(currentTenencia.porComitente)) (map[c] = map[c] || {}).aum = v;
+    if (currentTenencia.porComitenteMoneda) for (const [c, v] of Object.entries(currentTenencia.porComitenteMoneda)) (map[c] = map[c] || {}).moneda = v;
+    if (currentTenencia.carteraPorComitente) for (const [c, v] of Object.entries(currentTenencia.carteraPorComitente)) (map[c] = map[c] || {}).cartera = v;
+  }
+  _inacTenCache = { map, src: currentTenencia };
+  return map;
+}
 function _inacFilasBase() {
   if (!currentStockMap) return [];
   const envios = _inacEnvios();
+  const audiencia = (document.getElementById('inacAudiencia') || {}).value || 'inactivos';
+  const ten = _inacTenPorComitente();
   const out = [];
   for (const [comitente, s] of Object.entries(currentStockMap)) {
-    if (!/^inactiv/i.test(s.ai || '')) continue;
+    const esInactiva = /^inactiv/i.test(s.ai || '');
+    if (audiencia === 'inactivos' && !esInactiva) continue;
+    if (audiencia === 'activos' && esInactiva) continue;
+    const t = ten[comitente] || null;
     const mail = String(s.mail || '').trim().toLowerCase();
     const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
+    const monedas = t && t.moneda ? Object.entries(t.moneda).filter(([, v]) => v > 0.01).map(([k]) => k) : [];
+    const grupos = new Set((t && t.cartera ? t.cartera : []).map(i => i.grupo));
     out.push({
-      comitente, s, mail, mailOk,
+      comitente, s, mail, mailOk, esInactiva,
+      aumEfectivo: t ? (t.aum || 0) : (s.aum || 0),
+      monedas, grupos,
+      antigAnios: (() => { const m = _inacMesesDesde(s.fechaAlta); return m == null ? null : m / 12; })(),
       baja: !!(mailOk && _inacBajas && _inacBajas.has(mail)),
       env: envios[comitente] || {},
       mas1: /m[aá]s de un a/i.test(s.actUlt || ''),
@@ -3258,6 +3318,11 @@ function _inacFiltrar(base) {
   const eMin = parseInt(document.getElementById('inacEdadMin').value, 10);
   const eMax = parseInt(document.getElementById('inacEdadMax').value, 10);
   const aumMin = parseFloat(document.getElementById('inacAumMin').value) || 0;
+  const aumMax = parseFloat(document.getElementById('inacAumMax').value) || Infinity;
+  const moneda = document.getElementById('inacMoneda').value;
+  const cartera = document.getElementById('inacCartera').value;
+  const antigMin = parseFloat(document.getElementById('inacAntigMin').value);
+  const antigMax = parseFloat(document.getElementById('inacAntigMax').value);
   const pMin = { alta: 55, media: 35 }[document.getElementById('inacPuntajeMin').value] || 0;
   const zonaF = document.getElementById('inacZonaF').value;
   const fondeo = document.getElementById('inacFondeo').value;
@@ -3272,7 +3337,16 @@ function _inacFiltrar(base) {
     if (act && act !== '__pot' && (r.s.actividad || '(sin dato)') !== act) return false;
     if (Number.isFinite(eMin) && !(r.s.edad >= eMin)) return false;
     if (Number.isFinite(eMax) && !(r.s.edad != null && r.s.edad <= eMax)) return false;
-    if (aumMin > 0 && !(r.s.aum >= aumMin)) return false;
+    if (aumMin > 0 && !(r.aumEfectivo >= aumMin)) return false;
+    if (aumMax < Infinity && !(r.aumEfectivo <= aumMax)) return false;
+    if (moneda === 'usd' && !r.monedas.includes('USD')) return false;
+    if (moneda === 'ars' && !r.monedas.includes('ARS')) return false;
+    if (moneda === 'ambas' && !(r.monedas.includes('USD') && r.monedas.includes('ARS'))) return false;
+    if (cartera === 'rf' && !r.grupos.has('Renta Fija')) return false;
+    if (cartera === 'rv' && !r.grupos.has('Renta Variable')) return false;
+    if (cartera === 'ninguna' && r.grupos.size) return false;
+    if (Number.isFinite(antigMin) && !(r.antigAnios != null && r.antigAnios >= antigMin)) return false;
+    if (Number.isFinite(antigMax) && !(r.antigAnios != null && r.antigAnios <= antigMax)) return false;
     if (pMin && r.cal.pts < pMin) return false;
     if (zonaF === 'A' && r.cal.zona.nivel !== 'A') return false;
     if (zonaF === 'AB' && !['A', 'B'].includes(r.cal.zona.nivel)) return false;
@@ -3288,8 +3362,8 @@ function _inacFiltrar(base) {
   const orden = document.getElementById('inacOrden').value;
   const cmp = {
     puntaje: (a, b) => b.cal.pts - a.cal.pts || (b.s.edad || 0) - (a.s.edad || 0),
-    edad: (a, b) => (b.s.edad || 0) - (a.s.edad || 0) || b.s.aum - a.s.aum,
-    aum: (a, b) => b.s.aum - a.s.aum || (b.s.edad || 0) - (a.s.edad || 0),
+    edad: (a, b) => (b.s.edad || 0) - (a.s.edad || 0) || b.aumEfectivo - a.aumEfectivo,
+    aum: (a, b) => b.aumEfectivo - a.aumEfectivo || (b.s.edad || 0) - (a.s.edad || 0),
     login: (a, b) => String(b.s.ultLogin).localeCompare(String(a.s.ultLogin)),
     nombre: (a, b) => String(a.s.denominacion).localeCompare(String(b.s.denominacion), 'es')
   }[orden] || (() => 0);
@@ -3309,7 +3383,9 @@ function renderInactivos() {
   const filas = _inacFiltrar(base);
   _inacUltimaLista = filas;
   if (!base.length) {
-    body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Tu Stock no tiene cuentas marcadas como "Inactiva" (o le falta la columna A/I — volvé a subir el export completo de Power BI).</div>`;
+    const aud = (document.getElementById('inacAudiencia') || {}).value || 'inactivos';
+    const audTxt = aud === 'activos' ? '"Activa"' : aud === 'todos' ? '"Activa" ni "Inactiva"' : '"Inactiva"';
+    body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Tu Stock no tiene cuentas marcadas como ${audTxt} (o le falta la columna A/I — volvé a subir el export completo de Power BI).</div>`;
     _inacActualizarAcciones(); return;
   }
   if (!filas.length) {
@@ -3329,9 +3405,9 @@ function renderInactivos() {
       <td><span class="inac-pts ${r.cal.nivel}" title="${escHtml(r.cal.motivos.map(x => `+${x.p} ${x.t}`).join('\n'))}">${r.cal.pts}</span><div class="sub inac-motivos">${escHtml(r.cal.motivos.slice(0, 3).map(x => x.t).join(' · '))}</div></td>
       <td class="num">${s.edad || '—'}</td>
       <td>${escHtml(s.actividad || '—')}<div class="sub">${escHtml(s.localidad)}${r.cal.zona.nivel === 'A' || r.cal.zona.nivel === 'B' ? ` <span class="inac-badge zona">${r.cal.zona.nivel}</span>` : ''}</div></td>
-      <td class="num">${s.aum ? fmtMonto(s.aum) : '0'}</td>
+      <td class="num">${r.aumEfectivo ? fmtMonto(r.aumEfectivo) : '0'}</td>
       <td class="num">${_inacFechaCorta(s.ultLogin)}</td>
-      <td><span class="inac-badge seg">${r.mas1 ? '+1 año' : 'reciente'}</span>${badges}${extra}</td>
+      <td>${r.esInactiva ? `<span class="inac-badge seg">${r.mas1 ? '+1 año' : 'reciente'}</span>` : '<span class="inac-badge zona">Activa</span>'}${badges}${extra}</td>
     </tr>`;
   }).join('');
   const eleg = filas.filter(_inacElegible);
@@ -3375,6 +3451,11 @@ function inacLimpiarFiltros() {
   document.getElementById('inacEdadMin').value = '';
   document.getElementById('inacEdadMax').value = '';
   document.getElementById('inacAumMin').value = '';
+  document.getElementById('inacAumMax').value = '';
+  document.getElementById('inacMoneda').value = '';
+  document.getElementById('inacCartera').value = '';
+  document.getElementById('inacAntigMin').value = '';
+  document.getElementById('inacAntigMax').value = '';
   document.getElementById('inacOrden').value = 'puntaje';
   renderInactivos();
 }
@@ -3907,7 +3988,7 @@ const SEARCH_SECCIONES = [
   { id: 'files', nombre: 'Archivos', icon: '🗂' },
   { id: 'cliente360', nombre: 'Vista 360', icon: '👤' },
   { id: 'ranking', nombre: 'Ranking', icon: '🏆' },
-  { id: 'inactivos', nombre: 'Inactivos (cuentas sin actividad)', icon: '📭' },
+  { id: 'inactivos', nombre: 'Mail Marketing', alias: 'Inactivos cuentas sin actividad reactivación activos', icon: '📧' },
 ];
 let _searchActiveIdx = -1;
 
@@ -3935,7 +4016,7 @@ function buscarGlobalResultados(q) {
     }
   });
   SEARCH_SECCIONES.forEach(s => {
-    if (_normalizarBusqueda(s.nombre).includes(nq)) out.herramientas.push({ tipo: 'seccion', id: s.id, nombre: s.nombre, sub: 'Sección del Suite', icon: s.icon });
+    if (_normalizarBusqueda(s.nombre).includes(nq) || _normalizarBusqueda(s.alias || '').includes(nq)) out.herramientas.push({ tipo: 'seccion', id: s.id, nombre: s.nombre, sub: 'Sección del Suite', icon: s.icon });
   });
 
   if (currentTenencia && currentTenencia.carteraPorCliente) {

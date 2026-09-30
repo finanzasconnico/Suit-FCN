@@ -295,6 +295,35 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .fav-pct-row .field{flex:1;}
 .fav-warn{font-size:10.5px;color:#D9892B;padding:3px 0;}
 .fav-ok{font-size:10.5px;color:#1C8C5F;padding:3px 0;}
+/* ARMADO RÁPIDO (perfil + plazo) y secciones colapsables del panel izquierdo */
+.quick-card{background:var(--wash-1);border:1px solid var(--border);border-radius:6px;padding:14px 14px 12px;}
+.quick-card .field{margin-bottom:8px;}
+.quick-card .port-pill{margin-top:-2px;padding:4px 10px;}
+.quick-card .port-pill .val{font-size:14px;}
+.qa-label{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--cream-dim);margin:12px 0 5px;}
+.qa-chips{display:grid;gap:6px;}
+.qa-chips.p3{grid-template-columns:repeat(3,1fr);}
+.qa-chips.p4{grid-template-columns:repeat(4,1fr);}
+.qa-chip{padding:9px 4px 8px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:12px;font-weight:500;cursor:pointer;text-align:center;line-height:1.25;transition:border-color .15s,background .15s,color .15s;}
+.qa-chip small{display:block;font-size:9px;font-weight:400;color:var(--cream-dim);margin-top:2px;white-space:nowrap;}
+.qa-chip:hover{border-color:var(--wash-3);color:var(--text-strong);}
+.qa-chip.active{background:var(--balanz);border-color:var(--balanz);color:#fff;}
+.qa-chip.active small{color:rgba(255,255,255,.85);}
+.qa-status{font-size:10.5px;line-height:1.5;color:var(--cream-dim);margin-top:10px;}
+.qa-status .fav-ok,.qa-status .fav-warn{padding:1px 0;}
+details.adv{border:1px solid var(--border);border-radius:var(--radius);flex-shrink:0;}
+details.adv>summary{list-style:none;cursor:pointer;padding:10px 12px;font-family:'Spectral',serif;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim);display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none;}
+details.adv>summary::-webkit-details-marker{display:none;}
+details.adv>summary::after{content:'+';font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:400;letter-spacing:0;line-height:1;}
+details.adv[open]>summary::after{content:'–';}
+details.adv>summary:hover{color:var(--text-strong);}
+.adv-opt{font-family:'Hanken Grotesk',sans-serif;font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px;}
+.adv-body{padding:2px 12px 12px;}
+.asset-pct-wrap{display:flex;align-items:baseline;justify-content:flex-end;gap:1px;font-family:'Spectral',serif;font-size:13px;color:var(--cream-dim);}
+.asset-pct-in{width:46px;padding:2px 3px;background:transparent;border:1px solid transparent;border-radius:3px;color:var(--text-strong);font-family:'Spectral',serif;font-size:16px;font-weight:600;text-align:right;outline:none;-moz-appearance:textfield;}
+.asset-pct-in::-webkit-outer-spin-button,.asset-pct-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.asset-card:hover .asset-pct-in{border-color:var(--border);}
+.asset-pct-in:focus{border-color:var(--balanz);background:var(--wash-2);}
 /* MODEL CARDS */
 .model-card{background:var(--wash-1);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color .2s;}
 .model-card:hover{border-color:var(--wash-2);}
@@ -377,60 +406,53 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 
 <div class="page-view active" id="page-cartera">
   <div class="left-panel">
-    <div>
-      <div class="section-title">Datos del Cliente</div>
-      <div class="field"><label>Nombre / Empresa</label><input type="text" id="client-name" placeholder="Ej: Juan Pérez" oninput="updateDoc()"></div>
-      <div class="field-row">
-        <div class="field"><label>Perfil de Riesgo</label><select id="client-risk" onchange="updateDoc()"><option value="">— Seleccionar —</option><option>Conservador</option><option>Moderado</option><option>Moderado-Agresivo</option><option>Agresivo</option></select></div>
-        <div class="field"><label>Horizonte</label><select id="client-horizon" onchange="updateDoc()"><option value="">— Seleccionar —</option><option>Corto Plazo (&lt;1 año)</option><option>Mediano Plazo (1-3 años)</option><option>Largo Plazo (3-5 años)</option><option>Muy Largo Plazo (+5 años)</option></select></div>
-      </div>
-      <div class="field"><label>Firma / Asesor</label><input type="text" id="firm-name" placeholder="Ej: Balanz Capital" oninput="updateDoc()"></div>
-    </div>
-    <div>
-      <div class="section-title">Tamaño de Cartera</div>
+    <div class="quick-card">
+      <div class="section-title">Armado rápido</div>
+      <div class="field"><label>Cliente</label><input type="text" id="client-name" placeholder="Ej: Juan Pérez" oninput="updateDoc()"></div>
       <div class="size-row">
         <div class="field size-curr"><label>Moneda</label><select id="port-curr" onchange="updateDoc()"><option>USD</option><option>ARS</option><option>EUR</option></select></div>
-        <div class="field" style="flex:1;"><label>Monto Total</label><div class="money-wrap"><span class="money-prefix" id="curr-pfx">$</span><input type="number" id="port-size" placeholder="100,000" min="0" style="padding-left:22px;" oninput="updateDoc();checkLaminaLive()"></div></div>
+        <div class="field" style="flex:1;"><label>Monto Total</label><div class="money-wrap"><span class="money-prefix" id="curr-pfx">$</span><input type="number" id="port-size" placeholder="100,000" min="0" style="padding-left:22px;" oninput="updateDoc();checkLaminaLive();onPortSizeInput()"></div></div>
       </div>
       <div class="port-pill" id="port-pill" style="display:none;"><span class="lbl">Total</span><span class="val" id="port-pill-val">—</span></div>
-    </div>
-    <div>
-      <div class="section-title">Cartera en Pesos <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--cream-dim);">(opcional, independiente)</span></div>
-      <div class="field"><label>Monto en ARS</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="port-size-ars" placeholder="0" min="0" style="padding-left:22px;" oninput="updateDoc()"></div></div>
-      <div id="ars-asset-list" style="margin:8px 0;"></div>
-      <div class="field-row">
-        <div class="field" style="flex:2;"><input type="text" id="ars-f-name" placeholder="Ej: Balanz Ahorro FCI"></div>
-        <div class="field ars-asset-row" style="flex:0 0 60px;"><input type="number" id="ars-f-pct" placeholder="%" min="0" max="100" step="0.5"></div>
+      <div class="qa-label">Perfil del cliente</div>
+      <div class="qa-chips p3" id="qa-perfiles">
+        <button type="button" class="qa-chip" data-perfil="conservador" onclick="setAutoPerfil('conservador')">Conservador<small>90% RF · 10% RV</small></button>
+        <button type="button" class="qa-chip" data-perfil="moderado" onclick="setAutoPerfil('moderado')">Moderado<small>50% RF · 50% RV</small></button>
+        <button type="button" class="qa-chip" data-perfil="agresivo" onclick="setAutoPerfil('agresivo')">Agresivo<small>45% RF · 55% RV</small></button>
       </div>
-      <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:4px;font-size:11px;" onclick="addAssetARS()">+ Agregar a Cartera en Pesos</button>
-    </div>
-    <div>
-      <div class="section-title">Nota Estratégica</div>
-      <div class="field"><textarea id="strategy-note" rows="3" placeholder="Contexto de mercado, objetivos…" oninput="updateDoc()"></textarea></div>
-      <div class="field-row">
-        <div class="field"><label>Fecha del documento</label><input type="date" id="doc-date-input" oninput="updateDoc()"></div>
-        <div class="field"><label>Próxima revisión</label><input type="date" id="doc-next-review" oninput="updateDoc()"></div>
+      <div class="qa-label">Plazo de las ONs</div>
+      <div class="qa-chips p4" id="qa-plazos">
+        <button type="button" class="qa-chip active" data-plazo="todos" onclick="setAutoPlazo('todos')">Todos<small>sin filtro</small></button>
+        <button type="button" class="qa-chip" data-plazo="corto" onclick="setAutoPlazo('corto')">Corto<small>&lt; 2 años</small></button>
+        <button type="button" class="qa-chip" data-plazo="mediano" onclick="setAutoPlazo('mediano')">Mediano<small>2-5 años</small></button>
+        <button type="button" class="qa-chip" data-plazo="largo" onclick="setAutoPlazo('largo')">Largo<small>&gt; 5 años</small></button>
       </div>
+      <div class="qa-status" id="qa-status">Elegí un perfil y la cartera se arma sola con lo que hoy mejor puntúa en cada categoría. Después podés cambiar cualquier línea.</div>
     </div>
-    <div>
-      <div class="section-title">⭐ Favoritos — Armado Automático</div>
-      <div style="font-size:10px;color:var(--cream-dim);margin-bottom:6px;">Marcá tus tickers de cabecera una vez y armá carteras nuevas en segundos repartiendo parejo entre ellos.</div>
-      <div class="field ac-wrap"><label>Agregar a Favoritos</label><input type="text" id="fav-search" placeholder="Ticker o nombre…" autocomplete="off" oninput="favS(this.value)" onblur="setTimeout(closeFavAC,180)"><div class="ac-dropdown" id="fav-dd"></div></div>
-      <div style="font-size:9.5px;color:var(--cream-dim);margin-top:6px;">Renta Variable</div>
-      <div class="fav-chips" id="fav-chips-rv"></div>
-      <div style="font-size:9.5px;color:var(--cream-dim);margin-top:4px;">Renta Fija</div>
-      <div class="fav-chips" id="fav-chips-rf"></div>
-
-      <div class="fav-presets" id="fav-presets"></div>
-      <div class="fav-pct-row">
-        <div class="field"><label>% Renta Variable</label><input type="number" id="fav-pct-rv" min="0" max="100" step="5" value="60" oninput="onFavPctChange('rv')"></div>
-        <div class="field"><label>% Renta Fija</label><input type="number" id="fav-pct-rf" min="0" max="100" step="5" value="40" oninput="onFavPctChange('rf')"></div>
+    <div id="asset-section" style="display:none;">
+      <div class="section-title">Composición</div>
+      <div class="alloc-bar-track" id="alloc-track"></div>
+      <div class="alloc-label"><span id="alloc-used">0%</span><span id="alloc-rem">100% libre</span></div>
+      <div class="yield-bar" id="yield-bar" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="yield-bar-title" style="margin-bottom:0;">Rendimiento ponderado (Renta Fija)</div><div id="yield-duration" style="font-size:9px;color:var(--cream-dim);"></div></div>
+        <div class="yield-main"><div class="yield-number" id="yield-total">—</div><div class="yield-label" id="yield-label-text">TIR/TNA ponderada</div></div>
+        <div class="yield-breakdown" id="yield-breakdown"></div>
+        <div class="yield-missing" id="yield-missing" style="display:none;"></div>
       </div>
-      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="armarConFavoritos()">⚡ Armar cartera con Favoritos</button>
-      <div id="fav-build-status" style="margin-top:6px;"></div>
+      <!-- Objetivo de precio ponderado de la pata de Renta Variable — mismo patrón visual que
+           el rendimiento de Renta Fija de arriba, cruzando cada CEDEAR/acción con el precio
+           objetivo de analistas (archivo Precios Objetivo). Ver updateTarget(). -->
+      <div class="yield-bar" id="target-bar" style="display:none;">
+        <div class="yield-bar-title">Objetivo de precio ponderado (Renta Variable)</div>
+        <div class="yield-main"><div class="yield-number" id="target-total">—</div><div class="yield-label">upside a precio objetivo</div></div>
+        <div class="yield-breakdown" id="target-breakdown"></div>
+        <div class="yield-missing" id="target-missing" style="display:none;"></div>
+      </div>
+      <div class="asset-list" id="asset-list" style="margin-top:10px;"></div>
     </div>
-    <div>
-      <div class="section-title">Agregar Activo</div>
+    <details class="adv" id="det-manual">
+      <summary>Agregar o editar un activo</summary>
+      <div class="adv-body">
       <div class="field"><label>Buscar</label><div class="ac-wrap"><input type="text" id="f-name" placeholder="Ticker o nombre: VSCXO, GD30, TX26…" autocomplete="off" oninput="acS(this.value)" onblur="setTimeout(closeAC,180)"><div class="ac-dropdown" id="ac-dd"></div></div></div>
       <div class="field-row">
         <div class="field"><label>Categoría</label><select id="f-type" onchange="togglePriceRow()"><option value="Renta Variable | Argentina">RV · Argentina</option><option value="Renta Variable | CEDEARs">RV · CEDEARs</option><option value="Renta Variable | Internacional">RV · Internacional</option><option value="Renta Fija | Soberanos">RF · Soberanos</option><option value="Renta Fija | Sub-soberanos">RF · Sub-soberanos</option><option value="Renta Fija | Corporativos (ONs)">RF · Corporativos (ONs)</option><option value="Renta Fija | Letras y Bonos ARS">RF · Letras y Bonos ARS</option><option value="Renta Fija | Internacional">RF · Internacional</option><option value="Liquidez / Money Market">Liquidez / MM</option><option value="FCI">FCI</option><option value="Alternativos">Alternativos</option><option value="Commodities">Commodities</option><option value="Criptomonedas">Cripto</option><option value="Otro">Otro</option></select></div>
@@ -480,28 +502,54 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
       <button class="btn btn-gold" id="add-asset-btn" style="width:100%;justify-content:center;margin-top:2px;" onclick="addAsset()">+ Agregar Activo</button>
       <div id="edit-mode-indicator" style="display:none;margin-top:6px;background:rgba(26,122,74,0.12);border:1px solid rgba(26,122,74,0.3);border-radius:var(--radius);padding:6px 10px;font-size:10px;color:#1C8C5F;text-align:center;">Modificando activo</div>
       <button id="cancel-edit-btn" class="btn btn-outline" style="display:none;width:100%;justify-content:center;margin-top:5px;font-size:11px;" onclick="cancelEdit()">✕ Cancelar edición</button>
-    </div>
-    <div id="asset-section" style="display:none;">
-      <div class="section-title">Composición</div>
-      <div class="alloc-bar-track" id="alloc-track"></div>
-      <div class="alloc-label"><span id="alloc-used">0%</span><span id="alloc-rem">100% libre</span></div>
-      <div class="yield-bar" id="yield-bar" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="yield-bar-title" style="margin-bottom:0;">Rendimiento ponderado</div><div id="yield-duration" style="font-size:9px;color:var(--cream-dim);"></div></div>
-        <div class="yield-main"><div class="yield-number" id="yield-total">—</div><div class="yield-label" id="yield-label-text">TIR/TNA ponderada</div></div>
-        <div class="yield-breakdown" id="yield-breakdown"></div>
-        <div class="yield-missing" id="yield-missing" style="display:none;"></div>
       </div>
-      <!-- Objetivo de precio ponderado de la pata de Renta Variable — mismo patrón visual que
-           el rendimiento de Renta Fija de arriba, cruzando cada CEDEAR/acción con el precio
-           objetivo de analistas (archivo Precios Objetivo). Ver updateTarget(). -->
-      <div class="yield-bar" id="target-bar" style="display:none;">
-        <div class="yield-bar-title">Objetivo de precio ponderado (Renta Variable)</div>
-        <div class="yield-main"><div class="yield-number" id="target-total">—</div><div class="yield-label">upside a precio objetivo</div></div>
-        <div class="yield-breakdown" id="target-breakdown"></div>
-        <div class="yield-missing" id="target-missing" style="display:none;"></div>
+    </details>
+    <details class="adv" id="det-fav">
+      <summary>Armar con mis Favoritos</summary>
+      <div class="adv-body">
+      <div style="font-size:10px;color:var(--cream-dim);margin-bottom:6px;">Marcá tus tickers de cabecera una vez y armá carteras nuevas en segundos repartiendo parejo entre ellos.</div>
+      <div class="field ac-wrap"><label>Agregar a Favoritos</label><input type="text" id="fav-search" placeholder="Ticker o nombre…" autocomplete="off" oninput="favS(this.value)" onblur="setTimeout(closeFavAC,180)"><div class="ac-dropdown" id="fav-dd"></div></div>
+      <div style="font-size:9.5px;color:var(--cream-dim);margin-top:6px;">Renta Variable</div>
+      <div class="fav-chips" id="fav-chips-rv"></div>
+      <div style="font-size:9.5px;color:var(--cream-dim);margin-top:4px;">Renta Fija</div>
+      <div class="fav-chips" id="fav-chips-rf"></div>
+
+      <div class="fav-presets" id="fav-presets"></div>
+      <div class="fav-pct-row">
+        <div class="field"><label>% Renta Variable</label><input type="number" id="fav-pct-rv" min="0" max="100" step="5" value="60" oninput="onFavPctChange('rv')"></div>
+        <div class="field"><label>% Renta Fija</label><input type="number" id="fav-pct-rf" min="0" max="100" step="5" value="40" oninput="onFavPctChange('rf')"></div>
       </div>
-      <div class="asset-list" id="asset-list" style="margin-top:10px;"></div>
-    </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;" onclick="armarConFavoritos()">⚡ Armar cartera con Favoritos</button>
+      <div id="fav-build-status" style="margin-top:6px;"></div>
+      </div>
+    </details>
+    <details class="adv" id="det-ars">
+      <summary>Cartera en pesos <span class="adv-opt">opcional</span></summary>
+      <div class="adv-body">
+      <div class="field"><label>Monto en ARS</label><div class="money-wrap"><span class="money-prefix">$</span><input type="number" id="port-size-ars" placeholder="0" min="0" style="padding-left:22px;" oninput="updateDoc()"></div></div>
+      <div id="ars-asset-list" style="margin:8px 0;"></div>
+      <div class="field-row">
+        <div class="field" style="flex:2;"><input type="text" id="ars-f-name" placeholder="Ej: Balanz Ahorro FCI"></div>
+        <div class="field ars-asset-row" style="flex:0 0 60px;"><input type="number" id="ars-f-pct" placeholder="%" min="0" max="100" step="0.5"></div>
+      </div>
+      <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:4px;font-size:11px;" onclick="addAssetARS()">+ Agregar a Cartera en Pesos</button>
+      </div>
+    </details>
+    <details class="adv" id="det-doc">
+      <summary>Datos del documento</summary>
+      <div class="adv-body">
+      <div class="field-row">
+        <div class="field"><label>Perfil de Riesgo</label><select id="client-risk" onchange="updateDoc()"><option value="">— Seleccionar —</option><option>Conservador</option><option>Moderado</option><option>Moderado-Agresivo</option><option>Agresivo</option></select></div>
+        <div class="field"><label>Horizonte</label><select id="client-horizon" onchange="updateDoc()"><option value="">— Seleccionar —</option><option>Corto Plazo (&lt; 2 años)</option><option>Mediano Plazo (2-5 años)</option><option>Largo Plazo (&gt; 5 años)</option></select></div>
+      </div>
+      <div class="field"><label>Firma / Asesor</label><input type="text" id="firm-name" placeholder="Ej: Balanz Capital" oninput="updateDoc();guardarFirma()"></div>
+      <div class="field"><label>Nota estratégica</label><textarea id="strategy-note" rows="3" placeholder="Contexto de mercado, objetivos…" oninput="updateDoc()"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Fecha del documento</label><input type="date" id="doc-date-input" oninput="updateDoc()"></div>
+        <div class="field"><label>Próxima revisión</label><input type="date" id="doc-next-review" oninput="updateDoc()"></div>
+      </div>
+      </div>
+    </details>
   </div>
   <div class="right-panel">
     <div class="panel-tabs">
@@ -524,7 +572,7 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
             </div>
             <div id="dnotew" style="display:none;"><div class="dsh">Nota Estratégica</div><div class="dsn" id="dnotet"></div></div>
             <div id="dnextrevieww" style="display:none;margin-bottom:10px;"><span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;">Próxima revisión: </span><span id="dnextreview" style="font-size:9px;font-weight:600;color:#0F3A34;"></span></div>
-            <div id="doc-empty" class="empty-state"><p>Agregá activos desde el panel izquierdo.</p></div>
+            <div id="doc-empty" class="empty-state"><p>Elegí un perfil en el panel izquierdo y la cartera se arma sola.</p></div>
             <div id="doc-content" style="display:none;">
               <div class="doc-block" data-blk="resumen">
                 <div class="dblock-pagepick">Pág. <select data-blkpick="resumen" onchange="setBlockPage('resumen',this.value)"></select></div>
@@ -986,7 +1034,8 @@ function loadMonitorFull(input){
             iTIR=findCol(tCol+4,'TIR','TIR%','TIR %'), iCup=findCol(tCol+7,'Cupón','Cupon','Cupón %','Cupon %'),
             iMeses=findCol(tCol+8,'Mes cupón','Meses cupón','Mes cupon'), iMon=findCol(tCol+9,'Moneda','Dólar','Dolar'),
             iLey=findCol(tCol+10,'Ley'), iCal=findCol(tCol+11,'Calificación','Calificacion','Rating'),
-            iLam=findCol(tCol+12,'Lámina','Lamina'), iPrecioCable=findCol(tCol+15,'Precio Cable','P. Cable','Precio Cable USD');
+            iLam=findCol(tCol+12,'Lámina min.','Lámina','Lamina'), iPrecioCable=findCol(tCol+15,'Precio Cable','P. Cable','Precio Cable USD'),
+            iDur=findCol(tCol+5,'Duration');
         for(var di=cInfo.hdrRow+1;di<rows.length;di++){
           var dr=rows[di];
           var tk=String(dr[tCol]||'').trim();
@@ -1009,6 +1058,7 @@ function loadMonitorFull(input){
             ley:String(dr[iLey]||'').trim(),
             calificacion:String(dr[iCal]||'').trim(),
             lamina:parseFloat(dr[iLam])||null,
+            duration:parseFloat(dr[iDur])||null, // años — filtro de plazo del armado por perfil
             // Precio del nominal (misma convención que "Precio del nominal" manual: 1.03 = 103% de la par),
             // MEP o Cable según cuál trae la fila — se usan para verificar lámina mínima en el armado
             // automático con Favoritos, sin depender de que el asesor lo tipee a mano.
@@ -1070,6 +1120,7 @@ function loadMonitorFull(input){
               categoria:currentCat,emisor:em,tir:tir,
               precio:parseFloat(dr[2])||null,
               venc:excelSerial(dr[3]),
+              duration:parseFloat(dr[5])||null,
               cupon:cup,
               meses:String(dr[8]||'').trim(),
               moneda:String(dr[9]||'').trim(),
@@ -1138,6 +1189,7 @@ function loadMonitorFull(input){
       }
 
       ON_DB=newON; SOV_DB=newSOV; LET_DB=newLET;
+      if(corpCnt>0)_monitorFullParsed=true;
       // Si ya hay activos cargados cuando termina de cargar el Monitor (bug real, 2026-09:
       // una cartera importada en bloque desde la Vista 360 de la Suite se renderizaba ANTES
       // de que este parseo asincrónico terminara, así que el TIR/duration/calificación de cada
@@ -1227,11 +1279,16 @@ function normalizeDB(db){
   return db;
 }
 
+// true cuando loadMonitorFull() ya parseó el Excel completo en esta sesión. La copia de la nube
+// (jsonbin) puede ser de un parser viejo, sin precio ni duration: si llega DESPUÉS del parseo
+// completo no tiene que pisarlo (el armado por perfil necesita esos dos campos).
+var _monitorFullParsed=false;
 async function loadMonitorFromCloud(){
   try{
     var ctrl=new AbortController();var tid=setTimeout(function(){ctrl.abort();},5000);
     var r=await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN+'/latest',{headers:{'X-Access-Key':JSONBIN_KEY},signal:ctrl.signal});
     clearTimeout(tid);var d=await r.json();var rec=d.record||{};
+    if(_monitorFullParsed)return;
     var loaded=false;
     if(rec.ons_db&&Object.keys(rec.ons_db).length){ON_DB=normalizeDB(rec.ons_db);loaded=true;}
     if(rec.sov_db&&Object.keys(rec.sov_db).length){SOV_DB=normalizeDB(rec.sov_db);loaded=true;}
@@ -1247,6 +1304,7 @@ async function loadMonitorFromCloud(){
       return;
     }
   }catch(e){console.warn('Cloud load:',e.message);}
+  if(_monitorFullParsed)return;
   try{
     var o=localStorage.getItem('fcn-on-db'),s=localStorage.getItem('fcn-sov-db'),l=localStorage.getItem('fcn-let-db'),ts=localStorage.getItem('fcn-monitor-ts')||'';
     var loaded=false;
@@ -1501,22 +1559,11 @@ async function armarConFavoritos(){
 
   var out=[],ci=0;
   function pushEntry(w){
-    var r=w.r,on=ON_DB[r.ticker],sov=SOV_DB[r.ticker],let_=LET_DB[r.ticker];
-    var ret='',venc='',meses='',ley='',calif='',curr=r.curr||'USD';
-    if(on){
-      if(on.tir!=null){var cp=on.cupon?Math.round(on.cupon*10000)/100:null;ret=(cp?cp+'% cup. | ':'')+'TIR '+(on.tir*100).toFixed(2)+'%';}
-      venc=on.vencimiento||'';meses=on.meses_cupon||'';ley=on.ley||'';calif=on.calificacion||'';curr='USD';
-    } else if(sov){
-      if(sov.tir!=null)ret='TIR '+(sov.tir*100).toFixed(2)+'%';
-      venc=sov.venc||'';meses=sov.meses||'';ley=sov.ley||'';calif=sov.calif||'';
-      curr=(sov.moneda==='Cable'||sov.moneda==='USD')?'USD':'ARS';
-    } else if(let_){
-      ret=let_.tna!=null?'TNA '+(let_.tna*100).toFixed(2)+'%':(let_.tir!=null?'TIR '+(let_.tir*100).toFixed(2)+'%':'');
-      venc=let_.venc||'';curr='ARS';
-    }
+    var r=w.r,m=monitorFieldsDe(r.ticker,r.curr||'USD');
     var cleanN=r.name.replace(/\s+[\d.]+%\s+\d{4}-\d{2}/g,'').replace(/\s*\([A-Z0-9]{4,10}\)\s*$/,'').trim();
     var sectorCache=loadSectorCacheAC(); // best-effort: solo lo que ya se consultó antes (sin fetch en vivo acá, para que el armado automático sea instantáneo)
-    out.push({id:'fav'+Date.now()+ci,name:cleanN,ticker:r.ticker,pct:Math.round(w.pct*10)/10,ret:ret,curr:curr,type:r.type,color:PALETTE[ci%PALETTE.length],venc:venc,meses:meses,ley:ley,calif:calif,nota:'',sector:sectorCache[r.ticker]||''});
+    // id numérico: render() lo escribe sin comillas en los onclick de editar/quitar.
+    out.push({id:Date.now()+ci,name:cleanN,ticker:r.ticker,pct:Math.round(w.pct*10)/10,ret:m.ret,curr:m.curr,type:r.type,color:PALETTE[ci%PALETTE.length],venc:m.venc,meses:m.meses,ley:m.ley,calif:m.calif,nota:'',sector:sectorCache[r.ticker]||''});
     ci++;
   }
   rvW.forEach(pushEntry);rfW.forEach(pushEntry);
@@ -1531,6 +1578,370 @@ async function armarConFavoritos(){
   document.getElementById('fav-build-status').innerHTML=msgs.length
     ?msgs.map(function(m){return'<div class="fav-warn">⚠ '+m+'</div>';}).join('')
     :'<div class="fav-ok">✓ Cartera armada con '+out.length+' activo'+(out.length===1?'':'s')+'.</div>';
+}
+
+// Lo que el Monitor ya sabe de un bono/ON/letra, en el formato de los campos de `assets`.
+function monitorFieldsDe(t,currDefault){
+  var on=ON_DB[t],sov=SOV_DB[t],let_=LET_DB[t];
+  var o={ret:'',venc:'',meses:'',ley:'',calif:'',curr:currDefault||'USD'};
+  if(on){
+    if(on.tir!=null){var cp=on.cupon?Math.round(on.cupon*10000)/100:null;o.ret=(cp?cp+'% cup. | ':'')+'TIR '+(on.tir*100).toFixed(2)+'%';}
+    o.venc=on.vencimiento||'';o.meses=on.meses_cupon||'';o.ley=on.ley||'';o.calif=on.calificacion||'';o.curr='USD';
+  } else if(sov){
+    if(sov.tir!=null)o.ret='TIR '+(sov.tir*100).toFixed(2)+'%';
+    o.venc=sov.venc||'';o.meses=sov.meses||'';o.ley=sov.ley||'';o.calif=sov.calif||'';
+    o.curr=(sov.moneda==='Cable'||sov.moneda==='USD'||sov.moneda==='MEP')?'USD':'ARS';
+  } else if(let_){
+    o.ret=let_.tna!=null?'TNA '+(let_.tna*100).toFixed(2)+'%':(let_.tir!=null?'TIR '+(let_.tir*100).toFixed(2)+'%':'');
+    o.venc=let_.venc||'';o.curr='ARS';
+  }
+  return o;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ARMADO POR PERFIL + PLAZO — pedido de Nico (30/09): que armar una cartera acá sea tan simple
+//  como en "Arma tu cartera" de la web pública (analisis.html, carteraArmarPerfil). Mismo
+//  criterio y mismos porcentajes por perfil; lo que cambia es de dónde salen los datos:
+//   · ONs / Soberanos / Letras: ON_DB / SOV_DB / LET_DB (el Monitor que ya carga esta página).
+//     Mejor TIR sin repetir emisor, sin bonos en default (calificación D/C o TIR > 50%),
+//     respetando la lámina mínima, y cuanto más plata entra en el bucket más ONs se abren.
+//   · CEDEARs / acciones argentinas: data/valuacion_multiplos.xlsx, con el mismo puntaje
+//     (negocio 35% · precio vs. su historia 35% · tendencia 30%) que la web y que Valuación
+//     por Múltiplos — un CEDEAR por sector, los de mejor puntaje.
+//  El resultado reemplaza `assets` igual que "cargar un modelo": después se edita como siempre.
+// ══════════════════════════════════════════════════════════════
+var AUTO_RIESGO={conservador:'Conservador',moderado:'Moderado',agresivo:'Agresivo'};
+var AUTO_HORIZONTE={todos:'',corto:'Corto Plazo (< 2 años)',mediano:'Mediano Plazo (2-5 años)',largo:'Largo Plazo (> 5 años)'};
+var AUTO_PLAZO_TXT={todos:'todos los plazos',corto:'corto plazo',mediano:'mediano plazo',largo:'largo plazo'};
+// Fondos de Balanz sin ranking propio: el de Conservador va fijo; los otros solo entran cuando
+// el plazo + la calidad elegidos no dejan ninguna ON en pie.
+var AUTO_FONDO={
+  conservador:{ticker:'ESTRA1',name:'Fondo común de inversión Balanz',type:'FCI'},
+  moderado:{ticker:'BAHUSDA',name:'Fondo de liquidez en USD Balanz',type:'Liquidez / Money Market'},
+  agresivo:{ticker:'BAHUSDA',name:'Fondo de liquidez en USD Balanz',type:'Liquidez / Money Market'}
+};
+var autoPerfil=null,autoPlazo='todos',autoFirma=null,autoSeq=0,autoMontoTimer=null;
+
+// ── Puntaje de renta variable (port de analisis.html: tendencia / fundamental / valuacion5y) ──
+var RVQ_MULT_SECTOR={
+  'Financial Services':['PB','PE'],'Technology':['PS','EVEBITDA','PFCF','PE'],
+  'Communication Services':['PS','EVEBITDA','PFCF','PE'],'Consumer Cyclical':['PE','EVEBITDA','PFCF'],
+  'Consumer Defensive':['PE','EVEBITDA','PFCF'],'Healthcare':['PE','EVEBITDA','PFCF'],
+  'Industrials':['PE','EVEBITDA','PB'],'Energy':['EVEBITDA','PB','PFCF'],
+  'Basic Materials':['EVEBITDA','PB','PFCF'],'Utilities':['PE','EVEBITDA','PB'],'Real Estate':[]
+};
+var RVQ_MULT_DEFAULT=['PE','EVEBITDA','PS'];
+function rvqNum(v){if(v===null||v===undefined||v==='')return null;var n=Number(v);return isNaN(n)?null:n;}
+function rvqClamp(x,a,b){return Math.max(a,Math.min(b,x));}
+// Promedio ponderado de componentes [valor −1…1, peso] → −100…100; con menos de 3, sin señal.
+function rvqPonderar(c){
+  if(c.length<3)return null;
+  var w=c.reduce(function(a,x){return a+x[1];},0);
+  return Math.round(100*c.reduce(function(a,x){return a+x[0]*x[1];},0)/w);
+}
+function rvqTendencia(r){
+  if(r.moneda==='ARS')return null; // en pesos el precio "sube" por inflación
+  var c=[];
+  if(r.precio!==null&&r.mm200)c.push([rvqClamp((r.precio/r.mm200-1)/0.25,-1,1),0.25]);
+  if(r.mm21&&r.mm50&&r.mm200)c.push([(r.mm21>r.mm50?0.5:-0.5)+(r.mm50>r.mm200?0.5:-0.5),0.20]);
+  if(r.ret3m!==null)c.push([rvqClamp(r.ret3m/0.20,-1,1),0.20]);
+  if(r._rs!==null&&r._rs!==undefined)c.push([r._rs*2-1,0.20]);
+  if(r.dist52!==null)c.push([rvqClamp((r.dist52+0.15)/0.15,-1,1),0.15]);
+  return rvqPonderar(c);
+}
+function rvqNegocio(r){
+  var c=[];
+  if(r.revCagr!==null)c.push([rvqClamp(r.revCagr/0.15,-1,1),0.30]);
+  if(r.niPos!==null)c.push([r.niPos*2-1,0.25]);
+  if(r.margenTrend!==null)c.push([rvqClamp(r.margenTrend/0.05,-1,1),0.20]);
+  if(r.fcfPos!==null)c.push([r.fcfPos*2-1,0.15]);
+  if(r.ndEbitda!==null)c.push([rvqClamp((2.5-r.ndEbitda)/2.5,-1,1),0.10]);
+  return rvqPonderar(c);
+}
+function rvqPuntaje(r){
+  var t=rvqTendencia(r),n=rvqNegocio(r),v=r.valuacion;
+  if(t===null||n===null||v===null)return null;
+  var v100=Math.round(rvqClamp(v/0.40,-1,1)*100);
+  return Math.round(rvqClamp(n*0.35+v100*0.35+t*0.30,-100,100));
+}
+function rvqParse(buf){
+  var wb=XLSX.read(buf,{type:'array'});
+  var raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  var rows=raw.map(function(x){
+    var sector=String(x['Sector']||'').trim();
+    var ks=(sector in RVQ_MULT_SECTOR)?RVQ_MULT_SECTOR[sector]:RVQ_MULT_DEFAULT;
+    // múltiplo más representativo del sector, hoy vs. su promedio de 5 años (<=0 no sirve para comparar)
+    var act=ks.length?rvqNum(x[ks[0]+'_actual']):null,p5=ks.length?rvqNum(x[ks[0]+'_prom_5y']):null;
+    return{
+      ticker:String(x['Ticker']||x['Ticker_usado']||'').trim().toUpperCase(),
+      empresa:String(x['Empresa']||'').trim(),sector:sector,moneda:String(x['Moneda']||'').trim(),
+      precio:rvqNum(x['Precio_actual']),
+      mm21:rvqNum(x['MM21_sem']),mm50:rvqNum(x['MM50_sem']),mm200:rvqNum(x['MM200_sem']),
+      ret3m:rvqNum(x['Ret_3m']),ret6m:rvqNum(x['Ret_6m']),ret12:rvqNum(x['Ret_12m']),dist52:rvqNum(x['Dist_max_52s']),
+      revCagr:rvqNum(x['Rev_CAGR']),niPos:rvqNum(x['NI_pos']),fcfPos:rvqNum(x['FCF_pos']),
+      margenTrend:rvqNum(x['Margen_trend']),ndEbitda:rvqNum(x['ND_EBITDA']),
+      valuacion:(act>0&&p5>0)?p5/act-1:null
+    };
+  }).filter(function(r){return r.ticker;});
+  // fuerza relativa: percentil del retorno a 6 meses contra el resto (solo papeles en USD)
+  var vals=rows.filter(function(r){return r.moneda!=='ARS'&&r.ret6m!==null;}).map(function(r){return r.ret6m;}).sort(function(a,b){return a-b;});
+  rows.forEach(function(r){
+    if(r.moneda==='ARS'||r.ret6m===null||!vals.length){r._rs=null;return;}
+    var lo=0;while(lo<vals.length&&vals[lo]<r.ret6m)lo++;
+    r._rs=vals.length>1?lo/(vals.length-1):0.5;
+  });
+  rows.forEach(function(r){r.puntaje=rvqPuntaje(r);});
+  return rows;
+}
+var _rvAutoPromise=null;
+function ensureRVAuto(){
+  if(!_rvAutoPromise){
+    _rvAutoPromise=fcnGetSharedFile('valuacion_multiplos').then(function(entry){
+      return(entry&&entry.data)?entry:fcnFetchStaticFallback('data/valuacion_multiplos.xlsx');
+    }).then(function(entry){
+      if(!entry||!entry.data)throw new Error('sin archivo');
+      return rvqParse(entry.data);
+    }).catch(function(e){console.warn('[Armado por perfil] valuacion_multiplos:',e);_rvAutoPromise=null;return[];});
+  }
+  return _rvAutoPromise;
+}
+function rvqNombreCorto(r){
+  var e=r.empresa||'';
+  return e?(e.replace(/,?\s*(Inc\.?|Corp\.?|Corporation|Company|Co\.|S\.?A\.?B?\.?|Ltd\.?|plc|N\.V\.|Holdings?|Group|Class [A-C])\b.*$/i,'').replace(/^The\s+/i,'').replace(/\s+(and|&)\s*$/i,'').trim()||r.ticker):r.ticker;
+}
+
+// ── Selección de renta fija ──
+function autoGrupoCalif(c){
+  var t=String(c||'').toUpperCase().split(/[\s(]/)[0];
+  if(/^AAA/.test(t))return'AAA';
+  if(/^AA/.test(t))return'AA';
+  if(/^A[+-]?$/.test(t))return'A';
+  return'menorA';
+}
+function autoEsDefault(c){return/^(D|RD|SD|CC|C)$/.test(String(c||'').toUpperCase().split(/[\s(]/)[0]);}
+function autoAniosAlVto(iso){var t=Date.parse(iso||'');return isNaN(t)?null:(t-Date.now())/(365.25*86400000);}
+// Plazo = duration del bono (si el Monitor cargado no la trae, años al vencimiento).
+function autoEnPlazo(d,plazo){
+  if(!plazo||plazo==='todos')return true;
+  if(d==null||isNaN(d))return false;
+  if(plazo==='corto')return d<2;
+  if(plazo==='mediano')return d>=2&&d<5;
+  return d>=5;
+}
+function autoCandidatosON(filtro,plazo){
+  var out=[];
+  Object.keys(ON_DB).forEach(function(tk){
+    var b=ON_DB[tk];
+    if(!filtro(b)||autoEsDefault(b.calificacion))return;
+    var tir=b.tir*100;
+    if(b.tir==null||isNaN(tir)||tir<=0||tir>50)return; // TIR > 50%: default de hecho aunque la calificación no lo diga
+    if(!autoEnPlazo(b.duration!=null?b.duration:autoAniosAlVto(b.vencimiento),plazo))return;
+    var cable=(b.moneda||'').toLowerCase().indexOf('cable')>=0;
+    var precio=cable?(b.precioCable||b.precioMep):(b.precioMep||b.precioCable);
+    out.push({ticker:tk,tir:tir,clave:b.emisor,precio:precio||null,cable:cable&&!!b.precioCable,minimoUSD:(b.lamina||1)*(precio||1)});
+  });
+  return out.sort(function(a,b){return b.tir-a.tir;});
+}
+function autoCandidatosSOV(filtroDuration){
+  var out=[];
+  Object.keys(SOV_DB).forEach(function(tk){
+    var b=SOV_DB[tk];
+    if(b.categoria!=='soberano'||autoEsDefault(b.calif))return;
+    var tir=b.tir*100;
+    if(b.tir==null||isNaN(tir)||tir<=0||tir>50)return;
+    var d=b.duration!=null?b.duration:autoAniosAlVto(b.venc);
+    if(d==null||!filtroDuration(d))return;
+    out.push({ticker:tk,tir:tir,clave:tk,precio:b.precio||null,minimoUSD:b.precio||1});
+  });
+  return out.sort(function(a,b){return b.tir-a.tir;});
+}
+// Hasta maxN de los candidatos (ya ordenados por TIR), sin repetir emisor y sin que a ninguno le
+// toque menos plata que su lámina mínima: 1 cada ~USD 4.000 del bucket.
+function autoElegirBonos(cands,montoBucket,maxN){
+  if(!cands.length)return[];
+  var n=Math.max(1,Math.min(maxN,cands.length,Math.round(montoBucket/4000)||1));
+  var el=[],vistos={};
+  for(var i=0;i<cands.length&&el.length<n;i++){
+    var c=cands[i];
+    if(vistos[c.clave]||c.minimoUSD>montoBucket/n)continue;
+    vistos[c.clave]=true;el.push(c);
+  }
+  // Monto chico y láminas grandes: mejor el de más TIR que entre solo, que dejar el bucket vacío.
+  if(!el.length)el.push(cands.filter(function(c){return c.minimoUSD<=montoBucket;})[0]||cands[0]);
+  return el;
+}
+// Reparte un % entero entre n líneas sin perder ni sobrar por redondeo: (35,3) → [12,12,11].
+function autoSplitPct(total,n){
+  var base=Math.floor(total/n),resto=total-base*n,out=[];
+  for(var i=0;i<n;i++)out.push(base+(i<resto?1:0));
+  return out;
+}
+function autoNPos(montoBucket,maxN,umbralUSD){return Math.max(1,Math.min(maxN,Math.round(montoBucket/umbralUSD)||1));}
+// LECAP/BONCAP de mejor TNA. Con menos de 20 días al vencimiento no se sugiere: para una
+// propuesta de cartera no tiene sentido una letra que vence antes de que el cliente la mire.
+function autoMejorLetra(){
+  var best=null;
+  Object.keys(LET_DB).forEach(function(tk){
+    var l=LET_DB[tk];
+    if(!/^[ST]\d{2}[A-Z]\d$/.test(tk)||l.tna==null||isNaN(l.tna)||!(l.dias>=20))return;
+    if(!best||l.tna>LET_DB[best].tna)best=tk;
+  });
+  return best;
+}
+
+function autoAssetBono(c,etq){
+  var t=c.ticker,on=ON_DB[t],sov=SOV_DB[t],m=monitorFieldsDe(t,'USD');
+  var a={name:on?on.emisor:sov.emisor+' '+t,ticker:t,type:on?'Renta Fija | Corporativos (ONs)':'Renta Fija | Soberanos',
+    ret:m.ret,curr:m.curr,venc:m.venc,meses:m.meses,ley:m.ley,calif:m.calif,nota:etq};
+  if(on&&c.precio){a.lamPrecio=c.precio;a.lamMoneda=c.cable?'CABLE':'MEP';}
+  return a;
+}
+// Precio actual / objetivo de analistas (archivo Precios Objetivo) → "Retorno Est." de la línea.
+function autoAssetRV(ticker,name,type,curr,nota,sector,retSinTarget){
+  var a={name:name,ticker:ticker,type:type,curr:curr,nota:nota,sector:sector||'',ret:retSinTarget||''};
+  var o=_preciosObjMap[ticker];
+  if(o&&o.precio>0&&o.target>0){a.priceCur=o.precio;a.priceTgt=o.target;a.ret=((o.target-o.precio)/o.precio*100).toFixed(2)+'%';}
+  return a;
+}
+
+function autoConstruir(perfil,plazo,monto,rvRows){
+  var out=[],avisos=[];
+  function add(pct,a){a.pct=pct;out.push(a);}
+  function fondo(pct,nota){var f=AUTO_FONDO[perfil];add(pct,{name:f.name,ticker:f.ticker,type:f.type,curr:'USD',nota:nota});}
+  function bonos(etq,pctB,cands,maxN,conFondo){
+    var el=autoElegirBonos(cands,monto*pctB/100,maxN);
+    if(!el.length){
+      if(conFondo){fondo(pctB,'En lugar de '+etq);avisos.push('No hay '+etq+' para ese plazo: ese '+pctB+'% va a '+AUTO_FONDO[perfil].ticker+'.');}
+      else avisos.push('Sin candidato hoy para '+etq+': quedó un '+pctB+'% sin asignar.');
+      return;
+    }
+    autoSplitPct(pctB,el.length).forEach(function(p,i){add(p,autoAssetBono(el[i],etq));});
+  }
+  function cedears(pctB,excluir,maxN){
+    var vistos={},el=[],n=autoNPos(monto*pctB/100,maxN,1800);
+    rvRows.filter(function(r){return r.moneda!=='ARS'&&r.puntaje!==null&&excluir.indexOf(r.ticker)<0;})
+      .sort(function(a,b){return b.puntaje-a.puntaje;})
+      .forEach(function(r){var s=r.sector||'—';if(el.length>=n||vistos[s])return;vistos[s]=true;el.push(r);});
+    if(!el.length){avisos.push('Sin puntajes de CEDEARs disponibles: quedó un '+pctB+'% sin asignar.');return;}
+    autoSplitPct(pctB,el.length).forEach(function(p,i){
+      var r=el[i];
+      add(p,autoAssetRV(r.ticker,rvqNombreCorto(r),'Renta Variable | CEDEARs','USD','Puntaje '+(r.puntaje>0?'+':'')+r.puntaje,SECTOR_ES[r.sector]||r.sector));
+    });
+  }
+  function locales(pctB,maxN){
+    var el=rvRows.filter(function(r){return r.moneda==='ARS'&&r.ret12!==null&&r.niPos>=0.5&&r.fcfPos>=0.5&&r.precio;})
+      .sort(function(a,b){return b.ret12-a.ret12;}).slice(0,autoNPos(monto*pctB/100,maxN,2500));
+    if(!el.length){avisos.push('Sin datos de acciones argentinas: quedó un '+pctB+'% sin asignar.');return;}
+    autoSplitPct(pctB,el.length).forEach(function(p,i){
+      var r=el[i];
+      add(p,autoAssetRV(r.ticker,rvqNombreCorto(r),'Renta Variable | Argentina','ARS','Retorno 12 meses '+(r.ret12*100).toFixed(1)+'%',SECTOR_ES[r.sector]||r.sector));
+    });
+  }
+  function spy(pct){add(pct,autoAssetRV('SPY','SPDR S&P 500 ETF','Renta Variable | CEDEARs','USD','Índice S&P 500','','~10% hist.'));}
+  var onAAA=function(){return autoCandidatosON(function(b){return autoGrupoCalif(b.calificacion)==='AAA';},plazo);};
+  var onHY=function(){return autoCandidatosON(function(b){return!!b.calificacion&&autoGrupoCalif(b.calificacion)==='menorA';},plazo);};
+
+  if(perfil==='conservador'){
+    bonos('ONs AAA',80,onAAA(),4,true);
+    spy(5);
+    cedears(5,['SPY'],3);
+    fondo(10,'Fondo común de inversión');
+  } else if(perfil==='moderado'){
+    bonos('ONs AAA',50,onAAA(),4,true);
+    spy(10);
+    cedears(35,['SPY'],5);
+    locales(5,2);
+  } else {
+    bonos('ONs AAA',20,onAAA(),3,true);
+    bonos('ONs de mayor riesgo (HY)',10,onHY(),2,true);
+    // Los soberanos tienen su propio corte por duration: no usan el plazo elegido, para no vaciarse.
+    bonos('Soberano corto (duration < 3)',5,autoCandidatosSOV(function(d){return d<3;}),2,false);
+    bonos('Soberano largo (duration ≥ 3)',5,autoCandidatosSOV(function(d){return d>=3;}),2,false);
+    var letra=autoMejorLetra();
+    if(letra){var ml=monitorFieldsDe(letra,'ARS'),l=LET_DB[letra];add(5,{name:(l.tipo||l.seccion||'Letra')+' '+letra,ticker:letra,type:'Renta Fija | Letras y Bonos ARS',ret:ml.ret,curr:'ARS',venc:ml.venc,dias:l.dias,papel:l.tipo||'',nota:'Carry en pesos (mejor TNA)'});}
+    else avisos.push('Sin letras en pesos en el Monitor: quedó un 5% sin asignar.');
+    spy(20);
+    add(5,autoAssetRV('IBIT','Bitcoin (ETF iShares IBIT)','Criptomonedas','USD','Porción chica: mucha más volatilidad que el resto'));
+    cedears(20,['SPY','IBIT'],5);
+    locales(10,2);
+  }
+  // El fondo puede entrar dos veces (fijo + reemplazo de ONs): se junta en una sola línea.
+  var juntos=[],idx={};
+  out.forEach(function(a){
+    if(idx[a.ticker]!=null){juntos[idx[a.ticker]].pct+=a.pct;return;}
+    idx[a.ticker]=juntos.length;juntos.push(a);
+  });
+  return{lineas:juntos,avisos:avisos};
+}
+
+function autoFirmaDe(list){return list.map(function(a){return(a.ticker||a.name)+':'+a.pct;}).join('|');}
+function autoStatus(html){document.getElementById('qa-status').innerHTML=html;}
+function autoPintarChips(){
+  document.querySelectorAll('#qa-perfiles .qa-chip').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-perfil')===autoPerfil);});
+  document.querySelectorAll('#qa-plazos .qa-chip').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-plazo')===autoPlazo);});
+}
+// Selecciona `val` en un <select>; si no existe (link compartido viejo con otro texto) lo agrega.
+function setSelectValue(sel,val){
+  if(val&&!Array.prototype.some.call(sel.options,function(o){return o.value===val;})){var o=document.createElement('option');o.textContent=val;sel.appendChild(o);}
+  sel.value=val||'';
+}
+function esperarMonitor(){
+  return new Promise(function(res){
+    var t0=Date.now();
+    (function chk(){if(Object.keys(ON_DB).length||Date.now()-t0>6000)return res();setTimeout(chk,150);})();
+  });
+}
+function setAutoPerfil(perfil){armarPorPerfil(perfil,autoPlazo);}
+function setAutoPlazo(plazo){
+  if(autoPerfil){armarPorPerfil(autoPerfil,plazo);return;}
+  autoPlazo=plazo;autoPintarChips();
+  setSelectValue(document.getElementById('client-horizon'),AUTO_HORIZONTE[plazo]);updateDoc();
+}
+// Cambiar el monto re-arma sola la sugerencia (más plata → más ONs distintas), pero solo
+// mientras nadie haya tocado la cartera a mano: ahí se respeta tal cual quedó.
+function onPortSizeInput(){
+  clearTimeout(autoMontoTimer);
+  autoMontoTimer=setTimeout(function(){
+    if(autoPerfil&&assets.length&&autoFirmaDe(assets)===autoFirma)armarPorPerfil(autoPerfil,autoPlazo,true);
+  },600);
+}
+async function armarPorPerfil(perfil,plazo,silencioso){
+  if(!silencioso&&assets.length&&autoFirmaDe(assets)!==autoFirma&&!confirm('Esto reemplaza la cartera actual por la sugerida para el perfil elegido. ¿Continuar?'))return;
+  autoPerfil=perfil;autoPlazo=plazo;autoPintarChips();
+  var seq=++autoSeq;
+  if(!silencioso)autoStatus('⟳ Armando la cartera…');
+  var rvRows=(await Promise.all([ensureRVAuto(),esperarMonitor(),_preciosObjReady]))[0];
+  if(seq!==autoSeq)return; // hubo otro clic mientras cargaban los datos
+  if(!Object.keys(ON_DB).length){
+    autoStatus('<div class="fav-warn">⚠ Todavía no hay Monitor cargado: subilo desde FCN Suite → Archivos (o desde la pastilla "Monitor" de arriba) y volvé a elegir el perfil.</div>');
+    return;
+  }
+  var ps=parseFloat(document.getElementById('port-size').value)||0;
+  var enUSD=document.getElementById('port-curr').value==='USD';
+  var res=autoConstruir(perfil,plazo,(enUSD&&ps>0)?ps:10000,rvRows);
+  if(editingId!==null)cancelEdit();
+  assets=res.lineas.map(function(a,i){
+    return Object.assign({id:Date.now()+i,ret:'',curr:'USD',venc:'',meses:'',ley:'',calif:'',nota:'',sector:'',dias:null,papel:null,color:PALETTE[i%PALETTE.length]},a);
+  });
+  autoFirma=autoFirmaDe(assets);
+  document.getElementById('client-risk').value=AUTO_RIESGO[perfil];
+  setSelectValue(document.getElementById('client-horizon'),AUTO_HORIZONTE[plazo]);
+  render();updateDoc();updateYield();
+  if(!(enUSD&&ps>0))res.avisos.unshift('Sin monto en USD cargado: se armó como para USD 10.000 (con más plata se abren más activos).');
+  autoStatus('<div class="fav-ok">✓ '+AUTO_RIESGO[perfil]+' · '+AUTO_PLAZO_TXT[plazo]+' · '+assets.length+' activos. Cambiá el % en la lista o cualquier activo con ✎.</div>'+
+    res.avisos.map(function(m){return'<div class="fav-warn">⚠ '+m+'</div>';}).join(''));
+}
+function autoReset(){
+  autoSeq++;autoPerfil=null;autoPlazo='todos';autoFirma=null;autoPintarChips();
+  autoStatus('Elegí un perfil y la cartera se arma sola con lo que hoy mejor puntúa en cada categoría. Después podés cambiar cualquier línea.');
+}
+
+// "Firma / Asesor" se escribe una vez y queda guardada en este navegador.
+var FIRMA_LS_KEY='fcn-armador-firma';
+function guardarFirma(){try{localStorage.setItem(FIRMA_LS_KEY,document.getElementById('firm-name').value.trim());}catch(e){}}
+function restaurarFirma(){
+  var el=document.getElementById('firm-name');
+  try{if(el&&!el.value)el.value=localStorage.getItem(FIRMA_LS_KEY)||'';}catch(e){}
 }
 
 // ═══ FORM HELPERS ═══
@@ -1714,6 +2125,7 @@ function editAsset(id){
   selColor=a.color;document.querySelectorAll('.color-swatch').forEach(function(sw){sw.classList.toggle('active',sw.style.background===a.color||sw.style.backgroundColor===a.color);});
   document.getElementById('add-asset-btn').textContent='✓ Guardar Cambios';document.getElementById('add-asset-btn').style.background='#1C8C5F';
   document.getElementById('cancel-edit-btn').style.display='block';document.getElementById('edit-mode-indicator').style.display='block';
+  document.getElementById('det-manual').open=true;
   document.getElementById('f-name').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function cancelEdit(){
@@ -1726,6 +2138,14 @@ function cancelEdit(){
   document.getElementById('ret-label').textContent='Retorno Est.';
 }
 function removeAsset(id){if(editingId===id)cancelEdit();assets=assets.filter(function(a){return a.id!==id;});render();updateDoc();updateYield();}
+// % editable directo en la lista de Composición, sin pasar por el formulario.
+function setAssetPct(id,val){
+  var a=assets.find(function(x){return x.id===id;});if(!a)return;
+  var n=parseFloat(val);
+  a.pct=isNaN(n)||n<0?0:Math.round(n*100)/100;
+  if(editingId===id)document.getElementById('f-pct').value=a.pct;
+  render();updateDoc();updateYield();
+}
 
 // ═══ RENDER ASSET LIST ═══
 function render(){
@@ -1748,8 +2168,9 @@ function render(){
     var rn=a.name.replace(/\s+[\d.]+%\s+\d{4}-\d{2}/g,'').replace(/\s*\([A-Z0-9]{4,10}\)\s*$/,'').trim();
     var tk=a.ticker?' <span style="font-size:9px;color:var(--cream-dim)">('+a.ticker+')</span>':'';
     var isEdit=(a.id===editingId);
-    var y=getTIRorTNA(a);
-    var yStr=y?y.label+' '+y.val.toFixed(2)+'%':'';
+    var esRV=a.type&&a.type.indexOf('Variable')>=0; // su "Retorno Est." es upside a precio objetivo, no una TIR
+    var y=esRV?null:getTIRorTNA(a);
+    var yStr=y?y.label+' '+y.val.toFixed(2)+'%':(esRV&&a.ret?'Retorno est. '+a.ret:'');
     var isLet=a.type&&a.type.includes('Letras');
     var metaExtra=a.venc?' · '+a.venc.slice(0,7):'';
     if(a.dias&&isLet)metaExtra+=' · '+a.dias+'d';
@@ -1776,7 +2197,7 @@ function render(){
       (a.rentAct!=null?'<div class="asset-meta" style="font-size:9px;font-weight:600;color:'+(a.rentAct>=0?'#1C8C5F':'#E8837E')+';">Rend. actual del cliente: '+(a.rentAct>=0?'+':'')+a.rentAct.toFixed(1)+'%</div>':'')+
       (a.nota?'<div class="asset-meta" style="font-style:italic;color:var(--cream-dim)">'+a.nota+'</div>':'')+
       '</div>'+
-      '<div class="asset-right"><div class="asset-pct">'+a.pct+'%</div>'+(amt?'<div class="asset-amount">'+amt+'</div>':'')+' </div>'+
+      '<div class="asset-right"><div class="asset-pct-wrap"><input class="asset-pct-in" type="number" min="0" max="100" step="0.5" value="'+a.pct+'" onchange="setAssetPct('+a.id+',this.value)" title="Cambiar el %">%</div>'+(amt?'<div class="asset-amount">'+amt+'</div>':'')+' </div>'+
       '<button class="btn-delete" style="font-size:13px;" onclick="editAsset('+a.id+')" title="Editar">✎</button>'+
       '<button class="btn-delete" onclick="removeAsset('+a.id+')" title="Eliminar">✕</button></div>';
   }).join('');
@@ -1785,25 +2206,42 @@ function render(){
 // ═══ YIELD UPDATE ═══
 function updateYield(){
   var bar=document.getElementById('yield-bar');
-  if(!assets||!assets.length){bar.style.display='none';updateTarget();return;}
-  var totalAlloc=assets.reduce(function(s,a){return s+a.pct;},0);
-  var wVal=0,breakdown=[],missing=[];
-  assets.forEach(function(a){
-    var w=totalAlloc>0?a.pct/totalAlloc:0;
-    var y=getTIRorTNA(a);
-    if(y!==null&&!isNaN(y.val)){wVal+=w*y.val;breakdown.push({name:a.ticker||a.name.split(' ')[0],pct:a.pct,val:y.val,label:y.label,contrib:w*y.val});}
-    else missing.push(a.ticker||a.name.split(' ')[0]);
+  // Solo lo que rinde una tasa: la renta variable y cripto tienen su propia barra (objetivo de
+  // precio, abajo). Antes entraban acá con su "Retorno Est." leído como si fuera una TIR — un
+  // upside de +49% a precio objetivo terminaba promediado con la TIR de las ONs.
+  var conTasa=(assets||[]).filter(function(a){return!(a.type&&(a.type.indexOf('Variable')>=0||a.type==='Criptomonedas'));});
+  if(!conTasa.length){bar.style.display='none';updateTarget();return;}
+  var items=[],missing=[];
+  conTasa.forEach(function(a){
+    var y=getTIRorTNA(a),nm=a.ticker||a.name.split(' ')[0];
+    if(y!==null&&!isNaN(y.val))items.push({name:nm,pct:a.pct,y:y});
+    else missing.push(nm);
   });
+  // Ponderado entre los que tienen tasa conocida; los que no, se listan aparte sin diluir el número.
+  var pond=ponderarTasas(items),wVal=pond.val;
   bar.style.display='block';
   var tot=document.getElementById('yield-total');
   tot.textContent=wVal>0?wVal.toFixed(2)+'%':'—';
   tot.style.color=wVal>=7?'#1C8C5F':wVal>=5?'#DBA03C':'#e86a6a';
-  document.getElementById('yield-breakdown').innerHTML=breakdown.map(function(b){return'<div class="yield-row"><span>'+b.name+' ('+b.pct+'%)</span><span>'+b.label+' '+b.val.toFixed(2)+'% → '+b.contrib.toFixed(2)+'%</span></div>';}).join('');
+  document.getElementById('yield-breakdown').innerHTML=
+    pond.base.map(function(b){return'<div class="yield-row"><span>'+b.name+' ('+b.pct+'%)</span><span>'+b.y.label+' '+b.y.val.toFixed(2)+'% → '+b.contrib.toFixed(2)+'%</span></div>';}).join('')+
+    pond.aparte.map(function(b){return'<div class="yield-row"><span>'+b.name+' ('+b.pct+'%)</span><span>TNA '+b.y.val.toFixed(2)+'% · en pesos, aparte</span></div>';}).join('');
   var mis=document.getElementById('yield-missing');
   if(missing.length){mis.textContent='⚠ Sin rendimiento: '+missing.join(', ');mis.style.display='';}else mis.style.display='none';
   var lbl=document.getElementById('yield-label-text');
-  if(lbl){var hL=breakdown.some(function(b){return b.label==='TNA';});var hT=breakdown.some(function(b){return b.label==='TIR';});lbl.textContent=hL&&hT?'TIR/TNA ponderada':hL?'TNA ponderada':'TIR ponderada';}
+  if(lbl)lbl.textContent=pond.label+' ponderada'+(pond.aparte.length?' en USD':'');
   updateTarget();
+}
+// Una TIR en dólares y una TNA en pesos no se promedian entre sí. Si la cartera mezcla las dos,
+// el número ponderado es el de las TIR y las letras en pesos quedan aparte con su TNA; si solo
+// hay letras, es la TNA ponderada. items: [{pct, y:{val,label}}] → a cada uno de `base` se le
+// agrega `contrib` (su aporte al número).
+function ponderarTasas(items){
+  var hayTIR=items.some(function(i){return i.y.label==='TIR';});
+  var base=hayTIR?items.filter(function(i){return i.y.label==='TIR';}):items;
+  var tot=base.reduce(function(s,i){return s+i.pct;},0),val=0;
+  base.forEach(function(i){i.contrib=tot>0?i.pct/tot*i.y.val:0;val+=i.contrib;});
+  return{val:val,label:hayTIR?'TIR':'TNA',base:base,aparte:hayTIR?items.filter(function(i){return i.y.label==='TNA';}):[]};
 }
 
 // Objetivo de precio ponderado de la pata de Renta Variable — mismo cálculo que
@@ -2011,11 +2449,14 @@ function updateDoc(){
   }
   renderCorrelBlock(rvA);
   if(rfA.length){
-    var wY=0,allY=true;
-    var rfRows=rfA.map(function(a){var r=buildRow(a,'rf');if(r.y&&rfPct>0)wY+=(a.pct/rfPct)*r.y.val;else if(!r.y)allY=false;return r.html;});
+    var rfBuilt=rfA.map(function(a){return buildRow(a,'rf');});
+    var rfRows=rfBuilt.map(function(r){return r.html;});
+    var allY=rfBuilt.every(function(r){return!!r.y;});
+    var pondRF=ponderarTasas(rfA.map(function(a,i){return{pct:a.pct,y:rfBuilt[i].y};}).filter(function(i){return!!i.y;}));
+    var wY=pondRF.val,pondLbl=pondRF.label+' ponderada'+(pondRF.aparte.length?' en USD':'');
     var rfTot='<tr style="background:#F9F6EE;"><td style="font-weight:600;border-top:1px solid #EEE8DA;">Subtotal</td><td style="border-top:1px solid #EEE8DA;"></td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;border-top:1px solid #EEE8DA;">'+rfPct.toFixed(1)+'%</td>'+(ps>0?'<td style="border-top:1px solid #EEE8DA;">'+fmt(ps*rfPct/100,pc)+'</td>':'')+'<td style="border-top:1px solid #EEE8DA;"></td><td style="border-top:1px solid #EEE8DA;"></td><td style="font-weight:700;color:#1C8C5F;border-top:1px solid #EEE8DA;">'+(allY&&rfPct>0?wY.toFixed(2)+'%':'—')+'</td><td style="border-top:1px solid #EEE8DA;"></td></tr>';
     document.getElementById('doc-tbody-rf').innerHTML=rfRows.join('')+rfTot;
-    document.getElementById('dsh-rf-sub').textContent=rfPct.toFixed(1)+'% · '+rfA.length+' activo'+(rfA.length===1?'':'s')+(allY&&rfPct>0?' · TIR ponderada '+wY.toFixed(2)+'%':'');
+    document.getElementById('dsh-rf-sub').textContent=rfPct.toFixed(1)+'% · '+rfA.length+' activo'+(rfA.length===1?'':'s')+(allY&&rfPct>0?' · '+pondLbl+' '+wY.toFixed(2)+'%':'');
   }
   if(otA.length){
     document.getElementById('doc-tbody-otros').innerHTML=otA.map(function(a){return buildRow(a,'otros').html;}).join('');
@@ -2517,6 +2958,7 @@ function resetAll(){
   updateLamRow();renderARSList();
   document.getElementById('client-risk').value='';document.getElementById('client-horizon').value='';
   document.getElementById('cancel-edit-btn').style.display='none';document.getElementById('edit-mode-indicator').style.display='none';
+  autoReset();restaurarFirma();
   render();updateDoc();updateYield();
 }
 function toggleReviewMode(){
@@ -2550,6 +2992,8 @@ document.addEventListener('DOMContentLoaded',function(){
   PALETTE.forEach(function(c,i){var sw=document.createElement('div');sw.className='color-swatch'+(i===0?' active':'');sw.style.background=c;sw.onclick=function(){document.querySelectorAll('.color-swatch').forEach(function(s){s.classList.remove('active');});sw.classList.add('active');selColor=c;};strip.appendChild(sw);});
   loadMonitorFromCloud();
   loadFavoritos();renderFavoritos();renderFavPresets();
+  restaurarFirma();if(document.getElementById('firm-name').value)updateDoc();
+  ensureRVAuto(); // puntajes de RV en segundo plano, así el primer clic en un perfil es instantáneo
   // Auto-completar campo Creador con usuario logueado
   var u=getUsername();
   if(u){var authorEl=document.getElementById('model-save-author');if(authorEl)authorEl.value=u;}
@@ -2605,7 +3049,7 @@ window.addEventListener('load',function(){
     var params=new URLSearchParams(location.search);var c=params.get('c');if(!c)return;
     var data=JSON.parse(decodeURIComponent(atob(c)));
     if(data.cn)document.getElementById('client-name').value=data.cn;if(data.fn)document.getElementById('firm-name').value=data.fn;
-    if(data.risk)document.getElementById('client-risk').value=data.risk;if(data.horiz)document.getElementById('client-horizon').value=data.horiz;
+    if(data.risk)document.getElementById('client-risk').value=data.risk;if(data.horiz)setSelectValue(document.getElementById('client-horizon'),data.horiz);
     if(data.ps)document.getElementById('port-size').value=data.ps;if(data.pc)document.getElementById('port-curr').value=data.pc;
     if(data.note)document.getElementById('strategy-note').value=data.note;
     // Sin "col" en el asset (el caso normal — nada de lo que arma el payload hoy lo manda), se

@@ -918,10 +918,14 @@ function parseRealizado(bufs){
     var monedaC=String(r['Moneda Compra']||'').toLowerCase();
     var monedaV=String(r['Moneda Venta']||'').toLowerCase();
 
-    function toUSD(precio,mepRef,moneda){
+    function toUSD(precio,mepRef,moneda,fallbackFecha){
       if(!precio||precio<=0)return 0;
       if(moneda.includes('peso')||moneda.includes('$')){
-        return mepRef>0?precio/mepRef:precio/(S.mep||1300);
+        // Preferir mepRef (MEP del Realizado). Si no viene, usar MEP histórico de la fecha exacta
+        // (mepAt) para no inflar/desinflar con el MEP de hoy — ese error convertía ganancias en
+        // pérdidas aparentes cuando la venta fue en un período con MEP distinto al actual.
+        var mepFb=mepRef>0?mepRef:(mepAt(fallbackFecha||'')||S.mep||1300);
+        return precio/mepFb;
       }
       return precio; // already USD
     }
@@ -929,8 +933,8 @@ function parseRealizado(bufs){
     if(tipo==='No Realizado'){
       // Posición abierta: equivale a un lote en PosF
       if(!ticker||cant<=0)return;
-      var ppuUSD=toUSD(precioCompra,mepC,monedaC);
-      var gastoUSD=mepC>0?gastos/mepC:gastos/(S.mep||1300);
+      var ppuUSD=toUSD(precioCompra,mepC,monedaC,fechaC);
+      var gastoUSD=mepC>0?gastos/mepC:(mepAt(fechaC)||S.mep||1300)>0?gastos/(mepAt(fechaC)||S.mep||1300):0;
       var loteUSD=ppuUSD*cant;
       if(!posData[ticker]){
         posData[ticker]={ticker,desc,lots:[],totalQty:0,pppUSD:0,
@@ -944,8 +948,8 @@ function parseRealizado(bufs){
       // PPP recalculado al final
     }
     else if(tipo==='Orden'&&fechaC){
-      var costUSD=toUSD(precioCompra,mepC,monedaC)*cant;
-      var sellUSD=toUSD(precioVenta,mepV,monedaV)*cant;
+      var costUSD=toUSD(precioCompra,mepC,monedaC,fechaC)*cant;
+      var sellUSD=toUSD(precioVenta,mepV,monedaV,fecha)*cant;
       // Licitaciones (suscripción primaria a una emisión nueva) y compras similares vienen con
       // TipoMovimiento="Orden" y FechaCompra completa — como si fuera un cierre — pero sin
       // Precio Venta real (nunca se vendió). Sin este chequeo, quedaban en Operaciones Cerradas
@@ -954,8 +958,8 @@ function parseRealizado(bufs){
       // Realizado", no a closedTrades.
       if(sellUSD<=0){
         if(!ticker||cant<=0)return;
-        var ppuUSD2=toUSD(precioCompra,mepC,monedaC);
-        var gastoUSD2=mepC>0?gastos/mepC:gastos/(S.mep||1300);
+        var ppuUSD2=toUSD(precioCompra,mepC,monedaC,fechaC);
+        var gastoUSD2=mepC>0?gastos/mepC:(mepAt(fechaC)||S.mep||1300)>0?gastos/(mepAt(fechaC)||S.mep||1300):0;
         if(!posData[ticker]){
           posData[ticker]={ticker,desc,lots:[],totalQty:0,pppUSD:0,totalCostUSD:0,gastos:0};
         }
@@ -967,7 +971,7 @@ function parseRealizado(bufs){
         return;
       }
       // Operación cerrada de verdad (compra+venta con fecha de compra y venta real)
-      var gastosUSD=mepV>0?gastos/mepV:gastos/(S.mep||1300);
+      var gastosUSD=mepV>0?gastos/mepV:gastos/(mepAt(fecha)||S.mep||1300);
       // Si el Realizado no trae Precio Compra (pasa con posiciones que llegaron por
       // transferencia y después se vendieron: Balanz no sabe a cuánto las "compraste"), antes
       // esto quedaba con costo $0 y mostraba una ganancia falsa por casi el 100% de la venta.
