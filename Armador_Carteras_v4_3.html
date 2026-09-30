@@ -1323,9 +1323,23 @@ async function loadMonitorFromCloud(){
 // SOV_DB.tir = 0.063 → display 6.3%
 // LET_DB.tna = 0.2459 → display 24.59%
 
+// Campos que el asesor cambió a mano respecto de lo que trae el Monitor (a.ovr, lo arma
+// addAsset). Bug real (30/09): editar TIR / vencimiento / meses de cupón y guardar no servía,
+// la lista, el preview, el flujo de cupones y el PDF volvían a leer ON_DB/SOV_DB/LET_DB.
+function editadoAMano(a,k){return!!(a&&a.ovr&&a.ovr[k]&&a[k]);}
+// Tasa escrita a mano: "7.5% cup. | TIR 8.1%" → 8.1 (el número después de TIR/TNA, no el cupón).
+function tasaDeTexto(ret){
+  var s=String(ret||''),m=s.match(/(?:TIR|TNA)\s*([\d.,]+)/i)||s.match(/([\d.,]+)/);
+  var v=m?parseFloat(m[1].replace(',','.')):NaN;
+  return isNaN(v)?null:v;
+}
 function getTIRorTNA(a){
   var isLet=a.type&&a.type.includes('Letras');
   var t=a.ticker;
+  if(editadoAMano(a,'ret')){
+    var vm=tasaDeTexto(a.ret);
+    if(vm!=null&&vm>0&&vm<1000)return{val:vm,label:isLet||/TNA/i.test(a.ret)?'TNA':'TIR'};
+  }
   if(isLet){
     if(t&&LET_DB[t]&&LET_DB[t].tna!=null&&!isNaN(LET_DB[t].tna))return{val:LET_DB[t].tna*100,label:'TNA'};
     // Try to parse from f-return text
@@ -2085,7 +2099,13 @@ function addAsset(){
   // de la Suite; no se edita en el form). Se preserva al editar el resto del activo.
   var prevRentAct=null;
   if(editingId!==null){var pa=assets.find(function(a){return a.id===editingId;});if(pa&&pa.rentAct!=null)prevRentAct=pa.rentAct;}
-  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,sector:sector,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC,rentAct:prevRentAct};
+  // Qué cambió el asesor respecto del Monitor: eso se respeta en todo el documento (editadoAMano).
+  var ovr=null;
+  if(ticker&&(ON_DB[ticker]||SOV_DB[ticker]||LET_DB[ticker])){
+    var mon=monitorFieldsDe(ticker,curr),edit={ret:ret,venc:venc,meses:meses,ley:ley,calif:calif};
+    Object.keys(edit).forEach(function(k){if(edit[k]&&String(edit[k]).trim()!==String(mon[k]||'').trim()){ovr=ovr||{};ovr[k]=true;}});
+  }
+  var obj={id:editingId!==null?editingId:Date.now(),name:name,type:type,ticker:ticker,pct:pctVal,ret:ret,curr:curr,venc:venc,meses:meses,ley:ley,calif:calif,nota:nota,color:selColor,priceCur:priceCur,priceTgt:priceTgt,sector:sector,dias:dias,papel:papel,lamPrecio:lamPrecio,lamMoneda:lamMoneda,lamTC:lamTC,rentAct:prevRentAct,ovr:ovr};
   if(editingId!==null){assets=assets.map(function(a){return a.id===editingId?obj:a;});cancelEdit();}
   else{
     assets.push(obj);
@@ -2419,9 +2439,11 @@ function updateDoc(){
       else if(sovD){vencDisp=sovD.venc?sovD.venc.slice(0,7):'—';cupDisp=sovD.meses||'—';}
       else if(letD){vencDisp=letD.venc?letD.venc.slice(0,7):'—';cupDisp=letD.tipo||letD.seccion||'—';if(letD.dias)cupDisp+=' ('+letD.dias+'d)';}
       else{vencDisp=a.venc?String(a.venc).slice(0,7):'—';cupDisp=isLet?(a.papel||'—'):a.meses||'—';}
+      if(editadoAMano(a,'venc'))vencDisp=String(a.venc).slice(0,7);
+      if(editadoAMano(a,'meses'))cupDisp=a.meses;
       var y=getTIRorTNA(a);
       var yDisp=y?y.val.toFixed(2)+'% <span style="font-size:9px;color:#aaa;">'+y.label+'</span>':'—';
-      var mesesSrc=(onD?onD.meses_cupon:null)||(sovD?sovD.meses:null)||a.meses||'';
+      var mesesSrc=editadoAMano(a,'meses')?a.meses:((onD?onD.meses_cupon:null)||(sovD?sovD.meses:null)||a.meses||'');
       var cm=parseMeses(mesesSrc);
       if(y&&cm.length>1){var tirMens=(Math.pow(1+y.val/100,1/cm.length)-1)*100;yDisp+='<div style="font-size:9px;color:#888;margin-top:1px;">'+tirMens.toFixed(3)+'%/pago · '+cm.length+'×/año</div>';}
       return{y:y,html:'<tr><td>'+nameCell+'</td><td>'+getCatBadge(a.type)+'</td><td style="font-family:Spectral,serif;font-size:14px;font-weight:600;color:#DBA03C;">'+a.pct+'%</td>'+amtCell+
@@ -2463,7 +2485,7 @@ function updateDoc(){
   }
 
   // ── Quality summary ──
-  var quals={};assets.forEach(function(a){var q=(a.ticker&&ON_DB&&ON_DB[a.ticker]&&ON_DB[a.ticker].calificacion)?ON_DB[a.ticker].calificacion:(a.ticker&&SOV_DB&&SOV_DB[a.ticker]&&SOV_DB[a.ticker].calif)?SOV_DB[a.ticker].calif:(a.calif||'');if(q&&q!=='NaN')quals[q]=(quals[q]||0)+1;});
+  var quals={};assets.forEach(function(a){var q=editadoAMano(a,'calif')?a.calif:(a.ticker&&ON_DB&&ON_DB[a.ticker]&&ON_DB[a.ticker].calificacion)?ON_DB[a.ticker].calificacion:(a.ticker&&SOV_DB&&SOV_DB[a.ticker]&&SOV_DB[a.ticker].calif)?SOV_DB[a.ticker].calif:(a.calif||'');if(q&&q!=='NaN')quals[q]=(quals[q]||0)+1;});
   var qsW=document.getElementById('quality-summary-wrap');
   if(qsW&&Object.keys(quals).length>0){qsW.hidden=false;var qC={'AAA':'#1C8C5F','AA':'#DBA03C','A':'#ff9f43','BBB':'#e86a6a'};document.getElementById('quality-summary').innerHTML=Object.entries(quals).sort().map(function(e){var col=qC[e[0]]||'var(--cream-dim)';return'<span style="font-size:10px;font-weight:600;background:var(--wash-1);border:1px solid '+col+';border-radius:4px;padding:3px 10px;color:'+col+';">'+e[0]+' × '+e[1]+'</span>';}).join('');}else if(qsW)qsW.hidden=true;
 
@@ -2660,6 +2682,10 @@ function buildDocViz(ps,pc){
         cup=src.cupon||(on?on.cupon:null)||(sov?sov.cupon:null);
         mesesStr=src.meses_cupon||src.meses||'';
         vencS=src.vencimiento||src.venc||'';
+        // Lo editado a mano gana sobre el Monitor (ver editadoAMano).
+        if(editadoAMano(a,'meses'))mesesStr=a.meses;
+        if(editadoAMano(a,'venc'))vencS=a.venc;
+        if(editadoAMano(a,'ret')){var cupE=String(a.ret).match(/([\d.,]+)%\s*cup/i);if(cupE)cup=parseFloat(cupE[1].replace(',','.'))/100;}
       } else {
         // Activo cargado manualmente: usar meses y ret del asset
         mesesStr=a.meses||'';
@@ -2751,7 +2777,7 @@ function renderModelsGrid(models){
 function loadModelToCanvas(idx){
   var m=modelsCache[idx];if(!m)return;
   if(assets.length>0&&!confirm('Esto reemplazará la cartera actual. ¿Continuar?'))return;
-  assets=(m.assets||[]).map(function(a,i){return{id:Date.now()+i,name:a.name,ticker:a.ticker||'',pct:a.pct,ret:a.ret||'',curr:a.curr||'USD',type:a.type||'',color:a.color||selColor,venc:a.venc||'',meses:a.meses||'',ley:a.ley||'',calif:a.calif||'',nota:a.nota||'',sector:a.sector||'',dias:null,papel:null};});
+  assets=(m.assets||[]).map(function(a,i){return{id:Date.now()+i,name:a.name,ticker:a.ticker||'',pct:a.pct,ret:a.ret||'',curr:a.curr||'USD',type:a.type||'',color:a.color||selColor,venc:a.venc||'',meses:a.meses||'',ley:a.ley||'',calif:a.calif||'',nota:a.nota||'',sector:a.sector||'',dias:null,papel:null,ovr:a.ovr||null};});
   var pb=document.querySelector('#page-cartera .tab-btn');if(pb)switchTab('preview',pb);
   render();updateDoc();updateYield();document.getElementById('models-sync-status').textContent='✓ "'+m.name+'" cargada';setTimeout(function(){document.getElementById('models-sync-status').textContent='';},3000);
 }
@@ -2769,7 +2795,7 @@ async function saveCurrentAsModel(){
   var ta=assets.reduce(function(s,a){return s+a.pct;},0);var wT=0,tC=0;
   assets.forEach(function(a){var y=getTIRorTNA(a);if(y){wT+=(a.pct/ta)*y.val;tC++;}});
   var tag=wT>=9.5?'agresiva':wT>=7.5?'moderada':'conservadora';
-  var nm={id:'custom-'+Date.now(),name:name,tag:tag,desc:desc||'Modelo personalizado',author:author,updatedAt:new Date().toISOString().slice(0,10),tir:tC>0?wT.toFixed(2)+'%':'—',assets:assets.map(function(a){return{name:a.name,ticker:a.ticker,pct:a.pct,ret:a.ret,curr:a.curr,type:a.type,color:a.color,venc:a.venc,meses:a.meses,ley:a.ley,calif:a.calif,nota:a.nota,sector:a.sector};})};
+  var nm={id:'custom-'+Date.now(),name:name,tag:tag,desc:desc||'Modelo personalizado',author:author,updatedAt:new Date().toISOString().slice(0,10),tir:tC>0?wT.toFixed(2)+'%':'—',assets:assets.map(function(a){return{name:a.name,ticker:a.ticker,pct:a.pct,ret:a.ret,curr:a.curr,type:a.type,color:a.color,venc:a.venc,meses:a.meses,ley:a.ley,calif:a.calif,nota:a.nota,sector:a.sector,ovr:a.ovr||null};})};
   if(!modelsCache)modelsCache=DEFAULT_MODELS.slice();
   var ei=modelsCache.findIndex(function(m){return m.name.toLowerCase()===name.toLowerCase();});
   if(ei>=0){if(!confirm('Ya existe. ¿Sobreescribir?'))return;modelsCache[ei]=nm;}else modelsCache.push(nm);
@@ -2792,7 +2818,7 @@ async function saveModels(){
 // ═══ SHARE / EXPORT / PRINT ═══
 function shareCartera(){
   if(!assets.length){alert('Agregá activos primero.');return;}
-  var data={cn:document.getElementById('client-name').value,fn:document.getElementById('firm-name').value,risk:document.getElementById('client-risk').value,horiz:document.getElementById('client-horizon').value,ps:document.getElementById('port-size').value,pc:document.getElementById('port-curr').value,note:document.getElementById('strategy-note').value,assets:assets.map(function(a){return{n:a.name,t:a.ticker,p:a.pct,r:a.ret,c:a.curr,ty:a.type,col:a.color,v:a.venc,m:a.meses,l:a.ley,q:a.calif,no:a.nota,d:a.dias,pp:a.papel};})};
+  var data={cn:document.getElementById('client-name').value,fn:document.getElementById('firm-name').value,risk:document.getElementById('client-risk').value,horiz:document.getElementById('client-horizon').value,ps:document.getElementById('port-size').value,pc:document.getElementById('port-curr').value,note:document.getElementById('strategy-note').value,assets:assets.map(function(a){return{n:a.name,t:a.ticker,p:a.pct,r:a.ret,c:a.curr,ty:a.type,col:a.color,v:a.venc,m:a.meses,l:a.ley,q:a.calif,no:a.nota,d:a.dias,pp:a.papel,o:a.ovr||undefined};})};
   var encoded=btoa(encodeURIComponent(JSON.stringify(data)));
   var url=location.href.split('?')[0]+'?c='+encoded;
   var btn=document.getElementById('share-btn');
@@ -3056,7 +3082,7 @@ window.addEventListener('load',function(){
     // asigna un color distinto de la MISMA paleta que usa "+ Agregar Activo" — antes todos
     // caían al mismo default (#0F3A34) y el gráfico de torta salía de un solo color, ilegible.
     // Bug real, 2026-09.
-    if(Array.isArray(data.assets))assets=data.assets.map(function(a,i){return{id:Date.now()+i,name:a.n||'',ticker:a.t||'',pct:a.p||0,ret:a.r||'',curr:a.c||'USD',type:a.ty||'',color:a.col||PALETTE[i%PALETTE.length],venc:a.v||'',meses:a.m||'',ley:a.l||'',calif:a.q||'',nota:a.no||'',dias:a.d||null,papel:a.pp||null,rentAct:(typeof a.ra==='number')?a.ra:null,priceCur:(typeof a.pCur==='number')?a.pCur:null,priceTgt:(typeof a.pTgt==='number')?a.pTgt:null};});
+    if(Array.isArray(data.assets))assets=data.assets.map(function(a,i){return{id:Date.now()+i,name:a.n||'',ticker:a.t||'',pct:a.p||0,ret:a.r||'',curr:a.c||'USD',type:a.ty||'',color:a.col||PALETTE[i%PALETTE.length],venc:a.v||'',meses:a.m||'',ley:a.l||'',calif:a.q||'',nota:a.no||'',dias:a.d||null,papel:a.pp||null,rentAct:(typeof a.ra==='number')?a.ra:null,priceCur:(typeof a.pCur==='number')?a.pCur:null,priceTgt:(typeof a.pTgt==='number')?a.pTgt:null,ovr:a.o||null};});
     // Si quien nos pasó la cartera (Vista 360 de la Suite) ya resolvió precio actual/objetivo
     // por ticker, se respeta eso (viene del mismo archivo Precios Objetivo, ya cruzado en
     // origen). Para lo que no vino con precio objetivo, se intenta completar con el propio
