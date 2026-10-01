@@ -483,6 +483,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .search-result-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .search-result-tag{font-size:8.5px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:1px 6px;flex-shrink:0;}
 .search-empty{padding:24px 18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.6;}
+.search-rf-narracion{padding:2px 10px 8px;font-size:12px;color:var(--text);}
+.search-rf-nota{padding:8px 10px 10px;font-size:10px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);margin-top:4px;}
 .hm-cliente-link{cursor:pointer;color:var(--text);}
 .hm-cliente-link:hover{text-decoration:underline;text-decoration-color:var(--ambar);color:var(--ambar);}
 .hm-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
@@ -1223,10 +1225,6 @@ const TOOLS = [
   { id:'scanner', name:'Scanner ONs',         icon:'🔍', desc:'Detecta ONs con TIR baja, compara con el Monitor y genera rotaciones.', badge:'Renta Fija',     file:'Scanner_ONs_FCN.html',                   color:'jade'  },
   { id:'armador', name:'Armador de Carteras', icon:'📊', desc:'Construí propuestas de portfolio en PDF con gráficos y rotaciones.',   badge:'Propuestas',   file:'Armador_Carteras_v4_3.html',               color:'jade'  },
   { id:'monitor', name:'Portfolio Monitor',   icon:'🗂',  desc:'Monitor personal de cartera: posiciones, cupones y ganancias.',       badge:'Cliente',      file:'portfolio_monitor_fcn.html',               color:'jade'  },
-  { id:'cleaner', name:'Excel Cleaner',        icon:'🧹', desc:'Limpieza de contactos: filtra mails vacíos, elimina duplicados y expande listas separadas por ";". Soporta archivos encriptados.', badge:'Contactos', file:'excel_cleaner_agent para mail.html', color:'amber' },
-  { id:'objetivo', name:'Precios Objetivo',    icon:'🎯', desc:'Precio actual vs. precio objetivo de analistas para toda la lista de tickers USA/Argentina/Brasil.', badge:'Research', file:'Precios_Objetivo_FCN.html', color:'jade' },
-  // Herramientas nuevas — copiá estos 3 archivos a esta misma carpeta para que funcionen (ver nota al final del archivo)
-  { id:'monindiv',  name:'Monitor Vivo',    icon:'📈', desc:'Soberanos y Letras en vivo (A3 Mercados/MAE + bonistas.com) + ONs y Equity desde el Monitor de Individuos. Filtro por calificación (AAA/AA/A...).', badge:'Renta Fija', file:'Monitor_Vivo_Web.html', color:'jade' },
   { id:'calcbonos', name:'Calculadora de Bonos',     icon:'🧮', desc:'Precio ↔ TIR, cronograma de flujos, Duration y DV01 para ONs y Soberanos. Se autocompleta con el Monitor.', badge:'Renta Fija', file:'Calculadora_Bonos_FinanzasconNico.html', color:'jade' },
   { id:'calcrot',   name:'Calculadora de Rotaciones', icon:'🔁', desc:'¿Conviene cambiar de bono? Comparación simple y directa. Se autocompleta con el Monitor.',                            badge:'Renta Fija', file:'Calculadora_Rotaciones_FinanzasconNico_4.html', color:'amber' },
   { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' },
@@ -1244,7 +1242,7 @@ const SHARED_FILES = [
     name:  'Tenencia por Ticker',
     icon:  '📊',
     hint:  'Exportar desde Balanz · hoja "Export" · .xlsx / .csv',
-    usedBy: ['Rotador RV', 'Scanner ONs', 'Panorama de Mercado', 'Monitor Vivo'],
+    usedBy: ['Rotador RV', 'Scanner ONs', 'Panorama de Mercado'],
     accept: '.xlsx,.xls,.csv',
     sourceUrl: 'https://app.powerbi.com/groups/me/apps/8023a337-6088-4fcc-a0a5-3423db1838a7/reports/03c5319d-9f1e-44d4-b31c-57d11aa4ae8b/fa0646621dacd719ca0d?ctid=1123ebae-a006-42c7-9ea3-c84a2feb0e65&experience=power-bi'
   },
@@ -1262,7 +1260,7 @@ const SHARED_FILES = [
     name:  'Monitor de Individuos',
     icon:  '📈',
     hint:  'Archivo .xlsm directo desde Balanz · o .csv si tiene bloqueo IRM · 📤 se puede publicar para que lo vean todos',
-    usedBy: ['Armador de Carteras', 'Scanner ONs', 'Monitor Vivo', 'Calculadora de Bonos', 'Calculadora de Rotaciones', 'Panorama de Mercado'],
+    usedBy: ['Armador de Carteras', 'Scanner ONs', 'Calculadora de Bonos', 'Calculadora de Rotaciones', 'Panorama de Mercado'],
     accept: '.xlsx,.xls,.xlsm,.csv',
     sourceUrl: 'https://balanzcapitalsa.sharepoint.com/:x:/r/sites/msteams_4527ad_255943-Individuos-/_layouts/15/doc2.aspx?sourcedoc=%7BF7D49BBA-55C2-43DD-BEB5-6F337345DF80%7D&file=Monitor%20Individuos%202.0.xlsm&action=default&mobileredirect=true',
     sourceLabel: 'Abrir en SharePoint (Excel Online)'
@@ -1272,7 +1270,7 @@ const SHARED_FILES = [
     name:   'Precios Objetivo (mensual)',
     icon:   '🎯',
     hint:   'Generado con precios_objetivo.py una vez por mes · .xlsx · 📤 se puede publicar para que lo vean todos',
-    usedBy: ['Precios Objetivo', 'Armador de Carteras'],
+    usedBy: ['Valuación por Múltiplos', 'Armador de Carteras'],
     accept: '.xlsx,.xls,.csv'
   },
   {
@@ -1513,8 +1511,7 @@ const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
   { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos','fundamental'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','armador','monitor'] },
-  { id:'research',      name:'Research',            icon:'🎯', toolIds:['objetivo','monindiv'] },
-  { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
+  { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['files'] },
 ];
 // Paneles nativos que viven "dentro" de una categoría pero no son un TOOLS[] con iframe propio
 // (ver hideAllPanels/showFiles/showCliente360) — icon/label acá para no repetirlos en cada lugar.
@@ -3882,6 +3879,67 @@ function vmFundamental(r) {
   const w = c.reduce((a, x) => a + x[1], 0);
   return Math.round(100 * c.reduce((a, x) => a + x[0] * x[1], 0) / w);
 }
+// ══════════════════════════════════════════
+// PUNTAJE COMBINADO −100…+100 — portado de Valuacion_Multiplos_FCN.html (01/10, pedido de
+// Nico para el buscador inteligente de Renta Variable: "copiá el código que ya hicimos en la
+// web/el Suite, no hace falta inventar nada"). Mismas fórmulas y cortes, carácter por carácter.
+// ══════════════════════════════════════════
+const VM_REBOTE_BANDAS = { corto: 0.03, mediano: 0.04, largo: 0.05, fibo: 0.02 };
+function vmNivelesFibo(hi, lo) {
+  if (hi == null || lo == null || hi <= lo) return null;
+  const rango = hi - lo;
+  return [23.6, 38.2, 50, 61.8].map(pct => ({ pct, nivel: hi - rango * pct / 100 }));
+}
+function vmPuntosRebote(r) {
+  if (r.precio == null) return [];
+  const out = [];
+  const chk = (plazo, label, ma) => {
+    if (ma == null || ma <= 0) return;
+    const dist = r.precio / ma - 1;
+    if (Math.abs(dist) <= VM_REBOTE_BANDAS[plazo]) out.push({ plazo, label, dist, tipo: dist >= 0 ? 'soporte' : 'resistencia' });
+  };
+  chk('corto', 'MM200 diaria', r.mm200d);
+  chk('mediano', 'MM20 semanal', r.mm20s);
+  chk('largo', 'MM20 mensual', r.mm20m);
+  chk('largo', 'MM50 mensual', r.mm50m);
+  const fibs = vmNivelesFibo(r.max52, r.min52);
+  if (fibs) {
+    let mejor = null;
+    fibs.forEach(f => {
+      const dist = r.precio / f.nivel - 1;
+      if (Math.abs(dist) <= VM_REBOTE_BANDAS.fibo && (!mejor || Math.abs(dist) < Math.abs(mejor.dist)))
+        mejor = { plazo: 'fibo', label: `Fibonacci ${f.pct}%`, dist, tipo: dist >= 0 ? 'soporte' : 'resistencia' };
+    });
+    if (mejor) out.push(mejor);
+  }
+  return out;
+}
+function vmReboteScore(r) {
+  const pts = vmPuntosRebote(r);
+  if (!pts.length) return null;
+  const banda = p => VM_REBOTE_BANDAS[p.plazo] || VM_REBOTE_BANDAS.fibo;
+  const vals = pts.map(p => {
+    const fuerza = vmClamp(1 - Math.abs(p.dist) / banda(p), 0, 1) * 100;
+    return p.tipo === 'soporte' ? fuerza : -fuerza;
+  });
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+}
+const VM_HORIZONTES = {
+  largo:   { label: 'Largo plazo',   pesos: { negocio: .45, valuacion: .40, tendencia: .15, rebote: 0 } },
+  mediano: { label: 'Mediano plazo', pesos: { negocio: .35, valuacion: .35, tendencia: .30, rebote: 0 } },
+  corto:   { label: 'Corto plazo',   pesos: { negocio: .10, valuacion: .15, tendencia: .35, rebote: .40 } },
+};
+function vmPuntajeDetalle(r, horizonte) {
+  const t = vmTendencia(r), n = vmFundamental(r), v = vmValuacion5y(r);
+  if (t === null || n === null || v === null) return null;
+  const v100 = Math.round(vmClamp(v / 0.40, -1, 1) * 100);
+  const reb = vmReboteScore(r);
+  const pesos = VM_HORIZONTES[horizonte || 'mediano'].pesos;
+  const total = Math.round(vmClamp(n * pesos.negocio + v100 * pesos.valuacion + t * pesos.tendencia + (reb || 0) * pesos.rebote, -100, 100));
+  return { total, negocio: n, valuacion: v100, tendencia: t, rebote: reb };
+}
+function vmPuntaje(r, horizonte) { const d = vmPuntajeDetalle(r, horizonte); return d ? d.total : null; }
+
 function vmQueHacer(r) {
   const t = vmTendencia(r), n = vmFundamental(r), v = vmValuacion5y(r);
   const up = t !== null && t >= 25, down = t !== null && t <= -20;
@@ -3933,6 +3991,9 @@ function parseValuacionMultiplos(entry) {
         precio: vmNum(r['Precio_actual']), m,
         mm21: vmNum(r['MM21_sem']), mm50: vmNum(r['MM50_sem']), mm200: vmNum(r['MM200_sem']),
         ret3m: vmNum(r['Ret_3m']), ret6m: vmNum(r['Ret_6m']), ret12m: vmNum(r['Ret_12m']), dist52: vmNum(r['Dist_max_52s']),
+        // Para el puntaje de rebote técnico (horizonte Corto plazo) — ver [[project_research_retiro_buscador_inteligente]]
+        mm200d: vmNum(r['MM200_dia']), mm20s: vmNum(r['MM20_sem']), mm20m: vmNum(r['MM20_mes']), mm50m: vmNum(r['MM50_mes']),
+        max52: vmNum(r['Max_52s']), min52: vmNum(r['Min_52s']),
         f: { revCagr: vmNum(r['Rev_CAGR']), niPos: vmNum(r['NI_pos']), fcfPos: vmNum(r['FCF_pos']), margenTrend: vmNum(r['Margen_trend']), ndEbitda: vmNum(r['ND_EBITDA']) },
         actualizado: String(r['Actualizado'] || '').trim(),
       };
@@ -4155,12 +4216,149 @@ const SEARCH_SECCIONES = [
 ];
 let _searchActiveIdx = -1;
 
+// ══════════════════════════════════════════════════════════════
+// BUSCADOR INTELIGENTE — RENTA FIJA (01/10) — pedido de Nico: poder escribir algo como
+// "ON a 2027 que rinda más de 5% y sea AAA" y que el buscador global conteste directo, sin
+// pasar por ninguna herramienta. Arranca por Renta Fija porque ya existe el dato armado
+// (data/cuanto_cobro.json, el mismo JSON compacto de ¿Cuánto cobro? — TIR/vencimiento/
+// calificación de todo el universo de ONs/bonos). Renta Variable (ranking por puntaje) queda
+// para una segunda etapa, con su propio JSON — ver project_research_retiro_buscador_inteligente.
+// Parser de patrones, SIN LLM: si no reconoce ninguna señal (calificación/TIR/fecha/"top N"),
+// no es una consulta inteligente y el buscador sigue con la búsqueda normal de siempre.
+let _rfUniverso = null; // null = no cargado todavía, [] = cargado pero vacío/error
+async function _cargarRFUniverso() {
+  if (_rfUniverso !== null) return;
+  try {
+    const r = await fetch('data/cuanto_cobro.json');
+    if (!r.ok) { _rfUniverso = []; return; }
+    const j = await r.json();
+    // Mismo piso de 90 días que ya usa ¿Cuánto cobro? (Cuanto_Cobro_FCN.html) para no anualizar
+    // precios casi-al-vencimiento — con tan pocos días, "tm" da TIRs sin sentido (ej. negativas).
+    const HOY = Date.now();
+    _rfUniverso = (j.bonos || []).filter(b => b.ok === 1 && b.v).map(b => ({
+      ticker: b.t, emisor: b.em, calif: (b.ca || '').toUpperCase(), ley: b.l,
+      vencimiento: new Date(b.v + 'T12:00:00'), cupon: b.cu, tir: typeof b.tm === 'number' ? b.tm * 100 : null
+    })).filter(b => !isNaN(b.vencimiento) && b.tir != null && (b.vencimiento - HOY) / 864e5 >= 90);
+  } catch (e) { console.warn('[Buscador RF] no se pudo cargar cuanto_cobro.json', e); _rfUniverso = []; }
+}
+const _RF_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','setiembre','octubre','noviembre','diciembre'];
+// Devuelve {calif, tirMin, tirMax, vencDesde, vencHasta, topN} o null si la consulta no tiene
+// ninguna señal de Renta Fija reconocible (así no "secuestra" búsquedas normales de cliente).
+function _parseConsultaRF(qOriginal) {
+  const q = _normalizarBusqueda(qOriginal);
+  const out = {};
+  let señal = false;
+
+  // Calificación: aaa/aa/bbb/bb/ccc/cc primero (más específico), "a" sola solo si aparece
+  // como letra mayúscula suelta en el texto ORIGINAL (si no, "a" como preposición da falsos
+  // positivos todo el tiempo — "ON a 2027").
+  const m = q.match(/\b(aaa|aa|bbb|bb|ccc|cc|[a-d])\b/);
+  if (m && m[1].length > 1) { out.calif = m[1].toUpperCase(); señal = true; }
+  else if (/\b[A-D]\b/.test(qOriginal)) { out.calif = qOriginal.match(/\b[A-D]\b/)[0]; señal = true; }
+
+  // TIR: "rinda(n) más de 5%", ">5%", "mayor a 5%", "menos de 5%"
+  const mt = q.match(/(mas|más|menos|mayor|menor)?\s*(?:de|a)?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%/);
+  if (mt) {
+    const v = parseFloat(mt[2].replace(',', '.'));
+    if (/menos|menor/.test(mt[1] || '')) out.tirMax = v; else out.tirMin = v;
+    señal = true;
+  }
+
+  // Fecha: mes + año ("mayo del 27", "mayo 2027") → ventana de ese mes entero.
+  const mm = q.match(new RegExp('\\b(' + _RF_MESES.join('|') + ')\\b[^\\d]{0,10}(\\d{2,4})\\b'));
+  if (mm) {
+    let idx = _RF_MESES.indexOf(mm[1]); if (idx === 8) idx = 8; // setiembre == septiembre
+    let anio = parseInt(mm[2], 10); if (anio < 100) anio += 2000;
+    out.vencDesde = new Date(anio, idx, 1);
+    out.vencHasta = new Date(anio, idx + 1, 0, 23, 59, 59);
+    señal = true;
+  } else {
+    // Relativo: "a 2 años", "de acá a 2/3 años", "corto/mediano/largo plazo"
+    const mr = q.match(/\b(?:a|en|de ac[ao] a)\s*(\d)(?:\s*[\/ya]\s*(\d))?\s*an[oi]?s?\b/);
+    if (mr) {
+      const desde = new Date(); const hasta = new Date();
+      hasta.setFullYear(hasta.getFullYear() + parseInt(mr[2] || mr[1], 10));
+      if (mr[2]) desde.setFullYear(desde.getFullYear() + parseInt(mr[1], 10));
+      out.vencDesde = desde; out.vencHasta = hasta; señal = true;
+    } else if (/corto plazo/.test(q)) { out.vencHasta = new Date(Date.now() + 365 * 864e5 * 1.5); señal = true; }
+    else if (/mediano plazo/.test(q)) { out.vencDesde = new Date(Date.now() + 365 * 864e5 * 1.5); out.vencHasta = new Date(Date.now() + 365 * 864e5 * 5); señal = true; }
+    else if (/largo plazo/.test(q)) { out.vencDesde = new Date(Date.now() + 365 * 864e5 * 5); señal = true; }
+  }
+
+  // "top 5", "los 5 que más rinden"
+  const mn = q.match(/\btop\s*(\d{1,2})\b/) || q.match(/\b(?:las|los)\s*(\d{1,2})\b.*(?:mas|más|mejor)/);
+  if (mn) { out.topN = parseInt(mn[1], 10); señal = true; }
+
+  if (!señal || !/\b(on|ons|bono|bonos|obligacion|obligaciones|renta fija)\b/.test(q) && !out.calif && !mn) {
+    // Si no hay NINGUNA palabra de renta fija ni calificación ni "top N", exigimos al menos
+    // 2 señales (ej. TIR + fecha) para no confundir una búsqueda de cliente con una consulta.
+    const señales = ['calif', 'tirMin', 'tirMax', 'vencDesde', 'vencHasta', 'topN'].filter(k => out[k] != null).length;
+    if (señales < 2) return null;
+  }
+  return señal ? out : null;
+}
+function _ejecutarConsultaRF(c) {
+  let f = (_rfUniverso || []).filter(b => {
+    if (c.calif && b.calif !== c.calif) return false;
+    if (c.tirMin != null && b.tir < c.tirMin) return false;
+    if (c.tirMax != null && b.tir > c.tirMax) return false;
+    if (c.vencDesde && b.vencimiento < c.vencDesde) return false;
+    if (c.vencHasta && b.vencimiento > c.vencHasta) return false;
+    return true;
+  });
+  f.sort((a, b) => b.tir - a.tir);
+  if (c.topN) f = f.slice(0, c.topN);
+  return f;
+}
+function _narracionConsultaRF(c, resultados) {
+  const partes = [];
+  if (c.calif) partes.push('calificación ' + c.calif);
+  if (c.tirMin != null) partes.push('TIR mayor a ' + c.tirMin + '%');
+  if (c.tirMax != null) partes.push('TIR menor a ' + c.tirMax + '%');
+  if (c.vencDesde || c.vencHasta) partes.push('vencimiento ' + (c.vencDesde ? fmtFechaCorta(c.vencDesde) + ' – ' : 'hasta ') + (c.vencHasta ? fmtFechaCorta(c.vencHasta) : ''));
+  const cond = partes.length ? ' con ' + partes.join(', ') : '';
+  if (!resultados.length) return `No encontré ONs/bonos${cond}.`;
+  return (c.topN ? `Top ${resultados.length}` : `Encontré ${resultados.length}`) + ` ON${resultados.length === 1 ? '' : 's'}/bono${resultados.length === 1 ? '' : 's'}${cond}:`;
+}
+function fmtFechaCorta(d) { return d.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }); }
+
+// ══════════════════════════════════════════════════════════════
+// BUSCADOR INTELIGENTE — RENTA VARIABLE (01/10) — mismo buscador, ahora con "top 5 acciones
+// con más potencial de suba en el corto plazo" tipo de consulta. A diferencia de Renta Fija,
+// NO hace falta cargar nada nuevo: dashData.valuacion.rows ya está poblado desde que arrancó
+// el Suite (valuacion_multiplos.xlsx es un archivo "estático", se autocarga para todo el
+// equipo igual que el Monitor — ver STATIC_PUBLISH_KEYS). El puntaje se calcula con las
+// funciones vmPuntaje/vmTendencia/vmFundamental/vmValuacion5y/vmReboteScore de arriba, portadas
+// 1 a 1 de Valuacion_Multiplos_FCN.html.
+function _parseConsultaRV(qOriginal) {
+  const q = _normalizarBusqueda(qOriginal);
+  if (!/\b(accion|acciones|cedear|cedears|rv|renta variable|potencial de suba|puntaje|papel|papeles)\b/.test(q)) return null;
+  const out = { horizonte: 'mediano' };
+  if (/corto plazo/.test(q)) out.horizonte = 'corto';
+  else if (/largo plazo/.test(q)) out.horizonte = 'largo';
+  const mn = q.match(/\btop\s*(\d{1,2})\b/) || q.match(/\b(?:las|los)\s*(\d{1,2})\b.*(?:mas|más|mejor)/);
+  out.topN = mn ? parseInt(mn[1], 10) : 10;
+  return out;
+}
+function _ejecutarConsultaRV(c) {
+  const rows = (dashData.valuacion && dashData.valuacion.rows) || [];
+  const conPuntaje = rows.map(r => ({ r, p: vmPuntaje(r, c.horizonte) })).filter(x => x.p != null);
+  conPuntaje.sort((a, b) => b.p - a.p);
+  return conPuntaje.slice(0, c.topN);
+}
+function _narracionConsultaRV(c, resultados) {
+  const horizLbl = VM_HORIZONTES[c.horizonte].label.toLowerCase();
+  if (!resultados.length) return 'No tengo puntaje calculado todavía — subí Valuación por Múltiplos en Archivos.';
+  return `Top ${resultados.length} por puntaje (${horizLbl}):`;
+}
+
 function abrirBusquedaGlobal() {
   _ga('search_open');
   document.getElementById('searchOverlay').classList.add('open');
   const input = document.getElementById('global-search-input');
   input.value = '';
   renderBusquedaGlobal();
+  _cargarRFUniverso(); // en paralelo, no bloquea — si tarda, el buscador normal igual funciona
   setTimeout(() => input.focus(), 30);
 }
 function cerrarBusquedaGlobal() { document.getElementById('searchOverlay').classList.remove('open'); }
@@ -4210,8 +4408,46 @@ function renderBusquedaGlobal() {
   const el = document.getElementById('search-results');
   _searchActiveIdx = -1;
   if (!q.trim()) {
-    el.innerHTML = `<div class="search-empty">Escribí el nombre de un cliente, un ticker, o una herramienta (ej. "portfolio monitor").</div>`;
+    el.innerHTML = `<div class="search-empty">Escribí el nombre de un cliente, un ticker, o una herramienta — o probá algo como <i>"ON AAA a 2027 que rinda más de 5%"</i>.</div>`;
     return;
+  }
+  const consultaRV = _parseConsultaRV(q);
+  if (consultaRV) {
+    _ga('search_rv_inteligente');
+    const resultados = _ejecutarConsultaRV(consultaRV);
+    el.innerHTML = `<div class="search-group-label">📈 Renta Variable</div>` +
+      `<div class="search-rf-narracion">${escHtml(_narracionConsultaRV(consultaRV, resultados))}</div>` +
+      resultados.map(({ r, p }) => `
+      <div class="search-result-row" onclick="cerrarBusquedaGlobal();openTool('multiplos');showToast('Buscá «${escHtml(r.ticker)}» en Valuación por Múltiplos')">
+        <span class="search-result-icon">📈</span>
+        <div class="search-result-main">
+          <div class="search-result-title">${escHtml(r.ticker)} <span style="font-weight:400;color:var(--muted);">· ${escHtml(r.empresa || '')}</span></div>
+          <div class="search-result-sub">${escHtml(r.sector || '')}</div>
+        </div>
+        <span class="search-result-tag" style="color:${p >= 0 ? 'var(--jade)' : 'var(--danger)'};">${p > 0 ? '+' : ''}${p}</span>
+      </div>`).join('') +
+      `<div class="search-rf-nota">Puntaje combinado (Negocio+Valuación+Tendencia${consultaRV.horizonte === 'corto' ? '+Rebote técnico' : ''}), igual que en Valuación por Múltiplos — es lectura de mercado, no recomendación de inversión.</div>`;
+    return;
+  }
+  if (_rfUniverso && _rfUniverso.length) {
+    const consultaRF = _parseConsultaRF(q);
+    if (consultaRF) {
+      _ga('search_rf_inteligente');
+      const resultados = _ejecutarConsultaRF(consultaRF);
+      el.innerHTML = `<div class="search-group-label">💵 Renta Fija</div>` +
+        `<div class="search-rf-narracion">${escHtml(_narracionConsultaRF(consultaRF, resultados))}</div>` +
+        resultados.slice(0, 15).map(b => `
+        <div class="search-result-row" onclick="cerrarBusquedaGlobal();openTool('scanner');showToast('Buscá «${escHtml(b.ticker)}» en Scanner ONs')">
+          <span class="search-result-icon">💵</span>
+          <div class="search-result-main">
+            <div class="search-result-title">${escHtml(b.ticker)} <span style="font-weight:400;color:var(--muted);">· ${escHtml(b.emisor || '')}</span></div>
+            <div class="search-result-sub">${escHtml(b.calif)} · vence ${fmtFechaCorta(b.vencimiento)}</div>
+          </div>
+          <span class="search-result-tag">${b.tir.toFixed(1)}%</span>
+        </div>`).join('') +
+        `<div class="search-rf-nota">TIR aproximada (Monitor, puede estar desactualizada) — confirmá el número real en Scanner ONs o Calculadora de Bonos antes de ofrecerla.</div>`;
+      return;
+    }
   }
   const res = buscarGlobalResultados(q);
   const total = res.herramientas.length + res.clientes.length + res.tickers.length;
