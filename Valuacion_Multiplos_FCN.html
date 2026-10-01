@@ -1230,19 +1230,15 @@ function analConfirma(r){
   return aBias===qBias ? {txt:'coinciden', cls:'ac-ok'} : {txt:'difieren', cls:'ac-no'};
 }
 
+// posiciones de un activo (todas, o solo las del cliente enfocado / top clientes)
+function holdersFiltrados(r){
+  const hs=holdersFor(r);
+  return clienteActivo ? hs.filter(h=>h.cliente===clienteActivo)
+       : topClientesSet ? hs.filter(h=>topClientesSet.has(h.cliente)) : hs;
+}
 // tenencia total (o del cliente enfocado) en USD para un activo
-function tenenciaTotal(r){
-  const hs=holdersFor(r);
-  const filt = clienteActivo ? hs.filter(h=>h.cliente===clienteActivo)
-             : topClientesSet ? hs.filter(h=>topClientesSet.has(h.cliente)) : hs;
-  return filt.reduce((a,h)=>a+(h.tenencia||0),0);
-}
-function nClientes(r){
-  const hs=holdersFor(r);
-  const filt = clienteActivo ? hs.filter(h=>h.cliente===clienteActivo)
-             : topClientesSet ? hs.filter(h=>topClientesSet.has(h.cliente)) : hs;
-  return filt.length;
-}
+function tenenciaTotal(r){ return holdersFiltrados(r).reduce((a,h)=>a+(h.tenencia||0),0); }
+function nClientes(r){ return holdersFiltrados(r).length; }
 // color de fondo según el score (rojo -100 … neutro 0 … verde +100)
 function tendBg(score){
   if(score===null||score===undefined) return 'var(--surface)';
@@ -1262,7 +1258,9 @@ function tendCell(score){
 function construirHolders(){
   holdersByTicker={};
   dataTenencia.forEach(row=>{
-    const ticker=String(row['Ticker']||'').trim().toUpperCase();
+    // el Excel de Balanz trae variantes del mismo papel ("MSFT.E", "NVDA.", "GE-Repetido-1-5286-0-1")
+    // que no matcheaban con el universo de múltiplos → ~8% de la RV de los clientes quedaba afuera
+    const ticker=String(row['Ticker']||'').trim().toUpperCase().replace(/-REPETIDO.*$/,'').replace(/\.E?$/,'');
     if(!ticker) return;
     (holdersByTicker[ticker]=holdersByTicker[ticker]||[]).push({
       cliente:row['Cuenta']||row['Comitente']||'—',
@@ -1274,6 +1272,25 @@ function construirHolders(){
       dias:parseInt(row['Días de tenencia'])||null,
     });
   });
+}
+// Rentabilidad del cliente en SU posición — mismo cálculo que Rotador RV: precio implícito de la
+// tenencia (USD por nominal, sale del propio Excel) contra el precio promedio de compra (también
+// USD por nominal). NO usar r.precio del archivo de múltiplos: está en la moneda y el mercado del
+// subyacente (NVDA a US$ 228 en NYSE, ALUA en pesos) y el de compra es por CEDEAR/acción en USD
+// → daba cosas como "+2.490% desde tu compra" en los mensajes a clientes (corregido 01/10).
+function ganHolder(h){
+  if(!h || !h.precCompra || !h.nominales || !h.tenencia) return null;
+  return (h.tenencia/h.nominales)/h.precCompra - 1;
+}
+// rentabilidad ponderada de un grupo de posiciones: valor actual vs. lo que costó comprarlas
+function ganGrupo(hs){
+  let val=0, costo=0;
+  hs.forEach(h=>{ if(h && h.precCompra && h.nominales && h.tenencia){ val+=h.tenencia; costo+=h.nominales*h.precCompra; } });
+  return costo>0 ? val/costo-1 : null;
+}
+function ganSpan(g){
+  if(g==null) return '<span class="dash">—</span>';
+  return `<span class="${g>=0?'val-pos':'val-neg'}">${g>=0?'+':'−'}${fmtN(Math.abs(g)*100,1)}%</span>`;
 }
 // ── STOCK (nombre / mail / teléfono del cliente) — nunca se publica ──
 let STOCK={};   // { comitente: {nombre, mail, tel} }
@@ -1326,9 +1343,7 @@ function carteraDeCliente(cli){
     if(!h) return;
     const r=allRows.find(x=>x.ticker.toUpperCase()===tk || x.tickerUsado.toUpperCase()===tk);
     if(!r) return;
-    let gan=null;
-    if(h.precCompra && r.precio) gan=r.precio/h.precCompra-1;
-    out.push({r, ten:h.tenencia, gan, dias:h.dias, q:queHacer(r)});
+    out.push({r, h, ten:h.tenencia, gan:ganHolder(h), dias:h.dias, q:queHacer(r)});
   });
   return out.sort((a,b)=>b.ten-a.ten);
 }
@@ -1583,7 +1598,7 @@ function mensajeRotacion(h, r, alt, canal, link, nombrarAlt, lec){
   lec = lec || lecturaValuacion(r);
   const k=lec.k, mm={actual:lec.actual,p5:lec.p5,p10:lec.p10}, med=lec.med;
   const mLabel=MULT[k]?.label||k;
-  const gan=(h.precCompra&&r.precio)?(r.precio/h.precCompra-1):null;
+  const gan=ganHolder(h);
 
   const ganMail = gan!=null ? `, que venís ${gan>=0?'con una ganancia de +':'con una baja de '}${fmtN(Math.abs(gan)*100,0)}% desde que la compraste` : '';
   const ganWpp  = gan!=null ? ` (lo tenés ${gan>=0?'+':'−'}${fmtN(Math.abs(gan)*100,0)}%)` : '';
@@ -1693,7 +1708,7 @@ function avRender(){
   document.getElementById('av-list').innerHTML = holders.map((h,i)=>{
     const d=_datosDe(h);
     const wpp=i<split;
-    const gan=(h.precCompra&&avCtx.r.precio)?(avCtx.r.precio/h.precCompra-1):null;
+    const gan=ganHolder(h);
     const falta = wpp ? (!d.tel?' <span style="color:var(--ambar)">sin tel</span>':'') : (!d.mail?' <span style="color:var(--ambar)">sin mail</span>':'');
     return `<div class="msg-row">
       <div><b>${d.denominacion||d.nombre||h.cliente}</b> · ${fmtUsd(h.tenencia)}${gan!=null?` · <span style="color:${gan>=0?'var(--jade)':'var(--danger)'}">${gan>=0?'+':'−'}${fmtN(Math.abs(gan)*100,0)}%</span>`:''}${falta}</div>
@@ -1984,7 +1999,7 @@ function cmpAbrirMensaje(){
     mailEl.value=d.mail||'';
     telEl.value=d.tel||'';
     const h=holdersFor(cmpMsgDir.vender).find(x=>x.cliente===clienteActivo);
-    if(h && h.precCompra && cmpMsgDir.vender.precio) cmpGanPct=cmpMsgDir.vender.precio/h.precCompra-1;
+    const g=ganHolder(h); if(g!=null) cmpGanPct=g;
   }
   document.getElementById('cmp-main').hidden=true;
   document.getElementById('cmp-draft').hidden=false;
@@ -2042,13 +2057,14 @@ function _fichaHolders(ticker){
   const rows=holders.slice().sort((a,b)=>b.tenencia-a.tenencia).map(h=>`
     <tr><td><span class="fs-cli-link" onclick="focoDesdeFicha('${String(h.cliente).replace(/'/g,"\\'")}')">${nombreCompleto(h.cliente)}</span></td>
     <td>US$ ${h.tenencia.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
-    <td>${h.nominales.toLocaleString('es-AR')}</td></tr>`).join('');
+    <td>${ganSpan(ganHolder(h))}</td>
+    <td>${h.dias?h.dias+' d':'<span class="dash">—</span>'}</td></tr>`).join('');
   const total=holders.reduce((a,h)=>a+h.tenencia,0);
   const esc=String(ticker).replace(/'/g,"\\'");
   return `<div class="fs-sec"><h5>Clientes (${holders.length})</h5>
     <button class="btn-msg" style="margin:2px 0 10px;" onclick="cerrarHolders();abrirAvisoTicker('${esc}')">✉ Avisar a los ${holders.length} que lo tienen</button>
-    <table class="hm-table"><thead><tr><th>Cliente</th><th>Tenencia</th><th>Nominales</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="hm-total">Total: <b>US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</b></div></div>`;
+    <table class="hm-table"><thead><tr><th>Cliente</th><th>Tenencia</th><th title="desde que la compró (precio promedio de compra)">Rent.</th><th title="días de tenencia">Días</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="hm-total">Total: <b>US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</b>${(g=>g!=null?` · rentabilidad promedio ${ganSpan(g)}`:'')(ganGrupo(holders))}</div></div>`;
 }
 function focoDesdeFicha(cli){ cerrarHolders(); clienteActivo=cli; _carteraTocado=false; soloCartera=false; activeTab='Panorama'; buildTabs(); render(); }
 
@@ -2160,7 +2176,7 @@ function abrirClientes(){
     return `<div class="cli-row" onclick="focoDesdeFicha('${String(c).replace(/'/g,"\\'")}');cerrarClientes()">
       <span class="cli-nom">${nom}</span>
       <span class="cli-badges">${b.join('')}</span>
-      <span class="cli-usd">${fmtUsd(tot)} · ${cart.length} pos.</span></div>`;
+      <span class="cli-usd">${fmtUsd(tot)} · ${cart.length} pos.${(g=>g!=null?` · ${ganSpan(g)}`:'')(ganGrupo(cart.map(x=>x.h)))}</span></div>`;
   }).join('');
   document.getElementById('clientesOverlay').classList.add('open');
 }
@@ -2890,7 +2906,10 @@ function render(){
       const q=queHacer(r), usd=tenenciaTotal(r), nc=nClientes(r);
       const bg = QH_BG[q.v] || 'var(--surface)';
       const carteraCell = usd>0
-        ? `<div class="pa-usd">${fmtUsd(usd)}</div><div class="pa-cli">${clienteActivo?clienteActivo:nc+(nc===1?' cliente':' clientes')}</div>`
+        ? (()=>{ const hf=holdersFiltrados(r), g=ganGrupo(hf);
+            const dias = clienteActivo && hf.length===1 && hf[0].dias ? ` · ${hf[0].dias} d` : '';
+            const tip = clienteActivo ? 'rentabilidad de su posición desde que la compró' : 'rentabilidad promedio de tus clientes en este activo (ponderada por monto)';
+            return `<div class="pa-usd">${fmtUsd(usd)}</div><div class="pa-cli">${clienteActivo?'':nc+(nc===1?' cliente':' clientes')}${g!=null?`${clienteActivo?'':' · '}<span title="${tip}">${ganSpan(g)}</span>`:''}${dias}</div>`; })()
         : `<span class="dash">—</span>`;
       const esc=String(r.ticker).replace(/'/g,"\\'");
       return `<tr style="background:${bg}">
@@ -2996,7 +3015,7 @@ function render(){
       if(cnt.Sumar) partes.push(`<b class="val-pos">${cnt.Sumar}</b> para sumar`);
       const conc=concentracion(clienteActivo);
       fbEl.innerHTML=`<span class="fb-name">${nombreCompleto(clienteActivo)}</span>`
-        +`<span>${fmtUsd(tot)} en ${cart.length} posiciones${partes.length?' · '+partes.join(' · '):''}</span>`
+        +`<span>${fmtUsd(tot)} en ${cart.length} posiciones${(g=>g!=null?` · <span title="rentabilidad total de estas posiciones desde que las compró">${ganSpan(g)}</span>`:'')(ganGrupo(cart.map(x=>x.h)))}${partes.length?' · '+partes.join(' · '):''}</span>`
         +(conc?`<span class="fb-conc">⚠ concentración: ${conc.join(' · ')}</span>`:'')
         +`<span class="fb-act"><button class="fb-btn" onclick="abrirMensaje(clienteActivo)">✉ Mensaje</button><button class="fb-btn" onclick="quitarFoco()">Quitar foco</button></span>`;
       fbEl.hidden=false;
