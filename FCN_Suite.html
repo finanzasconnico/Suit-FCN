@@ -80,21 +80,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 /* ── APP SHELL ── */
 #app{display:flex;height:100vh;flex-direction:column;}
 
-/* ── TOPBAR ── */
-.topbar{flex-shrink:0;height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;position:relative;z-index:50;}
-.topbar-brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+/* ── TOPBAR (clases viejas, algunas ya sin usar tras el pase a sidebar del 01/10 — ver más abajo —
+   quedan por si algo externo todavía referencia .brand-mark/.brand-name) ── */
 .brand-mark{width:30px;height:30px;border:1.5px solid var(--ambar);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:13px;color:var(--ambar);}
 .brand-name{font-family:var(--font-d);font-size:16px;font-weight:300;color:var(--text);}
 .brand-name span{color:var(--ambar);font-weight:400;}
-.brand-tag{font-family:var(--font-m);font-size:8.5px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-left:8px;padding:2px 7px;border:1px solid var(--border);border-radius:2px;}
-.topbar-sep{width:1px;height:22px;background:var(--border);flex-shrink:0;}
-.topbar-tools{display:flex;gap:2px;flex:1;overflow-x:auto;min-width:0;scrollbar-width:thin;scrollbar-color:var(--jade) transparent;}
-.topbar-tools::-webkit-scrollbar{height:4px;}
-.topbar-tools::-webkit-scrollbar-thumb{background:var(--jade);border-radius:4px;}
-.topbar-tools::-webkit-scrollbar-track{background:transparent;}
-.topbar-scroll-hint{flex-shrink:0;display:none;align-items:center;justify-content:center;width:22px;height:26px;color:var(--jade);font-size:13px;cursor:pointer;background:var(--jade-d);border-radius:var(--r);border:none;}
-.topbar-scroll-hint.show{display:flex;}
-.tool-tab{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:12px;font-weight:400;white-space:nowrap;transition:all .15s;}
+.tool-tab{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:12px;font-weight:400;white-space:nowrap;transition:all .15s;width:100%;text-align:left;}
 .tool-tab:hover{background:var(--surface2);color:var(--text);}
 .tool-tab.active{background:rgba(28,140,95,.15);color:var(--jade);}
 .tool-tab.files-tab.active{background:rgba(219,160,60,.12);color:var(--ambar);}
@@ -102,30 +93,42 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .file-dot{width:6px;height:6px;border-radius:50%;background:var(--jade);flex-shrink:0;}
 .file-dot.warn{background:var(--ambar);}
 
-/* ── NAV DE DOS NIVELES: categorías arriba, herramientas abajo ── */
+/* ── NAV DE DOS NIVELES: categorías, con las herramientas de la categoría activa justo debajo
+   (antes era una segunda franja horizontal; ahora es el mismo bloque apilado, vertical). ── */
 .cat-tab{font-weight:500;}
-.subcategory-bar{flex-shrink:0;height:0;overflow:hidden;background:var(--surface2);border-bottom:1px solid transparent;display:flex;align-items:center;gap:2px;padding:0 20px;transition:height .16s ease,border-color .16s ease;}
-.subcategory-bar.show{height:38px;border-bottom-color:var(--border);}
+.subcategory-bar{flex-shrink:0;overflow:hidden;background:var(--surface2);border-radius:var(--r);display:flex;flex-direction:column;gap:1px;padding:4px;margin:2px 0 6px;max-height:0;transition:max-height .16s ease;}
+.subcategory-bar.show{max-height:600px;padding:6px 4px;}
 
-/* ── NAV COLAPSABLE — topbar + subcategorías escondidas; asoman sobre el contenido al llevar el
-   mouse arriba (peek) o quedan fijas con 📌. Mismo patrón que Scanner ONs/Valuación: la clase
-   .pinned es la única fuente de verdad del estado; .peeking es transitorio y nunca decide a dónde
-   va el toggle. .nav-shell mide 0 de alto colapsada, así el contenido usa TODA la pantalla. ── */
-.nav-shell{flex-shrink:0;position:relative;z-index:90;height:0;}
-.nav-shell.pinned{height:auto;}
-.nav-inner{position:absolute;top:0;left:0;right:0;transform:translateY(-101%);opacity:0;visibility:hidden;pointer-events:none;box-shadow:0 16px 34px rgba(0,0,0,.4);transition:transform 160ms cubic-bezier(0.23,1,0.32,1),opacity 120ms ease-out,visibility 0s linear 160ms;}
-.nav-shell.peeking .nav-inner{transform:none;opacity:1;visibility:visible;pointer-events:auto;transition:transform 160ms cubic-bezier(0.23,1,0.32,1),opacity 120ms ease-out,visibility 0s;}
-.nav-shell.pinned .nav-inner{position:relative;transform:none;opacity:1;visibility:visible;pointer-events:auto;box-shadow:none;transition:none;}
-/* ── BARRA FINA SIEMPRE VISIBLE (30/09) ── Pedido de Nico, de parte de un compañero que
-   "entra y se pierde": la topbar completa (cliente, herramientas, pin, tema, buscar,
-   archivos, ver web, usuario — 8 controles) aparecía TODA junta desde el arranque, antes
-   de que alguien nuevo entienda qué es esto. Ahora solo esto queda siempre a la vista:
-   marca + en qué herramienta estás + UN botón claro para abrir el resto + buscar (la
-   salida natural de "no sé a dónde ir"). Todo lo demás sigue siendo el mismo panel de
-   siempre (.nav-inner, con .peeking/.pinned), ahora detrás de un disparador VISIBLE en vez
-   de la franja transparente de 7px que nadie encontraba — esa franja (.nav-hot, abajo)
-   sigue andando para quien prefiera deslizar el mouse arriba, es un atajo más, no el único
-   camino. */
+/* ── SIDEBAR COLAPSABLE DE HERRAMIENTAS (01/10) — pedido de Nico: separar "a dónde voy"
+   (herramientas, esto) de "en qué contexto estoy" (cliente/tema/buscar/archivos, que ahora viven
+   en .nav-slim, siempre visible — ver más abajo). Mismo patrón de peek+pin ya probado en
+   Valuación por Múltiplos y Scanner ONs: .pinned es la única fuente de verdad de si queda fija
+   empujando el contenido; .peeking es transitorio (hover) y flota POR ENCIMA del contenido sin
+   correrlo. Colapsada por default — "que solo salgan si los quiero ver" (pedido textual). ── */
+.body-row{flex:1;display:flex;min-height:0;overflow:hidden;}
+.nav-shell{flex-shrink:0;position:relative;z-index:90;width:46px;background:var(--surface);border-right:1px solid var(--border);}
+.nav-shell.pinned{width:230px;}
+.nav-inner{height:100%;display:flex;flex-direction:column;gap:2px;padding:10px 6px;overflow-y:auto;}
+.nav-shell:not(.pinned):not(.peeking) .nav-inner{align-items:center;}
+.nav-shell:not(.pinned):not(.peeking) .nav-inner > *:not(.sb-toggle){display:none !important;}
+.nav-shell.peeking .nav-inner{
+  position:absolute;top:0;left:0;bottom:0;width:230px;z-index:91;
+  padding:10px 8px;align-items:stretch;background:var(--surface);
+  box-shadow:12px 0 34px rgba(0,0,0,.4);border-right:1px solid rgba(28,140,95,.4);
+  opacity:1;transform:translateX(0);
+  transition:opacity 160ms cubic-bezier(0.23,1,0.32,1),transform 160ms cubic-bezier(0.23,1,0.32,1);
+}
+@starting-style{ .nav-shell.peeking .nav-inner{opacity:0;transform:translateX(-8px);} }
+.sb-toggle{background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-size:11px;padding:6px 8px;cursor:pointer;flex-shrink:0;margin-bottom:6px;transition:border-color .15s,color .15s;white-space:nowrap;align-self:center;}
+.sb-toggle:hover{border-color:var(--jade);color:var(--jade);}
+.sb-toggle-full{display:none;}
+.nav-shell.pinned .sb-toggle,.nav-shell.peeking .sb-toggle{align-self:flex-start;}
+.nav-shell.pinned .sb-toggle-full,.nav-shell.peeking .sb-toggle-full{display:inline;}
+.nav-shell.pinned .sb-toggle-mini,.nav-shell.peeking .sb-toggle-mini{display:none;}
+/* ── BARRA FINA SIEMPRE VISIBLE (30/09→01/10) ── Lo único que queda siempre a la vista:
+   marca + en qué herramienta estás + toggle de herramientas + cliente enfocado + tema/buscar/
+   archivos/ver web/usuario. La navegación (herramientas) vive en el riel colapsable de arriba;
+   esto es "contexto de trabajo", no "a dónde ir" — separados a propósito (pedido de Nico 01/10). */
 .nav-slim{flex-shrink:0;height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);position:relative;z-index:95;}
 .nav-slim-brand{display:flex;align-items:center;gap:8px;flex-shrink:1;min-width:0;}
 .nav-slim-mark{width:24px;height:24px;border:1.5px solid var(--ambar);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:11px;color:var(--ambar);flex-shrink:0;}
@@ -135,16 +138,17 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .nav-slim-toggle{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--text);font-family:var(--font-s);font-size:12px;cursor:pointer;transition:all .15s;flex-shrink:0;}
 .nav-slim-toggle:hover{border-color:var(--jade);color:var(--jade);}
 .nav-slim-toggle .car{font-size:9px;opacity:.7;}
-.nav-slim-search{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:var(--muted);font-family:var(--font-s);font-size:12px;cursor:pointer;margin-left:auto;flex-shrink:0;transition:all .15s;}
+.nav-slim-right{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;}
+.nav-slim-search{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:var(--muted);font-family:var(--font-s);font-size:12px;cursor:pointer;flex-shrink:0;transition:all .15s;}
 .nav-slim-search:hover{border-color:var(--jade);color:var(--jade);}
 @media (max-width:640px){.nav-slim-ctx{display:none;}}
-.nav-hot{position:absolute;top:0;left:0;right:0;height:7px;cursor:pointer;}
-.nav-hot::after{content:'';position:absolute;top:0;left:50%;width:64px;height:4px;transform:translateX(-50%);border-radius:0 0 4px 4px;background:var(--jade);opacity:.55;transition:opacity .15s,height .15s;}
-.nav-hot:hover::after{opacity:1;height:6px;}
+.nav-hot{position:absolute;top:0;left:0;bottom:0;width:7px;cursor:pointer;z-index:89;}
+.nav-hot::after{content:'';position:absolute;left:0;top:50%;width:4px;height:64px;transform:translateY(-50%);border-radius:0 4px 4px 0;background:var(--jade);opacity:.55;transition:opacity .15s,width .15s;}
+.nav-hot:hover::after{opacity:1;width:6px;}
 .nav-shell.peeking .nav-hot,.nav-shell.pinned .nav-hot{display:none;}
 #btnNavPin.on{border-color:var(--jade);color:var(--jade);}
 @media (prefers-reduced-motion:reduce){.nav-inner{transition:none !important;}}
-.sub-tab{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:11.5px;white-space:nowrap;transition:all .15s;}
+.sub-tab{display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r);cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font-s);font-size:11.5px;white-space:nowrap;transition:all .15s;width:100%;text-align:left;}
 .sub-tab:hover{background:var(--surface);color:var(--text);}
 .sub-tab.active{background:rgba(28,140,95,.15);color:var(--jade);}
 .sub-tab.files-tab.active{background:rgba(219,160,60,.12);color:var(--ambar);}
@@ -586,27 +590,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
       <span class="nav-slim-name">finanzascon<b>nico</b></span>
       <span class="nav-slim-ctx" id="nav-slim-ctx"></span>
     </div>
-    <button class="nav-slim-toggle" type="button" onclick="toggleNavReveal()" title="Ver todas las herramientas, cambiar de cliente, archivos y más">
+    <button class="nav-slim-toggle" type="button" onclick="toggleNavReveal()" title="Ver las herramientas">
       <span>☰</span><span>Herramientas</span><span class="car">▾</span>
     </button>
-    <button class="nav-slim-search" type="button" onclick="abrirBusquedaGlobal()" title="Buscar cliente, ticker o herramienta (Ctrl+K)">
-      🔍 Buscar
-    </button>
-  </div>
-  <div class="nav-shell" id="nav-shell">
-  <div class="nav-hot" id="nav-hot" title="Mostrar la barra de herramientas"></div>
-  <div class="nav-inner">
-  <div class="topbar">
-    <div class="topbar-brand">
-      <div class="brand-mark">FN</div>
-      <span class="brand-name">finanzascon<span>nico</span></span>
-      <span class="brand-tag">Suite</span>
-    </div>
-    <div class="topbar-sep"></div>
-    <!-- Foco de análisis (cliente puntual / top por capital) — a propósito ACÁ, pegado al logo y
-         antes de las pestañas de herramientas, no escondido en la esquina derecha junto a Archivos
-         y Usuario: es el control que más cambia lo que se ve en TODA la Suite, tiene que notarse
-         primero. -->
+    <!-- Foco de análisis (cliente puntual / top por capital) — a propósito ACÁ, en la franja
+         siempre visible: es el control que más cambia lo que se ve en TODA la Suite, nunca debería
+         quedar escondido atrás del toggle de herramientas (pedido de Nico, 01/10: separar
+         "a dónde voy" de "en qué contexto estoy trabajando"). -->
     <div class="client-picker" id="client-picker">
       <button class="client-pill" id="client-pill-btn" onclick="toggleClientPicker()" title="Enfocar toda la Suite en un cliente puntual o en tus clientes con más capital — para un análisis más personalizado en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.">
         <span class="client-pill-icon">🎯</span>
@@ -635,14 +625,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
       </div>
     </div>
-    <div class="topbar-tools" id="topbar-tools"></div>
-    <button class="topbar-scroll-hint" id="topbar-scroll-hint" onclick="document.getElementById('topbar-tools').scrollBy({left:160,behavior:'smooth'})" title="Más herramientas →">›</button>
-    <div class="topbar-right">
-      <button class="files-status-pill" id="btnNavPin" onclick="toggleNavPin()" title="Fijar la barra siempre visible">📌</button>
+    <div class="nav-slim-right">
       <button class="files-status-pill" id="btnTheme" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro">🌙</button>
-      <button class="files-status-pill" id="global-search-btn" onclick="abrirBusquedaGlobal()" title="Buscar cliente, ticker o herramienta (Ctrl+K)">
-        <span class="files-status-icon">🔍</span>
-        <span class="files-status-text">Buscar</span>
+      <button class="nav-slim-search" type="button" onclick="abrirBusquedaGlobal()" title="Buscar cliente, ticker o herramienta (Ctrl+K)">
+        🔍 Buscar
       </button>
       <div class="files-status-picker" id="files-status-picker">
         <button class="files-status-pill" id="files-status-pill" onclick="toggleFilesStatusDropdown(event)" title="Estado de los archivos compartidos">
@@ -670,7 +656,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     </div>
   </div>
 
-  <div class="subcategory-bar" id="subcategory-bar"></div>
+  <div class="body-row" id="body-row">
+  <div class="nav-shell" id="nav-shell">
+  <div class="nav-hot" id="nav-hot" title="Mostrar las herramientas"></div>
+  <div class="nav-inner">
+    <button class="sb-toggle" id="btnNavPin" onclick="toggleNavPin()" title="Fijar las herramientas siempre visibles">
+      <span class="sb-toggle-mini">☰</span>
+      <span class="sb-toggle-full">◂ Ocultar herramientas</span>
+    </button>
+    <div class="topbar-tools" id="topbar-tools"></div>
+    <div class="subcategory-bar" id="subcategory-bar"></div>
   </div>
   </div>
 
@@ -1179,6 +1174,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
     <!-- Tool iframes (populated by JS) -->
   </div>
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -1499,7 +1495,6 @@ function showApp() {
   initClientePicker();
   initFilesStatusPicker();
   _abrirVistaDesdeUrl();
-  setupTopbarScroll();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1556,19 +1551,6 @@ function buildNav() {
   if (!shell || !pinBtn) return;
   const LS = 'fcn_nav_pinned';
   let openT = null, closeT = null;
-
-  // La barra fina (.nav-slim) muestra marca + contexto — redundante con la marca que ya trae el
-  // panel completo (.nav-inner) cuando éste está abierto (fijado o en peek), así que se oculta
-  // justo en ese momento. Un MutationObserver sobre la clase de `shell` (en vez de llamar a esto
-  // a mano en cada función que toca .pinned/.peeking) para que no se desincronice si en el
-  // futuro se agrega otro lugar que cambie esas clases.
-  const slim = document.getElementById('nav-slim');
-  function syncSlim() {
-    if (!slim) return;
-    const open = shell.classList.contains('pinned') || shell.classList.contains('peeking');
-    slim.style.display = open ? 'none' : 'flex';
-  }
-  new MutationObserver(syncSlim).observe(shell, { attributes: true, attributeFilter: ['class'] });
 
   function paintPin() {
     const on = shell.classList.contains('pinned');
@@ -1636,7 +1618,6 @@ function buildNav() {
   try { pinned = localStorage.getItem(LS) === '1'; } catch (e) {}
   shell.classList.toggle('pinned', pinned);
   paintPin();
-  syncSlim();
 })();
 
 function openCategory(catId) {
