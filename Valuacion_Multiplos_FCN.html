@@ -54,7 +54,7 @@ html,body{height:100%;overflow:hidden;}
 body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:13px;}
 
 /* ── TOPBAR ── */
-.topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;}
+.topbar{height:42px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;}
 .topbar-title{font-family:var(--font-d);font-size:16px;font-weight:300;color:var(--text);}
 .topbar-title span{color:var(--ambar);}
 .topbar-badge{font-size:9px;font-family:var(--font-m);letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px;border:1px solid rgba(28,140,95,.4);color:var(--jade);background:var(--jade-d);}
@@ -79,14 +79,20 @@ body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:
 
 /* ── TABS ── */
 .tabs{flex-shrink:0;display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
-.tab{padding:10px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--font-s);font-size:12px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;}
+.tab{padding:8px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--font-s);font-size:12px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;}
 .tab:hover{color:var(--text);}
 .tab.active{color:var(--text);border-bottom-color:var(--jade);}
 
 /* ── LAYOUT ── */
 .page{display:flex;flex-direction:column;height:100vh;}
+/* Herramientas de análisis de clientes — fila propia, SIEMPRE visible (28/09/2026, pedido de
+   Nico). Fondo levemente distinto (--surface2) para que se lea como "la barra que importa",
+   separada de los filtros de abajo, que sí se pueden esconder. */
+.tools-bar{flex-shrink:0;padding:9px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface2);}
+.tools-sep{width:1px;align-self:stretch;min-height:20px;background:var(--border);margin:0 2px;flex-shrink:0;}
+.chip-tool{padding:6px 13px;font-size:11.5px;font-weight:500;}
 .toolbar-shell{flex-shrink:0;position:relative;}
-.toolbar{flex-shrink:0;padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
+.toolbar{flex-shrink:0;padding:9px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface);}
 
 /* ── TOOLBAR COLECTABLE — pedido de Nico (16/09): con muchos filtros la barra ocupaba tanto
    que quedaba poco lugar para la tabla, que es lo que importa al analizar. Colapsada, el mismo
@@ -382,9 +388,43 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 
   <div class="tabs" id="tabs" style="display:none"></div>
 
+  <!-- HERRAMIENTAS — siempre visible (nunca se colapsa): todo lo que sirve para analizar y
+       contactar clientes vive acá, separado de los filtros de abajo (28/09/2026, pedido de
+       Nico: estas herramientas quedaban escondidas detrás de "+ Filtros" o perdidas entre
+       las chips de sector — ver memoria del proyecto). -->
+  <div class="tools-bar" id="tools-bar">
+    <label class="mult-pick" id="hor-pick" title="Para qué horizonte pesa el puntaje: cambia los pesos de Negocio/Valuación/Tendencia (y suma el Rebote técnico en Corto plazo). Afecta la columna Puntaje, el Ranking, la ficha y Comparar.">Horizonte<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="horizonte">?</span>
+      <select id="hor-sel" onchange="setHorizonte(this.value)">
+        <option value="largo">Largo plazo</option>
+        <option value="mediano" selected>Mediano plazo</option>
+        <option value="corto">Corto plazo</option>
+      </select>
+    </label>
+    <span class="hor-fresh" id="hor-fresh" style="display:none"></span>
+    <span class="tools-sep"></span>
+    <button class="chip chip-tool chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia, según el Horizonte elegido): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
+    <button class="chip chip-tool" id="chip-cartera" onclick="toggleCartera()" style="display:none" title="Mostrar solo lo que tenés en cartera de algún cliente">Solo en cartera</button>
+    <div class="ten-min-wrap" id="ten-min-wrap" style="display:none">
+      <input type="number" id="ten-min-input" min="0" step="500" placeholder="Tenencia mín. USD" oninput="onTenMinChange()" title="Ocultar lo que tengo por debajo de este monto">
+    </div>
+    <button class="chip chip-tool chip-warn" id="chip-prioridad" onclick="togglePrioridad()" style="display:none" title="Lo que más plata tiene y hoy conviene reducir o revisar, ordenado por monto">⚠ Prioridad de venta</button>
+    <button class="chip chip-tool chip-nov" id="chip-nov" onclick="abrirNovedades()" style="display:none">🔔 Novedades</button>
+    <span class="tools-sep"></span>
+    <button class="chip chip-tool chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
+    <button class="chip chip-tool chip-msg" onclick="abrirComparar()" title="Comparar dos activos y armar un mensaje simple si conviene rotar">⇄ Comparar</button>
+    <button class="chip chip-tool chip-msg" onclick="abrirCorr()" title="Ver qué tan diversificada está una cartera: si sus activos se mueven juntos o no">🔗 Correlación</button>
+    <button class="chip chip-tool chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
+    <span class="counter" id="counter"></span>
+    <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
+    <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
+  </div>
+
+  <!-- FILTROS — colapsa a un riel finito (▸ Filtros); se abre con un clic o al pasar el mouse.
+       Lo que queda acá es lo que de verdad se usa ocasionalmente: buscar, elegir un múltiplo o
+       señal puntual, o acotar por sector. -->
   <div class="toolbar-shell" id="toolbar-shell">
   <div class="toolbar" id="toolbar" style="display:none" onmouseenter="fcnToolbarPeekIn()" onmouseleave="fcnToolbarPeekOut()">
-    <button class="tb-toggle" id="tb-toggle" onclick="fcnToggleToolbarPin()" title="Mostrar u ocultar los filtros">▾ Ocultar</button>
+    <button class="tb-toggle" id="tb-toggle" onclick="fcnToggleToolbarPin()" title="Mostrar u ocultar los filtros">▾ Ocultar filtros</button>
     <div class="tb-summary" id="tb-summary"></div>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
@@ -431,29 +471,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
         </optgroup>
       </select>
     </label>
-    <label class="mult-pick" id="hor-pick" title="Para qué horizonte pesa el puntaje: cambia los pesos de Negocio/Valuación/Tendencia (y suma el Rebote técnico en Corto plazo). Afecta la columna Puntaje, el Ranking, la ficha y Comparar.">Horizonte<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="horizonte">?</span>
-      <select id="hor-sel" onchange="setHorizonte(this.value)">
-        <option value="largo">Largo plazo</option>
-        <option value="mediano" selected>Mediano plazo</option>
-        <option value="corto">Corto plazo</option>
-      </select>
-    </label>
-    <span class="hor-fresh" id="hor-fresh" style="display:none"></span>
     <div class="filter-chips" id="sector-chips"></div>
-    <button class="chip chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia, según el Horizonte elegido): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
-    <button class="chip" id="chip-cartera" onclick="toggleCartera()" style="display:none">Solo en cartera</button>
-    <div class="ten-min-wrap" id="ten-min-wrap" style="display:none">
-      <input type="number" id="ten-min-input" min="0" step="500" placeholder="Tenencia mín. USD" oninput="onTenMinChange()" title="Ocultar lo que tengo por debajo de este monto">
-    </div>
-    <button class="chip chip-warn" id="chip-prioridad" onclick="togglePrioridad()" style="display:none" title="Lo que más plata tiene y hoy conviene reducir o revisar, ordenado por monto">⚠ Prioridad de venta</button>
-    <button class="chip chip-nov" id="chip-nov" onclick="abrirNovedades()" style="display:none">🔔 Novedades</button>
-    <button class="chip chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
-    <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
-    <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
-    <button class="chip chip-msg" onclick="abrirComparar()" title="Comparar dos activos y armar un mensaje simple si conviene rotar">⇄ Comparar</button>
-    <button class="chip chip-msg" onclick="abrirCorr()" title="Ver qué tan diversificada está una cartera: si sus activos se mueven juntos o no">🔗 Correlación</button>
-    <button class="chip chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
-    <span class="counter" id="counter"></span>
   </div>
   </div>
 
@@ -1274,6 +1292,11 @@ async function loadStock(){
       if(tel && !tel.startsWith('+')) tel='+'+tel;
       STOCK[com]={
         nombre:String(r['Nombre']||'').trim()||null,
+        // Apellido y nombre completo (o razón social) — mismo campo que ya usan Rotador RV,
+        // Scanner de ONs, Calculadora de Rotaciones y FCN Suite. "Nombre" (arriba) es SOLO para
+        // el saludo de los mensajes ("Hola Fernando"); acá es para que Nico encuentre al cliente
+        // en Balanz, donde "Fernando" solo no alcanza (pedido de Nico, 30/09/2026).
+        denominacion:String(r['Denominación']||r['Denominacion']||'').trim()||null,
         mail:String(r['Mail']||r['Mails']||r['Email']||'').trim()||null,
         tel:tel||null,
       };
@@ -1286,7 +1309,14 @@ function datosCliente(cli){
     const h=arr.find(x=>x.cliente===cli);
     if(h && h.comitente && STOCK[h.comitente]) return {...STOCK[h.comitente], comitente:h.comitente};
   }
-  return {nombre:null, mail:null, tel:null};
+  return {nombre:null, denominacion:null, mail:null, tel:null};
+}
+// nombre completo para ENCONTRAR al cliente en Balanz (listas, selectores, banners) — nunca para
+// saludarlo en un mensaje. Si falta "Denominación" en el Stock, cae al primer nombre y por
+// último a la cuenta/comitente cruda, para no dejar nunca un espacio vacío.
+function nombreCompleto(cli){
+  const d=datosCliente(cli);
+  return d.denominacion||d.nombre||cli;
 }
 // posiciones de un cliente, unidas con la fila de datos + qué hacer
 function carteraDeCliente(cli){
@@ -1327,7 +1357,7 @@ function _fichaRegistro(ticker){
   const hist=reg.map((e,i)=>`<div class="reg-item"><span class="reg-fecha">${e.fecha}</span>
     <b>${e.accion}</b> · ${e.resultado}${e.nota?` — ${e.nota.replace(/</g,'&lt;')}`:''}
     <span class="reg-del" onclick="event.stopPropagation();delReg('${cli.replace(/'/g,"\\'")}','${ticker}',${i});abrirFicha('${ticker}')">✕</span></div>`).join('');
-  return `<div class="fs-sec"><h5>📝 Registro con ${datosCliente(cli).nombre||cli}</h5>
+  return `<div class="fs-sec"><h5>📝 Registro con ${nombreCompleto(cli)}</h5>
     ${hist||'<p class="fs-p">Todavía no anotaste nada para este cliente en este activo.</p>'}
     <div class="reg-form">
       <select id="reg-accion">${REG_ACCIONES.map(a=>`<option>${a}</option>`).join('')}</select>
@@ -1392,7 +1422,7 @@ function mensajeCliente(cli){
     + (lineas ? `Te paso un repaso de cómo vienen tus principales posiciones:\n\n${lineas}${restoTxt}\n\n`
               : `Pasé revista a tu cartera y por ahora viene todo estable, sin cambios para destacar.\n\n`)
     + `Cuando quieras lo charlamos por teléfono.\n\nSaludos,\n${nombreAsesor()}`;
-  return {asunto, cuerpo, mail:d.mail, tel:d.tel, nombre, nPos:cart.length};
+  return {asunto, cuerpo, mail:d.mail, tel:d.tel, nombre, denominacion:d.denominacion||nombre, nPos:cart.length};
 }
 
 let msgCtx=null;
@@ -1403,7 +1433,7 @@ function abrirMensaje(cli){
   }
   const m=mensajeCliente(cli);
   msgCtx={cli, mail:m.mail, tel:m.tel};
-  document.getElementById('msg-sub').textContent=`${m.nombre} · ${m.nPos} posición(es)`;
+  document.getElementById('msg-sub').textContent=`${m.denominacion} · ${m.nPos} posición(es)`;
   document.getElementById('msg-asunto').value=m.asunto;
   document.getElementById('msg-texto').value=m.cuerpo;
   const dest=document.getElementById('msg-dest');
@@ -1420,7 +1450,7 @@ function abrirMensajeMasivo(){
   document.getElementById('msg-sub').textContent=`${cls.length} clientes con cartera`;
   document.getElementById('msg-masivo-list').innerHTML = drafts.map((d,i)=>`
     <div class="msg-row">
-      <div><b>${d.nombre}</b> · ${d.nPos} pos.${d.mail?'':' <span style="color:var(--ambar)">(sin mail)</span>'}</div>
+      <div><b>${d.denominacion}</b> · ${d.nPos} pos.${d.mail?'':' <span style="color:var(--ambar)">(sin mail)</span>'}</div>
       <button class="btn-sm" onclick="verDraft(${i})">ver / editar</button>
     </div>`).join('');
   window._drafts=drafts;
@@ -1433,7 +1463,7 @@ function abrirMensajeMasivo(){
 function verDraft(i){
   const d=window._drafts[i];
   msgCtx={cli:d.c, mail:d.mail, tel:d.tel};
-  document.getElementById('msg-sub').textContent=`${d.nombre} · ${d.nPos} posición(es)`;
+  document.getElementById('msg-sub').textContent=`${d.denominacion} · ${d.nPos} posición(es)`;
   document.getElementById('msg-asunto').value=d.asunto;
   document.getElementById('msg-texto').value=d.cuerpo;
   document.getElementById('msg-dest').innerHTML = d.mail ? `✉ ${d.mail}${d.tel?`  ·  📱 ${d.tel}`:''}` : `<span style="color:var(--ambar)">Sin mail</span>`;
@@ -1441,7 +1471,7 @@ function verDraft(i){
   document.getElementById('msg-individual').hidden=false;
 }
 function bajarDrafts(){
-  const txt=(window._drafts||[]).map(d=>`=== ${d.nombre} (${d.mail||'sin mail'}) ===\nAsunto: ${d.asunto}\n\n${d.cuerpo}`).join('\n\n\n──────────\n\n\n');
+  const txt=(window._drafts||[]).map(d=>`=== ${d.denominacion||d.nombre} (${d.mail||'sin mail'}) ===\nAsunto: ${d.asunto}\n\n${d.cuerpo}`).join('\n\n\n──────────\n\n\n');
   _descargar(new Blob([txt],{type:'text/plain'}),'resumenes-clientes.txt');
 }
 // CSV UTF-8 con BOM, CRLF entre registros, \n dentro del cuerpo (Word los renderiza
@@ -1666,7 +1696,7 @@ function avRender(){
     const gan=(h.precCompra&&avCtx.r.precio)?(avCtx.r.precio/h.precCompra-1):null;
     const falta = wpp ? (!d.tel?' <span style="color:var(--ambar)">sin tel</span>':'') : (!d.mail?' <span style="color:var(--ambar)">sin mail</span>':'');
     return `<div class="msg-row">
-      <div><b>${d.nombre||h.cliente}</b> · ${fmtUsd(h.tenencia)}${gan!=null?` · <span style="color:${gan>=0?'var(--jade)':'var(--danger)'}">${gan>=0?'+':'−'}${fmtN(Math.abs(gan)*100,0)}%</span>`:''}${falta}</div>
+      <div><b>${d.denominacion||d.nombre||h.cliente}</b> · ${fmtUsd(h.tenencia)}${gan!=null?` · <span style="color:${gan>=0?'var(--jade)':'var(--danger)'}">${gan>=0?'+':'−'}${fmtN(Math.abs(gan)*100,0)}%</span>`:''}${falta}</div>
       <div style="display:flex;gap:6px;align-items:center;">
         <span style="font-size:10px;color:var(--muted);">${wpp?'WhatsApp':'Mail'}</span>
         <button class="btn-sm" onclick="avVerBorrador(${i})">ver</button>
@@ -1728,7 +1758,7 @@ function avDraftsTxt(){
   const txt=avCtx.holders.slice(0,avCtx.split).map(h=>{
     const d=_datosDe(h);
     const m=mensajeRotacion(h, avCtx.r, avCtx.alt, 'wpp', avCtx.link, avCtx.nombrarAlt, avCtx.lec);
-    return `=== ${d.nombre||h.cliente} (${d.tel||'sin tel'}) ===\n${m.cuerpo}`;
+    return `=== ${d.denominacion||d.nombre||h.cliente} (${d.tel||'sin tel'}) ===\n${m.cuerpo}`;
   }).join('\n\n\n──────────\n\n\n');
   _descargar(new Blob([txt||'(sin clientes en el tramo de WhatsApp)'],{type:'text/plain'}),`whatsapp-${avCtx.ticker}.txt`);
 }
@@ -2010,7 +2040,7 @@ function _fichaHolders(ticker){
       + (dataTenencia.length?`Ningún cliente tuyo lo tiene en cartera.`:`Subí "Tenencia por Ticker" en el FCN Suite para ver esto.`)+`</p></div>`;
   }
   const rows=holders.slice().sort((a,b)=>b.tenencia-a.tenencia).map(h=>`
-    <tr><td><span class="fs-cli-link" onclick="focoDesdeFicha('${String(h.cliente).replace(/'/g,"\\'")}')">${h.cliente}</span></td>
+    <tr><td><span class="fs-cli-link" onclick="focoDesdeFicha('${String(h.cliente).replace(/'/g,"\\'")}')">${nombreCompleto(h.cliente)}</span></td>
     <td>US$ ${h.tenencia.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
     <td>${h.nominales.toLocaleString('es-AR')}</td></tr>`).join('');
   const total=holders.reduce((a,h)=>a+h.tenencia,0);
@@ -2126,7 +2156,7 @@ function abrirClientes(){
     if(cnt.Sumar) b.push(`<span class="cli-b add">${cnt.Sumar} sumar</span>`);
     const conc=concentracion(c);
     if(conc) b.push(`<span class="cli-b watch" title="${conc.join(' · ')}">⚠ concentrado</span>`);
-    const nom=datosCliente(c).nombre||c;
+    const nom=nombreCompleto(c);
     return `<div class="cli-row" onclick="focoDesdeFicha('${String(c).replace(/'/g,"\\'")}');cerrarClientes()">
       <span class="cli-nom">${nom}</span>
       <span class="cli-badges">${b.join('')}</span>
@@ -2341,7 +2371,11 @@ function fcnAplicarPineado(pineado, persistir){
   fcnUpdateToolbarToggleIcon();
 }
 function fcnInitToolbarCollapse(){
-  var collapsed; try{ collapsed=localStorage.getItem(TB_COLLAPSE_KEY)==='1'; }catch(e){ collapsed=false; }
+  // default = colapsado (28/09/2026): ahora que Herramientas tiene su propia fila siempre
+  // visible, Filtros solo guarda búsqueda/Múltiplo/Señal/sector — mejor arrancar achicado y
+  // que lo abra quien lo necesite, en vez de ocupar lugar de entrada. Si alguna vez lo dejó
+  // pineado abierto a propósito (guardó '0'), se respeta esa preferencia.
+  var collapsed; try{ collapsed=localStorage.getItem(TB_COLLAPSE_KEY)!=='0'; }catch(e){ collapsed=true; }
   fcnAplicarPineado(!collapsed, false);
 }
 function fcnUpdateToolbarToggleIcon(){
@@ -2377,6 +2411,10 @@ function fcnActualizarResumenToolbar(){
   var el=document.getElementById('tb-summary');
   if(!el) return;
   var partes=[];
+  // "Solo en cartera" / "Tenencia mín." / "Prioridad de venta" ya NO viven en este panel
+  // colapsable (se mudaron a la barra de Herramientas, siempre visible, 28/09/2026) — este
+  // resumen solo necesita cubrir lo que de verdad queda escondido al colapsar: búsqueda,
+  // sector y señal.
   var q=(document.getElementById('search-input')||{}).value;
   if(q) partes.push('"'+q+'"');
   if(typeof activeSector!=='undefined' && activeSector && activeSector!=='todos') partes.push(activeSector);
@@ -2385,9 +2423,6 @@ function fcnActualizarResumenToolbar(){
     var txt=(selEl && selEl.selectedOptions && selEl.selectedOptions[0]) ? selEl.selectedOptions[0].textContent : sigFiltro;
     partes.push(txt);
   }
-  if(typeof soloCartera!=='undefined' && soloCartera) partes.push('en cartera');
-  if(typeof tenMin!=='undefined' && tenMin) partes.push('mín. '+fmtUsd(tenMin));
-  if(typeof soloPrioridad!=='undefined' && soloPrioridad) partes.push('prioridad venta');
   el.innerHTML = partes.length
     ? partes.map(function(p){ return '<span class="tb-tag">'+escHtmlVM(p)+'</span>'; }).join('')
     : '<span class="tb-tag tb-tag-off">sin filtros</span>';
@@ -2622,7 +2657,7 @@ function corrFila(tk){
 function abrirCorr(cli){
   const cls=clientesConCartera();
   const sel=document.getElementById('corr-cli');
-  sel.innerHTML='<option value="">— Armar a mano —</option>'+cls.map(c=>`<option value="${_escC(c)}">${_escC(datosCliente(c).nombre||c)}</option>`).join('');
+  sel.innerHTML='<option value="">— Armar a mano —</option>'+cls.map(c=>`<option value="${_escC(c)}">${_escC(nombreCompleto(c))}</option>`).join('');
   const ini = cli!==undefined ? cli : (clienteActivo||'');
   document.getElementById('corr-add').value='';
   document.getElementById('corrOverlay').classList.add('open');
@@ -2960,8 +2995,7 @@ function render(){
       if(cnt.Atención) partes.push(`<b style="color:var(--ambar)">${cnt.Atención}</b> en atención`);
       if(cnt.Sumar) partes.push(`<b class="val-pos">${cnt.Sumar}</b> para sumar`);
       const conc=concentracion(clienteActivo);
-      const d=datosCliente(clienteActivo);
-      fbEl.innerHTML=`<span class="fb-name">${d.nombre||clienteActivo}</span>`
+      fbEl.innerHTML=`<span class="fb-name">${nombreCompleto(clienteActivo)}</span>`
         +`<span>${fmtUsd(tot)} en ${cart.length} posiciones${partes.length?' · '+partes.join(' · '):''}</span>`
         +(conc?`<span class="fb-conc">⚠ concentración: ${conc.join(' · ')}</span>`:'')
         +`<span class="fb-act"><button class="fb-btn" onclick="abrirMensaje(clienteActivo)">✉ Mensaje</button><button class="fb-btn" onclick="quitarFoco()">Quitar foco</button></span>`;
@@ -2970,7 +3004,7 @@ function render(){
   }
 
   // contador
-  const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${clienteActivo} <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>`
+  const foco = clienteActivo ? ` · <span class="foco-cliente">🎯 ${nombreCompleto(clienteActivo)} <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>`
     : topClientesSet ? ` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>` : '';
   const cmsg=document.getElementById('chip-msg');
   if(cmsg) cmsg.textContent = clienteActivo ? `✉ Mensaje a ${String(clienteActivo).split(' ')[0]}` : '✉ Mensajes';
