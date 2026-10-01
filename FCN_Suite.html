@@ -2793,7 +2793,7 @@ function renderAvisoPreview() {
     html += `<br><span class="err">⚠ Antes de generar, completá: ${faltan.join(' y ')}.</span>`;
     canGen = false;
   }
-  if (_avisoBajasError) html += `<br><span class="err">⚠ No se pudo verificar la lista de bajas — revisá tu conexión antes de generar.</span>`;
+  if (_avisoBajasError) html += `<br><span class="err">⚠ No se pudo verificar la lista de bajas (el servicio no respondió) — si generás igual, nadie queda filtrado.</span>`;
   el.innerHTML = html;
   if (btn) {
     btn.disabled = !canGen;
@@ -2950,6 +2950,10 @@ async function generarDatosLiquidez() {
 
   let rows, sufijo, filtradas = 0;
   if (prueba) {
+    if (_avisoBajasError) {
+      const ok = confirm('No se pudo verificar la lista de bajas (el servicio no respondió).\n\nEl modo prueba existe justamente para confirmar que el filtro de bajas funciona — ahora mismo NO se va a aplicar, y las filas marcadas "(debería filtrarse)" van a aparecer igual.\n\n¿Generar la prueba de todos modos?');
+      if (!ok) return;
+    }
     rows = filasPruebaAviso(perfil);
     if (_avisoBajasSet) rows = rows.filter(r => {
       if (_avisoBajasSet.has(String(r.Email).trim().toLowerCase())) { filtradas++; return false; }
@@ -2983,9 +2987,10 @@ async function generarDatosLiquidez() {
 
   const n = rows.length;
   document.getElementById('aliqAsunto').value = AVISO_ASUNTO;
+  const avisoErr = _avisoBajasError ? ' ⚠ no se pudo verificar bajas, no se filtró nada' : '';
   document.getElementById('aliqDoneN').textContent = prueba
-    ? `Word + CSV de prueba listos (${n} fila${n === 1 ? '' : 's'}${filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : ''})`
-    : `Word + CSV descargados — ${n} cliente${n === 1 ? '' : 's'}`;
+    ? `Word + CSV de prueba listos (${n} fila${n === 1 ? '' : 's'}${filtradas ? `, ${filtradas} filtrada${filtradas === 1 ? '' : 's'} por baja` : ''})${avisoErr}`
+    : `Word + CSV descargados — ${n} cliente${n === 1 ? '' : 's'}${avisoErr}`;
   _avisoMostrarPaso('done');
 }
 
