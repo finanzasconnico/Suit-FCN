@@ -116,6 +116,28 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .nav-inner{position:absolute;top:0;left:0;right:0;transform:translateY(-101%);opacity:0;visibility:hidden;pointer-events:none;box-shadow:0 16px 34px rgba(0,0,0,.4);transition:transform 160ms cubic-bezier(0.23,1,0.32,1),opacity 120ms ease-out,visibility 0s linear 160ms;}
 .nav-shell.peeking .nav-inner{transform:none;opacity:1;visibility:visible;pointer-events:auto;transition:transform 160ms cubic-bezier(0.23,1,0.32,1),opacity 120ms ease-out,visibility 0s;}
 .nav-shell.pinned .nav-inner{position:relative;transform:none;opacity:1;visibility:visible;pointer-events:auto;box-shadow:none;transition:none;}
+/* ── BARRA FINA SIEMPRE VISIBLE (30/09) ── Pedido de Nico, de parte de un compañero que
+   "entra y se pierde": la topbar completa (cliente, herramientas, pin, tema, buscar,
+   archivos, ver web, usuario — 8 controles) aparecía TODA junta desde el arranque, antes
+   de que alguien nuevo entienda qué es esto. Ahora solo esto queda siempre a la vista:
+   marca + en qué herramienta estás + UN botón claro para abrir el resto + buscar (la
+   salida natural de "no sé a dónde ir"). Todo lo demás sigue siendo el mismo panel de
+   siempre (.nav-inner, con .peeking/.pinned), ahora detrás de un disparador VISIBLE en vez
+   de la franja transparente de 7px que nadie encontraba — esa franja (.nav-hot, abajo)
+   sigue andando para quien prefiera deslizar el mouse arriba, es un atajo más, no el único
+   camino. */
+.nav-slim{flex-shrink:0;height:44px;display:flex;align-items:center;gap:10px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);position:relative;z-index:95;}
+.nav-slim-brand{display:flex;align-items:center;gap:8px;flex-shrink:1;min-width:0;}
+.nav-slim-mark{width:24px;height:24px;border:1.5px solid var(--ambar);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:11px;color:var(--ambar);flex-shrink:0;}
+.nav-slim-name{font-family:var(--font-d);font-size:13.5px;font-weight:300;color:var(--text);white-space:nowrap;flex-shrink:0;}
+.nav-slim-name b{color:var(--ambar);font-weight:400;}
+.nav-slim-ctx{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nav-slim-toggle{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--text);font-family:var(--font-s);font-size:12px;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.nav-slim-toggle:hover{border-color:var(--jade);color:var(--jade);}
+.nav-slim-toggle .car{font-size:9px;opacity:.7;}
+.nav-slim-search{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:var(--muted);font-family:var(--font-s);font-size:12px;cursor:pointer;margin-left:auto;flex-shrink:0;transition:all .15s;}
+.nav-slim-search:hover{border-color:var(--jade);color:var(--jade);}
+@media (max-width:640px){.nav-slim-ctx{display:none;}}
 .nav-hot{position:absolute;top:0;left:0;right:0;height:7px;cursor:pointer;}
 .nav-hot::after{content:'';position:absolute;top:0;left:50%;width:64px;height:4px;transform:translateX(-50%);border-radius:0 0 4px 4px;background:var(--jade);opacity:.55;transition:opacity .15s,height .15s;}
 .nav-hot:hover::after{opacity:1;height:6px;}
@@ -232,7 +254,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .hub-panel.active{display:block;}
 
 /* ── HOME ── */
-.onboard-banner{max-width:960px;margin:0 auto 20px;display:flex;gap:14px;align-items:flex-start;background:var(--danger-d);border:1px solid rgba(192,69,59,.4);border-radius:10px;padding:18px 20px;}
+.onboard-banner{max-width:1120px;margin:0 auto 20px;display:flex;gap:14px;align-items:flex-start;background:var(--danger-d);border:1px solid rgba(192,69,59,.4);border-radius:10px;padding:18px 20px;}
 .onboard-banner-icon{font-size:22px;flex-shrink:0;line-height:1;}
 .onboard-banner-title{font-family:var(--font-d);font-size:14px;color:var(--text);margin-bottom:4px;}
 .onboard-banner-sub{font-size:11.5px;color:var(--muted);line-height:1.6;max-width:640px;margin-bottom:12px;}
@@ -240,11 +262,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .onboard-file-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--danger);color:var(--danger);border-radius:var(--r);padding:8px 14px;font-family:var(--font-s);font-size:11.5px;cursor:pointer;transition:all .15s;}
 .onboard-file-btn:hover{background:var(--danger-d);}
 .onboard-file-btn input{display:none;}
-.home-hero{max-width:960px;margin:0 auto 24px;}
+.home-hero{max-width:1120px;margin:0 auto 24px;}
 .home-greeting{font-family:var(--font-d);font-size:13px;color:var(--muted);margin-bottom:4px;}
 .home-hero h1{font-family:var(--font-d);font-size:26px;font-weight:300;color:var(--text);margin-bottom:6px;}
 .home-hero p{font-size:12px;color:var(--muted);line-height:1.7;max-width:480px;}
-.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;max-width:960px;margin:0 auto 32px;}
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;max-width:1120px;margin:0 auto 32px;}
 .tool-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
 .tool-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--jade-d),transparent);opacity:0;transition:opacity .2s;}
 .tool-card:hover{border-color:rgba(28,140,95,.5);transform:translateY(-2px);}
@@ -261,14 +283,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .home-new-banner-close:hover{color:var(--text);}
 .home-search-btn{display:flex;align-items:center;gap:9px;width:100%;max-width:460px;margin-top:16px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer;text-align:left;transition:border-color .2s,color .2s;}
 .home-search-btn:hover{border-color:var(--jade);color:var(--text);}
-.task-section-title{max-width:960px;margin:0 auto 10px;font-family:var(--font-d);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
-.ver-todas-wrap{max-width:960px;margin:0 auto 32px;}
+.task-section-title{max-width:1120px;margin:0 auto 10px;font-family:var(--font-d);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.ver-todas-wrap{max-width:1120px;margin:0 auto 32px;}
 .ver-todas-wrap summary{cursor:pointer;font-size:12px;color:var(--muted);padding:4px 0;}
 .ver-todas-wrap summary:hover{color:var(--jade);}
 .ver-todas-wrap .tools-grid{margin-top:16px;}
 
 /* ── DASHBOARD (panorama general) ── */
-.dash-section{max-width:960px;margin:0 auto 28px;}
+.dash-section{max-width:1120px;margin:0 auto 28px;}
 .dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
 .dash-stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
 .dash-stat.warn{border-color:rgba(219,160,60,.3);}
@@ -556,6 +578,19 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 <!-- ── APP ── -->
 <div id="app">
+  <div class="nav-slim" id="nav-slim">
+    <div class="nav-slim-brand">
+      <div class="nav-slim-mark">FN</div>
+      <span class="nav-slim-name">finanzascon<b>nico</b></span>
+      <span class="nav-slim-ctx" id="nav-slim-ctx"></span>
+    </div>
+    <button class="nav-slim-toggle" type="button" onclick="toggleNavReveal()" title="Ver todas las herramientas, cambiar de cliente, archivos y más">
+      <span>☰</span><span>Herramientas</span><span class="car">▾</span>
+    </button>
+    <button class="nav-slim-search" type="button" onclick="abrirBusquedaGlobal()" title="Buscar cliente, ticker o herramienta (Ctrl+K)">
+      🔍 Buscar
+    </button>
+  </div>
   <div class="nav-shell" id="nav-shell">
   <div class="nav-hot" id="nav-hot" title="Mostrar la barra de herramientas"></div>
   <div class="nav-inner">
@@ -1525,6 +1560,19 @@ function buildNav() {
   const LS = 'fcn_nav_pinned';
   let openT = null, closeT = null;
 
+  // La barra fina (.nav-slim) muestra marca + contexto — redundante con la marca que ya trae el
+  // panel completo (.nav-inner) cuando éste está abierto (fijado o en peek), así que se oculta
+  // justo en ese momento. Un MutationObserver sobre la clase de `shell` (en vez de llamar a esto
+  // a mano en cada función que toca .pinned/.peeking) para que no se desincronice si en el
+  // futuro se agrega otro lugar que cambie esas clases.
+  const slim = document.getElementById('nav-slim');
+  function syncSlim() {
+    if (!slim) return;
+    const open = shell.classList.contains('pinned') || shell.classList.contains('peeking');
+    slim.style.display = open ? 'none' : 'flex';
+  }
+  new MutationObserver(syncSlim).observe(shell, { attributes: true, attributeFilter: ['class'] });
+
   function paintPin() {
     const on = shell.classList.contains('pinned');
     pinBtn.classList.toggle('on', on);
@@ -1537,6 +1585,13 @@ function buildNav() {
     paintPin();
   }
   window.toggleNavPin = function () { setPinned(!shell.classList.contains('pinned')); };
+  // Botón de la barra fina: si está fijada, clic = ocultar todo de nuevo (atajo rápido); si no,
+  // alterna el panel (mismo .peeking de siempre, pero gatillado por clic en vez de hover).
+  window.toggleNavReveal = function () {
+    if (shell.classList.contains('pinned')) { setPinned(false); return; }
+    if (shell.classList.contains('peeking')) { shell.classList.remove('peeking'); return; }
+    abrir();
+  };
 
   // Algo abierto que no debe cerrarse solo: un desplegable (cliente/archivos) o un campo con foco.
   function hayAlgoAbierto() {
@@ -1575,10 +1630,16 @@ function buildNav() {
     if (e.key === 'Escape' && !shell.classList.contains('pinned')) { shell.classList.remove('peeking'); }
   });
 
+  // Colapsado por default (igual que siempre): con la barra fina nueva (.nav-slim, afuera de
+  // este shell) ya hay un disparador SIEMPRE visible para abrir esto, así que ya no hace falta
+  // forzar el panel completo abierto de entrada para que alguien nuevo lo encuentre — ver
+  // memoria 30/09: el primer intento fue pinned:true por default, pero eso volvía a juntar los
+  // 8 controles desde el arranque, que es justo lo que Nico pidió evitar.
   let pinned = false;
   try { pinned = localStorage.getItem(LS) === '1'; } catch (e) {}
   shell.classList.toggle('pinned', pinned);
   paintPin();
+  syncSlim();
 })();
 
 function openCategory(catId) {
@@ -5208,6 +5269,7 @@ function setActiveTab(toolId) {
     const btn = document.getElementById('tab-home');
     if (btn) btn.classList.add('active');
     renderSubcategoryBar(null);
+    _setNavSlimCtx(toolId);
     return;
   }
   const catId = categoryOf(toolId);
@@ -5217,6 +5279,17 @@ function setActiveTab(toolId) {
   renderSubcategoryBar(catId);
   const subBtn = document.getElementById('subtab-' + toolId);
   if (subBtn) subBtn.classList.add('active');
+  _setNavSlimCtx(toolId);
+}
+// "En qué herramienta estoy" en la barra fina siempre visible — DESPUÉS de renderSubcategoryBar
+// (que recién ahí crea los botones subtab-*), nunca antes: si no, busca un id que todavía no
+// existe y siempre queda vacío. Bug real encontrado en la verificación (30/09).
+function _setNavSlimCtx(toolId) {
+  const el = document.getElementById('nav-slim-ctx');
+  if (!el) return;
+  if (toolId === 'home') { el.textContent = ''; return; }
+  const src = document.getElementById('subtab-' + toolId) || document.getElementById('tab-' + toolId) || document.getElementById('cat-' + toolId);
+  el.textContent = src ? '· ' + src.textContent.trim() : '';
 }
 
 // ── TOAST ──
