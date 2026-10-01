@@ -198,6 +198,26 @@ tbody tr:hover{filter:brightness(1.35);}
 .btn-msg{padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font-s);font-size:12px;cursor:pointer;}
 .btn-msg:hover{border-color:var(--jade);}
 .btn-wa{border-color:rgba(37,211,102,.4);color:#25D366;}
+/* ── SEÑALES DE POSICIÓN (traídas de Rotador RV, 01/10) ── */
+.ps{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;cursor:default;}
+.ps-sell{background:rgba(219,160,60,.20);color:var(--ambar);}
+.ps-stop{background:rgba(192,69,59,.20);color:var(--neg);}
+.ps-add{background:rgba(28,140,95,.20);color:var(--pos);}
+.ps-hold,.ps-wait{background:var(--wash-1);color:var(--muted);}
+.ps-al{font-size:10px;color:var(--ambar);margin-left:4px;cursor:help;white-space:nowrap;}
+.pa-pos{white-space:nowrap;cursor:pointer;}
+.pa-pos .ps{margin:1px 3px 1px 0;cursor:pointer;}
+.pa-pos-rest{font-size:10px;color:var(--dim);}
+.chip-sen.active{border-color:var(--ambar);background:var(--ambar-d);color:var(--ambar);}
+.sen-grid{display:grid;grid-template-columns:1fr 96px;gap:12px 16px;align-items:center;margin-top:4px;}
+.sen-grid label{font-size:12.5px;color:var(--text);}
+.sen-grid small{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;}
+.sen-reglas{font-size:11.5px;color:var(--muted);line-height:1.6;background:var(--wash-1);border-radius:6px;padding:10px 12px;margin-top:16px;}
+.sen-reglas b{color:var(--text);}
+.btn-pri{background:var(--jade);border-color:var(--jade);color:#fff;}
+.btn-pri:hover{filter:brightness(1.08);border-color:var(--jade);}
+.hm-act{background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;font-size:11px;padding:1px 6px;margin-left:4px;}
+.hm-act:hover{border-color:var(--jade);color:var(--jade);}
 .msg-nota{font-size:10.5px;color:var(--dim);margin-top:12px;line-height:1.5;}
 .msg-list{max-height:44vh;overflow-y:auto;margin:6px 0;}
 .msg-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,58,52,.5);font-size:12px;}
@@ -408,12 +428,15 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
       <input type="number" id="ten-min-input" min="0" step="500" placeholder="Tenencia mín. USD" oninput="onTenMinChange()" title="Ocultar lo que tengo por debajo de este monto">
     </div>
     <button class="chip chip-tool chip-warn" id="chip-prioridad" onclick="togglePrioridad()" style="display:none" title="Lo que más plata tiene y hoy conviene reducir o revisar, ordenado por monto">⚠ Prioridad de venta</button>
+    <button class="chip chip-tool chip-sen" id="chip-senales" onclick="toggleSenales()" style="display:none" title="Mostrar qué conviene hacer con la posición de cada cliente (tomar ganancia, stop, acumular…) según cuánto gana o pierde y hace cuánto la tiene">📍 Señales de posición</button>
+    <button class="chip chip-tool" id="chip-senales-cfg" onclick="abrirSenCfg()" style="display:none" title="Configurar las señales de posición">⚙</button>
     <button class="chip chip-tool chip-nov" id="chip-nov" onclick="abrirNovedades()" style="display:none">🔔 Novedades</button>
     <span class="tools-sep"></span>
     <button class="chip chip-tool chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
     <button class="chip chip-tool chip-msg" onclick="abrirComparar()" title="Comparar dos activos y armar un mensaje simple si conviene rotar">⇄ Comparar</button>
     <button class="chip chip-tool chip-msg" onclick="abrirCorr()" title="Ver qué tan diversificada está una cartera: si sus activos se mueven juntos o no">🔗 Correlación</button>
     <button class="chip chip-tool chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
+    <button class="chip chip-tool chip-msg" id="chip-excel" onclick="exportarExcel()" style="display:none" title="Bajar a Excel las posiciones de tus clientes en lo que estás viendo (respeta los filtros)">⬇ Excel</button>
     <span class="counter" id="counter"></span>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
@@ -665,6 +688,35 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
           <button class="btn-msg" id="msg-copiar" onclick="msgCopiar()">Copiar</button>
         </div>
         <p class="msg-nota">Revisá el texto antes de enviar — es un borrador armado con la lectura de la pantalla, no un mensaje listo.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="holders-overlay" id="senCfgOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarSenCfg()">
+    <div class="msg-modal">
+      <div class="hm-head">
+        <div><div class="hm-title">Señales de posición</div><div class="hm-sub">Se configuran una vez y quedan guardadas en esta compu</div></div>
+        <button class="hm-close" onclick="cerrarSenCfg()">✕</button>
+      </div>
+      <div class="msg-body">
+        <div class="sen-grid">
+          <label for="sen-tp">Objetivo de ganancia (%)<small>Ganando esto o más, la señal es tomar ganancia</small></label>
+          <input type="number" id="sen-tp" class="msg-input" min="1" step="1" oninput="senReglasPreview()">
+          <label for="sen-sl">Stop loss (%)<small>Perdiendo esto o más (y pasados los días mínimos), la señal es Stop</small></label>
+          <input type="number" id="sen-sl" class="msg-input" min="1" step="1" oninput="senReglasPreview()">
+          <label for="sen-dias">Días mínimos<small>Antes de esto, una pérdida es "Esperar": es pronto para juzgar</small></label>
+          <input type="number" id="sen-dias" class="msg-input" min="0" step="1" oninput="senReglasPreview()">
+          <label for="sen-anal">Tener en cuenta a los analistas<small>Mira cuánto recorrido le queda a la acción según su precio objetivo</small></label>
+          <input type="checkbox" id="sen-anal" onchange="senReglasPreview()" style="justify-self:start;width:18px;height:18px;accent-color:var(--jade);">
+          <label for="sen-up">Recorrido mínimo (%)<small>Si los analistas ven esto o más, se deja correr en vez de vender; si ven menos, no se suma</small></label>
+          <input type="number" id="sen-up" class="msg-input" min="0" step="1" oninput="senReglasPreview()">
+        </div>
+        <div class="sen-reglas" id="sen-reglas"></div>
+        <div class="msg-actions">
+          <button class="btn-msg" onclick="senRestaurar()" style="margin-right:auto">Restaurar predeterminados</button>
+          <button class="btn-msg" onclick="cerrarSenCfg()">Cancelar</button>
+          <button class="btn-msg btn-pri" onclick="senGuardar()">Guardar y activar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1292,6 +1344,223 @@ function ganSpan(g){
   if(g==null) return '<span class="dash">—</span>';
   return `<span class="${g>=0?'val-pos':'val-neg'}">${g>=0?'+':'−'}${fmtN(Math.abs(g)*100,1)}%</span>`;
 }
+// ══════════════════════════════════════════
+//  SEÑALES DE POSICIÓN — traídas de Rotador RV (01/10). Responden "¿qué hago con la posición
+//  de ESTE cliente?" (cuánto gana/pierde y hace cuánto la tiene), que es otra pregunta que
+//  "Qué hacer" (la empresa). Solo se ven con el chip "📍 Señales de posición".
+//  Reglas reescritas con Nico: en Rotador RV dos reglas nunca disparaban (tapadas por otras),
+//  el stop loss del slider no entraba en ninguna regla (cualquier pérdida a los 30 días era
+//  STOP) y el upside de analistas se comparaba contra la ganancia del cliente — que mide otra
+//  cosa (lo que ya subió desde SU compra vs. lo que le queda a la acción desde hoy).
+// ══════════════════════════════════════════
+var SEN_DEF={tp:30, sl:15, dias:30, upMin:10, anal:true};
+var SEN_CFG=(function(){ try{ return Object.assign({},SEN_DEF,JSON.parse(localStorage.getItem('vm_senales_cfg')||'null')||{}); }catch(e){ return Object.assign({},SEN_DEF); } })();
+var senalesOn=(function(){ try{ return localStorage.getItem('vm_senales_on')==='1'; }catch(e){ return false; } })();
+var SEN_META={
+  VENDER:  {txt:'Vender',   cls:'ps-sell', orden:5, label:'Tomar ganancia'},
+  STOP:    {txt:'Stop',     cls:'ps-stop', orden:4, label:'Stop / revisar'},
+  ACUMULAR:{txt:'Acumular', cls:'ps-add',  orden:3, label:'Acumular'},
+  MANTENER:{txt:'Mantener', cls:'ps-hold', orden:2, label:'Mantener'},
+  ESPERAR: {txt:'Esperar',  cls:'ps-wait', orden:1, label:'Esperar'},
+};
+// {senal, nota, alerta, rent} para la posición h (fila de tenencia) del activo r, o null sin precio de compra
+function senalPosicion(h, r, cfg){
+  const g=ganHolder(h);
+  if(g==null) return null;
+  const c=cfg||SEN_CFG, rent=g*100, dias=h.dias||0;
+  const an=(c.anal && r) ? analistasDe(r) : null;
+  const up=(an && an.upside!=null) ? an.upside*100 : null;
+  const pc=x=>fmtN(Math.abs(x),1)+'%', sg=x=>(x>=0?'+':'−')+pc(x);
+  let senal, nota;
+  if(rent>=c.tp){
+    if(up!=null && up>=c.upMin){ senal='MANTENER'; nota=`Gana ${sg(rent)}, ya pasó el objetivo de ${c.tp}%, pero los analistas todavía ven ${sg(up)} de recorrido: se puede dejar correr cuidando la ganancia.`; }
+    else { senal='VENDER'; nota=`Gana ${sg(rent)}, por encima del objetivo de ${c.tp}%${up!=null?` y a la acción le queda poco recorrido según los analistas (${sg(up)})`:''}: buen momento para tomar ganancia.`; }
+  } else if(rent<=-c.sl){
+    if(dias>=c.dias){ senal='STOP'; nota=`Pierde ${pc(rent)}, más que el stop de ${c.sl}%, con ${dias} días de tenencia: revisar si seguir o salir.`; }
+    else { senal='ESPERAR'; nota=`Pierde ${pc(rent)}, pero la tiene hace solo ${dias} días (menos de ${c.dias}): es pronto para juzgar.`; }
+  } else if(rent<0){
+    senal = dias>=c.dias ? 'MANTENER' : 'ESPERAR';
+    nota = `En ${sg(rent)}, dentro del margen del stop (${c.sl}%)${dias<c.dias?` y con solo ${dias} días de tenencia`:''}.`;
+  } else if(rent>=c.tp*0.4){
+    if(up==null || up>=c.upMin){ senal='ACUMULAR'; nota=`Gana ${sg(rent)}${up!=null?` y los analistas ven ${sg(up)} más`:''}: la tesis se está validando, buen momento para sumar.`; }
+    else { senal='MANTENER'; nota=`Gana ${sg(rent)}, pero a la acción le queda poco recorrido según los analistas (${sg(up)}): mejor no sumar más.`; }
+  } else {
+    senal = dias<90 ? 'ESPERAR' : 'MANTENER';
+    nota = dias<90 ? `${sg(rent)} en ${dias} días: es normal, darle tiempo.` : `${sg(rent)} en ${dias} días: si el negocio sigue bien, el precio debería acompañar.`;
+  }
+  // cruce con la empresa — mismo criterio que lecturaRebote(): un aviso, no cambia la señal
+  let alerta=null;
+  const n = r ? fundamental(r) : null, q = r ? queHacer(r).v : null;
+  if(senal==='STOP' && n!=null && n>=20)
+    alerta={txt:'⚠ empresa sólida', detalle:'El negocio sigue bien: puede ser una baja del mercado y no de la empresa. Revisá antes de vender.'};
+  else if(senal==='VENDER' && q==='Sumar')
+    alerta={txt:'⚠ empresa para sumar', detalle:'La empresa sigue fuerte: considerá tomar solo una parte de la ganancia.'};
+  else if(senal==='ACUMULAR' && n!=null && n<=-15)
+    alerta={txt:'⚠ negocio flojo', detalle:'La posición viene bien, pero el negocio de fondo viene débil: cuidado con sumar más.'};
+  else if(senal==='MANTENER' && rent<0 && n!=null && n<=-15)
+    alerta={txt:'⚠ negocio flojo', detalle:'Está en pérdida y el negocio viene débil: conviene revisarla aunque no haya llegado al stop.'};
+  else if(senal==='MANTENER' && rent>=c.tp && (q==='Reducir'||q==='Atención'))
+    alerta={txt:'⚠ empresa en '+q.toLowerCase(), detalle:`Los analistas ven recorrido, pero la lectura de la empresa dice "${q}".`};
+  return {senal, nota, alerta, rent};
+}
+function _attr(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function senChip(s){
+  if(!s) return '<span class="dash">—</span>';
+  const m=SEN_META[s.senal];
+  return `<span class="ps ${m.cls}" title="${_attr(s.nota)}">${m.txt}</span>`
+    + (s.alerta?`<span class="ps-al" title="${_attr(s.alerta.detalle)}">${s.alerta.txt}</span>`:'');
+}
+// celda "Posición cliente" del Panorama: con un cliente enfocado, su señal; si no, cuántos de cada una
+function senResumenCell(r){
+  const hs=holdersFiltrados(r);
+  const ss=hs.map(h=>senalPosicion(h,r)).filter(Boolean);
+  if(!ss.length) return '<span class="dash">—</span>';
+  if(clienteActivo) return senChip(ss[0]);
+  const cnt={}; let nAl=0;
+  ss.forEach(x=>{ cnt[x.senal]=(cnt[x.senal]||0)+1; if(x.alerta) nAl++; });
+  const fuertes=['VENDER','STOP','ACUMULAR'].filter(k=>cnt[k])
+    .map(k=>`<span class="ps ${SEN_META[k].cls}" title="${cnt[k]} cliente(s) con señal ${SEN_META[k].label} — clic para ver quiénes">${cnt[k]} ${SEN_META[k].txt.toLowerCase()}</span>`);
+  const resto=(cnt.MANTENER||0)+(cnt.ESPERAR||0);
+  return fuertes.join('')
+    + (resto?`<div class="pa-pos-rest">${resto} mantener/esperar</div>`:'')
+    + (nAl?`<span class="ps-al" title="Hay ${nAl} posición(es) donde la señal choca con la lectura de la empresa — mirá la ficha">⚠ ${nAl}</span>`:'');
+}
+// plata en juego con señal de venta (para ordenar la columna)
+function senUrgencia(r){
+  return holdersFiltrados(r).reduce((a,h)=>{ const s=senalPosicion(h,r); return a+(s&&(s.senal==='VENDER'||s.senal==='STOP')?h.tenencia:0); },0);
+}
+function senCuentaCliente(cart){
+  const sc={}; cart.forEach(x=>{ const s=senalPosicion(x.h,x.r); if(s) sc[s.senal]=(sc[s.senal]||0)+1; });
+  return sc;
+}
+function senSyncUI(){
+  const hayTen=dataTenencia.length>0;
+  const chip=document.getElementById('chip-senales'), cfg=document.getElementById('chip-senales-cfg');
+  if(chip){ chip.style.display=hayTen?'':'none'; chip.classList.toggle('active',senalesOn); }
+  if(cfg) cfg.style.display=(hayTen&&senalesOn)?'':'none';
+  const sel=document.getElementById('sig-sel');
+  if(sel){
+    let grp=document.getElementById('sig-pos-grp');
+    if(senalesOn && hayTen && !grp){
+      grp=document.createElement('optgroup'); grp.id='sig-pos-grp'; grp.label='Posición del cliente';
+      grp.innerHTML=['VENDER','STOP','ACUMULAR','MANTENER','ESPERAR'].map(k=>`<option value="pos:${k}">${SEN_META[k].label}</option>`).join('')
+        +'<option value="pos:ALERTA">Con aviso ⚠ (choca con la empresa)</option>';
+      sel.appendChild(grp);
+    } else if(!senalesOn && grp){
+      grp.remove();
+      if(sigFiltro.startsWith('pos:')){ sigFiltro=''; sel.value=''; }
+    }
+  }
+}
+function toggleSenales(){
+  // la primera vez abre la configuración (con los predeterminados) en vez de prender a ciegas
+  let guardada=null; try{ guardada=localStorage.getItem('vm_senales_cfg'); }catch(e){}
+  if(!senalesOn && !guardada){ abrirSenCfg(); return; }
+  senalesOn=!senalesOn;
+  try{ localStorage.setItem('vm_senales_on',senalesOn?'1':'0'); }catch(e){}
+  senSyncUI(); render();
+}
+function abrirSenCfg(){ senLlenar(SEN_CFG); document.getElementById('senCfgOverlay').classList.add('open'); }
+function cerrarSenCfg(){ document.getElementById('senCfgOverlay').classList.remove('open'); }
+function senLlenar(c){
+  document.getElementById('sen-tp').value=c.tp; document.getElementById('sen-sl').value=c.sl;
+  document.getElementById('sen-dias').value=c.dias; document.getElementById('sen-up').value=c.upMin;
+  document.getElementById('sen-anal').checked=!!c.anal;
+  senReglasPreview();
+}
+function senLeer(){
+  const v=(id,def,min)=>{ const x=parseFloat(document.getElementById(id).value); return isNaN(x)||x<min?def:x; };
+  return { tp:v('sen-tp',SEN_DEF.tp,1), sl:v('sen-sl',SEN_DEF.sl,1), dias:Math.round(v('sen-dias',SEN_DEF.dias,0)),
+           upMin:v('sen-up',SEN_DEF.upMin,0), anal:document.getElementById('sen-anal').checked };
+}
+function senReglasPreview(){
+  const c=senLeer();
+  document.getElementById('sen-up').disabled=!c.anal;
+  const acum=fmtN(c.tp*0.4,0);
+  document.getElementById('sen-reglas').innerHTML=
+    `<b>Vender (tomar ganancia):</b> gana +${c.tp}% o más${c.anal?` — salvo que los analistas vean +${c.upMin}% o más de recorrido (ahí queda en Mantener)`:''}.<br>`
+   +`<b>Stop:</b> pierde ${c.sl}% o más y la tiene hace ${c.dias} días o más (antes de eso: Esperar).<br>`
+   +`<b>Acumular:</b> gana entre +${acum}% y +${c.tp}%${c.anal?` y los analistas ven al menos +${c.upMin}% más`:''}.<br>`
+   +`<b>Mantener / Esperar:</b> el resto. Una pérdida menor al stop no dispara venta.<br>`
+   +`Si la señal choca con la lectura de la empresa aparece un <b>⚠</b> (ej. Stop, pero la empresa es sólida).`;
+}
+function senRestaurar(){ senLlenar(SEN_DEF); }
+function senGuardar(){
+  SEN_CFG=senLeer(); senalesOn=true;
+  try{ localStorage.setItem('vm_senales_cfg',JSON.stringify(SEN_CFG)); localStorage.setItem('vm_senales_on','1'); }catch(e){}
+  cerrarSenCfg(); senSyncUI(); render();
+}
+
+// mensaje 1×1 sobre UNA posición, según su señal (el texto sirve para mail y WhatsApp)
+const POS_TPL={
+  VENDER:c=>({asunto:`Buena noticia sobre tu inversión en ${c.emp}`,
+    cuerpo:`Hola${c.sal},\n\nTu inversión en ${c.emp} (${c.tk}) ya subió ${c.rentTxt} desde que la compraste. Me parece un buen momento para tomar ganancia${c.parte?' — aunque sea una parte, porque la empresa sigue fuerte':''}.\n\n¿Lo charlamos y vemos si la aseguramos ahora o la dejamos correr un poco más?`}),
+  STOP:c=>({asunto:`Sobre tu inversión en ${c.emp}`,
+    cuerpo:`Hola${c.sal},\n\nTe escribo por tu inversión en ${c.emp} (${c.tk}): está ${c.rentTxt} abajo desde que la compraste. ${c.solida?'La empresa sigue sólida, así que puede ser una baja del mercado y no del negocio, pero prefiero que lo revisemos juntos antes de decidir.':'Quiero que revisemos juntos si conviene seguir o salir.'}\n\n¿Tenés unos minutos esta semana?`}),
+  ACUMULAR:c=>({asunto:`Oportunidad en ${c.emp}`,
+    cuerpo:`Hola${c.sal},\n\n${c.emp} (${c.tk}) viene bien: estás ${c.rentTxt} arriba desde que la compraste y me parece buen momento para sumar si tenés liquidez disponible.\n\n¿Lo vemos juntos?`}),
+  MANTENER:c=>({asunto:`Cómo viene tu inversión en ${c.emp}`,
+    cuerpo:c.rent>=0
+      ? `Hola${c.sal},\n\nTe cuento cómo viene ${c.emp} (${c.tk}): estás ${c.rentTxt} arriba desde que la compraste. Por ahora mi recomendación es mantenerla como está.\n\nTe aviso apenas cambie algo.`
+      : `Hola${c.sal},\n\nTe cuento cómo viene ${c.emp} (${c.tk}): está ${c.rentTxt} abajo desde que la compraste, todavía dentro de lo esperable. Por ahora la mantendría; te aviso si cambia algo.`}),
+  ESPERAR:c=>({asunto:`Cómo viene tu inversión en ${c.emp}`,
+    cuerpo:`Hola${c.sal},\n\nTe cuento cómo viene ${c.emp} (${c.tk}): ${c.rent>=0?`estás ${c.rentTxt} arriba`:`está ${c.rentTxt} abajo`} desde que la compraste. Como la tenés hace poco, le daría tiempo antes de tomar cualquier decisión.\n\nCualquier duda, escribime.`}),
+};
+function abrirMensajePosicion(cli, ticker){
+  const r=allRows.find(x=>x.ticker.toUpperCase()===String(ticker).toUpperCase()||x.tickerUsado.toUpperCase()===String(ticker).toUpperCase());
+  const h=(holdersByTicker[String(ticker).toUpperCase()]||[]).find(x=>x.cliente===cli);
+  const s=h&&r?senalPosicion(h,r):null;
+  if(!s) return;
+  const d=_datosDe(h)||{};
+  const ctx={sal:_saludo(d.nombre), emp:nombreCorto(r), tk:r.ticker, rent:s.rent, rentTxt:fmtN(Math.abs(s.rent),1)+'%',
+    parte:!!(s.alerta&&/sumar/.test(s.alerta.txt)), solida:!!(s.alerta&&/sólida/.test(s.alerta.txt))};
+  const m=POS_TPL[s.senal](ctx);
+  cerrarHolders();
+  msgCtx={cli, mail:d.mail, tel:d.tel};
+  document.getElementById('msg-sub').textContent=`${d.denominacion||d.nombre||nombreCompleto(cli)} · ${r.ticker} · ${SEN_META[s.senal].label}`;
+  document.getElementById('msg-asunto').value=m.asunto;
+  document.getElementById('msg-texto').value=m.cuerpo+`\n\nSaludos,\n${nombreAsesor()}`;
+  document.getElementById('msg-dest').innerHTML = d.mail||d.tel ? `${d.mail?'✉ '+d.mail:''}${d.tel?`  ·  📱 ${d.tel}`:''}`
+    : `<span style="color:var(--ambar)">Sin mail ni teléfono — cargá "Stock de cuentas" en el Suite</span>`;
+  document.getElementById('msg-masivo').hidden=true;
+  document.getElementById('msg-individual').hidden=false;
+  document.getElementById('msgOverlay').classList.add('open');
+}
+
+// Excel de las posiciones de los clientes en lo que se está viendo (respeta filtros y foco)
+function exportarExcel(){
+  const rd=(x,n)=>x==null||isNaN(x)?'':Math.round(x*10**n)/10**n;
+  const filas=[];
+  visibleRows().forEach(r=>{
+    const q=queHacer(r), p=puntajeDetalle(r), an=analistasDe(r);
+    holdersFiltrados(r).forEach(h=>{
+      const d=_datosDe(h)||{}, g=ganHolder(h);
+      const o={'Ticker':r.ticker,'Empresa':r.empresa,'Sector':r.sector,'Cliente':nombreCompleto(h.cliente),'Comitente':h.comitente,
+        'Nombre':d.nombre||'','Mail':d.mail||'','Teléfono':d.tel||'',
+        'Tenencia USD':rd(h.tenencia,2),'Nominales':h.nominales,'Precio compra USD':rd(h.precCompra,4),
+        'Precio actual USD':h.nominales?rd(h.tenencia/h.nominales,4):'',
+        'Rentabilidad %':g!=null?rd(g*100,2):'','G/P USD':(h.precCompra&&h.nominales)?rd(h.tenencia-h.nominales*h.precCompra,2):'',
+        'Días':h.dias??'','Qué hacer (empresa)':q.v,'Por qué':q.por,
+        'Puntaje':p?p.total:'','Negocio':p?p.negocio:'','Valuación':p?p.valuacion:'','Tendencia':p?p.tendencia:'',
+        'Upside analistas %':an&&an.upside!=null?rd(an.upside*100,1):''};
+      if(senalesOn){
+        const s=senalPosicion(h,r);
+        o['Señal posición']=s?SEN_META[s.senal].label:''; o['Aviso']=s&&s.alerta?s.alerta.txt.replace('⚠ ',''):''; o['Nota']=s?s.nota:'';
+      }
+      filas.push(o);
+    });
+  });
+  const b=document.getElementById('chip-excel');
+  if(!filas.length){ if(b){ const t=b.textContent; b.textContent='Sin posiciones con estos filtros'; setTimeout(()=>b.textContent=t,1800); } return; }
+  filas.sort((a,b)=>String(a.Cliente).localeCompare(String(b.Cliente))||b['Tenencia USD']-a['Tenencia USD']);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(filas),'Posiciones');
+  if(senalesOn){
+    const urg=filas.filter(f=>f['Señal posición']==='Tomar ganancia'||f['Señal posición']==='Stop / revisar');
+    if(urg.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(urg),'Urgentes');
+  }
+  XLSX.writeFile(wb,`Renta_Variable_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 // ── STOCK (nombre / mail / teléfono del cliente) — nunca se publica ──
 let STOCK={};   // { comitente: {nombre, mail, tel} }
 async function loadStock(){
@@ -1414,26 +1683,43 @@ const FRASE_CLIENTE={
 };
 function esCastigada(q){ return q.v==='Mantener' && /castig/i.test(q.por); }
 
-function mensajeCliente(cli){
+// frase por señal de la POSICIÓN (con "📍 Señales de posición" prendido)
+const FRASE_POS={
+  VENDER:  (x,s)=>s.alerta&&/sumar/.test(s.alerta.txt) ? 'ya rindió bien y la empresa sigue fuerte: podríamos tomar una parte de la ganancia y dejar correr el resto.' : 'ya rindió bien y me parece buen momento para tomar ganancia.',
+  STOP:    (x,s)=>s.alerta&&/sólida/.test(s.alerta.txt) ? 'viene en baja más de lo que me gustaría, aunque la empresa sigue sólida — quiero que lo revisemos juntos antes de decidir.' : 'viene en baja más de lo que me gustaría; quiero que revisemos juntos si conviene seguir o salir.',
+  ACUMULAR:()=>'viene bien y tiene recorrido: si tenés liquidez, es buen momento para sumar.',
+  MANTENER:()=>'por ahora la mantendría como está.',
+  ESPERAR: ()=>'la compraste hace poco: le daría tiempo antes de tomar una decisión.',
+};
+// opts.soloPos = 'VENDER'|'STOP'|…|'ALERTA' → el mensaje habla solo de esas posiciones (mail masivo filtrado)
+function mensajeCliente(cli, opts){
   const d=datosCliente(cli);
   const nombre=d.nombre||cli;
   const cart=carteraDeCliente(cli);
+  const sp=x=>senalesOn?senalPosicion(x.h,x.r):null;
+  const posFuerte=x=>['VENDER','STOP','ACUMULAR'].includes(sp(x)?.senal);
+  const soloPos=opts&&opts.soloPos;
   // priorizo lo que pide acción; después las "castigadas"; el resto va en una línea
-  const destacar=cart.filter(x=>['Sumar','Atención','Reducir'].includes(x.q.v) || esCastigada(x.q));
+  const destacar = soloPos
+    ? cart.filter(x=>{ const s=sp(x); return !!s && (soloPos==='ALERTA' ? !!s.alerta : s.senal===soloPos); })
+    : cart.filter(x=>['Sumar','Atención','Reducir'].includes(x.q.v) || esCastigada(x.q) || posFuerte(x));
   const resto=cart.filter(x=>!destacar.includes(x));
   const lineas=destacar.slice(0,6).map(x=>{
     const nm=x.r.empresa
       ? x.r.empresa.replace(/,?\s*(Inc\.?|Corp\.?|Corporation|Company|Co\.|S\.?A\.?B?\.?|Ltd\.?|plc|N\.V\.|Holdings?|Group|Class [A-C])\b.*$/i,'').replace(/^The\s+/i,'').trim() || x.r.ticker
       : x.r.ticker;
     const ganTxt = x.gan!==null ? ` (${x.gan>=0?'+':''}${fmtN(x.gan*100,0)}% desde tu compra)` : '';
-    const frase = esCastigada(x.q)
+    const s=sp(x);
+    const frase = s && (soloPos || posFuerte(x))
+      ? FRASE_POS[s.senal](x,s)
+      : esCastigada(x.q)
       ? `cayó bastante pero sigue siendo una buena empresa — el mercado la está castigando de más. La seguimos de cerca, por ahora conviene aguantar.`
-      : FRASE_CLIENTE[x.q.v](x);
+      : (FRASE_CLIENTE[x.q.v] ? FRASE_CLIENTE[x.q.v](x) : 'por ahora sin cambios para destacar.');
     return `• ${nm} (${x.r.ticker})${ganTxt} — ${frase}`;
   }).join('\n\n');
   const restoTxt = resto.length ? `\n\nEl resto de tu cartera (${resto.map(x=>x.r.ticker).join(', ')}) viene estable, sin nada para destacar.` : '';
   const asunto=`Repaso de tu cartera${d.nombre?' — '+d.nombre:''}`;
-  const cuerpo=`Hola${_saludo(nombre)},\n\n`
+  const cuerpo=`Hola${_saludo(d.nombre)},\n\n`
     + (lineas ? `Te paso un repaso de cómo vienen tus principales posiciones:\n\n${lineas}${restoTxt}\n\n`
               : `Pasé revista a tu cartera y por ahora viene todo estable, sin cambios para destacar.\n\n`)
     + `Cuando quieras lo charlamos por teléfono.\n\nSaludos,\n${nombreAsesor()}`;
@@ -1459,9 +1745,13 @@ function abrirMensaje(cli){
   document.getElementById('msgOverlay').classList.add('open');
 }
 function abrirMensajeMasivo(){
-  const cls=clientesConCartera();
-  const drafts=cls.map(c=>({c, ...mensajeCliente(c)}));
-  const conAccion=drafts.filter(d=>/(evaluar tomar|revisemos juntos|buen momento para)/.test(d.cuerpo));
+  // con un filtro de "Posición del cliente" activo, solo los clientes con esa señal y el mail
+  // habla solo de esas posiciones (lo que hacía el mail masivo filtrado de Rotador RV)
+  const soloPos = senalesOn && sigFiltro.startsWith('pos:') ? sigFiltro.slice(4) : null;
+  let cls=clientesConCartera();
+  if(soloPos) cls=cls.filter(c=>carteraDeCliente(c).some(x=>{ const s=senalPosicion(x.h,x.r); return !!s && (soloPos==='ALERTA'?!!s.alerta:s.senal===soloPos); }));
+  const drafts=cls.map(c=>({c, ...mensajeCliente(c, soloPos?{soloPos}:null)}));
+  const conAccion=drafts.filter(d=>/(evaluar tomar|revisemos juntos|buen momento para|tomar una parte)/.test(d.cuerpo));
   document.getElementById('msg-sub').textContent=`${cls.length} clientes con cartera`;
   document.getElementById('msg-masivo-list').innerHTML = drafts.map((d,i)=>`
     <div class="msg-row">
@@ -1469,8 +1759,9 @@ function abrirMensajeMasivo(){
       <button class="btn-sm" onclick="verDraft(${i})">ver / editar</button>
     </div>`).join('');
   window._drafts=drafts;
-  document.getElementById('msg-masivo-nota').textContent =
-    `${conAccion.length} de ${cls.length} tienen algo para conversar. Podés bajar todos los borradores en un .txt y mandarlos uno por uno.`;
+  document.getElementById('msg-masivo-nota').textContent = soloPos
+    ? `Filtrado por señal de posición "${soloPos==='ALERTA'?'Con aviso ⚠':SEN_META[soloPos].label}": ${cls.length} cliente(s). Cada mensaje habla solo de esas posiciones.`
+    : `${conAccion.length} de ${cls.length} tienen algo para conversar. Podés bajar todos los borradores en un .txt y mandarlos uno por uno.`;
   document.getElementById('msg-individual').hidden=true;
   document.getElementById('msg-masivo').hidden=false;
   document.getElementById('msgOverlay').classList.add('open');
@@ -1593,7 +1884,8 @@ function _datosDe(h){
 // mensaje de rotación para un cliente. canal: 'mail' | 'wpp'. lec = lecturaValuacion(r)
 function mensajeRotacion(h, r, alt, canal, link, nombrarAlt, lec){
   const d=_datosDe(h);
-  const nombre=(d.nombre||h.cliente).split(' ')[0];
+  // saludo SOLO con el nombre del Stock: sin él, la cuenta de Balanz daba "Hola PEREZ" (igual que en Rotador RV)
+  const nombre=String(d.nombre||'').trim().split(' ')[0];
   const emp=nombreCorto(r);
   lec = lec || lecturaValuacion(r);
   const k=lec.k, mm={actual:lec.actual,p5:lec.p5,p10:lec.p10}, med=lec.med;
@@ -1642,15 +1934,15 @@ function mensajeRotacion(h, r, alt, canal, link, nombrarAlt, lec){
   }
 
   if(canal==='wpp'){
-    const cuerpo = `Hola ${nombre}, ¿cómo va? Estuve mirando tu cartera 👀\n\n`
+    const cuerpo = `Hola${nombre?' '+nombre:''}, ¿cómo va? Estuve mirando tu cartera 👀\n\n`
       + `Te tengo ${emp} (${r.ticker})${ganWpp} y ${caraWpp}.`
       + altWpp
       + `\n\n¿Lo vemos un toque esta semana?`;
     return {asunto:'', cuerpo, mail:d.mail, tel:d.tel, nombre:d.nombre||h.cliente};
   }
-  const asunto = `${nombre}, una idea sobre ${emp} en tu cartera`;
+  const asunto = nombre ? `${nombre}, una idea sobre ${emp} en tu cartera` : `Una idea sobre ${emp} en tu cartera`;
   const linkFrase = link ? ` Si preferís avanzar vos, operá ${r.ticker} acá: ${link}` : '';
-  const cuerpo = `Hola ${nombre},\n\n`
+  const cuerpo = `Hola${nombre?' '+nombre:''},\n\n`
     + `Estuve revisando tu cartera y quería comentarte algo puntual sobre ${emp} (${r.ticker})${ganMail}.\n\n`
     + caraMail
     + altMail + `\n\n`
@@ -2054,16 +2346,18 @@ function _fichaHolders(ticker){
     return `<div class="fs-sec"><h5>Clientes</h5><p class="fs-p">`
       + (dataTenencia.length?`Ningún cliente tuyo lo tiene en cartera.`:`Subí "Tenencia por Ticker" en el FCN Suite para ver esto.`)+`</p></div>`;
   }
+  const rF=allRows.find(x=>x.ticker.toUpperCase()===String(ticker).toUpperCase()||x.tickerUsado.toUpperCase()===String(ticker).toUpperCase());
+  const escTk=String(ticker).replace(/'/g,"\\'");
   const rows=holders.slice().sort((a,b)=>b.tenencia-a.tenencia).map(h=>`
     <tr><td><span class="fs-cli-link" onclick="focoDesdeFicha('${String(h.cliente).replace(/'/g,"\\'")}')">${nombreCompleto(h.cliente)}</span></td>
     <td>US$ ${h.tenencia.toLocaleString('es-AR',{maximumFractionDigits:0})}</td>
     <td>${ganSpan(ganHolder(h))}</td>
-    <td>${h.dias?h.dias+' d':'<span class="dash">—</span>'}</td></tr>`).join('');
+    <td>${h.dias?h.dias+' d':'<span class="dash">—</span>'}</td>${senalesOn?`<td>${(s=>s?senChip(s)+`<button class="hm-act" title="Armar mensaje para este cliente según la señal" onclick="abrirMensajePosicion('${String(h.cliente).replace(/'/g,"\\'")}','${escTk}')">✉</button>`:'<span class="dash">—</span>')(rF?senalPosicion(h,rF):null)}</td>`:''}</tr>`).join('');
   const total=holders.reduce((a,h)=>a+h.tenencia,0);
   const esc=String(ticker).replace(/'/g,"\\'");
   return `<div class="fs-sec"><h5>Clientes (${holders.length})</h5>
     <button class="btn-msg" style="margin:2px 0 10px;" onclick="cerrarHolders();abrirAvisoTicker('${esc}')">✉ Avisar a los ${holders.length} que lo tienen</button>
-    <table class="hm-table"><thead><tr><th>Cliente</th><th>Tenencia</th><th title="desde que la compró (precio promedio de compra)">Rent.</th><th title="días de tenencia">Días</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="hm-table"><thead><tr><th>Cliente</th><th>Tenencia</th><th title="desde que la compró (precio promedio de compra)">Rent.</th><th title="días de tenencia">Días</th>${senalesOn?'<th title="señal de la posición de cada cliente — pasá el mouse para ver por qué">Señal</th>':''}</tr></thead><tbody>${rows}</tbody></table>
     <div class="hm-total">Total: <b>US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</b>${(g=>g!=null?` · rentabilidad promedio ${ganSpan(g)}`:'')(ganGrupo(holders))}</div></div>`;
 }
 function focoDesdeFicha(cli){ cerrarHolders(); clienteActivo=cli; _carteraTocado=false; soloCartera=false; activeTab='Panorama'; buildTabs(); render(); }
@@ -2170,6 +2464,10 @@ function abrirClientes(){
     if(cnt.Reducir) b.push(`<span class="cli-b cut">${cnt.Reducir} reducir</span>`);
     if(cnt.Atención) b.push(`<span class="cli-b watch">${cnt.Atención} atención</span>`);
     if(cnt.Sumar) b.push(`<span class="cli-b add">${cnt.Sumar} sumar</span>`);
+    if(senalesOn){
+      const sc=senCuentaCliente(cart);
+      ['VENDER','STOP','ACUMULAR'].forEach(k=>{ if(sc[k]) b.push(`<span class="ps ${SEN_META[k].cls}">${sc[k]} ${SEN_META[k].txt.toLowerCase()}</span>`); });
+    }
     const conc=concentracion(c);
     if(conc) b.push(`<span class="cli-b watch" title="${conc.join(' · ')}">⚠ concentrado</span>`);
     const nom=nombreCompleto(c);
@@ -2183,7 +2481,7 @@ function abrirClientes(){
 function cerrarClientes(){ document.getElementById('clientesOverlay').classList.remove('open'); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); } });
 function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
@@ -2269,6 +2567,7 @@ async function loadTenencia(){
     const sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
     dataTenencia=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
     construirHolders();
+    senSyncUI();
     const chip=document.getElementById('chip-cartera');
     if(chip && dataTenencia.length){
       chip.style.display='';
@@ -2276,6 +2575,7 @@ async function loadTenencia(){
       const cc=document.getElementById('chip-clientes'); if(cc) cc.style.display='';
       const tw=document.getElementById('ten-min-wrap'); if(tw) tw.style.display='';
       const cp=document.getElementById('chip-prioridad'); if(cp) cp.style.display='';
+      const ce=document.getElementById('chip-excel'); if(ce) ce.style.display='';
       // por defecto arranca filtrado a lo que realmente tenemos en cartera
       if(!_carteraTocado){ soloCartera=true; chip.classList.add('active'); }
     }
@@ -2464,6 +2764,10 @@ function toggleCartera(){
 function cumpleSenal(r,filtro){
   const [eje,val]=filtro.split(':');
   if(eje==='qh') return queHacer(r).v===val;
+  if(eje==='pos'){
+    if(!senalesOn) return true;
+    return holdersFiltrados(r).some(h=>{ const s=senalPosicion(h,r); return !!s && (val==='ALERTA' ? !!s.alerta : s.senal===val); });
+  }
   if(eje==='reb'){ const lr=lecturaRebote(r); return !!lr && lr.tipo===val; }
   const sig = eje==='precio' ? sigPrecio(r) : eje==='tend' ? sigTendencia(r) : eje==='neg' ? sigNegocio(r) : null;
   return !!sig && sig.txt===val;
@@ -2524,6 +2828,7 @@ function sortGetters(){
       punt:r=>puntaje(r),
       tend:r=>tendencia(r), fund:r=>fundamental(r), val:r=>valuacion5y(r),
       anal:r=>analistasDe(r)?.upside ?? null,
+      posic:r=>senUrgencia(r),
     };
   }
   if(activeTab==='Técnico'){
@@ -2825,6 +3130,7 @@ const AYUDA={
   rebote:'<b>Rebote técnico.</b> Mira si el precio está cerca de una media móvil o de un nivel de Fibonacci, que son zonas donde suele frenar y rebotar. Precio arriba de la media y acercándose = posible soporte (compra); abajo y acercándose = posible resistencia (venta).',
   correlacion:'<b>Correlación.</b> Mide si dos activos se mueven juntos. <b>+100</b> = suben y bajan idéntico · <b>0</b> = no tienen relación · <b>negativo</b> = uno tiende a subir cuando el otro baja. Una cartera con todo muy correlacionado es como tener una sola apuesta; con activos poco correlacionados, las caídas de uno se compensan en parte con los otros. Se calcula con los retornos semanales de los últimos ~3 años.',
   cartera:'<b>En cartera.</b> Cuánto suman entre todos tus clientes en este activo (USD) y cuántos clientes lo tienen.',
+  posicion:'<b>Posición cliente.</b> Qué conviene hacer con la posición de cada cliente según cuánto gana o pierde y hace cuánto la tiene — no según la empresa (eso es "Qué hacer"). <b>Vender</b> = tomar ganancia · <b>Stop</b> = pierde más que tu stop · <b>Acumular</b> · <b>Mantener</b> · <b>Esperar</b>. Un <b>⚠</b> marca cuando choca con la lectura de la empresa. Ordenar por esta columna pone arriba la plata en juego con señal de venta. Los umbrales se cambian con ⚙.',
   horizonte:'<b>Horizonte.</b> Para qué plazo estás mirando el activo — cambia cómo se pesa el puntaje: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia): entrar en el momento exacto importa poco si vas a sostenerlo años, así que manda la calidad del negocio y si está barato. <b>Mediano plazo</b> (35/35/30, el de siempre): equilibrado, es el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico): para un trade de días o semanas el negocio casi no importa — lo que manda es el momento (tendencia + si está tocando un soporte o una resistencia ahora mismo). Cambiarlo reordena Puntaje, el Ranking, la ficha y Comparar — no cambia "Qué hacer". El precio y las medias se refrescan solos todos los días hábiles (no hace falta re-cargar el archivo), pero en Corto plazo igual conviene mirar el precio de hoy antes de operar — la Tendencia y el Rebote son los que más rápido se mueven.'
 };
 function ayq(k){ return `<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="${k}">?</span>`; }
@@ -2895,8 +3201,8 @@ function render(){
   };
 
   if(activeTab==='Panorama'){
-    ncols=6;
-    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1,'cartera')}${th('punt','Puntaje',1,'puntaje')}${th('quehacer','Qué hacer',0,'quehacer')}
+    ncols=senalesOn?7:6;
+    headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1,'cartera')}${th('punt','Puntaje',1,'puntaje')}${th('quehacer',senalesOn?'Qué hacer (empresa)':'Qué hacer',0,'quehacer')}${senalesOn?th('posic','Posición cliente',0,'posicion'):''}
       <th>Señales${ayq('senales')}</th>${th('anal','Analistas',1,'analistas')}</tr>`;
     const sigRow=(lbl,s)=> `<div class="pa-sig-row"><span class="pa-sig-lbl">${lbl}</span>`
       + (s ? `<span class="sig ${s.cls}" title="${lbl}: ${typeof s.num==='number' && Math.abs(s.num)<=1 ? (s.num>=0?'+':'')+fmtN(s.num*100,0)+'%' : (s.num>0?'+':'')+s.num}">${s.txt}</span>` : '<span class="dash">—</span>')
@@ -2917,6 +3223,7 @@ function render(){
         <td class="pa-cartera">${carteraCell}</td>
         <td class="pa-punt">${puntajeCell(r)}</td>
         <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span>${clienteActivo&&regRechazado(clienteActivo,r.ticker)?' <span class="qh-rech" title="ya se lo propusiste y lo rechazó — mirá la ficha">📝 rechazado</span>':''}<div class="pa-por">${q.por}</div></td>
+        ${senalesOn?`<td class="pa-pos" onclick="abrirFicha('${esc}')">${senResumenCell(r)}</td>`:''}
         <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
         <td class="pa-anal">${analCell(r)}</td>
       </tr>`;
@@ -3013,6 +3320,11 @@ function render(){
       if(cnt.Reducir) partes.push(`<b class="val-neg">${cnt.Reducir}</b> para reducir`);
       if(cnt.Atención) partes.push(`<b style="color:var(--ambar)">${cnt.Atención}</b> en atención`);
       if(cnt.Sumar) partes.push(`<b class="val-pos">${cnt.Sumar}</b> para sumar`);
+      if(senalesOn){
+        const sc=senCuentaCliente(cart);
+        const chips=['VENDER','STOP','ACUMULAR'].filter(k=>sc[k]).map(k=>`<span class="ps ${SEN_META[k].cls}">${sc[k]} ${SEN_META[k].txt.toLowerCase()}</span>`);
+        if(chips.length) partes.push('posiciones: '+chips.join(' '));
+      }
       const conc=concentracion(clienteActivo);
       fbEl.innerHTML=`<span class="fb-name">${nombreCompleto(clienteActivo)}</span>`
         +`<span>${fmtUsd(tot)} en ${cart.length} posiciones${(g=>g!=null?` · <span title="rentabilidad total de estas posiciones desde que las compró">${ganSpan(g)}</span>`:'')(ganGrupo(cart.map(x=>x.h)))}${partes.length?' · '+partes.join(' · '):''}</span>`
