@@ -874,6 +874,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
                 <input type="text" id="aliqInstagram" placeholder="https://www.instagram.com/balanzcapital">
               </div>
             </div>
+            <div class="aliq-row">
+              <div class="aliq-field">
+                <label>Tu guía de inversión propia (opcional — si lo dejás vacío, el mail no menciona ninguna)</label>
+                <input type="text" id="aliqGuia" placeholder="https://tu-pagina.com/guia.html">
+              </div>
+            </div>
             <div class="aliq-help">Se guardan en este navegador. La foto y el link de comunidad de WhatsApp van en tu copia de la plantilla de Word.</div>
           </div>
 
@@ -2603,13 +2609,15 @@ function getAvisoPerfil() {
     firma: 'Nicolás Strijland',
     wpp: '+54 9 11 2328 4509',
     instagram: 'https://www.instagram.com/finanzasconnico_',
+    guia: 'https://finanzasconnico-web.vercel.app/guia.html',
     testMail: 'nstrijland@balanz.com',
     testBajaMail: 'nicostrijland@gmail.com, naico55@hotmail.com'
-  } : { firma: '', wpp: '', instagram: '', testMail: '', testBajaMail: '' };
+  } : { firma: '', wpp: '', instagram: '', guia: '', testMail: '', testBajaMail: '' };
   return {
     firma: s.firma != null ? s.firma : def.firma,
     wpp: s.wpp != null ? s.wpp : def.wpp,
     instagram: s.instagram != null ? s.instagram : def.instagram,
+    guia: s.guia != null ? s.guia : def.guia,
     testMail: s.testMail != null ? s.testMail : def.testMail,
     testBajaMail: s.testBajaMail != null ? s.testBajaMail : def.testBajaMail
   };
@@ -2619,6 +2627,7 @@ function _readAvisoPerfilInputs() {
     firma: document.getElementById('aliqFirma').value.trim(),
     wpp: document.getElementById('aliqWpp').value.trim(),
     instagram: document.getElementById('aliqInstagram').value.trim(),
+    guia: document.getElementById('aliqGuia') ? document.getElementById('aliqGuia').value.trim() : '',
     testMail: document.getElementById('aliqTestMail').value.trim(),
     testBajaMail: document.getElementById('aliqTestBajaMail').value.trim()
   };
@@ -2803,10 +2812,11 @@ async function abrirAvisoLiquidez() {
   document.getElementById('aliqFirma').value = perfil.firma || (getDisplayUser().displayName === '?' ? '' : getDisplayUser().displayName || '');
   document.getElementById('aliqWpp').value = perfil.wpp;
   document.getElementById('aliqInstagram').value = perfil.instagram;
+  document.getElementById('aliqGuia').value = perfil.guia;
   document.getElementById('aliqTestMail').value = perfil.testMail;
   document.getElementById('aliqTestBajaMail').value = perfil.testBajaMail;
   document.getElementById('aliqTestChk').checked = false;
-  ['aliqMinUSD', 'aliqMinARS', 'aliqFirma', 'aliqWpp', 'aliqInstagram', 'aliqTestMail', 'aliqTestBajaMail'].forEach(id => {
+  ['aliqMinUSD', 'aliqMinARS', 'aliqFirma', 'aliqWpp', 'aliqInstagram', 'aliqGuia', 'aliqTestMail', 'aliqTestBajaMail'].forEach(id => {
     document.getElementById(id).oninput = renderAvisoPreview;
   });
   document.getElementById('aliqTestChk').onchange = renderAvisoPreview;
@@ -2906,9 +2916,18 @@ async function _docxPersonalizado(perfil) {
   const asesor = _xmlEsc(_asesorFirma()), wpp = _xmlEsc(perfil.wpp || '');
   let doc = dec.decode(files['word/document.xml']);
   doc = doc.split('@@ASESOR@@').join(asesor).split('@@WHATSAPP@@').join(wpp);
+  const guia = (perfil.guia || '').trim();
+  if (guia) {
+    doc = doc.split('<!--GUIA_START-->').join('').split('<!--GUIA_END-->').join('');
+  } else {
+    doc = doc.replace(/<!--GUIA_START-->[\s\S]*?<!--GUIA_END-->/, '');
+  }
   files['word/document.xml'] = enc.encode(doc);
   let rels = dec.decode(files['word/_rels/document.xml.rels']);
   rels = rels.split('@@INSTAGRAM_URL@@').join(_xmlEsc(_instagramAviso(perfil)));
+  rels = guia
+    ? rels.split('@@GUIA_URL@@').join(_xmlEsc(guia))
+    : rels.replace(/<Relationship[^>]*Target="@@GUIA_URL@@"[^>]*\/>/, '');
   files['word/_rels/document.xml.rels'] = enc.encode(rels);
   return _zipWrite(files, order);
 }
