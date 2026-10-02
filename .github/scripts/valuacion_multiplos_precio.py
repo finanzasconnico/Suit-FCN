@@ -28,13 +28,15 @@ info, sin pedir estados contables.
 Uso: python .github/scripts/valuacion_multiplos_precio.py
 """
 import datetime
+import json
+import os
 import sys
 import time
 
 import yfinance as yf
 
 from valuacion_multiplos import (
-    CACHE_VER, CAP, MULTS, THROTTLE,
+    CACHE_VER, CAP, MULTS, OUT_XLSX, THROTTLE,
     clean_mult, load_cache, load_tickers, num, save_cache, write_xlsx,
 )
 
@@ -59,11 +61,11 @@ def actualizar(e, sym):
     """Pisa e['precio'], e['actual'] (menos PFCF) y e['mm'] con datos de HOY. True si pudo."""
     got = precio_liviano(sym)
     if not got:
-        return False
+        return False, None
     info, close, close_d = got
     price = num(info.get("currentPrice") or info.get("regularMarketPrice"))
     if not price:
-        return False
+        return False, None
 
     e["precio"] = price
     actual = e.setdefault("actual", {})
@@ -135,7 +137,43 @@ def actualizar(e, sym):
     for k in MULTS:
         if actual.get(k) is None and series.get(k) and series[k][0] is not None:
             actual[k] = series[k][0]
-    return True
+    return True, close_d
+
+
+# -- Historial de cierres diarios para el grafico de la ficha (Valuacion_Multiplos_FCN.html) --
+# Se guarda en data/precios_historia.json: fechas compartidas + un arreglo de cierres por ticker
+# (null donde ese papel no cotizo). Son ~470 ruedas: 1 año a mostrar + 200 de calentamiento para
+# dibujar la MM200 de punta a punta. Si un ticker falla hoy, se conserva su serie anterior.
+HIST_FILE = os.path.join(os.path.dirname(OUT_XLSX), "precios_historia.json")
+HIST_PUNTOS = 470
+
+
+def _redondeo(v):
+    v = float(v)
+    return round(v, 2) if v >= 1 else round(v, 4)
+
+
+def guardar_historia(nuevas):
+    series = {}
+    if os.path.exists(HIST_FILE):
+        try:
+            with open(HIST_FILE, encoding="utf-8") as f:
+                prev = json.load(f)
+            for t, arr in (prev.get("px") or {}).items():
+                series[t] = {d: v for d, v in zip(prev["fechas"], arr) if v is not None}
+        except Exception as ex:
+            print(f"(no pude leer el historial anterior: {ex})")
+    for t, cd in nuevas.items():
+        if cd is None or len(cd) < 60:
+            continue
+        cd = cd.tail(HIST_PUNTOS)
+        series[t] = {d.strftime("%Y-%m-%d"): _redondeo(v) for d, v in cd.items()}
+    fechas = sorted({d for s in series.values() for d in s})[-HIST_PUNTOS:]
+    out = {"generado": datetime.date.today().isoformat(), "fechas": fechas,
+           "px": {t: [s.get(d) for d in fechas] for t, s in sorted(series.items())}}
+    with open(HIST_FILE, "w", encoding="utf-8") as f:
+        json.dump(out, f, separators=(",", ":"))
+    print(f"{HIST_FILE} -> {len(series)} tickers x {len(fechas)} ruedas ({os.path.getsize(HIST_FILE)//1024} KB)")
 
 
 def main():
@@ -154,11 +192,14 @@ def main():
     print(f"{len(objetivo)}/{len(tickers)} tickers con base -> refresco precio/técnico de hoy ({hoy})")
 
     ok = 0
+    hist = {}
     for i, t in enumerate(objetivo, 1):
         e = cache[t]
         sym = e.get("ticker_usado") or t
         try:
-            if actualizar(e, sym):
+            fue, close_d = actualizar(e, sym)
+            if fue:
+                hist[t] = close_d
                 e["fetched_precio"] = hoy
                 ok += 1
                 print(f"[{i}/{len(objetivo)}] {t} ({sym}) OK — {e['precio']}")
@@ -172,6 +213,7 @@ def main():
 
     save_cache(cache)
     write_xlsx(cache, tickers)
+    guardar_historia(hist)
     print(f"\n{ok}/{len(objetivo)} actualizados hoy {hoy}")
 
 

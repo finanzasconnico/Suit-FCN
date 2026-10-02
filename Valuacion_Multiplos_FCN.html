@@ -330,7 +330,32 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .hm-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);text-align:right;}
 .hm-total b{color:var(--jade);}
 /* ── FICHA DE EMPRESA ── */
-.ficha-modal{max-width:560px;}
+.ficha-modal{max-width:640px;}
+/* Gráfico de precio + teoría del rebote (ficha) */
+.gf-btn{width:100%;text-align:left;}
+.gf-wrap{margin-top:10px;}
+.gf-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.gf-read{font-family:var(--font-m);font-size:11px;color:var(--muted);min-height:15px;}
+.gf-tgl{display:flex;gap:5px;flex-wrap:wrap;}
+.gf-tgl .chip{padding:3px 10px;font-size:10.5px;}
+.gf-svg{width:100%;height:auto;display:block;background:var(--bg);border:1px solid var(--border);border-radius:8px;}
+.gf-svg text{font-family:var(--font-m);font-size:9.5px;fill:var(--muted);}
+.gf-svg .gf-grid{stroke:var(--border);stroke-width:1;}
+.gf-svg .gf-price{fill:none;stroke:var(--text);stroke-width:1.6;stroke-linejoin:round;}
+.gf-svg .gf-ma200{fill:none;stroke:var(--ambar);stroke-width:1.5;}
+.gf-svg .gf-lvl{stroke-width:1;stroke-dasharray:4 3;}
+.gf-svg .gf-lvl.on{stroke-width:1.6;stroke-dasharray:none;}
+.gf-svg .gf-halo{paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round;}
+.gf-svg .gf-lab{font-size:10px;font-weight:600;}
+.gf-svg .gf-cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3;}
+.gf-leg{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin:8px 0 2px;}
+.gf-leg i{display:inline-block;width:14px;height:0;border-top:2px solid;margin-right:5px;vertical-align:middle;}
+.gf-teoria{margin-top:10px;padding:10px 12px;background:var(--wash-1);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6;}
+.gf-teoria b{color:var(--text);}
+.gf-teoria p{margin:0 0 6px;}
+.gf-teoria p:last-child{margin:0;}
+.gf-aviso{color:var(--ambar);}
+.gf-load{padding:26px 0;text-align:center;font-size:12px;color:var(--muted);}
 .fs-verd{margin:2px 0 6px;font-size:13px;}
 .fs-por{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 12px;}
 .fs-chips{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--dim);padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
@@ -2362,8 +2387,9 @@ function _fichaHolders(ticker){
 }
 function focoDesdeFicha(cli){ cerrarHolders(); clienteActivo=cli; _carteraTocado=false; soloCartera=false; activeTab='Panorama'; buildTabs(); render(); }
 
-function abrirFicha(ticker){
+function abrirFicha(ticker,opts){
   if(!ticker) return;
+  _gf=null;
   const r=allRows.find(x=>x.ticker.toUpperCase()===String(ticker).toUpperCase()||x.tickerUsado.toUpperCase()===String(ticker).toUpperCase());
   document.getElementById('holdersOverlay').classList.add('open');
   document.getElementById('holdersOverlay').querySelector('.holders-modal').classList.add('ficha-modal');
@@ -2438,11 +2464,196 @@ function abrirFicha(ticker){
     <div class="fs-chips"><span>Tendencia${ayq('tendencia')} ${chip(st)}</span><span>Negocio${ayq('negocio')} ${chip(sn)}</span><span>Precio${ayq('precioH')} ${chip(sp)}</span><span>Puntaje${ayq('puntaje')} ${puntajeCell(r)}</span></div>
     <button class="btn-msg" style="margin:10px 0 2px;" onclick="cerrarHolders();abrirComparar('${String(r.ticker).replace(/'/g,"\\'")}')">⇄ Comparar con otro activo</button>
     ${sec('📈 El precio', tec.length?tec:['Sin datos de precio.'])}
+    <div class="fs-sec" style="margin-top:-6px"><button class="btn-msg gf-btn" id="gf-btn" onclick="toggleGrafico('${String(r.ticker).replace(/'/g,"\\'")}')">📈 Ver gráfico${lr?` y la teoría de “${lr.txt.toLowerCase()}”`:''}</button><div id="gf-box" hidden></div></div>
     ${sec('🏭 El negocio', neg)}
     ${sec('⚖️ La valuación', val)}
     ${sec('👔 Analistas', anl)}
     ${_fichaRegistro(ticker)}
     ${_fichaHolders(ticker)}`;
+  if(opts&&opts.grafico) toggleGrafico(r.ticker);
+}
+
+// ══════════════════════════════════════════
+//  GRÁFICO DE PRECIO + TEORÍA DEL REBOTE (ficha) — pedido de Nico, 02/10/2026
+//  Se arma al tocar "Ver gráfico": lee el historial de cierres de ESE ticker de
+//  data/precios_historia.json (lo genera el bot diario) y dibuja a mano un SVG: precio + MM200
+//  diaria (curva) y, resaltados, los niveles que disparan la señal. Recalcula la señal con el
+//  último cierre del historial (lecturaRebote), por si el archivo de múltiplos quedó atrás. Medias
+//  semanales/mensuales y Fibonacci: líneas horizontales opcionales. La explicación va debajo, en
+//  palabras, no encima del dibujo — así la flecha y la etiqueta corta no tapan el precio.
+// ══════════════════════════════════════════
+let _gf=null;        // estado del gráfico abierto: {r, serie, st}
+let _histProm=null;
+// Historial de cierres diarios: lo arma el bot diario (valuacion_multiplos_precio.py) en
+// data/precios_historia.json. Antes se probó traerlo en vivo de Yahoo con los proxies públicos
+// de Rotador RV, pero hoy están rotos (corsproxy.io → 403, allorigins → timeout) — por eso va por archivo propio.
+function cargarHistoria(){
+  if(!_histProm) _histProm=fetch('data/precios_historia.json').then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{ if(!j) _histProm=null; return j; });
+  return _histProm;
+}
+async function fetchSerie(r){
+  const j=await cargarHistoria();
+  if(!j||!j.px) return null;
+  const arr=j.px[r.ticker]||j.px[String(r.ticker).toUpperCase()];
+  if(!arr) return null;
+  const serie=[];
+  j.fechas.forEach((f,i)=>{ const c=arr[i]; if(c!=null) serie.push({t:new Date(f+'T12:00:00').getTime(), c}); });
+  return serie.length>=60?serie:null;
+}
+function _maSerie(arr,n){
+  const out=new Array(arr.length).fill(null); let sum=0;
+  for(let i=0;i<arr.length;i++){ sum+=arr[i]; if(i>=n) sum-=arr[i-n]; if(i>=n-1) out[i]=sum/n; }
+  return out;
+}
+// rebotes anteriores sobre la MM200: el precio la tocó desde arriba (a ≤3%) y 15 ruedas después estaba ≥6% más alto
+function _rebotesPasados(closes,ma,desde){
+  const out=[]; let ult=-99;
+  for(let i=Math.max(desde,1);i<closes.length-15;i++){
+    if(ma[i]==null) continue;
+    const d=closes[i]/ma[i]-1;
+    if(d<0||d>0.03) continue;
+    let esMin=true; for(let j=Math.max(0,i-4);j<=Math.min(closes.length-1,i+4);j++){ if(ma[j]!=null && closes[j]/ma[j]<closes[i]/ma[i]) { esMin=false; break; } }
+    if(!esMin||i-ult<20) continue;
+    let mx=0; for(let j=i+1;j<=i+15;j++) mx=Math.max(mx,closes[j]);
+    if(mx>=closes[i]*1.06){ out.push(i); ult=i; }
+  }
+  return out.slice(-5);
+}
+function _fmtPx(v){ return v==null?'—':fmtN(v, Math.abs(v)>=100?0:2); }
+function _fechaCorta(ms){ return new Date(ms).toLocaleDateString('es-AR',{day:'numeric',month:'short',year:'2-digit'}); }
+
+function svgGrafico(serie,r,st){
+  const N=serie.length, show=Math.min(N,260), off=N-show;
+  const closes=serie.map(p=>p.c), ma200=_maSerie(closes,200);
+  const last=closes[N-1];
+  const rLive={...r, precio:last};
+  const lr=lecturaRebote(rLive);
+  const W=620, H=300, pl=50, pr=96, pt=16, pb=26;
+  const xs=i=>pl+(i-off)/(show-1)*(W-pl-pr);
+  // rango vertical: precio + MM200 visibles
+  let lo=Infinity, hi=-Infinity;
+  for(let i=off;i<N;i++){ lo=Math.min(lo,closes[i]); hi=Math.max(hi,closes[i]); if(ma200[i]!=null){ lo=Math.min(lo,ma200[i]); hi=Math.max(hi,ma200[i]); } }
+  const padv=(hi-lo)*0.08||hi*0.05; lo-=padv; hi+=padv;
+  const ys=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
+  const ptsAct=lr?lr.pts:[];
+  const activo=lab=>ptsAct.find(p=>p.label===lab);
+  // niveles horizontales: los de la señal siempre; el resto según los toggles
+  const niv=[];
+  const addMA=(v,label,corto)=>{ if(v==null||v<=0) return; const a=activo(label); if(a||st.medias) niv.push({v,label:corto||label,act:a,kind:'ma'}); };
+  addMA(r.mm20s,'MM20 semanal','MM20 sem'); addMA(r.mm20m,'MM20 mensual','MM20 mes'); addMA(r.mm50m,'MM50 mensual','MM50 mes');
+  const fibs=nivelesFibo(r.max52,r.min52)||[];
+  const fibAct=ptsAct.find(p=>p.plazo==='fibo');
+  fibs.forEach(f=>{ const lab=`Fibonacci ${f.pct}%`; const a=(fibAct&&fibAct.label===lab)?fibAct:null; if(a||st.fibo) niv.push({v:f.nivel,label:`Fib ${String(f.pct).replace('.',',')}%`,act:a,kind:'fib'}); });
+  const act200=activo('MM200 diaria');
+  const colDe=n=>n&&n.act? (n.act.tipo==='soporte'?'var(--pos)':'var(--neg)') : 'var(--muted)';
+  let g='';
+  // grilla + eje Y
+  for(let k=0;k<=4;k++){ const v=lo+(hi-lo)*k/4, y=ys(v); g+=`<line class="gf-grid" x1="${pl}" x2="${W-pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${pl-5}" y="${(y+3).toFixed(1)}" text-anchor="end">${_fmtPx(v)}</text>`; }
+  // eje X: 5 marcas
+  for(let k=0;k<=4;k++){ const i=off+Math.round((show-1)*k/4); g+=`<text x="${xs(i).toFixed(1)}" y="${H-8}" text-anchor="${k===0?'start':k===4?'end':'middle'}">${new Date(serie[i].t).toLocaleDateString('es-AR',{month:'short',year:'2-digit'})}</text>`; }
+  // zona (banda) de los niveles activos
+  const bandaDe=a=>REBOTE_BANDAS[a.plazo]||REBOTE_BANDAS.fibo;
+  if(act200 && ma200[N-1]!=null){ const m=ma200[N-1], b=bandaDe(act200); g+=`<rect x="${pl}" width="${W-pl-pr}" y="${ys(m*(1+b)).toFixed(1)}" height="${(ys(m*(1-b))-ys(m*(1+b))).toFixed(1)}" fill="${colDe({act:act200})}" opacity=".10"/>`; }
+  niv.filter(n=>n.act).forEach(n=>{ const b=bandaDe(n.act); g+=`<rect x="${pl}" width="${W-pl-pr}" y="${ys(n.v*(1+b)).toFixed(1)}" height="${(ys(n.v*(1-b))-ys(n.v*(1+b))).toFixed(1)}" fill="${colDe(n)}" opacity=".10"/>`; });
+  // líneas horizontales
+  const etiq=[];
+  niv.forEach(n=>{
+    if(n.v<lo||n.v>hi) return;
+    const y=ys(n.v), c=colDe(n);
+    g+=`<line class="gf-lvl${n.act?' on':''}" x1="${pl}" x2="${W-pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" style="stroke:${c}"/>`;
+    etiq.push({y,txt:n.label,c,on:!!n.act});
+  });
+  // MM200 diaria (curva) y precio
+  let d200='', started=false;
+  for(let i=off;i<N;i++){ if(ma200[i]==null) continue; d200+=(started?'L':'M')+xs(i).toFixed(1)+','+ys(ma200[i]).toFixed(1); started=true; }
+  if(d200) g+=`<path class="gf-ma200" d="${d200}" style="${act200?`stroke:${colDe({act:act200})};stroke-width:2.2`:''}"/>`;
+  if(ma200[N-1]!=null){ etiq.push({y:ys(ma200[N-1]),txt:'MM200 día',c:act200?colDe({act:act200}):'var(--ambar)',on:!!act200}); }
+  let dp=''; for(let i=off;i<N;i++) dp+=(i===off?'M':'L')+xs(i).toFixed(1)+','+ys(closes[i]).toFixed(1);
+  g+=`<path class="gf-price" d="${dp}"/>`;
+  // rebotes pasados sobre la MM200 (triangulitos)
+  if(st.pasados) _rebotesPasados(closes,ma200,off).forEach(i=>{ const x=xs(i), y=ys(closes[i])+9; g+=`<polygon points="${x},${(y-6).toFixed(1)} ${x-4.5},${(y+2).toFixed(1)} ${x+4.5},${(y+2).toFixed(1)}" fill="var(--pos)" opacity=".85"><title>Rebote anterior sobre la MM200 · ${_fechaCorta(serie[i].t)}</title></polygon>`; });
+  // etiquetas a la derecha, separadas para que no se pisen
+  etiq.sort((a,b)=>a.y-b.y);
+  for(let i=1;i<etiq.length;i++){ if(etiq[i].y-etiq[i-1].y<11) etiq[i].y=etiq[i-1].y+11; }
+  etiq.forEach(e=>{ g+=`<text class="gf-halo" x="${W-pr+5}" y="${(e.y+3).toFixed(1)}" style="fill:${e.c};${e.on?'font-weight:700':''}">${e.txt}</text>`; });
+  // precio actual + flecha de la señal
+  const xe=xs(N-1), ye=ys(last);
+  g+=`<circle cx="${xe.toFixed(1)}" cy="${ye.toFixed(1)}" r="3.5" style="fill:var(--text)"/>`;
+  if(lr && lr.tipo!=='mixta'){
+    const up=lr.tipo==='compra', c=up?'var(--pos)':'var(--neg)';
+    const ya=up?Math.min(ye+40,H-pb-4):Math.max(ye-40,pt+4), yb=up?ye+9:ye-9;
+    g+=`<line x1="${xe.toFixed(1)}" x2="${xe.toFixed(1)}" y1="${ya.toFixed(1)}" y2="${yb.toFixed(1)}" style="stroke:${c};stroke-width:2.4"/>`
+      +`<polygon points="${xe.toFixed(1)},${(up?yb-2:yb+2).toFixed(1)} ${(xe-5).toFixed(1)},${(up?yb+7:yb-7).toFixed(1)} ${(xe+5).toFixed(1)},${(up?yb+7:yb-7).toFixed(1)}" style="fill:${c}"/>`
+      +`<text class="gf-halo gf-lab" x="${(xe-8).toFixed(1)}" y="${(ya+(up?3:3)).toFixed(1)}" text-anchor="end" style="fill:${c}">${lr.txt}</text>`;
+  } else if(lr){
+    g+=`<circle cx="${xe.toFixed(1)}" cy="${ye.toFixed(1)}" r="9" style="fill:none;stroke:var(--ambar);stroke-width:2"/><text class="gf-halo gf-lab" x="${(xe-14).toFixed(1)}" y="${(ye-12).toFixed(1)}" text-anchor="end" style="fill:var(--ambar)">Señal mixta</text>`;
+  }
+  g+=`<line class="gf-cursor" id="gf-cur" x1="0" x2="0" y1="${pt}" y2="${H-pb}" style="display:none"/><rect id="gf-hit" x="${pl}" y="${pt}" width="${W-pl-pr}" height="${H-pt-pb}" fill="transparent"/>`;
+  return {svg:`<svg class="gf-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de precio">${g}</svg>`, lr, last, geo:{pl,pr,W,off,show,N}};
+}
+function teoriaGrafico(r,lr,last,serie){
+  const f=_fmtPx, fechaUlt=_fechaCorta(serie[serie.length-1].t);
+  const lrArchivo=lecturaRebote(r);
+  let h=`<p>Último cierre: <b>${r.moneda||''} ${f(last)}</b> (${fechaUlt}).</p>`;
+  if(lrArchivo && (!lr || lr.tipo!==lrArchivo.tipo)) h+=`<p class="gf-aviso">⚠ Ojo: el archivo marcaba “${lrArchivo.txt}”, pero con el precio de hoy ${lr?`ahora dice “${lr.txt}”`:'ya no está cerca de ningún nivel'}. La señal cambió desde la última actualización.</p>`;
+  else if(!lrArchivo && lr) h+=`<p class="gf-aviso">⚠ Con el precio de hoy apareció una señal (“${lr.txt}”) que el archivo todavía no tenía.</p>`;
+  const nomNiv=lr?lr.pts.map(p=>p.plazo==='fibo'?p.label:`${p.label} (${p.plazo} plazo)`).join(' y '):'';
+  if(!lr){
+    h+=`<p><b>Qué ves:</b> hoy el precio no está cerca de ninguna media ni de ningún nivel de Fibonacci, así que no hay punto técnico de entrada ni de salida. Podés prender “Medias” y “Fibonacci” arriba para ver dónde quedan los niveles más cercanos.</p>`;
+  } else if(lr.tipo==='compra'){
+    h+=`<p><b>La teoría:</b> las medias móviles y los niveles de Fibonacci funcionan como “pisos”: mucha gente compra cuando el precio baja hasta ahí, y por eso el precio suele frenar y rebotar. Acá el precio viene <b>por encima</b> de ${nomNiv} y se acerca — está <b>testeando ese soporte</b>.</p>`
+      +`<p><b>La flecha verde</b> marca el punto de hoy. Si el precio aguanta sobre ese nivel y vuelve a subir, es una señal técnica de compra; si lo pierde (cierra claramente por debajo), el rebote falló y conviene no insistir. Los triangulitos verdes son rebotes anteriores sobre la MM200: así reaccionó otras veces.</p>`;
+  } else if(lr.tipo==='venta'){
+    h+=`<p><b>La teoría:</b> igual que un nivel puede ser piso, también puede ser “techo”: cuando el precio sube desde abajo hasta una media o un nivel de Fibonacci, mucha gente vende ahí y el precio suele frenarse. Acá el precio viene <b>por debajo</b> de ${nomNiv} y se acerca — está <b>testeando esa resistencia</b>.</p>`
+      +`<p><b>La flecha roja</b> marca el punto de hoy. Si lo rechaza y vuelve a bajar, es una señal técnica de venta o de tomar ganancia; si lo perfora hacia arriba, el techo falló y la suba puede seguir.</p>`;
+  } else {
+    h+=`<p><b>Señal mixta:</b> el precio está cerca de ${nomNiv}, y unos niveles lo ven como soporte y otros como resistencia. Es una zona de definición: conviene esperar a ver hacia dónde la rompe.</p>`;
+  }
+  if(lr&&lr.alerta) h+=`<p class="gf-aviso">${lr.alerta.txt}: ${lr.alerta.detalle}</p>`;
+  h+=`<p>Observación técnica con los cierres diarios de Yahoo Finance — no es una recomendación. Siempre mirala junto con el negocio y la valuación de arriba.</p>`;
+  return h;
+}
+function renderGrafico(){
+  const box=document.getElementById('gf-box'); if(!box||!_gf) return;
+  const {r,serie,st}=_gf;
+  const out=svgGrafico(serie,r,st);
+  const chipT=(k,l)=>`<button class="chip ${st[k]?'active':''}" onclick="gfToggle('${k}')">${l}</button>`;
+  box.innerHTML=`<div class="gf-wrap">
+    <div class="gf-top"><span class="gf-read" id="gf-read">Pasá el mouse por el gráfico para ver cada día</span>
+      <span class="gf-tgl">${chipT('medias','Medias')}${chipT('fibo','Fibonacci')}${chipT('pasados','Rebotes pasados')}</span></div>
+    ${out.svg}
+    <div class="gf-leg"><span><i style="border-color:var(--text)"></i>Precio (último año)</span><span><i style="border-color:var(--ambar)"></i>Media de 200 ruedas</span><span><i style="border-color:var(--pos)"></i>Soporte</span><span><i style="border-color:var(--neg)"></i>Resistencia</span></div>
+    <div class="gf-teoria">${teoriaGrafico(r,out.lr,out.last,serie)}</div></div>`;
+  const hit=document.getElementById('gf-hit'), cur=document.getElementById('gf-cur'), rd=document.getElementById('gf-read');
+  if(hit){
+    const {pl,pr,W,off,show,N}=out.geo;
+    hit.addEventListener('mousemove',e=>{
+      const svg=hit.ownerSVGElement, bb=svg.getBoundingClientRect(), x=(e.clientX-bb.left)/bb.width*W;
+      const k=Math.max(0,Math.min(show-1,Math.round((x-pl)/(W-pl-pr)*(show-1)))), i=off+k, p=serie[i];
+      cur.setAttribute('x1',pl+k/(show-1)*(W-pl-pr)); cur.setAttribute('x2',pl+k/(show-1)*(W-pl-pr)); cur.style.display='';
+      rd.textContent=`${_fechaCorta(p.t)} · ${r.moneda||''} ${_fmtPx(p.c)}`;
+    });
+    hit.addEventListener('mouseleave',()=>{ cur.style.display='none'; rd.textContent='Pasá el mouse por el gráfico para ver cada día'; });
+  }
+}
+function gfToggle(k){ if(!_gf) return; _gf.st[k]=!_gf.st[k]; renderGrafico(); }
+async function toggleGrafico(ticker){
+  const box=document.getElementById('gf-box'), btn=document.getElementById('gf-btn');
+  if(!box) return;
+  if(!box.hidden){ box.hidden=true; if(btn) btn.textContent=btn.dataset.txt; return; }
+  const r=allRows.find(x=>x.ticker.toUpperCase()===String(ticker).toUpperCase());
+  if(!r) return;
+  if(btn){ btn.dataset.txt=btn.dataset.txt||btn.textContent; btn.textContent='▾ Ocultar gráfico'; }
+  box.hidden=false;
+  box.innerHTML='<div class="gf-load">Cargando el historial de precios…</div>';
+  const serie=await fetchSerie(r);
+  if(box.hidden) return;   // lo cerraron mientras cargaba
+  if(!serie){
+    box.innerHTML='<div class="gf-load">Todavía no hay historial de precios para este activo — se arma con la actualización diaria de las 18:30.</div>';
+    return;
+  }
+  _gf={r,serie,st:{medias:false,fibo:false,pasados:true}};
+  renderGrafico();
 }
 function cerrarHolders(){
   const ov=document.getElementById('holdersOverlay');
@@ -3239,7 +3450,7 @@ function render(){
       const lr=lecturaRebote(r);
       const rebTitle = lr ? lr.pts.map(p=>`${p.plazo} (${p.label}): ${p.dist>=0?'+':''}${fmtN(p.dist*100,1)}%`).join(' · ') : '';
       const rebCell = lr
-        ? `<span class="sig ${lr.cls}" title="${rebTitle}">${lr.txt}</span>${lr.alerta?` <span class="sig sig-mid" title="${lr.alerta.detalle}">${lr.alerta.txt}</span>`:''}`
+        ? `<span class="sig ${lr.cls}" style="cursor:pointer" onclick="abrirFicha('${String(r.ticker).replace(/'/g,"\\'")}',{grafico:true})" title="${rebTitle} — clic para ver el gráfico">${lr.txt} 📈</span>${lr.alerta?` <span class="sig sig-mid" title="${lr.alerta.detalle}">${lr.alerta.txt}</span>`:''}`
         : '<span class="dash">—</span>';
       return tr(r,`${tkCell(r)}
       <td class="td-empresa" title="${r.empresa}">${r.empresa||'—'}</td>
