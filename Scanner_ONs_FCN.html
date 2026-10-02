@@ -573,13 +573,13 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 
     <div id="results-area" style="display:none">
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-hoy')">⚡ Hoy</button>
-        <button class="tab-btn" onclick="switchTab('tab-todas')">📋 Todas</button>
+        <button class="tab-btn active" onclick="switchTab('tab-todas')">📋 Todas</button>
         <button class="tab-btn" onclick="switchTab('tab-resumen')">👤 Por cliente</button>
+        <button class="tab-btn" onclick="switchTab('tab-hoy')">⚡ Hoy</button>
       </div>
 
-      <!-- TAB: HOY -->
-      <div class="tab-pane active" id="tab-hoy">
+      <!-- TAB: HOY (al final y sin activar por defecto — Nico casi no la usa, 02/10) -->
+      <div class="tab-pane" id="tab-hoy">
         <div id="hoy-content"></div>
       </div>
 
@@ -614,7 +614,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       </div>
 
       <!-- TAB: TODAS -->
-      <div class="tab-pane" id="tab-todas">
+      <div class="tab-pane active" id="tab-todas">
         <div class="table-wrap">
           <div class="table-header-row">
             <h3>Todas las ONs corporativas</h3>
@@ -2029,7 +2029,7 @@ function setModoTIR(modo) {
 function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const idx=['tab-hoy','tab-todas','tab-resumen'].indexOf(id);
+  const idx=['tab-todas','tab-resumen','tab-hoy'].indexOf(id);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById(id).classList.add('active');
 }
