@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>medir</title>
+<script>
+// TEMPORAL — arnés de medición (sesión 02/10). Carga ?target=X.html con _medir_inst.js inyectado primero. Borrar al terminar.
+(async function(){
+  const p = new URLSearchParams(location.search);
+  const target = p.get('target') || 'FCN_Suite.html';
+  let html = await (await fetch(target + '?nocache=' + Date.now(), { cache: 'no-store' })).text();
+  const inj = '<script src="_medir_inst.js?' + Date.now() + '"><\/script>';
+  html = html.replace(/<head[^>]*>/i, m => m + inj);
+  // marca "listo" del hub: cuando renderDashboardAll termina por primera vez
+  // sin GA4: no ensuciar las métricas reales con visitas de medición
+  html = html.replace(/<script async src="https:\/\/www\.googletagmanager\.com[^<]*<\/script>/, '');
+  const iBody = html.lastIndexOf('</body>');
+  if (iBody >= 0) html = html.slice(0, iBody) + '<script>(function(){const f=window.renderDashboardAll;if(f){window.renderDashboardAll=function(){const s=performance.now();const r=f.apply(this,arguments);if(!__m.marks.dashRendered){__m.marks.dashRendered=Math.round(performance.now());__m.marks.renderMs=Math.round(performance.now()-s);}return r;}}})();<\/script>' + html.slice(iBody);
+  document.open(); document.write(html); document.close();
+})();
+</script>

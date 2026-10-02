@@ -4,8 +4,27 @@
     {
       "name": "portfolio_monitor_fcn",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "http-server", ".", "-p", "8090", "-c-1"],
+      "runtimeArgs": [
+        "-y",
+        "http-server",
+        ".",
+        "-p",
+        "8090",
+        "-c-1"
+      ],
       "port": 8090
+    },
+    {
+      "name": "web-publica",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8731",
+        "--directory",
+        "C:/Users/naico"
+      ],
+      "port": 8731
     }
   ]
 }
