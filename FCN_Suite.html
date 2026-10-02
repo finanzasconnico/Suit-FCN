@@ -2656,7 +2656,9 @@ function getAvisoPerfil() {
     firma: s.firma != null ? s.firma : def.firma,
     wpp: s.wpp != null ? s.wpp : def.wpp,
     instagram: s.instagram != null ? s.instagram : def.instagram,
-    guia: s.guia != null ? s.guia : def.guia,
+    // "Vacío" no pisa el default: un perfil guardado antes de que existiera el campo (o con el
+    // campo en blanco) dejaba el mail de Nico sin el link a la guía (02/10).
+    guia: s.guia ? s.guia : def.guia,
     testMail: s.testMail != null ? s.testMail : def.testMail,
     testBajaMail: s.testBajaMail != null ? s.testBajaMail : def.testBajaMail
   };
