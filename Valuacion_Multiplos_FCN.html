@@ -355,6 +355,15 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .gf-teoria p{margin:0 0 6px;}
 .gf-teoria p:last-child{margin:0;}
 .gf-aviso{color:var(--ambar);}
+.gf-obj{margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.gf-obj h6{margin:0;padding:8px 12px;font-family:var(--font-d);font-size:13px;font-weight:600;color:var(--text);background:var(--wash-1);border-bottom:1px solid var(--border);}
+.gf-obj table{width:100%;border-collapse:collapse;font-size:12px;}
+.gf-obj td{padding:6px 12px;border-top:1px solid var(--border);color:var(--muted);vertical-align:top;}
+.gf-obj tr:first-child td{border-top:none;}
+.gf-obj td:first-child{white-space:nowrap;color:var(--text);}
+.gf-obj td b{color:var(--text);}
+.gf-obj .gf-nota{padding:8px 12px;font-size:11px;color:var(--muted);line-height:1.55;border-top:1px solid var(--border);}
+.gf-obj .pos{color:var(--pos);font-weight:600;}.gf-obj .neg{color:var(--neg);font-weight:600;}
 .gf-load{padding:26px 0;text-align:center;font-size:12px;color:var(--muted);}
 .fs-verd{margin:2px 0 6px;font-size:13px;}
 .fs-por{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 12px;}
@@ -2543,17 +2552,119 @@ function _fmtPx(v){ return v==null?'—':fmtN(v, Math.abs(v)>=100?0:2); }
 function _fechaCorta(ms){ return new Date(ms).toLocaleDateString('es-AR',{day:'numeric',month:'short',year:'2-digit'}); }
 
 function svgGrafico(serie,r,st){
+
+// ── OBJETIVO TÉCNICO (Nico, 02/10/2026): a cuánto podría llegar y en cuánto tiempo ──
+// Es un ESCENARIO, no una predicción. Objetivo 1/2 = los próximos niveles técnicos en el camino
+// (Fibonacci, medias, máx./mín. de 52 semanas) a más de 2,5% del precio; stop = si pierde el nivel
+// que dispara la señal (3% más allá). El PLAZO sale del propio historial del activo: se buscan los
+// toques anteriores a ese mismo nivel y se mide si llegó a la misma distancia, cuándo, o si rompió
+// antes — contando los fracasos, no solo los éxitos. Con menos de 3 toques usa una estimación por
+// volatilidad (orden de magnitud, se avisa).
+function _mediana(a){ const t=[...a].sort((x,y)=>x-y), m=Math.floor(t.length/2); return t.length%2?t[m]:(t[m-1]+t[m])/2; }
+function _cuantil(a,q){ const t=[...a].sort((x,y)=>x-y); return t[Math.min(t.length-1,Math.floor(q*t.length))]; }
+function _sigmaDiaria(closes,n){
+  const a=closes.slice(-(n||60)-1), rs=[]; for(let i=1;i<a.length;i++) rs.push(Math.log(a[i]/a[i-1]));
+  const m=rs.reduce((x,y)=>x+y,0)/rs.length; return Math.sqrt(rs.reduce((x,y)=>x+(y-m)*(y-m),0)/Math.max(1,rs.length-1));
+}
+function _eventosToque(closes,nivel,dir,banda,X,hor){
+  const N=closes.length, out=[]; let ult=-99;
+  for(let i=5;i<N-1;i++){
+    const L=nivel(i), L5=nivel(i-5); if(L==null||L5==null) continue;
+    const d=closes[i]/L-1, d5=closes[i-5]/L5-1;
+    const dentro=dir>0?(d>=0&&d<=banda):(d<=0&&d>=-banda);
+    if(!dentro||i-ult<20) continue;
+    if(dir>0?(d5<=d+0.01):(d5>=d-0.01)) continue;          // tiene que venir acercándose al nivel
+    const meta=closes[i]*(1+dir*X), corte=L*(1-dir*0.03);
+    let res=null;
+    for(let j=i+1;j<Math.min(N,i+hor+1);j++){
+      const c=closes[j];
+      if(dir>0?c>=meta:c<=meta){ res={tipo:'llego',dias:j-i}; break; }
+      if(dir>0?c<=corte:c>=corte){ res={tipo:'rompio'}; break; }
+    }
+    if(!res){ if(i+hor<=N-1) res={tipo:'nada'}; else continue; }   // ventana sin completar: sigue en curso, no cuenta
+    out.push(res); ult=i;
+  }
+  return out;
+}
+function objetivoTecnico(serie,r,lr){
+  if(!lr||lr.tipo==='mixta'||!lr.pts.length) return null;
+  const closes=serie.map(p=>p.c), N=closes.length, P=closes[N-1], dir=lr.tipo==='compra'?1:-1;
+  const ma200=_maSerie(closes,200), ma100=_maSerie(closes,100);
+  const cands=[]; const add=(v,label)=>{ if(v!=null&&v>0) cands.push({v,label}); };
+  add(ma200[N-1],'MM200 diaria'); add(r.mm20s,'MM20 semanal'); add(r.mm20m,'MM20 mensual'); add(r.mm50m,'MM50 mensual');
+  (nivelesFibo(r.max52,r.min52)||[]).forEach(f=>add(f.nivel,`Fibonacci ${f.pct}%`));
+  add(r.max52,'máximo de 52 semanas'); add(r.min52,'mínimo de 52 semanas');
+  const act=new Set(lr.pts.map(p=>p.label));
+  const valAct=cands.filter(c=>act.has(c.label)).map(c=>c.v);
+  if(!valAct.length) return null;
+  const base=dir>0?Math.min(...valAct):Math.max(...valAct);
+  const stop=base*(1-dir*0.03);
+  const camino=cands.filter(c=>!act.has(c.label)&&(dir>0?c.v>P*1.025:c.v<P*0.975)).sort((a,b)=>dir>0?a.v-b.v:b.v-a.v);
+  const t1=camino[0]||null;
+  const t2=t1?(camino.find(c=>Math.abs(c.v/t1.v-1)>=0.025&&(dir>0?c.v>t1.v:c.v<t1.v))||null):null;
+  const o={dir,P,stop,t1,t2,rr:null,plazo:null,tipo:lr.tipo};
+  if(!t1) return o;
+  const X=Math.abs(t1.v/P-1);
+  o.rr=Math.abs(t1.v-P)/Math.max(1e-9,Math.abs(P-stop));
+  // nivel "principal" cuyo historial sí se puede reconstruir con los cierres diarios
+  const prin=lr.pts.find(p=>p.label==='MM200 diaria')||lr.pts.find(p=>p.label==='MM20 semanal')||lr.pts.find(p=>p.plazo==='fibo');
+  let nivelFn=null, nomNivel='';
+  if(prin){
+    nomNivel=prin.label;
+    if(prin.label==='MM200 diaria') nivelFn=i=>ma200[i];
+    else if(prin.label==='MM20 semanal') nivelFn=i=>ma100[i];   // 20 semanas ≈ 100 ruedas
+    else { const v=(cands.find(c=>c.label===prin.label)||{}).v; if(v) nivelFn=()=>v; }
+  }
+  const HOR=60;
+  const ev=nivelFn?_eventosToque(closes,nivelFn,dir,REBOTE_BANDAS[prin.plazo]||0.03,X,HOR):[];
+  if(ev.length>=3){
+    const dias=ev.filter(e=>e.tipo==='llego').map(e=>e.dias);
+    o.plazo={modo:'hist',nivel:nomNivel,n:ev.length,llego:dias.length,rompio:ev.filter(e=>e.tipo==='rompio').length,nada:ev.filter(e=>e.tipo==='nada').length,
+      med:dias.length?Math.round(_mediana(dias)):null, p25:dias.length>=3?_cuantil(dias,.25):null, p75:dias.length>=3?_cuantil(dias,.75):null, hor:HOR};
+  } else {
+    const sg=_sigmaDiaria(closes,60), d=Math.round(Math.min(120,Math.max(5,Math.pow(Math.abs(Math.log(t1.v/P))/sg,2))));
+    o.plazo={modo:'vol',dias:d,n:ev.length,nivel:nomNivel};
+  }
+  return o;
+}
+const _sem=d=>d<=7?`${d} ruedas`:`${d} ruedas (~${Math.max(1,Math.round(d/5))} semanas)`;
+function objetivoHTML(o,r){
+  if(!o) return '';
+  const mon=r.moneda||'', pct=v=>`${v>=0?'+':'−'}${fmtN(Math.abs(v)*100,1)}%`;
+  const dirTxt=o.dir>0?'sube':'baja', cls=o.dir>0?'pos':'neg';
+  if(!o.t1) return `<div class="gf-obj"><h6>🎯 Objetivo técnico</h6><div class="gf-nota">No hay un nivel técnico claro ${o.dir>0?'por encima':'por debajo'} del precio para marcar un objetivo (está ${o.dir>0?'cerca de su máximo':'cerca de su mínimo'} de 52 semanas). Sin objetivo, mirá solo la invalidación: ${mon} ${_fmtPx(o.stop)}.</div></div>`;
+  const fila=(t,lab)=>`<tr><td>${lab}</td><td><b>${mon} ${_fmtPx(t.v)}</b> <span class="${cls}">(${pct(t.v/o.P-1)})</span> — ${t.label}</td></tr>`;
+  const pl=o.plazo; let plazoTxt='', nota='';
+  if(pl.modo==='hist'){
+    const X=pct(o.t1.v/o.P-1);
+    plazoTxt = pl.llego>=2 ? `<b>~${_sem(pl.med)}</b>${pl.p25!=null?` <span class="dash">(rango habitual ${pl.p25}–${pl.p75} ruedas)</span>`:''}`
+      : pl.llego===1 ? `<b>poco confiable</b>: solo 1 vez llegó (en ${pl.med} ruedas)` : `<b>sin referencia</b>: en sus toques anteriores no llegó`;
+    nota=`<b>De dónde sale el plazo:</b> en los <b>${pl.n} toques anteriores</b> a la ${pl.nivel} de este activo, <b>${pl.llego}</b> ${pl.llego===1?'vez llegó':'veces llegó'} a ${X}${pl.llego?` (mediana ${pl.med} ruedas)`:''}, <b>${pl.rompio}</b> rompió el nivel antes y <b>${pl.nada}</b> no llegó en ${pl.hor} ruedas. Así reaccionó esta acción otras veces — no garantiza que hoy repita.`;
+  } else {
+    plazoTxt=`<b>~${_sem(pl.dias)}</b> <span class="dash">(estimación gruesa)</span>`;
+    nota=`<b>De dónde sale el plazo:</b> este activo tiene pocos toques anteriores a ese nivel${pl.nivel?` (${pl.n})`:''} para medirlo, así que se estima por su volatilidad reciente: cuánto suele tardar en moverse esa distancia. Es un orden de magnitud, no una fecha.`;
+  }
+  return `<div class="gf-obj"><h6>🎯 Objetivo técnico — escenario si el ${o.dir>0?'rebote se da':'techo se confirma'}</h6><table>
+    ${fila(o.t1,'Objetivo 1')}${o.t2?fila(o.t2,'Objetivo 2'):''}
+    <tr><td>Stop sugerido</td><td><b>${mon} ${_fmtPx(o.stop)}</b> <span class="${o.dir>0?'neg':'pos'}">(${pct(o.stop/o.P-1)})</span> — si ${o.dir>0?'cierra por debajo':'cierra por encima'}, el escenario falló</td></tr>
+    <tr><td>Ganancia / riesgo</td><td><b>1 : ${fmtN(o.rr,1)}</b> <span class="dash">(hasta el objetivo 1 vs. hasta el stop)</span>${o.rr<1?' <span style="color:var(--ambar)">⚠ el objetivo 1 queda más cerca que el stop: arriesgás más de lo que ganarías si solo llega al primero</span>':''}</td></tr>
+    <tr><td>Plazo</td><td>${plazoTxt}</td></tr></table>
+    <div class="gf-nota">${nota}<br>Es un escenario armado con niveles técnicos, no una predicción ni una recomendación: el precio puede no llegar, o pasar de largo.</div></div>`;
+}
+
   const N=serie.length, show=Math.min(N,260), off=N-show;
   const closes=serie.map(p=>p.c), ma200=_maSerie(closes,200);
   const last=closes[N-1];
   const rLive={...r, precio:last};
   const lr=lecturaRebote(rLive);
   const W=620, H=300, pl=50, pr=96, pt=16, pb=26;
+  const obj=objetivoTecnico(serie,r,lr);
   const xs=i=>pl+(i-off)/(show-1)*(W-pl-pr);
   // rango vertical: precio + MM200 visibles
   let lo=Infinity, hi=-Infinity;
   for(let i=off;i<N;i++){ lo=Math.min(lo,closes[i]); hi=Math.max(hi,closes[i]); if(ma200[i]!=null){ lo=Math.min(lo,ma200[i]); hi=Math.max(hi,ma200[i]); } }
   const padv=(hi-lo)*0.08||hi*0.05; lo-=padv; hi+=padv;
+  if(st.objetivo&&obj){ [obj.t1&&obj.t1.v,obj.t2&&obj.t2.v,obj.stop].forEach(v=>{ if(v!=null&&Math.abs(v/last-1)<=0.35){ lo=Math.min(lo,v); hi=Math.max(hi,v); } }); }
   const ys=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
   const ptsAct=lr?lr.pts:[];
   const activo=lab=>ptsAct.find(p=>p.label===lab);
@@ -2584,6 +2695,14 @@ function svgGrafico(serie,r,st){
     etiq.push({y,txt:n.label,c,on:!!n.act});
   });
   // MM200 diaria (curva) y precio
+  // objetivos y stop (escenario) — puntitos azules / rojo, para no confundirlos con los niveles
+  if(st.objetivo&&obj){
+    [[obj.t1&&obj.t1.v,'Obj 1','var(--info-badge)'],[obj.t2&&obj.t2.v,'Obj 2','var(--info-badge)'],[obj.stop,'Stop','var(--neg)']].forEach(([v,l,c])=>{
+      if(v==null||v<lo||v>hi) return; const y=ys(v);
+      g+=`<line x1="${pl}" x2="${W-pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" style="stroke:${c};stroke-width:1.8;stroke-dasharray:1 3.5;stroke-linecap:round"/>`;
+      etiq.push({y,txt:`${l} · ${_fmtPx(v)}`,c,on:true});
+    });
+  }
   let d200='', started=false;
   for(let i=off;i<N;i++){ if(ma200[i]==null) continue; d200+=(started?'L':'M')+xs(i).toFixed(1)+','+ys(ma200[i]).toFixed(1); started=true; }
   if(d200) g+=`<path class="gf-ma200" d="${d200}" style="${act200?`stroke:${colDe({act:act200})};stroke-width:2.2`:''}"/>`;
@@ -2609,7 +2728,7 @@ function svgGrafico(serie,r,st){
     g+=`<circle cx="${xe.toFixed(1)}" cy="${ye.toFixed(1)}" r="9" style="fill:none;stroke:var(--ambar);stroke-width:2"/><text class="gf-halo gf-lab" x="${(xe-14).toFixed(1)}" y="${(ye-12).toFixed(1)}" text-anchor="end" style="fill:var(--ambar)">Señal mixta</text>`;
   }
   g+=`<line class="gf-cursor" id="gf-cur" x1="0" x2="0" y1="${pt}" y2="${H-pb}" style="display:none"/><rect id="gf-hit" x="${pl}" y="${pt}" width="${W-pl-pr}" height="${H-pt-pb}" fill="transparent"/>`;
-  return {svg:`<svg class="gf-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de precio">${g}</svg>`, lr, last, geo:{pl,pr,W,off,show,N}};
+  return {obj, svg:`<svg class="gf-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de precio">${g}</svg>`, lr, last, geo:{pl,pr,W,off,show,N}};
 }
 function teoriaGrafico(r,lr,last,serie){
   const f=_fmtPx, fechaUlt=_fechaCorta(serie[serie.length-1].t);
@@ -2640,9 +2759,10 @@ function renderGrafico(){
   const chipT=(k,l)=>`<button class="chip ${st[k]?'active':''}" onclick="gfToggle('${k}')">${l}</button>`;
   box.innerHTML=`<div class="gf-wrap">
     <div class="gf-top"><span class="gf-read" id="gf-read">Pasá el mouse por el gráfico para ver cada día</span>
-      <span class="gf-tgl">${chipT('medias','Medias')}${chipT('fibo','Fibonacci')}${chipT('pasados','Rebotes pasados')}</span></div>
+      <span class="gf-tgl">${chipT('objetivo','Objetivo')}${chipT('medias','Medias')}${chipT('fibo','Fibonacci')}${chipT('pasados','Rebotes pasados')}</span></div>
     ${out.svg}
-    <div class="gf-leg"><span><i style="border-color:var(--text)"></i>Precio (último año)</span><span><i style="border-color:var(--ambar)"></i>Media de 200 ruedas</span><span><i style="border-color:var(--pos)"></i>Soporte</span><span><i style="border-color:var(--neg)"></i>Resistencia</span></div>
+    <div class="gf-leg"><span><i style="border-color:var(--text)"></i>Precio (último año)</span><span><i style="border-color:var(--ambar)"></i>Media de 200 ruedas</span><span><i style="border-color:var(--pos)"></i>Soporte</span><span><i style="border-color:var(--neg)"></i>Resistencia</span><span><i style="border-color:var(--info-badge);border-top-style:dotted"></i>Objetivo</span></div>
+    ${objetivoHTML(out.obj,r)}
     <div class="gf-teoria">${teoriaGrafico(r,out.lr,out.last,serie)}</div></div>`;
   const hit=document.getElementById('gf-hit'), cur=document.getElementById('gf-cur'), rd=document.getElementById('gf-read');
   if(hit){
@@ -2672,7 +2792,7 @@ async function toggleGrafico(ticker){
     box.innerHTML='<div class="gf-load">Todavía no hay historial de precios para este activo — se arma con la actualización diaria de las 18:30.</div>';
     return;
   }
-  _gf={r,serie,st:{medias:false,fibo:false,pasados:true}};
+  _gf={r,serie,st:{objetivo:true,medias:false,fibo:false,pasados:true}};
   renderGrafico();
 }
 function cerrarHolders(){
