@@ -366,13 +366,38 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .fs-p b{color:var(--text);}
 .fs-cli-link{cursor:pointer;color:var(--text);text-decoration:underline;text-decoration-color:var(--dim);}
 .fs-cli-link:hover{text-decoration-color:var(--ambar);}
-/* ── LISTA DE CLIENTES ── */
-.cli-modal{max-width:520px;}
-.cli-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(30,58,52,.5);cursor:pointer;}
-.cli-row:hover{background:var(--surface);}
-.cli-nom{flex:1;font-size:12.5px;color:var(--text);font-weight:500;}
-.cli-usd{font-family:var(--font-m);font-size:11.5px;color:var(--muted);white-space:nowrap;}
-.cli-badges{display:flex;gap:4px;}
+/* ── VISTA POR CLIENTE (tabla principal, 02/10: antes era un popup) ── */
+.vista-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;flex-shrink:0;}
+.vista-toggle .vt{background:transparent;border:none;color:var(--muted);font-family:var(--font-s);font-size:11.5px;padding:5px 11px;cursor:pointer;white-space:nowrap;}
+.vista-toggle .vt:hover{color:var(--text);}
+.vista-toggle .vt.active{background:var(--jade-d);color:var(--jade);font-weight:600;}
+.tools-bar.vista-cli #chip-ranking,.tools-bar.vista-cli #chip-cartera,.tools-bar.vista-cli #chip-prioridad,.tools-bar.vista-cli #hor-pick,.tools-bar.vista-cli #hor-fresh,.tools-bar.vista-cli #chip-excel{display:none !important;}
+tr.cli-tr{cursor:pointer;}
+tr.cli-tr:hover{background:var(--wash-1);}
+.cli-top{white-space:nowrap;font-size:11px;color:var(--muted);}
+.cli-top b{font-family:var(--font-m);color:var(--text);font-weight:600;margin-left:6px;}
+.cli-top b:first-child{margin-left:0;}
+.cli-top i{font-style:normal;margin-left:3px;color:var(--dim);}
+.cli-chips{white-space:nowrap;}
+.cli-chips .cli-b{margin-right:4px;font-size:10px;padding:2px 6px;}
+.btn-sm.cli-msg{padding:2px 8px;}
+.fb-btn.fb-todos{border-color:var(--jade);color:var(--jade);}
+/* ── DENSIDAD: compacta por defecto (02/10, "se ven pocos tickers") — una sola línea por fila ── */
+#main-table.compact thead th{padding:6px 10px;}
+#main-table.compact tbody td{padding:4px 10px;}
+#main-table.compact .pa-punt{font-size:15px;}
+#main-table.compact .pa-activo>div{display:inline;}
+#main-table.compact .pa-activo>div.pa-emp{display:inline-block;margin-left:8px;max-width:150px;vertical-align:bottom;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#main-table.compact .pa-cartera>div{display:inline;}
+#main-table.compact .pa-cli{margin-left:6px;}
+#main-table.compact .pa-qh{max-width:330px;}
+#main-table.compact .pa-qh-in{display:flex;align-items:center;gap:8px;}
+#main-table.compact .pa-por{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;}
+#main-table.compact .pa-sig-row{display:inline-flex;margin:0 5px 0 0;}
+#main-table.compact .pa-sig-lbl{display:none;}
+#main-table.compact .pa-anal>div{display:inline;margin-right:6px;}
+#main-table.compact .pa-anal>div.pa-tgt{display:none;}
+#main-table.compact .pa-pos .ps{margin:0 3px 0 0;}
 .cli-b{font-size:9.5px;font-family:var(--font-m);padding:1px 5px;border-radius:3px;}
 .cli-b.add{background:rgba(28,140,95,.16);color:var(--pos);} .cli-b.cut{background:rgba(192,69,59,.16);color:var(--neg);} .cli-b.watch{background:rgba(219,160,60,.14);color:var(--ambar);}
 .chip-nov{border-color:rgba(219,160,60,.45);color:var(--ambar);}
@@ -438,6 +463,11 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
        Nico: estas herramientas quedaban escondidas detrás de "+ Filtros" o perdidas entre
        las chips de sector — ver memoria del proyecto). -->
   <div class="tools-bar" id="tools-bar">
+    <div class="vista-toggle" id="chip-clientes" style="display:none" title="Cambiá lo que muestra la tabla principal: una fila por activo, o una fila por cliente con el estado de su cartera.">
+      <button class="vt active" id="vt-tk" onclick="setVista('ticker')">📊 Por ticker</button>
+      <button class="vt" id="vt-cli" onclick="setVista('cliente')">👤 Por cliente</button>
+    </div>
+    <span class="tools-sep"></span>
     <label class="mult-pick" id="hor-pick" title="Para qué horizonte pesa el puntaje: cambia los pesos de Negocio/Valuación/Tendencia (y suma el Rebote técnico en Corto plazo). Afecta la columna Puntaje, el Ranking, la ficha y Comparar.">Horizonte<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="horizonte">?</span>
       <select id="hor-sel" onchange="setHorizonte(this.value)">
         <option value="largo">Largo plazo</option>
@@ -457,7 +487,7 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     <button class="chip chip-tool" id="chip-senales-cfg" onclick="abrirSenCfg()" style="display:none" title="Configurar las señales de posición">⚙</button>
     <button class="chip chip-tool chip-nov" id="chip-nov" onclick="abrirNovedades()" style="display:none">🔔 Novedades</button>
     <span class="tools-sep"></span>
-    <button class="chip chip-tool chip-msg" id="chip-clientes" onclick="abrirClientes()" style="display:none">👤 Clientes</button>
+    <button class="chip chip-tool" id="chip-dens" onclick="toggleDens()" title="Compacta: una sola línea por activo (se ven muchos más). Detallada: con la explicación completa de cada lectura.">↕ Compacta</button>
     <button class="chip chip-tool chip-msg" onclick="abrirComparar()" title="Comparar dos activos y armar un mensaje simple si conviene rotar">⇄ Comparar</button>
     <button class="chip chip-tool chip-msg" onclick="abrirCorr()" title="Ver qué tan diversificada está una cartera: si sus activos se mueven juntos o no">🔗 Correlación</button>
     <button class="chip chip-tool chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
@@ -746,16 +776,6 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
     </div>
   </div>
 
-  <div class="holders-overlay" id="clientesOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarClientes()">
-    <div class="holders-modal cli-modal">
-      <div class="hm-head">
-        <div><div class="hm-title">Tus clientes</div><div class="hm-sub" id="cli-sub"></div></div>
-        <button class="hm-close" onclick="cerrarClientes()">✕</button>
-      </div>
-      <div class="hm-body" id="cli-body"></div>
-    </div>
-  </div>
-
   <div class="holders-overlay" id="novedadesOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarNovedades()">
     <div class="holders-modal cli-modal">
       <div class="hm-head">
@@ -915,7 +935,7 @@ if(BC){
     if(e.data?.type==='file_updated' && e.data?.rawKey==='tenencia') setTimeout(loadTenencia,300);
     if(e.data?.type==='file_updated' && e.data?.rawKey==='stock') setTimeout(loadStock,300);
     if(e.data?.type==='file_updated' && (e.data?.key==='precios_objetivo'||e.data?.rawKey==='precios_objetivo')) setTimeout(loadAnalistas,300);
-    if(e.data?.type==='client_selected'){ clienteActivo=e.data.cliente||null; render(); }
+    if(e.data?.type==='client_selected'){ clienteActivo=e.data.cliente||null; if(clienteActivo&&vistaCliente){ vistaCliente=false; syncVistaUI(); } render(); }
     if(e.data?.type==='vm_abrir_corr') vmCheckCorrPend();
     if(e.data?.type==='top_clients_selected'){ topClientesSet=(e.data.clientes&&e.data.clientes.length)?new Set(e.data.clientes):null; render(); }
   };
@@ -2385,7 +2405,7 @@ function _fichaHolders(ticker){
     <table class="hm-table"><thead><tr><th>Cliente</th><th>Tenencia</th><th title="desde que la compró (precio promedio de compra)">Rent.</th><th title="días de tenencia">Días</th>${senalesOn?'<th title="señal de la posición de cada cliente — pasá el mouse para ver por qué">Señal</th>':''}</tr></thead><tbody>${rows}</tbody></table>
     <div class="hm-total">Total: <b>US$ ${total.toLocaleString('es-AR',{maximumFractionDigits:0})}</b>${(g=>g!=null?` · rentabilidad promedio ${ganSpan(g)}`:'')(ganGrupo(holders))}</div></div>`;
 }
-function focoDesdeFicha(cli){ cerrarHolders(); clienteActivo=cli; _carteraTocado=false; soloCartera=false; activeTab='Panorama'; buildTabs(); render(); }
+function focoDesdeFicha(cli){ cerrarHolders(); clienteActivo=cli; _carteraTocado=false; soloCartera=false; vistaCliente=false; activeTab='Panorama'; buildTabs(); syncVistaUI(); render(); }
 
 function abrirFicha(ticker,opts){
   if(!ticker) return;
@@ -2660,39 +2680,93 @@ function cerrarHolders(){
   ov.classList.remove('open');
   ov.querySelector('.holders-modal').classList.remove('ficha-modal');
 }
-// ── LISTA DE CLIENTES: cada uno con su total y el estado de su cartera ──
-function abrirClientes(){
-  const cls=clientesConCartera();
-  document.getElementById('cli-sub').textContent=`${cls.length} clientes · ordenados por tenencia`;
-  const body=document.getElementById('cli-body');
-  if(!cls.length){ body.innerHTML='<div class="hm-empty">Subí "Tenencia por Ticker" en el FCN Suite.</div>'; }
-  else body.innerHTML=cls.map(c=>{
+// ── VISTA POR CLIENTE: la tabla principal pasa de "una fila por activo" a "una fila por cliente" ──
+// (02/10, pedido de Nico: antes era un popup aparte — ahora es la tabla principal, con un selector
+// "Por ticker | Por cliente" en la barra de herramientas)
+let vistaCliente=false;
+let sortCli={col:'ctot',asc:false};
+function syncVistaUI(){
+  const t=document.getElementById('vt-tk'), c=document.getElementById('vt-cli');
+  if(t) t.classList.toggle('active',!vistaCliente);
+  if(c) c.classList.toggle('active',vistaCliente);
+  const tb=document.getElementById('tools-bar'); if(tb) tb.classList.toggle('vista-cli',vistaCliente);
+}
+function setVista(v){
+  vistaCliente=(v==='cliente');
+  if(vistaCliente){ activeTab='Panorama'; buildTabs(); }
+  syncVistaUI(); render();
+}
+function irACliente(cli){ clienteActivo=cli; _carteraTocado=false; soloCartera=false; vistaCliente=false; activeTab='Panorama'; buildTabs(); syncVistaUI(); render(); }
+function volverATodosLosClientes(){ clienteActivo=null; vistaCliente=true; activeTab='Panorama'; buildTabs(); syncVistaUI(); render(); }
+function sortByCli(col){ if(sortCli.col===col) sortCli.asc=!sortCli.asc; else { sortCli.col=col; sortCli.asc=(col==='cnom'); } render(); }
+function thCli(col,label,num){
+  const arrow=sortCli.col===col?(sortCli.asc?'↑':'↓'):'↕';
+  return `<th class="${num?'num ':''}${sortCli.col===col?'sorted':''}" onclick="sortByCli('${col}')">${label} <span class="sort-arrow">${arrow}</span></th>`;
+}
+// filas de la tabla por cliente — respeta el buscador, el Top N del Suite y "Tenencia mín."
+function filasClientes(){
+  const q=(document.getElementById('search-input')?.value||'').trim().toLowerCase();
+  const tenMin=Number(document.getElementById('ten-min-input')?.value)||0;
+  const out=[];
+  clientesConCartera().forEach(c=>{
+    if(topClientesSet && !topClientesSet.has(c)) return;
+    const nom=nombreCompleto(c);
+    if(q && !(String(nom).toLowerCase().includes(q) || String(c).toLowerCase().includes(q))) return;
     const cart=carteraDeCliente(c);
     const tot=cart.reduce((a,x)=>a+x.ten,0);
+    if(tot<tenMin) return;
     const cnt={Sumar:0,Atención:0,Reducir:0};
     cart.forEach(x=>{ if(cnt[x.q.v]!==undefined) cnt[x.q.v]++; });
-    const b=[];
-    if(cnt.Reducir) b.push(`<span class="cli-b cut">${cnt.Reducir} reducir</span>`);
-    if(cnt.Atención) b.push(`<span class="cli-b watch">${cnt.Atención} atención</span>`);
-    if(cnt.Sumar) b.push(`<span class="cli-b add">${cnt.Sumar} sumar</span>`);
-    if(senalesOn){
-      const sc=senCuentaCliente(cart);
-      ['VENDER','STOP','ACUMULAR'].forEach(k=>{ if(sc[k]) b.push(`<span class="ps ${SEN_META[k].cls}">${sc[k]} ${SEN_META[k].txt.toLowerCase()}</span>`); });
-    }
-    const conc=concentracion(c);
-    if(conc) b.push(`<span class="cli-b watch" title="${conc.join(' · ')}">⚠ concentrado</span>`);
-    const nom=nombreCompleto(c);
-    return `<div class="cli-row" onclick="focoDesdeFicha('${String(c).replace(/'/g,"\\'")}');cerrarClientes()">
-      <span class="cli-nom">${nom}</span>
-      <span class="cli-badges">${b.join('')}</span>
-      <span class="cli-usd">${fmtUsd(tot)} · ${cart.length} pos.${(g=>g!=null?` · ${ganSpan(g)}`:'')(ganGrupo(cart.map(x=>x.h)))}</span></div>`;
-  }).join('');
-  document.getElementById('clientesOverlay').classList.add('open');
+    const sc=senalesOn?senCuentaCliente(cart):{};
+    out.push({c,nom,cart,tot,n:cart.length,gan:ganGrupo(cart.map(x=>x.h)),cnt,sc,conc:concentracion(c)});
+  });
+  const get={
+    cnom:f=>String(f.nom).toLowerCase(), ctot:f=>f.tot, cn:f=>f.n, cgan:f=>f.gan,
+    cqh:f=>f.cnt.Reducir*1000+f.cnt.Atención*10+f.cnt.Sumar,
+    cpos:f=>(f.sc.VENDER||0)*1000+(f.sc.STOP||0)*1000+(f.sc.ACUMULAR||0),
+    cconc:f=>f.conc?f.conc.length:0
+  }[sortCli.col]||(f=>f.tot);
+  const dir=sortCli.asc?1:-1;
+  return out.sort((a,b)=>{
+    const va=get(a), vb=get(b);
+    const na=(va===null||va===undefined), nb=(vb===null||vb===undefined);
+    if(na&&nb) return 0; if(na) return 1; if(nb) return -1;
+    return typeof va==='string' ? dir*va.localeCompare(vb) : dir*(va-vb);
+  });
 }
-function cerrarClientes(){ document.getElementById('clientesOverlay').classList.remove('open'); }
+function renderTablaClientes(){
+  const rows=filasClientes();
+  const head=`<tr>${thCli('cnom','Cliente')}${thCli('ctot','Tenencia',1)}${thCli('cn','Pos.',1)}${thCli('cgan','Rent.',1)}${thCli('cqh','Qué hacer')}${senalesOn?thCli('cpos','Posiciones'):''}${thCli('cconc','Concentración')}<th>Mayores posiciones</th><th></th></tr>`;
+  const body=rows.map(f=>{
+    const esc=String(f.c).replace(/'/g,"\\'");
+    const chips=[];
+    if(f.cnt.Reducir) chips.push(`<span class="cli-b cut">${f.cnt.Reducir} reducir</span>`);
+    if(f.cnt.Atención) chips.push(`<span class="cli-b watch">${f.cnt.Atención} atención</span>`);
+    if(f.cnt.Sumar) chips.push(`<span class="cli-b add">${f.cnt.Sumar} sumar</span>`);
+    const pos=senalesOn?['VENDER','STOP','ACUMULAR'].filter(k=>f.sc[k]).map(k=>`<span class="ps ${SEN_META[k].cls}">${f.sc[k]} ${SEN_META[k].txt.toLowerCase()}</span>`).join(' '):'';
+    const top=f.cart.slice(0,3).map(x=>`<b>${x.r.ticker}</b><i>${f.tot?fmtN(x.ten/f.tot*100,0):0}%</i>`).join(' ');
+    const conc=f.conc?`<span class="cli-b watch" title="${f.conc.join(' · ')}">⚠ ${f.conc[0]}</span>`:'<span class="dash">—</span>';
+    return `<tr class="cli-tr" onclick="irACliente('${esc}')" title="Ver la cartera de ${String(f.nom).replace(/"/g,'&quot;')} en la tabla por activo">
+      <td class="pa-activo"><div class="pa-tk">${f.nom}</div></td>
+      <td class="pa-cartera"><div class="pa-usd">${fmtUsd(f.tot)}</div></td>
+      <td class="num">${f.n}</td>
+      <td class="num">${f.gan!=null?ganSpan(f.gan):'<span class="dash">—</span>'}</td>
+      <td class="cli-chips">${chips.join('')||'<span class="dash">—</span>'}</td>
+      ${senalesOn?`<td class="cli-chips">${pos||'<span class="dash">—</span>'}</td>`:''}
+      <td class="cli-chips">${conc}</td>
+      <td class="cli-top">${top||'<span class="dash">—</span>'}</td>
+      <td><button class="btn-sm cli-msg" onclick="event.stopPropagation();abrirMensaje('${esc}')" title="Armar el mensaje para este cliente">✉</button></td>
+    </tr>`;
+  }).join('');
+  return {head,body,rows,ncols:senalesOn?9:8};
+}
+// densidad de la tabla: compacta (una línea por fila) o detallada (con la explicación completa)
+let densidad='c';
+try{ if(localStorage.getItem('vm_dens')==='d') densidad='d'; }catch(e){}
+function toggleDens(){ densidad=densidad==='c'?'d':'c'; try{ localStorage.setItem('vm_dens',densidad); }catch(e){} render(); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarClientes(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); } });
 function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
@@ -2853,7 +2927,7 @@ function buildTabs(){
   el.innerHTML=TABS.map(t=>`<button class="tab ${t===activeTab?'active':''}" onclick="setTab('${t.replace(/'/g,"\\'")}')">${t}</button>`).join('');
 }
 function setTab(t){
-  activeTab=t;
+  activeTab=t; vistaCliente=false; syncVistaUI();
   buildTabs();
   render();
 }
@@ -3106,6 +3180,7 @@ function actualizarChipRanking(){
 function toggleRanking(){
   rankingModo=(rankingModo+1)%3;
   if(rankingModo>0){
+    vistaCliente=false; syncVistaUI();
     activeTab='Panorama'; buildTabs();
     sortState.Panorama={col:'punt',asc:rankingModo===2};
   }
@@ -3389,9 +3464,13 @@ function renderDebounced(){ clearTimeout(_renderTimer); _renderTimer=setTimeout(
 function render(){
   const thead=document.getElementById('thead'), tbody=document.getElementById('tbody');
   if(!thead||!tbody) return;
-  const rows=applySort(visibleRows());
+  const enVistaCli = vistaCliente && activeTab==='Panorama';
+  const tCli = enVistaCli ? renderTablaClientes() : null;
+  const rows = enVistaCli ? tCli.rows : applySort(visibleRows());
   const pick=document.getElementById('mult-pick');
   if(pick) pick.style.display = activeTab==='Múltiplos' ? '' : 'none';
+  const mt=document.getElementById('main-table'); if(mt) mt.classList.toggle('compact',densidad==='c');
+  const cd=document.getElementById('chip-dens'); if(cd) cd.textContent = densidad==='c' ? '↕ Compacta' : '↕ Detallada';
 
   let headHtml='', bodyHtml='', ncols=12;
   const vs=(p,m)=>{
@@ -3408,10 +3487,13 @@ function render(){
     const conf = analConfirma(r);
     const cf = conf ? ` <span class="ac ${conf.cls}" title="¿los analistas coinciden con la lectura de arriba?">${conf.txt}</span>` : '';
     if(!rec && !up && !tgt) return '<span class="dash">—</span>';
-    return `<div>${rec}${up}${cf}</div>${tgt}`;
+    const tip = an.target!==null ? ` title="precio objetivo promedio ${an.moneda||'US$'} ${fmtN(an.target, an.target>100?0:2)}${an.n?` · ${an.n} analistas`:''}"` : '';
+    return `<div${tip}>${rec}${up}${cf}</div>${tgt}`;
   };
 
-  if(activeTab==='Panorama'){
+  if(enVistaCli){
+    headHtml=tCli.head; bodyHtml=tCli.body; ncols=tCli.ncols;
+  }else if(activeTab==='Panorama'){
     ncols=senalesOn?7:6;
     headHtml=`<tr>${th('activo','Activo')}${th('cartera','En cartera',1,'cartera')}${th('punt','Puntaje',1,'puntaje')}${th('quehacer',senalesOn?'Qué hacer (empresa)':'Qué hacer',0,'quehacer')}${senalesOn?th('posic','Posición cliente',0,'posicion'):''}
       <th>Señales${ayq('senales')}</th>${th('anal','Analistas',1,'analistas')}</tr>`;
@@ -3433,7 +3515,7 @@ function render(){
         <td class="pa-activo"><div class="pa-tk" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
         <td class="pa-cartera">${carteraCell}</td>
         <td class="pa-punt">${puntajeCell(r)}</td>
-        <td class="pa-qh"><span class="qh ${q.cls}">${q.v}</span>${clienteActivo&&regRechazado(clienteActivo,r.ticker)?' <span class="qh-rech" title="ya se lo propusiste y lo rechazó — mirá la ficha">📝 rechazado</span>':''}<div class="pa-por">${q.por}</div></td>
+        <td class="pa-qh" title="${_attr(q.por)}"><div class="pa-qh-in"><span class="qh ${q.cls}">${q.v}</span>${clienteActivo&&regRechazado(clienteActivo,r.ticker)?' <span class="qh-rech" title="ya se lo propusiste y lo rechazó — mirá la ficha">📝 rechazado</span>':''}<div class="pa-por">${q.por}</div></div></td>
         ${senalesOn?`<td class="pa-pos" onclick="abrirFicha('${esc}')">${senResumenCell(r)}</td>`:''}
         <td class="pa-sig">${sigRow('Tendencia',sigTendencia(r))}${sigRow('Negocio',sigNegocio(r))}${sigRow('Precio',sigPrecio(r))}</td>
         <td class="pa-anal">${analCell(r)}</td>
@@ -3522,7 +3604,7 @@ function render(){
   // banner del cliente enfocado
   const fbEl=document.getElementById('foco-banner');
   if(fbEl){
-    if(clienteActivo && dataTenencia.length){
+    if(clienteActivo && dataTenencia.length && !enVistaCli){
       const cart=carteraDeCliente(clienteActivo);
       const tot=cart.reduce((a,x)=>a+x.ten,0);
       const cnt={Reducir:0,Atención:0,Sumar:0};
@@ -3540,7 +3622,7 @@ function render(){
       fbEl.innerHTML=`<span class="fb-name">${nombreCompleto(clienteActivo)}</span>`
         +`<span>${fmtUsd(tot)} en ${cart.length} posiciones${(g=>g!=null?` · <span title="rentabilidad total de estas posiciones desde que las compró">${ganSpan(g)}</span>`:'')(ganGrupo(cart.map(x=>x.h)))}${partes.length?' · '+partes.join(' · '):''}</span>`
         +(conc?`<span class="fb-conc">⚠ concentración: ${conc.join(' · ')}</span>`:'')
-        +`<span class="fb-act"><button class="fb-btn" onclick="abrirMensaje(clienteActivo)">✉ Mensaje</button><button class="fb-btn" onclick="quitarFoco()">Quitar foco</button></span>`;
+        +`<span class="fb-act"><button class="fb-btn fb-todos" onclick="volverATodosLosClientes()" title="Volver a la tabla con todos tus clientes">👥 Todos los clientes</button><button class="fb-btn" onclick="abrirMensaje(clienteActivo)">✉ Mensaje</button><button class="fb-btn" onclick="quitarFoco()">Quitar foco</button></span>`;
       fbEl.hidden=false;
     } else fbEl.hidden=true;
   }
@@ -3554,7 +3636,12 @@ function render(){
   if(cnov){ const n=Object.keys(PREV).length?novedades().length:0;
     cnov.style.display=n?'':'none'; cnov.textContent=`🔔 Novedades (${n})`; }
   let conDato, unidad='tickers';
-  if(activeTab==='Panorama'){
+  if(enVistaCli){
+    unidad='clientes';
+    const totC=rows.reduce((a,f)=>a+f.tot,0);
+    document.getElementById('counter').innerHTML=
+      `<strong>${rows.length}</strong> clientes · <strong>${fmtUsd(totC)}</strong> en cartera${topClientesSet?` · <span class="foco-cliente">🎯 top ${topClientesSet.size} clientes <span onclick="quitarFoco()" style="cursor:pointer" title="quitar foco">✕</span></span>`:''}`;
+  }else if(activeTab==='Panorama'){
     unidad='activos';
     const tot=rows.reduce((a,r)=>a+tenenciaTotal(r),0);
     conDato=rows.filter(r=>queHacer(r).v!=='Sin señal').length;
@@ -3572,7 +3659,9 @@ function render(){
   // nota al pie
   let note=FOOT_BASE;
   const faltan=rows.length-(conDato||0);
-  if(activeTab==='Panorama'){
+  if(enVistaCli){
+    note='Un cliente por fila, ordenados por la plata que tienen en renta variable. Tocá un cliente para ver su cartera activo por activo (con la señal de cada posición); desde ahí, <b>"Todos los clientes"</b> vuelve acá. El ✉ arma el mensaje para ese cliente.';
+  }else if(activeTab==='Panorama'){
     note='Ordenado por cuánta plata de tus clientes hay en cada activo. <b>"Qué hacer"</b> es una observación que combina tendencia + negocio + precio — no es una recomendación. Tocá <b>"¿Cómo leo esto?"</b> arriba para el detalle.';
   }else if(activeTab==='Técnico'){
     note='<b>Análisis técnico</b> (el precio). Medias móviles = promedio del cierre semanal de las últimas 21 / 50 / 200 semanas. Verde: el precio está por encima de la media · rojo: por debajo. "Ret." = cuánto rindió en los últimos 3 y 6 meses.'

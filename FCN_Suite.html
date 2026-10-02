@@ -598,13 +598,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
          quedar escondido atrás del toggle de herramientas (pedido de Nico, 01/10: separar
          "a dónde voy" de "en qué contexto estoy trabajando"). -->
     <div class="client-picker" id="client-picker">
-      <button class="client-pill" id="client-pill-btn" onclick="toggleClientPicker()" title="Enfocar toda la Suite en un cliente puntual o en tus clientes con más capital — para un análisis más personalizado en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.">
+      <button class="client-pill" id="client-pill-btn" onclick="toggleClientPicker()" title="Enfocar toda la Suite en un cliente puntual o en tus clientes con más capital — para un análisis más personalizado en Valuación por Múltiplos, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.">
         <span class="client-pill-icon">🎯</span>
         <span class="client-pill-text" id="client-pill-text">Ver: todos los clientes</span>
         <span class="client-pill-caret">▾</span>
       </button>
       <div class="client-dropdown" id="client-dropdown">
-        <div class="client-dropdown-intro">Enfocá la Suite en un cliente o en tus clientes con más capital — se aplica en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.</div>
+        <div class="client-dropdown-intro">Enfocá la Suite en un cliente o en tus clientes con más capital — se aplica en Valuación por Múltiplos, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado.</div>
         <div class="topn-row">
           <span class="topn-lbl">Top por capital:</span>
           <button class="topn-chip" onclick="aplicarTopNClientes(20)">20</button>
@@ -1217,7 +1217,6 @@ const USERS = [
 //  HERRAMIENTAS
 // ══════════════════════════════════════════════════════════════
 const TOOLS = [
-  { id:'rotador', name:'Rotador RV',         icon:'📈', desc:'Señales de compra/venta en Renta Variable y WhatsApp por cliente.', badge:'Renta Variable', file:'Rotador_RV_3.html',                      color:'amber' },
   { id:'scanner', name:'Scanner ONs',         icon:'🔍', desc:'Detecta ONs con TIR baja, compara con el Monitor y genera rotaciones.', badge:'Renta Fija',     file:'Scanner_ONs_FCN.html',                   color:'jade'  },
   { id:'armador', name:'Armador de Carteras', icon:'📊', desc:'Construí propuestas de portfolio en PDF con gráficos y rotaciones.',   badge:'Propuestas',   file:'Armador_Carteras_v4_3.html',               color:'jade'  },
   { id:'monitor', name:'Portfolio Monitor',   icon:'🗂',  desc:'Monitor personal de cartera: posiciones, cupones y ganancias.',       badge:'Cliente',      file:'portfolio_monitor_fcn.html',               color:'jade'  },
@@ -1238,7 +1237,7 @@ const SHARED_FILES = [
     name:  'Tenencia por Ticker',
     icon:  '📊',
     hint:  'Exportar desde Balanz · hoja "Export" · .xlsx / .csv',
-    usedBy: ['Rotador RV', 'Scanner ONs', 'Panorama de Mercado'],
+    usedBy: ['Valuación por Múltiplos', 'Scanner ONs', 'Panorama de Mercado'],
     accept: '.xlsx,.xls,.csv',
     sourceUrl: 'https://app.powerbi.com/groups/me/apps/8023a337-6088-4fcc-a0a5-3423db1838a7/reports/03c5319d-9f1e-44d4-b31c-57d11aa4ae8b/fa0646621dacd719ca0d?ctid=1123ebae-a006-42c7-9ea3-c84a2feb0e65&experience=power-bi'
   },
@@ -1247,7 +1246,7 @@ const SHARED_FILES = [
     name:  'Stock de cuentas',
     icon:  '📋',
     hint:  'Comitente → Teléfono · hoja "Export" · .xlsx / .csv (si tiene bloqueo IRM)',
-    usedBy: ['Rotador RV', 'Scanner ONs'],
+    usedBy: ['Valuación por Múltiplos', 'Scanner ONs'],
     accept: '.xlsx,.xls,.csv',
     sourceUrl: 'https://app.powerbi.com/groups/me/apps/62751bd4-230e-4c07-8077-0f87512c8af8/reports/57730607-8a90-4b12-8a6e-e30763bbab96/0800f3c230e061e5c8eb?ctid=1123ebae-a006-42c7-9ea3-c84a2feb0e65&experience=power-bi'
   },
@@ -1504,7 +1503,7 @@ function showApp() {
 // ══════════════════════════════════════════════════════════════
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
-  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['rotador','multiplos','fundamental'] },
+  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['multiplos','fundamental'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','armador','monitor'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['files'] },
 ];
@@ -1691,7 +1690,7 @@ function addTab(container, id, icon, label, onclick, active = false, isFiles = f
 const HOME_TASKS = [
   { id:'facturar_rf',          icon:'💰',  name:'Facturar con Renta Fija',                desc:'Encontrá ONs con TIR floja para proponer una rotación.',            action: () => openTool('scanner') },
   { id:'rotacion_puntual',     icon:'🔁',  name:'Comparar una rotación puntual',           desc:'¿Conviene cambiar este bono por este otro? Directo y simple.',     action: () => openTool('calcrot') },
-  { id:'facturar_rv',          icon:'📈',  name:'Facturar con Renta Variable',             desc:'Señales de compra/venta en acciones y CEDEARs.',                   action: () => openTool('rotador') },
+  { id:'facturar_rv',          icon:'📈',  name:'Facturar con Renta Variable',             desc:'Señales de compra/venta por posición, con la rentabilidad de cada cliente.', action: () => openTool('multiplos') },
   { id:'analizar_rf',          icon:'🗺️', name:'Analizar bonos y ONs',                    desc:'TIR vs. Duration de todo el universo, con curva de referencia.',   action: () => openTool('panorama') },
   { id:'analizar_rv',          icon:'⚖️',  name:'Analizar acciones y CEDEARs',             desc:'Múltiplos actuales vs. promedio histórico, por sector.',           action: () => openTool('multiplos') },
   { id:'atender_cliente',      icon:'👤',  name:'Atender a un cliente puntual',            desc:'Ver toda su cartera junta y mandarle algo directo.',               action: () => showCliente360() },
@@ -2082,7 +2081,7 @@ function renderDashTopClientes(tenencia) {
   const top = Object.entries(tenencia.porCliente).sort((a,b) => b[1]-a[1]);
   const max = top.length ? top[0][1] : 1;
   el.innerHTML = top.map(([cli,val]) => `
-    <div class="dbar-row clickable" onclick="selectActiveClient('${escHtml(cli).replace(/'/g,"\\'")}')" title="Clic para activar como cliente filtrado en Rotador RV y Scanner ONs">
+    <div class="dbar-row clickable" onclick="selectActiveClient('${escHtml(cli).replace(/'/g,"\\'")}')" title="Clic para activar como cliente filtrado en Valuación por Múltiplos y Scanner ONs">
       <div class="dbar-lbl" title="${escHtml(cli)}">${escHtml(cli)}</div>
       <div class="dbar-track"><div class="dbar-fill" style="width:${Math.round(val/max*100)}%;background:#1C8C5F"></div></div>
       <div class="dbar-val">USD ${fmtK(val)}</div>
@@ -5207,7 +5206,7 @@ async function selectActiveClient(cliente) {
   closeClientPicker();
   if (BC) BC.postMessage({ type: 'client_selected', cliente });
   renderRanking(); renderCliente360();
-  showToast(`🎯 Viendo: ${cliente} — aplicado en Rotador RV, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado`);
+  showToast(`🎯 Viendo: ${cliente} — aplicado en Valuación por Múltiplos, Scanner ONs, Calculadora de Rotaciones y Panorama de Mercado`);
 }
 
 async function clearActiveClient() {
