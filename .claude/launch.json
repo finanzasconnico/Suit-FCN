@@ -25,6 +25,19 @@
         "C:/Users/naico"
       ],
       "port": 8731
+    },
+    {
+      "name": "suite-8097",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "-y",
+        "http-server",
+        ".",
+        "-p",
+        "8097",
+        "-c-1"
+      ],
+      "port": 8097
     }
   ]
 }

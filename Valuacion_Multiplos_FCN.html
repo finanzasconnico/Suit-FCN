@@ -355,6 +355,16 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .gf-teoria p{margin:0 0 6px;}
 .gf-teoria p:last-child{margin:0;}
 .gf-aviso{color:var(--ambar);}
+.gf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:2px 0 12px;}
+.gf-kpi{border:1px solid var(--border);border-radius:8px;padding:9px 12px;background:var(--surface);}
+.gf-kpi.main{border-color:var(--info-badge);box-shadow:inset 3px 0 0 var(--info-badge);}
+.gf-kpi-l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.gf-kpi-p{font-family:var(--font-d);font-size:28px;font-weight:700;line-height:1.15;margin-top:2px;font-variant-numeric:tabular-nums;}
+.gf-kpi-p.pos{color:var(--pos);}.gf-kpi-p.neg{color:var(--neg);}
+.gf-kpi-v{font-family:var(--font-m);font-size:12px;color:var(--text);}
+.gf-kpi-d{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4;}
+.gf-kpi-nota{grid-column:1/-1;font-size:10.5px;color:var(--dim);}
+.gf-tgl .chip:disabled{opacity:.45;cursor:not-allowed;}
 .gf-obj{margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .gf-obj h6{margin:0;padding:8px 12px;font-family:var(--font-d);font-size:13px;font-weight:600;color:var(--text);background:var(--wash-1);border-bottom:1px solid var(--border);}
 .gf-obj table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -2624,14 +2634,71 @@ function _eventosToque(closes,nivel,dir,banda,X,hor){
   }
   return out;
 }
+// niveles técnicos candidatos (medias, Fibonacci, extremos de 52 semanas) — compartido por el
+// objetivo técnico y el rango de la señal mixta
+function _candNiveles(closes,r,ma200){
+  const N=closes.length, cands=[]; const add=(v,label)=>{ if(v!=null&&v>0) cands.push({v,label}); };
+  add(ma200[N-1],'MM200 diaria'); add(r.mm20s,'MM20 semanal'); add(r.mm20m,'MM20 mensual'); add(r.mm50m,'MM50 mensual');
+  (nivelesFibo(r.max52,r.min52)||[]).forEach(f=>add(f.nivel,`Fibonacci ${f.pct}%`));
+  add(r.max52,'máximo de 52 semanas'); add(r.min52,'mínimo de 52 semanas');
+  return cands;
+}
+// Sin señal clara (mixta o lejos de todo nivel) igual hay un "objetivo": el próximo nivel por
+// arriba (a dónde va si rompe para arriba) y el próximo por abajo (el piso). Pedido de Nico 03/10:
+// el chip "Objetivo" no hacía nada en señal mixta.
+function rangoTecnico(serie,r){
+  const closes=serie.map(p=>p.c), P=closes[closes.length-1];
+  const cands=_candNiveles(closes,r,_maSerie(closes,200));
+  const arriba=cands.filter(c=>c.v>P*1.025).sort((a,b)=>a.v-b.v)[0]||null;
+  const abajo=cands.filter(c=>c.v<P*0.975).sort((a,b)=>b.v-a.v)[0]||null;
+  return (arriba||abajo)?{P,arriba,abajo}:null;
+}
+// precio objetivo de analistas contra el precio de HOY (el upside del archivo es contra el precio
+// del día que se armó, hasta un mes atrás). Si las monedas no cierran, se usa el upside del archivo.
+function _objAnalistas(r,last){
+  const an=analistasDe(r); if(!an||an.target==null) return null;
+  const rel=an.target/last, ok=rel>0.33&&rel<3;
+  const pct=ok?rel-1:an.upside; if(pct==null) return null;
+  return {v:ok?an.target:null, pct, n:an.n, rec:an.rec};
+}
+// precio si la empresa volviera a su múltiplo promedio de 5 años (el mismo del veredicto)
+function _objValuacion(r,last){
+  const lec=lecturaValuacion(r);
+  if(lec.actual==null||!lec.p5||r.precio==null) return null;
+  const v=precioObj(r.precio,lec.actual,lec.p5); if(!v) return null;
+  return {v, pct:v/last-1, k:lec.k};
+}
+// tarjetas grandes arriba del gráfico: el % es lo que importa (el CEDEAR cotiza a otro precio por
+// el ratio, pero se mueve el mismo %); el precio va chico, del papel en su mercado
+function objetivoCards(r,last,obj,rango){
+  const mon=r.moneda||'', pct=v=>`${v>=0?'+':'−'}${fmtN(Math.abs(v)*100,1)}%`;
+  const card=(lab,p,v,det,main)=>`<div class="gf-kpi${main?' main':''}"><div class="gf-kpi-l">${lab}</div>
+    <div class="gf-kpi-p ${p>=0?'pos':'neg'}">${pct(p)}</div>${v!=null?`<div class="gf-kpi-v">${mon} ${_fmtPx(v)}</div>`:''}<div class="gf-kpi-d">${det}</div></div>`;
+  const cs=[];
+  if(obj&&obj.t1){
+    const pl=obj.plazo; let plazo='';
+    if(pl&&pl.modo==='hist'&&pl.llego>=2) plazo=` · ~${_sem(pl.med)}`;
+    else if(pl&&pl.modo==='vol') plazo=` · ~${_sem(pl.dias)} (estimado)`;
+    cs.push(card(obj.dir>0?'Objetivo técnico':'Objetivo técnico (baja)', obj.t1.v/obj.P-1, obj.t1.v,
+      `${obj.t1.label}${plazo}<br>stop ${mon} ${_fmtPx(obj.stop)} (${pct(obj.stop/obj.P-1)})`, true));
+  } else if(rango&&rango.arriba){
+    cs.push(card('Si rompe para arriba', rango.arriba.v/rango.P-1, rango.arriba.v,
+      `próximo nivel: ${rango.arriba.label}${rango.abajo?`<br>piso ${mon} ${_fmtPx(rango.abajo.v)} (${pct(rango.abajo.v/rango.P-1)}) — ${rango.abajo.label}`:''}`, true));
+  } else if(rango&&rango.abajo){
+    cs.push(card('Piso técnico', rango.abajo.v/rango.P-1, rango.abajo.v, `${rango.abajo.label} — está cerca de su máximo de 52 semanas, sin nivel técnico arriba`, true));
+  }
+  const an=_objAnalistas(r,last);
+  if(an) cs.push(card('Analistas', an.pct, an.v, `precio objetivo promedio${an.n?` · ${an.n} analistas`:''}${an.rec&&REC_LABEL[an.rec]?` · ${REC_LABEL[an.rec]}`:''}`, !cs.length));
+  const va=_objValuacion(r,last);
+  if(va) cs.push(card('Vuelve a su promedio', va.pct, va.v, `si su ${MULT[va.k]?.label||va.k} vuelve al promedio de 5 años`, false));
+  if(!cs.length) return '';
+  return `<div class="gf-kpis">${cs.join('')}<div class="gf-kpi-nota">Guiate por el <b>%</b>: los precios son del papel en su mercado${mon==='USD'?' (en dólares, ej. NYSE)':''}. El CEDEAR cotiza a otro precio por el ratio de conversión, pero se mueve el mismo porcentaje.</div></div>`;
+}
 function objetivoTecnico(serie,r,lr){
   if(!lr||lr.tipo==='mixta'||!lr.pts.length) return null;
   const closes=serie.map(p=>p.c), N=closes.length, P=closes[N-1], dir=lr.tipo==='compra'?1:-1;
   const ma200=_maSerie(closes,200), ma100=_maSerie(closes,100);
-  const cands=[]; const add=(v,label)=>{ if(v!=null&&v>0) cands.push({v,label}); };
-  add(ma200[N-1],'MM200 diaria'); add(r.mm20s,'MM20 semanal'); add(r.mm20m,'MM20 mensual'); add(r.mm50m,'MM50 mensual');
-  (nivelesFibo(r.max52,r.min52)||[]).forEach(f=>add(f.nivel,`Fibonacci ${f.pct}%`));
-  add(r.max52,'máximo de 52 semanas'); add(r.min52,'mínimo de 52 semanas');
+  const cands=_candNiveles(closes,r,ma200);
   const act=new Set(lr.pts.map(p=>p.label));
   const valAct=cands.filter(c=>act.has(c.label)).map(c=>c.v);
   if(!valAct.length) return null;
@@ -2697,12 +2764,19 @@ function svgGrafico(serie,r,st){
   const rLive={...r, precio:last};
   const lr=lecturaRebote(rLive);
   const obj=objetivoTecnico(serie,r,lr);
+  const rango=(obj&&obj.t1)?null:rangoTecnico(serie,r);
+  const anO=_objAnalistas(r,last);
+  // líneas del chip "Objetivo": las del escenario técnico, o (sin señal clara) el rango; + analistas
+  const lineasObj=[];
+  if(obj){ if(obj.t1) lineasObj.push([obj.t1.v,'Obj 1','var(--info-badge)']); if(obj.t2) lineasObj.push([obj.t2.v,'Obj 2','var(--info-badge)']); if(obj.t1) lineasObj.push([obj.stop,'Stop','var(--neg)']); }
+  if(rango){ if(rango.arriba) lineasObj.push([rango.arriba.v,'Obj ↑','var(--info-badge)']); if(rango.abajo) lineasObj.push([rango.abajo.v,'Piso','var(--neg)']); }
+  if(anO&&anO.v!=null) lineasObj.push([anO.v,'Analistas','var(--ambar)']);
   const W=620, H=300, pl=50, pr=96, pt=16, pb=26;
   const xs=i=>pl+(i-off)/(show-1)*(W-pl-pr);
   // rango vertical: precio + MM200 visibles
   let lo=Infinity, hi=-Infinity;
   for(let i=off;i<N;i++){ lo=Math.min(lo,closes[i]); hi=Math.max(hi,closes[i]); if(ma200[i]!=null){ lo=Math.min(lo,ma200[i]); hi=Math.max(hi,ma200[i]); } }
-  if(st.objetivo&&obj){ [obj.t1&&obj.t1.v,obj.t2&&obj.t2.v,obj.stop].forEach(v=>{ if(v!=null&&Math.abs(v/last-1)<=0.35){ lo=Math.min(lo,v); hi=Math.max(hi,v); } }); }
+  if(st.objetivo){ lineasObj.forEach(([v])=>{ if(v!=null&&Math.abs(v/last-1)<=0.35){ lo=Math.min(lo,v); hi=Math.max(hi,v); } }); }
   const padv=(hi-lo)*0.08||hi*0.05; lo-=padv; hi+=padv;
   const ys=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
   const ptsAct=lr?lr.pts:[];
@@ -2734,8 +2808,8 @@ function svgGrafico(serie,r,st){
     etiq.push({y,txt:n.label,c,on:!!n.act});
   });
   // objetivos y stop (escenario) — puntitos azules / rojo, para no confundirlos con los niveles
-  if(st.objetivo&&obj){
-    [[obj.t1&&obj.t1.v,'Obj 1','var(--info-badge)'],[obj.t2&&obj.t2.v,'Obj 2','var(--info-badge)'],[obj.stop,'Stop','var(--neg)']].forEach(([v,l,c])=>{
+  if(st.objetivo){
+    lineasObj.forEach(([v,l,c])=>{
       if(v==null||v<lo||v>hi) return; const y=ys(v);
       g+=`<line x1="${pl}" x2="${W-pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" style="stroke:${c};stroke-width:1.8;stroke-dasharray:1 3.5;stroke-linecap:round"/>`;
       etiq.push({y,txt:`${l} · ${_fmtPx(v)}`,c,on:true});
@@ -2767,7 +2841,7 @@ function svgGrafico(serie,r,st){
     g+=`<circle cx="${xe.toFixed(1)}" cy="${ye.toFixed(1)}" r="9" style="fill:none;stroke:var(--ambar);stroke-width:2"/><text class="gf-halo gf-lab" x="${(xe-14).toFixed(1)}" y="${(ye-12).toFixed(1)}" text-anchor="end" style="fill:var(--ambar)">Señal mixta</text>`;
   }
   g+=`<line class="gf-cursor" id="gf-cur" x1="0" x2="0" y1="${pt}" y2="${H-pb}" style="display:none"/><rect id="gf-hit" x="${pl}" y="${pt}" width="${W-pl-pr}" height="${H-pt-pb}" fill="transparent"/>`;
-  return {obj, svg:`<svg class="gf-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de precio">${g}</svg>`, lr, last, geo:{pl,pr,W,off,show,N}};
+  return {obj, rango, hayObj:lineasObj.length>0, svg:`<svg class="gf-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de precio">${g}</svg>`, lr, last, geo:{pl,pr,W,off,show,N}};
 }
 function teoriaGrafico(r,lr,last,serie){
   const f=_fmtPx, fechaUlt=_fechaCorta(serie[serie.length-1].t);
@@ -2795,8 +2869,11 @@ function renderGrafico(){
   const box=document.getElementById('gf-box'); if(!box||!_gf) return;
   const {r,serie,st}=_gf;
   const out=svgGrafico(serie,r,st);
-  const chipT=(k,l)=>`<button class="chip ${st[k]?'active':''}" onclick="gfToggle('${k}')">${l}</button>`;
+  const chipT=(k,l)=>(k==='objetivo'&&!out.hayObj)
+    ? `<button class="chip" disabled title="Este activo no tiene objetivo técnico ni de analistas para dibujar">${l}</button>`
+    : `<button class="chip ${st[k]?'active':''}" onclick="gfToggle('${k}')">${l}</button>`;
   box.innerHTML=`<div class="gf-wrap">
+    ${objetivoCards(r,out.last,out.obj,out.rango)}
     <div class="gf-top"><span class="gf-read" id="gf-read">Pasá el mouse por el gráfico para ver cada día</span>
       <span class="gf-tgl">${chipT('objetivo','Objetivo')}${chipT('medias','Medias')}${chipT('fibo','Fibonacci')}${chipT('pasados','Rebotes pasados')}</span></div>
     ${out.svg}
