@@ -445,6 +445,8 @@ function _syncMonitorPill(){
   dot.className='monitor-pill-dot'+(n>0?' ok':'');
   txt.textContent=n>0?n+' bonos':'Monitor';
 }
+// Opciones de lectura del Monitor — deben coincidir con las de fcnPrepararLibro más abajo.
+var CB_OPTS_MONITOR = {type:'array', cellFormula:false, cellDates:false, raw:true};
 function cargarExcel(input){
   var file = input.files[0];
   if(!file) return;
@@ -454,7 +456,8 @@ function cargarExcel(input){
   var reader = new FileReader();
   reader.onload = function(e){
     try{
-      var wb = XLSX.read(e.target.result, {type:'array', cellFormula:false, cellDates:false, raw:true});
+      // Libro ya leído si viene de la carga automática (caché de fcn-core.js); si no, XLSX.read.
+      var wb = fcnLibro(input, e.target.result, CB_OPTS_MONITOR);
       var count = 0;
       count += parseCorporativos(wb);
       count += parseSoberanos(wb);
@@ -1132,11 +1135,14 @@ function editarAmort(iso, val){
 
 // ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel/fallback: ver fcn-core.js)
 (function() {
-  function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Con el libro ya leído adentro (caché de fcn-core.js): no se vuelve a parsear el Monitor.
+  function fakeInput(entry) {
+    return fcnPrepararLibro('monitor', entry, CB_OPTS_MONITOR, { files: [new File([entry.data], entry.name)] });
+  }
   async function loadShared() {
     let mon = await fcnGetSharedFile('monitor');
     if (!mon) mon = await fcnFetchStaticFallback('data/monitor.xlsx');
-    if (mon) cargarExcel(fakeInput(mon));
+    if (mon) cargarExcel(await fakeInput(mon));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
 
@@ -1161,7 +1167,7 @@ function editarAmort(iso, val){
     if (activeClient && activeClient.cliente) clienteActivo = activeClient.cliente;
     if (ten && ten.data) {
       try {
-        const wb = XLSX.read(ten.data, { type: 'array' });
+        const wb = await fcnLeerLibro('tenencia', ten, { type: 'array' }); // caché de fcn-core.js
         const sn = wb.SheetNames.find(s => s.toLowerCase().includes('export')) || wb.SheetNames[0];
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
         tenenciaByTicker = construirTenenciaByTicker(rows);
@@ -1194,7 +1200,7 @@ function editarAmort(iso, val){
       let entry = await fcnGetSharedFile('monitor');
       if (!entry) entry = await fcnFetchStaticFallback('data/monitor.xlsx');
       if (!entry) return;
-      cargarExcel(fakeInput(entry));
+      cargarExcel(await fakeInput(entry));
     });
   }
 })();

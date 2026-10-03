@@ -1278,6 +1278,8 @@ function _syncMonitorPill(){
   dot.className='monitor-pill-dot'+(n>0?' ok':'');
   txt.textContent=n>0?n+' bonos':'Monitor';
 }
+// Opciones de lectura del Monitor — deben coincidir con las de fcnPrepararLibro (carga automática).
+var ROT_OPTS_MONITOR = {type:'array', cellDates:false, raw:true};
 function cargarExcel(input){
   var file = input.files[0];
   if(!file) return;
@@ -1287,7 +1289,8 @@ function cargarExcel(input){
   var reader = new FileReader();
   reader.onload = function(e){
     try{
-      var wb = XLSX.read(e.target.result, {type:'array', cellDates:false, raw:true});
+      // Libro ya leído si viene de la carga automática (caché de fcn-core.js); si no, XLSX.read.
+      var wb = fcnLibro(input, e.target.result, ROT_OPTS_MONITOR);
       var count = 0;
       var shCorp = wb.SheetNames.find(function(n){return n==='Corporativos';}) || wb.SheetNames.find(function(n){return n.toLowerCase().includes('corporativ');});
       var shSob  = wb.SheetNames.find(function(n){return n==='Soberanos';}) || wb.SheetNames.find(function(n){return n.toLowerCase().includes('sobera');});
@@ -3882,7 +3885,7 @@ function esFilaTotalRot(r, ticker){
 function parseTenenciaParaClientes(entry){
   if(!entry || !entry.data) return;
   try{
-    var wb = XLSX.read(entry.data, {type:'array'});
+    var wb = fcnLibro(entry, entry.data, {type:'array'}); // preparado por la carga automática (caché de fcn-core.js)
     var sn = wb.SheetNames.find(function(s){ return s.toLowerCase().indexOf('export')>=0; }) || wb.SheetNames[0];
     var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
     var porCliente = {};
@@ -3960,7 +3963,7 @@ function parseTenenciaParaClientes(entry){
 function parseStock(entry){
   if(!entry || !entry.data) return;
   try{
-    var wb = XLSX.read(entry.data, {type:'array'});
+    var wb = fcnLibro(entry, entry.data, {type:'array'}); // preparado por la carga automática (caché de fcn-core.js)
     var sn = wb.SheetNames.find(function(s){ return s.toLowerCase().indexOf('export')>=0; }) || wb.SheetNames[0];
     var raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
     var mapa = {};
@@ -5670,21 +5673,26 @@ async function descargarReportePDF(modo){
 
 // ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel/fallback: ver fcn-core.js)
 (function() {
-  function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Con el libro ya leído adentro (caché de fcn-core.js): no se vuelve a parsear el Excel que
+  // ya leyó el hub u otra herramienta.
+  function fakeInput(entry) {
+    return fcnPrepararLibro('monitor', entry, ROT_OPTS_MONITOR, { files: [new File([entry.data], entry.name)] });
+  }
+  const prep = (key, entry) => fcnPrepararLibro(key, entry, {type:'array'});
   async function loadMonitorShared() {
     const mon = await fcnGetSharedFile('monitor');
-    if (mon) { cargarExcel(fakeInput(mon)); return; }
+    if (mon) { cargarExcel(await fakeInput(mon)); return; }
     const fallback = await fcnFetchStaticFallback('data/monitor.xlsx');
-    if (fallback) cargarExcel(fakeInput(fallback));
+    if (fallback) cargarExcel(await fakeInput(fallback));
   }
   async function loadShared() {
     await loadMonitorShared();
     const topF = await fcnGetSharedFile('topClientsFilter');
     if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
     const ten = await fcnGetSharedFile('tenencia');
-    if (ten) parseTenenciaParaClientes(ten);
+    if (ten) parseTenenciaParaClientes(await prep('tenencia', ten));
     const stk = await fcnGetSharedFile('stock');
-    if (stk) parseStock(stk);
+    if (stk) parseStock(await prep('stock', stk));
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (fcnBroadcastChannel) {
@@ -5693,7 +5701,7 @@ async function descargarReportePDF(modo){
       if (e.data.type === 'top_clients_selected') {
         topClientesFiltroSet = (e.data.clientes && e.data.clientes.length) ? new Set(e.data.clientes) : null;
         const entry = await fcnGetSharedFile('tenencia');
-        if (entry) parseTenenciaParaClientes(entry);
+        if (entry) parseTenenciaParaClientes(await prep('tenencia', entry));
         return;
       }
       if (e.data.type !== 'file_updated') return;
@@ -5704,11 +5712,11 @@ async function descargarReportePDF(modo){
       } else if (raw === 'tenencia') {
         await new Promise(r => setTimeout(r, 1500));
         const entry = await fcnGetSharedFile('tenencia');
-        if (entry) parseTenenciaParaClientes(entry);
+        if (entry) parseTenenciaParaClientes(await prep('tenencia', entry));
       } else if (raw === 'stock') {
         await new Promise(r => setTimeout(r, 1500));
         const entry = await fcnGetSharedFile('stock');
-        if (entry) parseStock(entry);
+        if (entry) parseStock(await prep('stock', entry));
       }
     });
   }

@@ -1034,13 +1034,21 @@ function precioObj(precio,actual,prom){
   if(precio===null||actual===null||prom===null) return null;
   return precio * prom/actual;
 }
+// Formateadores creados UNA vez por cantidad de decimales: Number.toLocaleString con opciones
+// arma un Intl.NumberFormat nuevo en cada llamada (~0,26 ms) y fmtN se llama miles de veces por
+// redibujo — era buena parte de los 2–4 s de cada render (medido 03/10/2026). Por especificación
+// toLocaleString(loc,opts) === new Intl.NumberFormat(loc,opts).format(): mismo texto.
+const _fmtNCache={};
 function fmtN(v,dec){
   if(v===null||v===undefined||isNaN(v)) return null;
-  return Number(v).toLocaleString('es-AR',{minimumFractionDigits:dec??2,maximumFractionDigits:dec??2});
+  const d=dec??2;
+  const f=_fmtNCache[d]||(_fmtNCache[d]=new Intl.NumberFormat('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}));
+  return f.format(Number(v));
 }
+const _fmtMillones=new Intl.NumberFormat('es-AR',{maximumFractionDigits:1});
 function fmtUsd(v){
   if(v===null||v===undefined||isNaN(v)) return '—';
-  if(v>=1e6) return 'US$ '+(v/1e6).toLocaleString('es-AR',{maximumFractionDigits:1})+'M';
+  if(v>=1e6) return 'US$ '+_fmtMillones.format(v/1e6)+'M';
   if(v>=1e3) return 'US$ '+Math.round(v/1e3)+'k';
   return 'US$ '+Math.round(v);
 }
@@ -1622,7 +1630,7 @@ async function loadStock(){
   const entry=await getSharedFile('stock');
   if(!entry||!entry.data) return;
   try{
-    const wb=XLSX.read(entry.data,{type:'array'});
+    const wb=await fcnLeerLibro('stock',entry,{type:'array'}); // caché de fcn-core.js (si no, XLSX.read)
     const sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
     const raw=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
     STOCK={};
@@ -1646,9 +1654,12 @@ async function loadStock(){
   }catch(e){ console.warn('[Panorama] no se pudo leer Stock',e); }
 }
 function datosCliente(cli){
-  for(const arr of Object.values(holdersByTicker)){
-    const h=arr.find(x=>x.cliente===cli);
-    if(h && h.comitente && STOCK[h.comitente]) return {...STOCK[h.comitente], comitente:h.comitente};
+  // mismo recorrido que antes (primer tenedor del cliente en cada ticker, en orden de tickers,
+  // el primero que esté en el Stock) pero sobre el índice: antes recorría todo holdersByTicker
+  // por cada cliente (~290 ms para nombrar 1.404 clientes en la vista "Por cliente").
+  // STOCK se consulta en el momento — se carga aparte y puede llegar después.
+  for(const h of (_indiceCarteras().todos.get(cli)||[])){
+    if(h.comitente && STOCK[h.comitente]) return {...STOCK[h.comitente], comitente:h.comitente};
   }
   return {nombre:null, denominacion:null, mail:null, tel:null};
 }
@@ -1659,16 +1670,43 @@ function nombreCompleto(cli){
   const d=datosCliente(cli);
   return d.denominacion||d.nombre||cli;
 }
+// Índice cliente → [{r,h}] — antes carteraDeCliente recorría TODOS los tickers × tenedores y
+// buscaba la fila con allRows.find por cada cliente: la vista "Por cliente" tardaba ~3 s por
+// redibujo con 1.404 clientes (medido 03/10/2026). Se arma una vez y se rearma solo cuando
+// cambian holdersByTicker o allRows (los dos se REEMPLAZAN enteros al cargar datos, nunca se
+// editan de a una fila — por eso alcanza con comparar la identidad del objeto). Mismo resultado
+// que el recorrido viejo: primer tenedor de cada ticker para ese cliente, primera fila de
+// allRows cuyo ticker o tickerUsado coincide, y el mismo orden antes del sort.
+let _cartIdx=null, _cartIdxHolders=null, _cartIdxRows=null;
+function _indiceCarteras(){
+  if(_cartIdx && _cartIdxHolders===holdersByTicker && _cartIdxRows===allRows) return _cartIdx;
+  const filaDe={};
+  allRows.forEach(x=>{
+    const a=String(x.ticker||'').toUpperCase(), b=String(x.tickerUsado||'').toUpperCase();
+    if(!(a in filaDe)) filaDe[a]=x;
+    if(!(b in filaDe)) filaDe[b]=x;
+  });
+  const idx=new Map();   // cliente → [{r,h}] solo tickers del universo de múltiplos
+  idx.todos=new Map();   // cliente → [h] TODOS los tickers (lo usa datosCliente)
+  Object.entries(holdersByTicker).forEach(([tk,arr])=>{
+    const r=filaDe[tk];
+    const vistos=new Set();
+    arr.forEach(h=>{
+      if(vistos.has(h.cliente)) return; // como arr.find: solo el primero de cada cliente
+      vistos.add(h.cliente);
+      let t=idx.todos.get(h.cliente); if(!t) idx.todos.set(h.cliente, t=[]);
+      t.push(h);
+      if(!r) return;
+      let l=idx.get(h.cliente); if(!l) idx.set(h.cliente, l=[]);
+      l.push({r, h});
+    });
+  });
+  _cartIdx=idx; _cartIdxHolders=holdersByTicker; _cartIdxRows=allRows;
+  return idx;
+}
 // posiciones de un cliente, unidas con la fila de datos + qué hacer
 function carteraDeCliente(cli){
-  const out=[];
-  Object.entries(holdersByTicker).forEach(([tk,arr])=>{
-    const h=arr.find(x=>x.cliente===cli);
-    if(!h) return;
-    const r=allRows.find(x=>x.ticker.toUpperCase()===tk || x.tickerUsado.toUpperCase()===tk);
-    if(!r) return;
-    out.push({r, h, ten:h.tenencia, gan:ganHolder(h), dias:h.dias, q:queHacer(r)});
-  });
+  const out=(_indiceCarteras().get(cli)||[]).map(({r,h})=>({r, h, ten:h.tenencia, gan:ganHolder(h), dias:h.dias, q:queHacer(r)}));
   return out.sort((a,b)=>b.ten-a.ten);
 }
 function clientesConCartera(){
@@ -2898,7 +2936,7 @@ async function loadAnalistas(){
   if(!entry||!entry.data) entry=await fcnFetchStaticFallback('data/precios_objetivo.xlsx');
   if(!entry||!entry.data) return;
   try{
-    const wb=XLSX.read(entry.data,{type:'array'});
+    const wb=await fcnLeerLibro('precios_objetivo',entry,{type:'array'}); // caché de fcn-core.js
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
     ANALISTAS={};
     rows.forEach(r=>{
@@ -2926,6 +2964,7 @@ async function loadPrev(){
   const entry=await fcnFetchStaticFallback('data/valuacion_multiplos_prev.xlsx');
   if(!entry||!entry.data) return;
   try{
+    await fcnPrepararLibro('valuacion_multiplos_prev',entry,{type:'array'});
     const rows=parseBuffer(entry);
     calcularFuerzaRelativa(rows);
     PREV={}; rows.forEach(r=>{ PREV[r.ticker.toUpperCase()]=r; });
@@ -2969,7 +3008,7 @@ async function loadTenencia(){
   const entry=await getSharedFile('tenencia');
   if(!entry||!entry.data) return;
   try{
-    const wb=XLSX.read(entry.data,{type:'array'});
+    const wb=await fcnLeerLibro('tenencia',entry,{type:'array'}); // caché de fcn-core.js (si no, XLSX.read)
     const sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
     dataTenencia=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
     construirHolders();
@@ -2994,7 +3033,7 @@ async function loadTenencia(){
 //  PARSE XLSX
 // ══════════════════════════════════════════
 function parseBuffer(entry){
-  const wb=XLSX.read(entry.data,{type:'array'});
+  const wb=fcnLibro(entry,entry.data,{type:'array'}); // preparado con fcnPrepararLibro (caché de fcn-core.js), si no XLSX.read
   const ws=wb.Sheets[wb.SheetNames[0]];
   const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
   return raw.map(r=>{
@@ -3847,6 +3886,7 @@ async function loadAndRender(){
     show('empty-state','flex'); show('table-wrap','none'); show('toolbar','none'); show('tabs','none'); show('foot-note','none');
     return;
   }
+  await fcnPrepararLibro('valuacion_multiplos',entry,{type:'array'});
   try{ allRows=parseBuffer(entry); poblarTickerDatalist(); }
   catch(e){
     // Antes esto solo logueaba a consola y dejaba la página en blanco, sin ningún estado

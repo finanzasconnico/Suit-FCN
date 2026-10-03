@@ -1776,7 +1776,7 @@ function esFilaTotal(r, ticker) {
 function parseTenencia(entry) {
   if (!entry || !entry.data) return null;
   try {
-    const wb = XLSX.read(entry.data, { type: 'array' });
+    const wb = fcnLibro(entry, entry.data, DASH_XLSX_OPTS.tenencia);
     const sn = wb.SheetNames.find(s => s.toLowerCase().includes('export')) || wb.SheetNames[0];
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
     let aum = 0;
@@ -1862,7 +1862,7 @@ function parseTenencia(entry) {
 function parsePreciosObjetivo(entry) {
   if (!entry || !entry.data) return null;
   try {
-    const wb = XLSX.read(entry.data, { type: 'array' });
+    const wb = fcnLibro(entry, entry.data, DASH_XLSX_OPTS.precios_objetivo);
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
     const items = [];
@@ -1910,7 +1910,7 @@ function _stockFechaISO(v) {
 function parseStockFCN(entry) {
   if (!entry || !entry.data) return null;
   try {
-    const wb = XLSX.read(entry.data, { type: 'array' });
+    const wb = fcnLibro(entry, entry.data, DASH_XLSX_OPTS.stock);
     const sn = wb.SheetNames.find(s => s.toLowerCase().includes('export')) || wb.SheetNames[0];
     const raw = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
     const mapa = {};
@@ -2352,7 +2352,7 @@ function rfAptaComoOportunidadDashboard(d) {
 function parseMonitorTIR(entry) {
   if (!entry || !entry.data) return null;
   try {
-    const wb = XLSX.read(entry.data, { type: 'array', cellFormula: false, cellDates: false, raw: true });
+    const wb = fcnLibro(entry, entry.data, DASH_XLSX_OPTS.monitor);
     const names = wb.SheetNames;
     const dataMonitor = {};
     let corpCnt = 0, sovCnt = 0;
@@ -3957,7 +3957,7 @@ const VM_QH_COLOR = { 'Sumar': 'jade', 'Atención': 'ambar', 'Reducir': 'danger'
 function parseValuacionMultiplos(entry) {
   if (!entry || !entry.data) return { rows: [], byTicker: {} };
   try {
-    const wb = XLSX.read(entry.data, { type: 'array' });
+    const wb = fcnLibro(entry, entry.data, DASH_XLSX_OPTS.valuacion_multiplos);
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
     const rows = raw.map(r => {
@@ -5014,6 +5014,17 @@ function maybeShowStaleReminder(list) {
 const dashData = { tenencia: null, precios: null, monitor: null, stock: null, valuacion: { rows: [], byTicker: {} } };
 const DASH_KEY_TO_FIELD = { tenencia: 'tenencia', precios_objetivo: 'precios', monitor: 'monitor', stock: 'stock', valuacion_multiplos: 'valuacion' };
 const DASH_PARSERS = { tenencia: parseTenencia, precios_objetivo: parsePreciosObjetivo, monitor: parseMonitorTIR, stock: parseStockFCN, valuacion_multiplos: parseValuacionMultiplos };
+// Opciones de XLSX.read de cada parser — las usa fcnPrepararLibro (fcn-core.js) para traer el
+// libro ya leído del caché en vez de volver a parsear el Excel (medido 02/10/2026: Tenencia
+// 3,5–7 s → ~0,3 s). Si cambiás las opciones de un parser, cambialas acá (si no coinciden,
+// fcnLibro simplemente lee el Excel como siempre: más lento, pero nunca un dato distinto).
+const DASH_XLSX_OPTS = {
+  tenencia:            { type: 'array' },
+  precios_objetivo:    { type: 'array' },
+  stock:               { type: 'array' },
+  monitor:             { type: 'array', cellFormula: false, cellDates: false, raw: true },
+  valuacion_multiplos: { type: 'array' },
+};
 
 // Tenencia se parsea acá Y en refreshClienteList() (necesitan el mismo dato pero cada uno
 // vive en su propio flujo) — antes cada uno hacía su propio fetch+parse por separado, pagando
@@ -5028,6 +5039,7 @@ async function getTenenciaParsedCached(force) {
     _tenenciaParsePromise = (async () => {
       let entry = await fcnGetSharedFile(userKey('tenencia'));
       if (!entry && STATIC_PUBLISH_KEYS.tenencia) entry = await fcnFetchStaticFallback('data/' + STATIC_PUBLISH_KEYS.tenencia);
+      if (entry) await fcnPrepararLibro('tenencia', entry, DASH_XLSX_OPTS.tenencia);
       return parseTenencia(entry);
     })();
   }
@@ -5040,6 +5052,7 @@ async function loadDashKey(key, force) {
   // tenencia/stock nunca tienen fallback estático (datos de clientes) — solo aplica a
   // monitor/precios_objetivo, que sí se publican para todo el equipo.
   if (!entry && STATIC_PUBLISH_KEYS[key]) entry = await fcnFetchStaticFallback('data/' + STATIC_PUBLISH_KEYS[key]);
+  if (entry) await fcnPrepararLibro(key, entry, DASH_XLSX_OPTS[key]);
   dashData[DASH_KEY_TO_FIELD[key]] = DASH_PARSERS[key](entry);
 }
 
@@ -5309,7 +5322,17 @@ function onFileSelected(key, input) {
   const reader = new FileReader();
   reader.onload = async e => {
     try {
-      await fcnSaveSharedFile(userKey(key), e.target.result, file.name);
+      let buf = e.target.result;
+      // Monitor: se guarda ya compactado (valores puros, sin las hojas de trabajo) — la misma
+      // versión que se publica y que ya usan todas las compus vía data/monitor.xlsx. El .xlsm
+      // original (~3,8 MB, 321 hojas) tardaba 5–14 s en leerse en CADA herramienta que lo abría
+      // (medido 02/10/2026); el compactado, menos de la mitad. Se paga una vez, al subir.
+      if (key === 'monitor') {
+        showToast('⏳ Compactando el Monitor (una sola vez)…', 4000);
+        await new Promise(r => setTimeout(r, 30)); // que se pinte el aviso antes del trabajo pesado
+        buf = slimMonitorArrayBuffer(buf);
+      }
+      await fcnSaveSharedFile(userKey(key), buf, file.name);
       await refreshFilesStatus();
       notifyTools(key);
       refreshDashboardForKey(key);
@@ -5459,13 +5482,15 @@ function openTool(toolId) {
   setActiveTab(toolId);
   hideAllPanels();
   const loadingEl = document.getElementById('frame-loading');
-  loadingEl.style.display = 'flex';
-  document.getElementById('loading-tool-name').textContent = `Cargando ${tool.name}…`;
   document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
   if (frameCache[toolId]) {
+    // Ya cargada: se muestra directo. Antes pasaba igual por "Cargando…" con un
+    // setTimeout(300) fijo — 0,3 s artificiales en cada cambio de pestaña (medido 02/10).
+    loadingEl.style.display = 'none';
     frameCache[toolId].classList.add('active');
-    setTimeout(() => loadingEl.style.display = 'none', 300);
   } else {
+    loadingEl.style.display = 'flex';
+    document.getElementById('loading-tool-name').textContent = `Cargando ${tool.name}…`;
     const iframe = document.createElement('iframe');
     iframe.className = 'tool-frame active';
     iframe.id = 'frame-' + toolId;

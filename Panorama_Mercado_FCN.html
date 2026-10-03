@@ -462,6 +462,12 @@ function subirCompartido(key, input, cargarFn) {
 // ══════════════════════════════════════════════════════════════
 //  CARGA — MONITOR DE INDIVIDUOS (misma lógica que Scanner de ONs)
 // ══════════════════════════════════════════════════════════════
+// Opciones de XLSX.read de cada carga — fcnPrepararLibro/fcnLibro (fcn-core.js) traen el libro ya
+// leído del caché solo si coinciden; si no, se lee el Excel como siempre.
+const PAN_XLSX_OPTS = {
+  monitor:  {type:'array', cellFormula:false, cellDates:false, raw:true},
+  tenencia: {type:'array'},
+};
 function cargarMonitor(input) {
   const file = input.files ? input.files[0] : null;
   if (!file) return Promise.resolve();
@@ -474,7 +480,7 @@ function cargarMonitor(input) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, {type:'array', cellFormula:false, cellDates:false, raw:true});
+      const wb = fcnLibro(input, e.target.result, PAN_XLSX_OPTS.monitor); // caché de fcn-core.js si viene de la carga automática
       const names = wb.SheetNames;
       dataMonitor = {}; let corpCnt=0, sovCnt=0;
 
@@ -595,7 +601,7 @@ function cargarTenencia(input) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb=XLSX.read(e.target.result,{type:'array'});
+      const wb=fcnLibro(input,e.target.result,PAN_XLSX_OPTS.tenencia);
       let sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
       const raw=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});
       dataTenencia = raw;
@@ -1009,7 +1015,10 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 //  SHARED FILES AUTO-LOAD — Monitor (con fallback publicado) + Tenencia (solo local, nunca se publica)
 // ══════════════════════════════════════════════════════════════
 (function() {
-  function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Con el libro ya leído adentro (caché de fcn-core.js): no se vuelve a parsear el Excel.
+  function fakeInput(key, entry) {
+    return fcnPrepararLibro(key, entry, PAN_XLSX_OPTS[key], { files: [new File([entry.data], entry.name)] });
+  }
   async function loadShared() {
     // Monitor PRIMERO y esperado (await) — construirHolders() (disparado por cargarTenencia)
     // necesita que dataMonitor ya esté poblado para poder cruzar los tickers de Tenencia contra
@@ -1017,12 +1026,12 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
     // cargarMonitor). El orden inverso fue justo el bug reportado: "En cartera: 0" siempre.
     let mon = await fcnGetSharedFile('monitor');
     if (!mon) mon = await fcnFetchStaticFallback('data/monitor.xlsx');
-    if (mon) await cargarMonitor(fakeInput(mon));
+    if (mon) await cargarMonitor(await fakeInput('monitor', mon));
     const topF = await fcnGetSharedFile('topClientsFilter');
     if (topF && topF.clientes && topF.clientes.length) topClientesFiltroSet = new Set(topF.clientes);
     const activeClient = await fcnGetSharedFile('activeClient');
     const ten = await fcnGetSharedFile('tenencia');
-    if (ten) await cargarTenencia(fakeInput(ten));
+    if (ten) await cargarTenencia(await fakeInput('tenencia', ten));
     if (activeClient && activeClient.cliente) waitForDataAndApplyClient(activeClient.cliente);
   }
   // ── Cliente activo del Suite (mismo mecanismo que Scanner ONs / Rotador RV / Calculadora de
@@ -1059,8 +1068,8 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
       const entry = await fcnGetSharedFile(e.data.key);
       if (!entry) return;
       const raw = e.data.rawKey || e.data.key;
-      if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
-      if (raw === 'monitor')  cargarMonitor(fakeInput(entry));
+      if (raw === 'tenencia') cargarTenencia(await fakeInput('tenencia', entry));
+      if (raw === 'monitor')  cargarMonitor(await fakeInput('monitor', entry));
     });
   }
 })();

@@ -829,13 +829,20 @@ function subirCompartido(key, input, cargarFn) {
   reader.readAsArrayBuffer(file);
 }
 
+// Opciones de XLSX.read de cada carga — fcnPrepararLibro/fcnLibro (fcn-core.js) traen el libro ya
+// leído del caché solo si coinciden; si no, se lee el Excel como siempre.
+const SCN_XLSX_OPTS = {
+  tenencia: {type:'array'},
+  stock:    {type:'array'},
+  monitor:  {type:'array',cellFormula:false,cellDates:false,raw:true},
+};
 function cargarTenencia(input) {
   const file=input.files[0]; if(!file) return;
   logMsg('Leyendo Tenencia por Ticker...','');
   const reader=new FileReader();
   reader.onload=e=>{
     try {
-      const wb=XLSX.read(e.target.result,{type:'array'});
+      const wb=fcnLibro(input,e.target.result,SCN_XLSX_OPTS.tenencia);
       let sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
       const ws=wb.Sheets[sn];
       const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
@@ -860,7 +867,7 @@ function cargarMonitor(input) {
   const reader=new FileReader();
   reader.onload=e=>{
     try {
-      const wb=XLSX.read(e.target.result,{type:'array',cellFormula:false,cellDates:false,raw:true});
+      const wb=fcnLibro(input,e.target.result,SCN_XLSX_OPTS.monitor);
       const names=wb.SheetNames;
       dataMonitor={};let corpCnt=0,sovCnt=0;
 
@@ -988,7 +995,7 @@ function cargarStock(input) {
   const reader=new FileReader();
   reader.onload=e=>{
     try {
-      const wb=XLSX.read(e.target.result,{type:'array'});
+      const wb=fcnLibro(input,e.target.result,SCN_XLSX_OPTS.stock);
       let sn=wb.SheetNames.find(s=>s.toLowerCase().includes('export'))||wb.SheetNames[0];
       const ws=wb.Sheets[sn];
       const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
@@ -2209,14 +2216,20 @@ function actualizarFiltrosDias() {
 // ── SHARED FILES AUTO-LOAD ── (IndexedDB/BroadcastChannel/fallback: ver fcn-core.js)
 (function() {
   function uk(k) { return k; }
-  function fakeInput(entry) { return { files: [new File([entry.data], entry.name)] }; }
+  // Con el libro ya leído adentro (caché de fcn-core.js, ver fcnPrepararLibro): evita volver a
+  // parsear el Excel que ya leyó el hub u otra herramienta.
+  function fakeInput(key, entry) {
+    return fcnPrepararLibro(key, entry, SCN_XLSX_OPTS[key], { files: [new File([entry.data], entry.name)] });
+  }
   async function loadShared() {
     let [ten, stk, mon] = await Promise.all([fcnGetSharedFile(uk('tenencia')), fcnGetSharedFile(uk('stock')), fcnGetSharedFile(uk('monitor'))]);
     if (!mon) mon = await fcnFetchStaticFallback('data/monitor.xlsx');
+    // Los tres se preparan ANTES y se cargan en el mismo orden y en el mismo tick que antes.
+    const [iTen, iStk, iMon] = await Promise.all([ten && fakeInput('tenencia', ten), stk && fakeInput('stock', stk), mon && fakeInput('monitor', mon)]);
     if (ten || mon) _pendienteAutoAnalizar = true;
-    if (ten) cargarTenencia(fakeInput(ten));
-    if (stk) cargarStock(fakeInput(stk));
-    if (mon) cargarMonitor(fakeInput(mon));
+    if (iTen) cargarTenencia(iTen);
+    if (iStk) cargarStock(iStk);
+    if (iMon) cargarMonitor(iMon);
   }
   window.addEventListener('DOMContentLoaded', loadShared);
   if (fcnBroadcastChannel) {
@@ -2227,10 +2240,12 @@ function actualizarFiltrosDias() {
       let entry = await fcnGetSharedFile(e.data.key);
       if (!entry && raw === 'monitor') entry = await fcnFetchStaticFallback('data/monitor.xlsx');
       if (!entry) return;
+      if (!SCN_XLSX_OPTS[raw]) return;
+      const inp = await fakeInput(raw, entry);
       _pendienteAutoAnalizar = true;
-      if (raw === 'tenencia') cargarTenencia(fakeInput(entry));
-      if (raw === 'stock')    cargarStock(fakeInput(entry));
-      if (raw === 'monitor')  cargarMonitor(fakeInput(entry));
+      if (raw === 'tenencia') cargarTenencia(inp);
+      if (raw === 'stock')    cargarStock(inp);
+      if (raw === 'monitor')  cargarMonitor(inp);
     });
   }
 })();

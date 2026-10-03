@@ -970,6 +970,8 @@ function findSheetCI(names,kws){
   return null;
 }
 
+// Opciones de lectura del Monitor — deben coincidir con las de fcnPrepararLibro (carga automática).
+var ARM_OPTS_MONITOR={type:'array',cellFormula:false,cellDates:false,raw:true};
 function loadMonitorFull(input){
   var file=input.files[0];if(!file)return;
   document.getElementById('monitor-stats').style.display='none';
@@ -978,7 +980,7 @@ function loadMonitorFull(input){
   reader.onload=function(e){
     try{
       monProgress(15);
-      var wb=XLSX.read(e.target.result,{type:'array',cellFormula:false,cellDates:false,raw:true});
+      var wb=fcnLibro(input,e.target.result,ARM_OPTS_MONITOR); // caché de fcn-core.js si viene de la carga automática
       monProgress(30);
       var names=wb.SheetNames;
       var corpCnt=0,sovCnt=0,letCnt=0;
@@ -1678,8 +1680,8 @@ function rvqPuntaje(r){
   var v100=Math.round(rvqClamp(v/0.40,-1,1)*100);
   return Math.round(rvqClamp(n*0.35+v100*0.35+t*0.30,-100,100));
 }
-function rvqParse(buf){
-  var wb=XLSX.read(buf,{type:'array'});
+function rvqParse(buf,holder){
+  var wb=fcnLibro(holder,buf,{type:'array'}); // holder = entry preparado (caché de fcn-core.js); sin él, XLSX.read
   var raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
   var rows=raw.map(function(x){
     var sector=String(x['Sector']||'').trim();
@@ -1714,7 +1716,7 @@ function ensureRVAuto(){
       return(entry&&entry.data)?entry:fcnFetchStaticFallback('data/valuacion_multiplos.xlsx');
     }).then(function(entry){
       if(!entry||!entry.data)throw new Error('sin archivo');
-      return rvqParse(entry.data);
+      return fcnPrepararLibro('valuacion_multiplos',entry,{type:'array'}).then(function(){ return rvqParse(entry.data,entry); });
     }).catch(function(e){console.warn('[Armado por perfil] valuacion_multiplos:',e);_rvAutoPromise=null;return[];});
   }
   return _rvAutoPromise;
@@ -3035,7 +3037,8 @@ document.addEventListener('DOMContentLoaded',function(){
   function uk(k) { return k; }
   function loadFromEntry(entry) {
     if (!entry) return;
-    loadMonitorFull({ files: [new File([entry.data], entry.name)] });
+    // Con el libro ya leído adentro (caché de fcn-core.js): no se vuelve a parsear el Monitor.
+    fcnPrepararLibro('monitor', entry, ARM_OPTS_MONITOR, { files: [new File([entry.data], entry.name)] }).then(loadMonitorFull);
   }
   function loadMonitor() {
     fcnGetSharedFile(uk('monitor')).then(function(entry){

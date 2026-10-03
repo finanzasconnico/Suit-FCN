@@ -300,11 +300,13 @@ table.bn-cal{min-width:0;width:auto;}
     if(!mon){ mon = await fcnFetchStaticFallback('data/monitor.xlsx'); if(mon) fuente = 'Monitor publicado (data/monitor.xlsx)'; }
     if(!mon){ st.letras = []; st.monitorFuente = ''; return false; }
     try{
-      var solo = XLSX.read(mon.data, {type:'array', bookSheets:true});
-      st.monBuf = mon.data; st.sheetNames = solo.SheetNames;
+      // fcnLeerLibro = XLSX.read con caché compartida (fcn-core.js): si el hub u otra pestaña ya
+      // leyó este mismo Monitor con estas mismas opciones, no se vuelve a parsear.
+      var solo = await fcnLeerLibro('monitor', mon, {type:'array', bookSheets:true});
+      st.monBuf = mon.data; st.monEntry = mon; st.sheetNames = solo.SheetNames;
       var nombres = FCNLetras.nombresLetras(solo.SheetNames);
       if(!nombres.length){ st.letras = []; return false; }
-      var wb = XLSX.read(mon.data, {type:'array', sheets:nombres, cellDates:true});
+      var wb = await fcnLeerLibro('monitor', mon, {type:'array', sheets:nombres, cellDates:true});
       st.letras = FCNLetras.letrasDesdeLibro(XLSX, wb, new Date());
       st.monitorFuente = fuente;
       return true;
@@ -470,7 +472,8 @@ table.bn-cal{min-width:0;width:auto;}
       } else {
         if (!st.monBuf) throw new Error('sin Monitor');
         var nombres = FCNBonos.nombresBonos(st.sheetNames);
-        var wb = XLSX.read(st.monBuf, { type: 'array', sheets: nombres, cellDates: true });
+        var wb = st.monEntry ? await fcnLeerLibro('monitor', st.monEntry, { type: 'array', sheets: nombres, cellDates: true })
+                             : XLSX.read(st.monBuf, { type: 'array', sheets: nombres, cellDates: true });
         var r = FCNBonos.bonosDesdeLibro(XLSX, wb, new Date());
         st.bonos = r.bonos; st.bonosDesc = r.descartados;
       }
