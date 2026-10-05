@@ -338,7 +338,9 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 /* ── CARTERA COMPLETA CLIENTE ── */
 .cc-nombre-click{cursor:pointer;}
 .cc-nombre-click:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
-/* ── TODAS LAS ONs (agrupado por ticker) ── */
+/* ── TODOS LOS BONOS (agrupado por ticker) ── */
+#tbody-todas tr.sin-clientes td{opacity:.55}
+#tbody-todas tr.sin-clientes:hover td{opacity:.85}
 .tk-click{cursor:pointer;}
 .tk-click:hover{background:var(--wash-1);}
 .tk-badge{display:inline-block;padding:2px 7px;border-radius:10px;background:rgba(219,160,60,.15);color:var(--ambar);font-size:10px;font-family:var(--font-mono);}
@@ -617,10 +619,11 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       <div class="tab-pane active" id="tab-todas">
         <div class="table-wrap">
           <div class="table-header-row">
-            <h3>Todas las ONs corporativas</h3>
+            <h3>Todos los bonos</h3>
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);cursor:pointer;margin-left:auto;margin-right:10px;" title="Apagado: suma los bonos del Monitor que ningún cliente tiene (ONs, soberanos, provinciales y Bopreales)"><input type="checkbox" id="chk-solo-clientes" checked onchange="renderTablaTodasONs()" style="accent-color:var(--jade);width:13px;height:13px;">Solo lo que tienen mis clientes</label>
             <span id="count-todas" style="font-size:11px;color:var(--ink-muted)"></span>
           </div>
-          <div style="font-size:10px;color:var(--ink-muted);margin:-4px 0 8px;">Una fila por ON — hacé clic para ver qué clientes la tienen y rotarla</div>
+          <div style="font-size:10px;color:var(--ink-muted);margin:-4px 0 8px;">Una fila por bono (ONs, soberanos, provinciales y Bopreales) — hacé clic para ver qué clientes lo tienen y rotarlo</div>
           <div style="overflow-x:auto;">
             <table><thead><tr>
               <th onclick="sortTable('todas','ticker')">Ticker</th>
@@ -791,6 +794,12 @@ let umbralTenMax = 0;
 let umbralDiasMin = 0;
 let umbralDiasMax = 0;
 let modoTIRVis = 'todos'; // 'todos' | 'baja' | 'alta'
+// "TIR baja" (= candidata a rotar) es una regla de ONs corporativas. Soberanos, provinciales y
+// Bopreales rinden lo que da la curva soberana: un AO27 al 3% no "rinde poco", es corto. Por eso
+// nunca cuentan como TIR baja (ni en Hoy, ni en urgentes, ni en el filtro "TIR <"), aunque su TIR
+// quede debajo del umbral; se pintan en ámbar, nunca en rojo.
+function esTirBaja(d){ return (!d.tipo||d.tipo==='corporativo') && d.tir!==null && d.tir!==undefined && d.tir<umbralTIR/100; }
+function tirNivel(d){ if(d.tir===null||d.tir===undefined) return ''; if(esTirBaja(d)) return 'low'; return d.tir<umbralTIRAlta/100?'mid':'high'; }
 let sortResumen = 'bajas';
 let sortState = { tabla: null, col: null, dir: 'asc' };
 let tirOriginales = {};
@@ -911,13 +920,14 @@ function cargarMonitor(input) {
         const vencimiento=typeof vtoRaw==='number'?excelSerialToDate(vtoRaw):(String(vtoRaw||'').trim());
         const durFromExcel=parseNum(iDur>=0?row[iDur]:null);
         const duration=durFromExcel!==null&&durFromExcel>0?durFromExcel:calcDurFromVto(vtoRaw);
+        // La hoja Corporativos repite cada ON en varias secciones (por calificación): contar solo una vez
+        if(!dataMonitor[tk]) corpCnt++;
         dataMonitor[tk]={tipo:'corporativo',tir:parseFloat(row[iTIR])||null,cupon:parseFloat(row[iCup])||null,
           vencimiento,calificacion:String(row[iCal]||'').trim(),
           emisor:String(row[iE]||'').trim(),tirCable:parseFloat(row[iTIRC])||null,
           dolar:String(row[iDol]||'').trim(),instrumento:String(row[iE]||'').trim(),
           duration,
           laminaMin: parseNum(iLamMin>=0?row[iLamMin]:null)};
-        corpCnt++;
       }
 
       // ── SOBERANOS ──
@@ -942,6 +952,12 @@ function cargarMonitor(input) {
           else if(r0==='BOPREALES'||r1==='BOPREALES') currentCat='bopreal';
           else if(r0.includes('DOLLAR')||r1.includes('DOLLAR')) currentCat='dollarlinked';
           if(r0!=='TICKER') continue;
+          // Columnas por ENCABEZADO de esta fila "Ticker" (cada bloque trae la suya); si alguna
+          // no aparece se usa la posición de siempre.
+          const hdr=row.map(v=>String(v||'').trim().toLowerCase());
+          const col=(def,...ns)=>{for(const n of ns){const j=hdr.indexOf(n);if(j>=0)return j;}return def;};
+          const cTIR=col(4,'tir'),cVto=col(3,'vencimiento'),cDur=col(5,'duration'),cCup=col(7,'cupón','cupon'),
+                cMon=col(9,'dólar','dolar','moneda'),cCal=col(11,'calif','calif.','calificación'),cNom=col(12,'nomin. min.','lámina min.','lamina min.');
           for(let di=ri+1;di<sovRaw.length;di++){
             const dr=sovRaw[di];
             const tk=String(dr[0]||'').trim().toUpperCase();
@@ -949,21 +965,28 @@ function cargarMonitor(input) {
             if(tk==='TICKER') break;
             if(!tk||!em||em.length>70) continue;
             if(!/^[A-Z]{1,4}[0-9]{1,4}[A-Z]?$|^[A-Z]{2,6}[0-9]{2}[A-Z]?$/.test(tk)) continue;
-            const tirRaw=parseFloat(dr[4]);
+            // Instrumentos en pesos (dollar linked: TZV27, D30O6…) no van en un scanner de bonos en
+            // USD: proponerlos como rotación de un bono en dólares sería pasar al cliente a pesos.
+            if(String(dr[cMon]||'').trim().toUpperCase()==='PESOS') continue;
+            const tirRaw=parseFloat(dr[cTIR]);
             if(isNaN(tirRaw)) continue;
             const tir=Math.abs(tirRaw)>1?tirRaw/100:tirRaw;
             if(tir>1.5||tir<-0.5) continue;
             if(dataMonitor[tk]) continue;
-            const vRaw=dr[3];
+            const vRaw=dr[cVto];
             if(yaVencio(vRaw)){vencidosCnt++;continue;}
-            const cupRaw=parseFloat(dr[7]);
+            const cupRaw=parseFloat(dr[cCup]);
             const cup=isNaN(cupRaw)?null:(Math.abs(cupRaw)>1?cupRaw/100:cupRaw);
             const vencimiento=vRaw?(typeof vRaw==='number'?excelSerialToDate(vRaw):String(vRaw).trim()):'';
-            const sovDur=calcDurFromVto(vRaw);
+            // Duration real de la hoja (AL30 ≈ 2 años); los años al vencimiento (3,8) la inflaban
+            // y rompían el filtro de duration y las alternativas de rotación de los amortizables.
+            const durHoja=parseNum(dr[cDur]);
+            const sovDur=durHoja!==null&&durHoja>0?Math.round(durHoja*100)/100:calcDurFromVto(vRaw);
+            const nomMin=parseNum(dr[cNom]);
             dataMonitor[tk]={tipo:currentCat,tir,cupon:cup,vencimiento,
-              calificacion:String(dr[11]||'').trim(),emisor:em,
-              tirCable:null,dolar:String(dr[9]||'').trim(),instrumento:em,
-              duration:sovDur,laminaMin:null};
+              calificacion:String(dr[cCal]||'').trim(),emisor:em,
+              tirCable:null,dolar:String(dr[cMon]||'').trim(),instrumento:em,
+              duration:sovDur,laminaMin:nomMin!==null&&nomMin>1?nomMin:null};
             sovCnt++;
           }
         }
@@ -1209,38 +1232,47 @@ function analizarCarteras() {
   document.getElementById('results-area').style.display='block';
 }
 
-function aplicarFiltros() {
-  if(datosFusionados.length===0) return;
-  const asesor=document.getElementById('sel-asesor').value.toLowerCase();
-  const cliente=document.getElementById('inp-cliente').value.toLowerCase();
+// Filtros que dependen solo del instrumento (no del cliente): se usan para las posiciones y
+// también para los bonos del Monitor que ningún cliente tiene (pestaña "Todas").
+function filtrosInstrumento() {
   const tickerRaw=document.getElementById('inp-ticker').value.trim();
-  const tickers=tickerRaw?tickerRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean):[];
-  const calif=document.getElementById('sel-calif').value;
   const chkCorp=document.getElementById('chk-corp')?.checked??true;
   const chkSob=document.getElementById('chk-sob')?.checked??true;
   const chkProv=document.getElementById('chk-prov')?.checked??true;
   const chkBop=document.getElementById('chk-bop')?.checked??true;
-  const tipoMap={'corporativo':chkCorp,'soberano':chkSob,'provincial':chkProv,'bopreal':chkBop,'dollarlinked':chkSob};
-  const filtrarTipo=!(chkCorp&&chkSob&&chkProv&&chkBop);
-  const minTIR=umbralTIR/100;
-  const maxTIR=umbralTIRAlta/100;
+  return {
+    tickers: tickerRaw?tickerRaw.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean):[],
+    calif: document.getElementById('sel-calif').value,
+    tipoMap: {'corporativo':chkCorp,'soberano':chkSob,'provincial':chkProv,'bopreal':chkBop,'dollarlinked':chkSob},
+    filtrarTipo: !(chkCorp&&chkSob&&chkProv&&chkBop),
+  };
+}
+function pasaFiltroInstrumento(d, f) {
+  if(f.tickers.length&&!f.tickers.some(t=>d.ticker.toLowerCase().includes(t))) return false;
+  if(f.calif&&!(CALIF_GRUPOS_FILTRO[f.calif]||[f.calif]).includes(calificacionToken(d.calificacion))) return false;
+  if(umbralDurMin>0&&d.duration!==null&&d.duration<umbralDurMin) return false;
+  if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
+  if(f.filtrarTipo&&!(f.tipoMap[d.tipo]??true)) return false;
+  if(modoTIRVis!=='todos'&&d.tir!==null){
+    if(modoTIRVis==='baja'&&!esTirBaja(d)) return false;
+    if(modoTIRVis==='alta'&&d.tir<umbralTIRAlta/100) return false;
+  }
+  return true;
+}
+
+function aplicarFiltros() {
+  if(datosFusionados.length===0) return;
+  const asesor=document.getElementById('sel-asesor').value.toLowerCase();
+  const cliente=document.getElementById('inp-cliente').value.toLowerCase();
+  const f=filtrosInstrumento();
   datosFiltrados=datosFusionados.filter(d=>{
     if(asesor&&!d.asesor.toLowerCase().includes(asesor)) return false;
     if(cliente&&!d.cliente.toLowerCase().includes(cliente)) return false;
-    if(tickers.length&&!tickers.some(t=>d.ticker.toLowerCase().includes(t))) return false;
-    if(calif&&!(CALIF_GRUPOS_FILTRO[calif]||[calif]).includes(calificacionToken(d.calificacion))) return false;
-    if(umbralDurMin>0&&d.duration!==null&&d.duration<umbralDurMin) return false;
-    if(umbralDurMax>0&&d.duration!==null&&d.duration>umbralDurMax) return false;
     if(umbralTenMin>0&&d.tenencia<umbralTenMin) return false;
     if(umbralTenMax>0&&d.tenencia>umbralTenMax) return false;
     if(umbralDiasMin>0&&d.diasTenencia<umbralDiasMin) return false;
     if(umbralDiasMax>0&&d.diasTenencia>umbralDiasMax) return false;
-    if(filtrarTipo&&!(tipoMap[d.tipo]??true)) return false;
-    if(modoTIRVis!=='todos'&&d.tir!==null){
-      if(modoTIRVis==='baja'&&d.tir>=minTIR) return false;
-      if(modoTIRVis==='alta'&&d.tir<maxTIR) return false;
-    }
-    return true;
+    return pasaFiltroInstrumento(d, f);
   });
   renderTablas();
 }
@@ -1299,7 +1331,7 @@ function scoreCliente(posiciones) {
     // Score por distancia al umbral TIR
     let score = 0;
     if (d.tir !== null) {
-      if (d.tir < umbBajo) {
+      if (esTirBaja(d)) {
         const gap = umbBajo - d.tir;
         score += gap * 300; // peso distancia
         if (d.tir < tirMinima) { tirMinima = d.tir; }
@@ -1326,7 +1358,7 @@ function scoreCliente(posiciones) {
   });
 
   // Determinar tipo de acción principal
-  const bajasPos = posiciones.filter(d => d.tir !== null && d.tir < umbBajo);
+  const bajasPos = posiciones.filter(d => esTirBaja(d));
   if (tieneVtoProximo) motivos.push('vto');
   if (bajasPos.length > 0) motivos.push('rot');
   if (bajasPos.length === 0 && diasSinContacto > 180) motivos.push('seg');
@@ -1380,7 +1412,7 @@ function renderHoy() {
     const rotTag = c.bajasCount > 0 ? `<span class="hoy-tag hoy-tag-rot">${c.bajasCount} posic. bajo ${umbralTIR}%</span>` : '';
     const vtoTag = c.tieneVtoProximo ? `<span class="hoy-tag hoy-tag-vto">Vence &lt;90 días</span>` : '';
     const segTag = c.motivos.includes('seg') ? `<span class="hoy-tag hoy-tag-seg">+${Math.round(c.diasSinContacto/30)} meses sin contacto</span>` : '';
-    const bajasPos = c.posiciones.filter(d => d.tir !== null && d.tir < umbralTIR/100).sort((a,b) => a.tir - b.tir);
+    const bajasPos = c.posiciones.filter(d => esTirBaja(d)).sort((a,b) => a.tir - b.tir);
     let rotacionHTML = '';
     if (bajasPos.length > 0) {
       const vendItems = bajasPos.map(p => `<span class="rot-item rot-vender">${p.ticker} ${liqBadgeInline(p.ticker)} <span class="rot-tir">${(p.tir*100).toFixed(1)}%</span></span>`).join('');
@@ -1454,7 +1486,7 @@ function renderTablas() {
 
 function renderStats() {
   const total=datosFiltrados.length;
-  const bajas=datosFiltrados.filter(d=>d.tir!==null&&d.tir<umbralTIR/100);
+  const bajas=datosFiltrados.filter(d=>esTirBaja(d));
   const tenTotal=datosFiltrados.reduce((a,d)=>a+d.tenencia,0);
   document.getElementById('stats-strip').innerHTML=`
     <div class="stat-box"><div class="stat-val">${total}</div><div class="stat-lbl">Posiciones RF</div></div>
@@ -1468,7 +1500,7 @@ function renderStats() {
 }
 
 function renderTablaBajas() {
-  const bajas=datosFiltrados.filter(d=>d.tir!==null&&d.tir<umbralTIR/100).sort((a,b)=>a.tir-b.tir);
+  const bajas=datosFiltrados.filter(d=>esTirBaja(d)).sort((a,b)=>a.tir-b.tir);
   document.getElementById('count-bajas').textContent=`${bajas.length} posiciones`;
   const tbody=document.getElementById('tbody-bajas');
   if(!bajas.length){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--ink-muted);">✓ Ninguna ON por debajo del umbral</td></tr>`;return;}
@@ -1494,26 +1526,46 @@ function construirGruposTodas() {
     g.clientes.push(d.cliente);
     if (d.tir !== null) g.tir = d.tir; // por si la TIR fue editada puntualmente
   });
+  // Con "Solo lo que tienen mis clientes" apagado se suma el resto del universo del Monitor
+  // (mismos filtros de instrumento), para ver también los bonos que nadie tiene todavía.
+  if (!(document.getElementById('chk-solo-clientes')?.checked ?? true)) {
+    const f = filtrosInstrumento();
+    Object.keys(dataMonitor).forEach(tk => {
+      if (grupos[tk]) return;
+      const m = dataMonitor[tk];
+      const g = { ticker: tk, instrumento: m.instrumento || m.emisor || '', tipo: m.tipo,
+        tir: m.tir ?? null, cupon: m.cupon ?? null, duration: m.duration ?? null, vencimiento: m.vencimiento,
+        laminaMin: m.laminaMin ?? null, calificacion: m.calificacion, tenencia: 0, clientes: [] };
+      if (pasaFiltroInstrumento(g, f)) grupos[tk] = g;
+    });
+  }
   return Object.values(grupos).map(g => Object.assign(g, { numClientes: g.clientes.length }));
+}
+
+function textoCountTodas(filas) {
+  const conCli = filas.filter(g => g.numClientes > 0).length;
+  return filas.length === conCli
+    ? `${filas.length} bonos · ${datosFiltrados.length} posiciones`
+    : `${filas.length} bonos (${conCli} con clientes) · ${datosFiltrados.length} posiciones`;
 }
 
 function renderTablaTodasONs() {
   const filas = construirGruposTodas().sort((a,b)=>(a.tir||0)-(b.tir||0));
-  document.getElementById('count-todas').textContent=`${filas.length} ONs · ${datosFiltrados.length} posiciones`;
+  document.getElementById('count-todas').textContent=textoCountTodas(filas);
   document.getElementById('tbody-todas').innerHTML=filas.map(filaONAgrupada).join('');
 }
 
 function filaONAgrupada(g) {
   const tirPct=g.tir!==null?(g.tir*100).toFixed(2):'—';
-  const tirClass=g.tir===null?'':g.tir<umbralTIR/100?'low':g.tir<umbralTIRAlta/100?'mid':'high';
+  const tirClass=tirNivel(g);
   const cuponPct=g.cupon!==null?(g.cupon*100).toFixed(2)+'%':'—';
   const barPct=g.tir!==null?Math.min(100,g.tir/0.12*100):0;
-  const barColor=g.tir===null?'#3C5752':g.tir<umbralTIR/100?'#C0453B':g.tir<umbralTIRAlta/100?'#D9892B':'#1C8C5F';
+  const barColor=({low:'#C0453B',mid:'#D9892B',high:'#1C8C5F'}[tirNivel(g)]||'#3C5752');
   const tirCell=`<div class="tir-bar-wrap"><span class="td-tir ${tirClass}">${tirPct!=='—'?tirPct+'%':'—'}</span><div class="tir-bar-bg"><div class="tir-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></div>`;
   const durCell=g.duration!==null?`<span style="font-family:var(--font-mono)">${g.duration.toFixed(1)}y</span>`:'—';
   const lamCell=g.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(g.laminaMin)}</span>`:'—';
   const tkEsc=g.ticker.replace(/'/g,"\\'");
-  return `<tr class="tk-click" onclick="abrirHoldersON('${tkEsc}')" title="Ver qué clientes lo tienen">
+  return `<tr class="tk-click${g.numClientes?'':' sin-clientes'}" onclick="abrirHoldersON('${tkEsc}')" title="${g.numClientes?'Ver qué clientes lo tienen':'Ningún cliente lo tiene — ver alternativas'}">
     <td class="td-ticker">${g.ticker} ${tipoBadge(g.tipo)} ${liqBadgeInline(g.ticker)}</td>
     <td class="td-instrumento" title="${g.instrumento}">${g.instrumento}</td>
     <td>${tirCell}</td>
@@ -1535,7 +1587,7 @@ function abrirHoldersON(ticker) {
   if (!ticker) return;
   tickerModalActual = ticker;
   const items = datosFiltrados.filter(d => d.ticker === ticker);
-  document.getElementById('to-nombre').textContent = ticker + (items[0] ? ' · ' + items[0].instrumento : '');
+  document.getElementById('to-nombre').textContent = ticker + ((items[0]?.instrumento || dataMonitor[ticker]?.instrumento) ? ' · ' + (items[0]?.instrumento || dataMonitor[ticker].instrumento) : '');
   const body = document.getElementById('to-clientes');
   if (!items.length) {
     document.getElementById('to-sub').textContent = '';
@@ -1596,14 +1648,20 @@ function leerFiltrosRotacion() {
 // Busca en TODO el universo del Monitor (no solo lo que ya tienen los
 // clientes) ONs con mejor TIR, calificación de riesgo similar (± notches)
 // y duration similar (± años) a la ON actual — para sugerir una rotación.
+// Soberanos/provinciales y Bopreales solo rotan dentro de su familia: un Bopreal sin calificación
+// no pasaba por el filtro de notches y terminaba sugiriendo cualquier ON (o algo en pesos).
+// Las ONs no cambian: pueden recibir un provincial con calificación local parecida.
+const GRUPOS_ROTACION = { soberano: ['soberano','provincial'], provincial: ['soberano','provincial'], bopreal: ['bopreal','soberano'] };
 function buscarComparables(ticker, filtros) {
   const base = dataMonitor[ticker];
   if (!base) return [];
   const baseRank = calificacionRank(base.calificacion);
+  const permitidos = GRUPOS_ROTACION[base.tipo] || null;
   const candidatos = [];
   Object.keys(dataMonitor).forEach(tk => {
     if (tk === ticker) return;
     const c = dataMonitor[tk];
+    if (permitidos && !permitidos.includes(c.tipo)) return;
     if (c.tir === null || c.tir === undefined) return;
     if (c.tir < filtros.tirMin || c.tir > filtros.tirMax) return; // descarta outliers fuera de la curva
     if (base.tir !== null && base.tir !== undefined && c.tir <= base.tir) return; // solo sugerir algo que rinda más
@@ -1693,11 +1751,11 @@ function renderResumenClientes() {
     return ma-mb;
   });
   else if(sortResumen==='nombre') clientes.sort((a,b)=>a.cliente.localeCompare(b.cliente));
-  else clientes.sort((a,b)=>b.items.filter(i=>i.tir!==null&&i.tir<umbralTIR/100).length-a.items.filter(i=>i.tir!==null&&i.tir<umbralTIR/100).length);
+  else clientes.sort((a,b)=>b.items.filter(i=>esTirBaja(i)).length-a.items.filter(i=>esTirBaja(i)).length);
   const el=document.getElementById('resumen-clientes');
   if(!clientes.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">Sin datos</div></div>';return;}
   el.innerHTML=clientes.map(c=>{
-    const bajas=c.items.filter(i=>i.tir!==null&&i.tir<umbralTIR/100);
+    const bajas=c.items.filter(i=>esTirBaja(i));
     const tenTotal=c.items.reduce((a,i)=>a+i.tenencia,0);
     const tenBajas=bajas.reduce((a,i)=>a+i.tenencia,0);
     const tirs=c.items.filter(i=>i.tir!==null).map(i=>i.tir);
@@ -1763,7 +1821,7 @@ function cerrarCarteraCliente() { document.getElementById('cc-overlay').classLis
 function esUrgente(cn) {
   const hoy=Date.now(), D90=90*86400*1000;
   return datosFusionados.some(d=>{
-    if(d.cliente!==cn||!d.tir||d.tir>=umbralTIR/100) return false;
+    if(d.cliente!==cn||!esTirBaja(d)) return false;
     const ms=vtoToMs(d.vencimiento);
     return ms>0&&ms-hoy<D90&&ms>hoy;
   });
@@ -1829,11 +1887,11 @@ function calcCobrado(d) {
 
 function filaON(d, highlightBaja=false, showAsesor=false) {
   const tirPct=d.tir!==null?(d.tir*100).toFixed(2):'—';
-  const tirClass=d.tir===null?'':d.tir<umbralTIR/100?'low':d.tir<umbralTIRAlta/100?'mid':'high';
+  const tirClass=tirNivel(d);
   const cuponPct=d.cupon!==null?(d.cupon*100).toFixed(2)+'%':'—';
-  const rowClass=highlightBaja&&d.tir!==null&&d.tir<umbralTIR/100?'highlight-low':'';
+  const rowClass=highlightBaja&&esTirBaja(d)?'highlight-low':'';
   const barPct=d.tir!==null?Math.min(100,d.tir/0.12*100):0;
-  const barColor=d.tir===null?'#3C5752':d.tir<umbralTIR/100?'#C0453B':d.tir<umbralTIRAlta/100?'#D9892B':'#1C8C5F';
+  const barColor=({low:'#C0453B',mid:'#D9892B',high:'#1C8C5F'}[tirNivel(d)]||'#3C5752');
   const tirCell=`<div class="tir-bar-wrap"><span class="td-tir ${tirClass}">${tirPct!=='—'?tirPct+'%':'—'}</span><div class="tir-bar-bg"><div class="tir-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></div>`;
   const durCell=d.duration!==null?`<span style="font-family:var(--font-mono)">${d.duration.toFixed(1)}y</span>`:'—';
   const lamCell=d.laminaMin!==null?`<span style="font-family:var(--font-mono);font-size:10px">${formatNum(d.laminaMin)}</span>`:'—';
@@ -1892,12 +1950,12 @@ function filaTop(d) {
 
 function filaONConCobrado(d) {
   const tirPct=d.tir!==null?(d.tir*100).toFixed(2):'—';
-  const tirClass=d.tir===null?'':d.tir<umbralTIR/100?'low':d.tir<umbralTIRAlta/100?'mid':'high';
+  const tirClass=tirNivel(d);
   const cuponPct=d.cupon!==null?(d.cupon*100).toFixed(2)+'%':'—';
-  const rowClass=d.tir!==null&&d.tir<umbralTIR/100?'highlight-low':'';
+  const rowClass=esTirBaja(d)?'highlight-low':'';
   const cobrado=calcCobrado(d);
   const barPct=d.tir!==null?Math.min(100,d.tir/0.12*100):0;
-  const barColor=d.tir===null?'#3C5752':d.tir<umbralTIR/100?'#C0453B':d.tir<umbralTIRAlta/100?'#D9892B':'#1C8C5F';
+  const barColor=({low:'#C0453B',mid:'#D9892B',high:'#1C8C5F'}[tirNivel(d)]||'#3C5752');
   const tirCell=`<div class="tir-bar-wrap"><span class="td-tir ${tirClass}">${tirPct!=='—'?tirPct+'%':'—'}</span><div class="tir-bar-bg"><div class="tir-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></div>`;
   const durStr=d.duration!==null?d.duration.toFixed(1)+'y':'—';
   const lamStr=d.laminaMin!==null?formatNum(d.laminaMin):'—';
@@ -2055,13 +2113,13 @@ function sortTable(tabla,col) {
   const key=keyMap[col]||col;
   const dir=sortState.dir==='asc'?1:-1;
   if(tabla==='bajas'){
-    const rows=datosFiltrados.filter(d=>d.tir!==null&&d.tir<umbralTIR/100);
+    const rows=datosFiltrados.filter(d=>esTirBaja(d));
     rows.sort((a,b)=>dir*(a[key]>b[key]?1:a[key]<b[key]?-1:0));
     document.getElementById('tbody-bajas').innerHTML=rows.map(d=>filaON(d,true)).join('');
   } else if(tabla==='todas'){
     const rows=construirGruposTodas();
     rows.sort((a,b)=>dir*((a[key]||0)>(b[key]||0)?1:(a[key]||0)<(b[key]||0)?-1:0));
-    document.getElementById('count-todas').textContent=`${rows.length} ONs · ${datosFiltrados.length} posiciones`;
+    document.getElementById('count-todas').textContent=textoCountTodas(rows);
     document.getElementById('tbody-todas').innerHTML=rows.map(filaONAgrupada).join('');
   } else if(tabla==='top'){
     const rows=datosFiltrados.filter(d=>d.tir!==null&&d.tir>umbralTIRAlta/100);
@@ -2137,7 +2195,7 @@ function wppBoton(d) {
     cliente:   d.cliente,
     ticker:    d.ticker,
     tir:       tir,
-    tirBaja:   d.tir !== null && d.tir < umbralTIR / 100,
+    tirBaja:   esTirBaja(d),
     tirAlta:   d.tir !== null && d.tir > umbralTIRAlta / 100,
     tel:       d.tel || null,
     nombre:    d.nombreStock || '',
@@ -2152,7 +2210,7 @@ function wppBoton(d) {
 
 function exportarExcel() {
   if(!datosFiltrados.length){alert('No hay datos. Analizá primero.');return;}
-  const bajas=datosFiltrados.filter(d=>d.tir!==null&&d.tir<umbralTIR/100);
+  const bajas=datosFiltrados.filter(d=>esTirBaja(d));
   const toRows=arr=>arr.map(d=>({
     'Ticker':d.ticker,'ON':d.instrumento,'Cliente':d.cliente,'Asesor':d.asesor,
     'TIR (%)':d.tir!==null?(d.tir*100).toFixed(2):'','Cupón (%)':d.cupon!==null?(d.cupon*100).toFixed(2):'',

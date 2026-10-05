@@ -263,6 +263,15 @@ tbody td.num{text-align:right;font-family:var(--font-m);font-size:11.5px;}
 .td-ticker{font-family:var(--font-m);font-size:12px;font-weight:500;color:var(--text);cursor:pointer;}
 .td-ticker:hover{text-decoration:underline;text-decoration-color:var(--ambar);}
 .tk-badge{font-family:var(--font-m);font-size:9px;color:var(--ambar);margin-left:5px;}
+/* RS Rating (fuerza relativa 1-99) y próximo balance — datos de data/rs_cedears.json y data/earnings.json */
+.pa-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+.rs-badge,.bal-badge{font-family:var(--font-m);font-size:9.5px;font-weight:600;padding:0 6px;border-radius:8px;cursor:help;white-space:nowrap;}
+.rs-hi{background:rgba(28,140,95,.14);color:var(--pos);}
+.rs-mid{background:rgba(120,120,120,.14);color:var(--muted);}
+.rs-lo{background:rgba(192,69,59,.13);color:var(--neg);}
+.bal-badge{background:rgba(219,160,60,.12);color:var(--ambar);}
+.bal-soon{background:rgba(219,160,60,.28);color:var(--ambar);}
+#main-table.compact .pa-badges{display:inline-flex;margin-left:6px;}
 .td-empresa{font-size:12px;color:var(--text);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .td-sector{font-size:10.5px;color:var(--muted);white-space:nowrap;}
 .mult-badge{display:inline-block;font-size:9px;font-family:var(--font-m);padding:2px 6px;border-radius:3px;letter-spacing:.03em;background:rgba(107,163,255,.1);color:var(--info-badge);border:1px solid rgba(107,163,255,.25);}
@@ -504,6 +513,7 @@ tr.cli-tr:hover{background:var(--wash-1);}
     <div class="ten-min-wrap" id="ten-min-wrap" style="display:none">
       <input type="number" id="ten-min-input" min="0" step="500" placeholder="Tenencia mín. USD" oninput="onTenMinChange()" title="Ocultar lo que tengo por debajo de este monto">
     </div>
+    <button class="chip chip-tool" id="chip-balance" onclick="toggleBalance()" style="display:none" title="Mostrar solo las empresas que presentan balance en los próximos 7 días (combinalo con «Solo en cartera» para ver qué clientes tienen algo por reportar)">📅 Balance ≤ 7 días</button>
     <button class="chip chip-tool chip-warn" id="chip-prioridad" onclick="togglePrioridad()" style="display:none" title="Lo que más plata tiene y hoy conviene reducir o revisar, ordenado por monto">⚠ Prioridad de venta</button>
     <button class="chip chip-tool chip-sen" id="chip-senales" onclick="toggleSenales()" style="display:none" title="Mostrar qué conviene hacer con la posición de cada cliente (tomar ganancia, stop, acumular…) según cuánto gana o pierde y hace cuánto la tiene">📍 Señales de posición</button>
     <button class="chip chip-tool" id="chip-senales-cfg" onclick="abrirSenCfg()" style="display:none" title="Configurar las señales de posición">⚙</button>
@@ -1046,6 +1056,7 @@ let activeTab='Panorama';
 let activeSector='todos';
 let multSel='auto';                 // 'auto' (según sector) | 'PE' | 'PS' | 'EVEBITDA' | 'PFCF' | 'PB'
 let soloCartera=false, _carteraTocado=false;
+let MKT_RS=null, MKT_EARN=null, soloBalance=false;   // señales de mercado: RS Rating y próximo balance
 let tenMin=0, soloPrioridad=false;   // filtro de monto mínimo + "avisame qué vender, por plata en juego"
 let sigFiltro='';   // filtro por señal, ej. 'precio:Caro' — ver onSigChange()
 let sortState={};   // { tabName: {col, asc} }
@@ -1120,6 +1131,52 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
 // percentil del retorno 6m contra toda la lista (fuerza relativa). Se recalcula
 // cada vez que se cargan datos nuevos.
+// ══════════════════════════════════════════
+//  SEÑALES DE MERCADO — RS Rating (1-99) y próximo balance, de data/rs_cedears.json y
+//  data/earnings.json (los genera .github/scripts/mercado_senales.py todos los días hábiles).
+//  RS = 40% ret 3m + 20% 6m + 20% 9m + 20% 12m, rankeado en percentil entre las acciones en USD
+//  del universo (misma fórmula pública de Ticker&Tape; NVDA da 79 en los dos). Es un dato APARTE
+//  del puntaje: no cambia ningún «Qué hacer». Sin datos de clientes.
+// ══════════════════════════════════════════
+async function cargarSenalesMercado(){
+  try{
+    const [a,b]=await Promise.all([
+      fetch('data/rs_cedears.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch('data/earnings.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).catch(()=>null)
+    ]);
+    MKT_RS=a; MKT_EARN=b;
+    const cb=document.getElementById('chip-balance'); if(cb && MKT_EARN) cb.style.display='';
+    if(MKT_RS||MKT_EARN) render();
+  }catch(e){ console.warn('Señales de mercado no disponibles',e); }
+}
+function rsDe(r){ return (MKT_RS&&MKT_RS.rs&&MKT_RS.rs[r.ticker])||null; }
+function diasHastaBalance(r){
+  const e=MKT_EARN&&MKT_EARN.prox&&MKT_EARN.prox[r.ticker]; if(!e) return null;
+  const hoy=new Date(); hoy.setHours(12,0,0,0);
+  const d=Math.round((new Date(e.fecha+'T12:00:00')-hoy)/86400000);
+  return d<0?null:d;
+}
+function fechaCorta(iso){ const m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; const p=iso.split('-'); return +p[2]+'-'+m[+p[1]-1]; }
+function rsBadge(r){
+  const x=rsDe(r); if(!x) return '';
+  const sec=(MKT_RS.sectores||[]).find(s=>s.sector===x.sector);
+  const tip=`RS Rating ${x.rs} de 99: rinde más que el ${x.rs}% de las acciones en USD del universo (3 meses ${x.r3>=0?'+':''}${Math.round(x.r3*100)}%, 12 meses ${x.r12>=0?'+':''}${Math.round(x.r12*100)}%). El último trimestre pesa doble.`
+    +(sec?` Su sector (${x.sector}) está en el puesto ${sec.rank} de ${MKT_RS.sectores.length}.`:'');
+  return `<span class="rs-badge ${x.rs>=80?'rs-hi':x.rs>=40?'rs-mid':'rs-lo'}" title="${_attr(tip)}">RS ${x.rs}</span>`;
+}
+function balBadge(r){
+  const d=diasHastaBalance(r); if(d===null||d>21) return '';
+  const e=MKT_EARN.prox[r.ticker];
+  const cuando=d===0?'hoy':d===1?'mañana':`en ${d} días`;
+  const tip=`Presenta balance ${cuando} (${fechaCorta(e.fecha)}, ${e.hora})`+(e.eps_est!=null?` · EPS estimado ${e.eps_est}`:'')+(e.eps_prev!=null?` vs ${e.eps_prev} hace un año`:'')+'. Los balances suelen mover el precio: conviene avisarle a quien lo tiene.';
+  return `<span class="bal-badge ${d<=7?'bal-soon':''}" title="${_attr(tip)}">📅 ${fechaCorta(e.fecha)}</span>`;
+}
+function toggleBalance(){
+  soloBalance=!soloBalance;
+  document.getElementById('chip-balance').classList.toggle('active',soloBalance);
+  render();
+}
+
 function calcularFuerzaRelativa(rows){
   rows=rows||allRows;
   // solo tickers en USD — mezclar retornos en ARS (inflados) distorsiona el percentil
@@ -3401,6 +3458,7 @@ function visibleRows(){
     if(soloCartera && !holdersFor(r).length) return false;
     if(tenMin>0 && tenenciaTotal(r)<tenMin) return false;
     if(soloPrioridad && !['Reducir','Atención'].includes(queHacer(r).v)) return false;
+    if(soloBalance){ const d=diasHastaBalance(r); if(d===null||d>7) return false; }
     if(sigFiltro && !cumpleSenal(r,sigFiltro)) return false;
     if(rankingModo && puntaje(r)===null) return false;   // ranking = solo lo que tiene los 3 ejes
     if(clienteActivo || topClientesSet){
@@ -3435,6 +3493,7 @@ function sortGetters(){
       tend:r=>tendencia(r),
       mm21:r=>r.mm21, mm50:r=>r.mm50, mm200:r=>r.mm200,
       ret3m:r=>r.ret3m, ret6m:r=>r.ret6m, dist52:r=>r.dist52,
+      rs:r=>rsDe(r)?.rs ?? null, bal:r=>diasHastaBalance(r),
       v21:r=>(r.precio!==null&&r.mm21)?r.precio/r.mm21-1:null,
       v50:r=>(r.precio!==null&&r.mm50)?r.precio/r.mm50-1:null,
       v200:r=>(r.precio!==null&&r.mm200)?r.precio/r.mm200-1:null,
@@ -3825,7 +3884,7 @@ function render(){
         : `<span class="dash">—</span>`;
       const esc=String(r.ticker).replace(/'/g,"\\'");
       return `<tr style="background:${bg}">
-        <td class="pa-activo"><div class="pa-tk" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div></td>
+        <td class="pa-activo"><div class="pa-tk" onclick="abrirFicha('${esc}')" title="Ver ficha completa de la empresa">${r.ticker}</div><div class="pa-emp">${r.empresa||''}</div><div class="pa-badges">${rsBadge(r)}${balBadge(r)}</div></td>
         <td class="pa-cartera">${carteraCell}</td>
         <td class="pa-punt">${puntajeCell(r)}</td>
         <td class="pa-qh" title="${_attr(q.por)}"><div class="pa-qh-in"><span class="qh ${q.cls}">${q.v}</span>${clienteActivo&&regRechazado(clienteActivo,r.ticker)?' <span class="qh-rech" title="ya se lo propusiste y lo rechazó — mirá la ficha">📝 rechazado</span>':''}<div class="pa-por">${q.por}</div></div></td>
@@ -3836,10 +3895,11 @@ function render(){
     }).join('');
 
   }else if(activeTab==='Técnico'){
-    ncols=12;
+    ncols=14;
     headHtml=`<tr>${th('ticker','Ticker')}${th('empresa','Empresa')}${th('precio','Precio',1)}${th('tend','Tend.',1)}
       ${th('mm21','MM 21s',1)}${th('mm50','MM 50s',1)}${th('mm200','MM 200s',1)}
       ${th('v50','vs 50s',1)}${th('v200','vs 200s',1)}${th('ret3m','Ret. 3m',1)}${th('ret6m','Ret. 6m',1)}
+      ${th('rs','RS',1)}${th('bal','Próx. balance',1)}
       ${th('rebote','Rebote')}</tr>`;
     bodyHtml=rows.map(r=>{
       const lr=lecturaRebote(r);
@@ -3854,6 +3914,7 @@ function render(){
       <td class="num">${nCell(r.mm21)}</td><td class="num">${nCell(r.mm50)}</td><td class="num">${nCell(r.mm200)}</td>
       <td class="num">${vs(r.precio,r.mm50)}</td><td class="num">${vs(r.precio,r.mm200)}</td>
       <td class="num">${pctCell(r.ret3m)}</td><td class="num">${pctCell(r.ret6m)}</td>
+      <td class="num">${rsBadge(r)||'<span class="dash">—</span>'}</td><td class="num">${balBadge(r)||'<span class="dash">—</span>'}</td>
       <td class="td-tend">${rebCell}</td>`);
     }).join('');
 
@@ -4070,6 +4131,7 @@ async function loadAndRender(){
   actualizarHorizonteUI();
   showTimestamp(entry.ts,allRows);
   render();
+  cargarSenalesMercado();
   vmCheckCorrPend();
 }
 

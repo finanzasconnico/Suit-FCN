@@ -1,0 +1,53 @@
+name: Superinvestors (13F de la SEC)
+
+# Corre cada dia habil a las 13:00 UTC y tambien a mano desde "Actions". Los 13F se presentan una vez
+# por trimestre (hasta el 14/02, 15/05, 14/08 y 14/11 aprox.), asi que casi todos los dias el script
+# solo consulta la lista de presentaciones de cada fondo (~30 pedidos livianos a la SEC) y, si no hay
+# nada nuevo, no toca ningun archivo ni hace commit. Ver .github/scripts/superinvestors.py.
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: superinvestors
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install pandas openpyxl requests
+
+      - name: Bajar 13F y armar data/superinvestors.json
+        run: python .github/scripts/superinvestors.py
+
+      - name: Commitear y pushear si cambió
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/superinvestors.json data/cusip_ticker.json .github/scripts/.cache_superinvestors.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios, no hay nada para commitear."
+            exit 0
+          fi
+          git commit -m "Superinvestors: 13F actualizados ($(date +%Y-%m-%d))"
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            echo "push rechazado, reintento $i ..."
+            sleep 5
+          done
+          echo "no se pudo pushear tras 5 intentos" && exit 1

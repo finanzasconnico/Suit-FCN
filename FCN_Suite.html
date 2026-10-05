@@ -1225,6 +1225,7 @@ const TOOLS = [
   { id:'panorama',  name:'Panorama de Mercado', icon:'🗺️', desc:'TIR vs. Duration de todo el universo de bonos/ONs, con curva de referencia y clic para ver qué clientes tienen cada uno.', badge:'Research', file:'Panorama_Mercado_FCN.html', color:'jade' },
   { id:'multiplos', name:'Valuación por Múltiplos', icon:'⚖️', desc:'Múltiplos (P/E, P/S, EV/EBITDA, P/FCF, P/B) actual vs. promedio histórico de 3/5/10 años + medias móviles semanales, seleccionados por sector.', badge:'Research', file:'Valuacion_Multiplos_FCN.html', color:'jade' },
   { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Escribí el ticker de una empresa de EE.UU. y arma solo ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 (datos de la SEC + Yahoo). Si subís tus Excel de Investing, tienen prioridad.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' },
+  { id:'superinvestors', name:'Superinvestors', icon:'🏛️', desc:'Qué tienen, compraron y vendieron Buffett, Ackman, Cathie Wood y 27 fondos más (13F de la SEC). Marca lo que se puede comprar con CEDEARs.', badge:'Research', file:'Superinvestors_FCN.html', color:'jade' },
   { id:'cuantocobro', name:'¿Cuánto cobro?', icon:'💰', desc:'Letras en pesos y bonos/ONs en dólares: con un monto, cuánto cobrás y cuándo, mes a mes. Precios en vivo de BYMA, TIR y cartera combinada.', badge:'Renta Fija', file:'Cuanto_Cobro_FCN.html', color:'jade' }
 ];
 
@@ -1503,7 +1504,7 @@ function showApp() {
 // ══════════════════════════════════════════════════════════════
 const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama'] },
-  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['multiplos','fundamental'] },
+  { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['multiplos','fundamental','superinvestors'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','armador','monitor'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['files'] },
 ];
@@ -1693,6 +1694,7 @@ const HOME_TASKS = [
   { id:'facturar_rv',          icon:'📈',  name:'Facturar con Renta Variable',             desc:'Señales de compra/venta por posición, con la rentabilidad de cada cliente.', action: () => openTool('multiplos') },
   { id:'analizar_rf',          icon:'🗺️', name:'Analizar bonos y ONs',                    desc:'TIR vs. Duration de todo el universo, con curva de referencia.',   action: () => openTool('panorama') },
   { id:'analizar_rv',          icon:'⚖️',  name:'Analizar acciones y CEDEARs',             desc:'Múltiplos actuales vs. promedio histórico, por sector.',           action: () => openTool('multiplos') },
+  { id:'superinvestors',       icon:'🏛️', name:'Ver qué compran los grandes',             desc:'Posiciones de Buffett, Ackman y otros fondos famosos; filtra lo que tiene CEDEAR.', action: () => openTool('superinvestors') },
   { id:'atender_cliente',      icon:'👤',  name:'Atender a un cliente puntual',            desc:'Ver toda su cartera junta y mandarle algo directo.',               action: () => showCliente360() },
   { id:'mail_marketing',       icon:'📧',  name:'Mandar mail masivo',                      desc:'A inactivos, activos o filtrado por tenencia, edad o zona.',       action: () => showInactivos() },
   { id:'liquidez_mensual',     icon:'💧',  name:'Avisar liquidez del mes',                 desc:'Mail a todos los que tengan plata sin invertir todavía.',          action: () => { showHome(); abrirAvisoLiquidez(); } },

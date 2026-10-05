@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Superinvestors — FinanzasconNico</title>
+<style>
+:root {
+  --bg:#081917; --surface:#0E2622; --surface2:#122B27; --border:#1E3A34;
+  --jade:#1C8C5F; --jade-d:rgba(28,140,95,.14); --ambar:#DBA03C; --ambar-d:rgba(219,160,60,.14);
+  --danger:#C0453B; --danger-d:rgba(192,69,59,.14);
+  --text:#EAF1EE; --text-strong:#ffffff; --muted:#8FA39E; --wash-1:rgba(255,255,255,.045);
+  --pos:#4ade80; --neg:#E8837E;
+  --font-d:'Spectral', Georgia, serif; --font-s:'Hanken Grotesk', system-ui, sans-serif; --font-m:'IBM Plex Mono', ui-monospace, monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F1EFE9;--border:#E2E6E4;--ambar:#B8862F;
+    --text:#1C2B28;--text-strong:#0A130F;--muted:#5B6B66;--wash-1:rgba(0,0,0,.035);--pos:#1C8C5F;--neg:#C0453B;
+  }
+}
+[data-theme="light"]{
+  --bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F1EFE9;--border:#E2E6E4;--ambar:#B8862F;
+  --text:#1C2B28;--text-strong:#0A130F;--muted:#5B6B66;--wash-1:rgba(0,0,0,.035);--pos:#1C8C5F;--neg:#C0453B;
+}
+[data-theme="dark"]{
+  --bg:#081917;--surface:#0E2622;--surface2:#122B27;--border:#1E3A34;--ambar:#DBA03C;
+  --text:#EAF1EE;--text-strong:#ffffff;--muted:#8FA39E;--wash-1:rgba(255,255,255,.045);--pos:#4ade80;--neg:#E8837E;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-s);font-size:14px;line-height:1.5;padding:22px 24px 60px;}
+.wrap{max-width:1180px;margin:0 auto;}
+h1{font-family:var(--font-d);font-weight:600;font-size:24px;color:var(--text-strong);margin:0 0 4px;}
+.sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 14px;}
+.stat b{display:block;font-family:var(--font-d);font-size:19px;color:var(--text-strong);}
+.stat span{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.note{background:var(--ambar-d);border:1px solid var(--ambar);border-radius:var(--r);padding:9px 14px;font-size:12.5px;margin-bottom:16px;color:var(--text);}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.tab{font:inherit;font-size:13px;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;}
+.tab:hover{color:var(--text-strong);}
+.tab.active{background:var(--jade);border-color:var(--jade);color:#fff;font-weight:600;}
+.sp{flex:1;}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);cursor:pointer;user-select:none;}
+.chk input{accent-color:var(--jade);}
+input.search{font:inherit;font-size:13px;padding:7px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);width:190px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:border-color .15s,transform .15s;}
+.card:hover{border-color:var(--jade);transform:translateY(-1px);}
+.card .g{font-family:var(--font-d);font-size:17px;font-weight:600;color:var(--text-strong);}
+.card .f{font-size:12px;color:var(--muted);margin-bottom:8px;}
+.card .m{font-size:12px;color:var(--muted);margin-bottom:8px;}
+.card .m b{color:var(--text);font-weight:600;}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.chip{font-family:var(--font-m);font-size:11px;padding:2px 8px;border-radius:10px;background:var(--wash-1);border:1px solid var(--border);color:var(--text);}
+.chip.c{border-color:var(--jade);background:var(--jade-d);}
+.mov{font-size:11.5px;color:var(--muted);}
+.mov .n{color:var(--pos);} .mov .r{color:var(--neg);}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:9px 12px;background:var(--surface2);border-bottom:1px solid var(--border);}
+td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;}
+tr:last-child td{border-bottom:none;}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.tk{font-family:var(--font-m);font-weight:600;color:var(--text-strong);}
+.emp{color:var(--muted);font-size:12px;}
+.badge{font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:8px;background:var(--jade-d);color:var(--pos);margin-left:6px;letter-spacing:.04em;}
+.bar{display:inline-block;height:6px;border-radius:3px;background:var(--jade);vertical-align:middle;margin-right:6px;}
+.pos{color:var(--pos);} .neg{color:var(--neg);}
+.tag{font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:8px;}
+.tag.nueva{background:var(--jade-d);color:var(--pos);} .tag.aumento{background:var(--jade-d);color:var(--pos);}
+.tag.reduccion{background:var(--danger-d);color:var(--neg);} .tag.igual{background:var(--wash-1);color:var(--muted);}
+.empty{padding:40px;text-align:center;color:var(--muted);}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:50;}
+#modal.open{display:flex;}
+.mbox{background:var(--bg);border:1px solid var(--border);border-radius:12px;max-width:860px;width:100%;padding:20px 22px;}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+.x{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:5px 12px;cursor:pointer;}
+.foot{color:var(--muted);font-size:11.5px;margin-top:22px;line-height:1.6;}
+@media (max-width:640px){body{padding:16px 12px 50px;} .sp{display:none;} input.search{width:100%;}}
+</style>
+<script src="fcn-theme.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Superinvestors</h1>
+  <div class="sub">Qué tienen, compraron y vendieron los fondos más seguidos del mundo — según lo que presentan a la SEC (formulario 13F).</div>
+  <div class="stats" id="stats"></div>
+  <div class="note"><b>Cómo leerlo:</b> el 13F se presenta hasta <b>45 días después</b> de cada trimestre, así que es una foto atrasada, no una señal para operar hoy. Solo incluye acciones y ETF que cotizan en EE.UU. (no bonos ni posiciones cortas). Sirve para ver en qué creen los grandes y para sacar ideas de largo plazo; lo marcado como <span class="badge" style="margin:0">CEDEAR</span> se puede comprar desde Argentina.</div>
+  <div class="toolbar">
+    <button class="tab active" data-v="inv">Inversores</button>
+    <button class="tab" data-v="poseidas">Más poseídas</button>
+    <button class="tab" data-v="compras">Mayores compras</button>
+    <button class="tab" data-v="ventas">Mayores ventas</button>
+    <button class="tab" data-v="nuevas">Posiciones nuevas</button>
+    <span class="sp"></span>
+    <label class="chk"><input type="checkbox" id="soloCedear" checked> Solo lo que tiene CEDEAR</label>
+    <input class="search" id="q" placeholder="Buscar fondo o ticker…">
+  </div>
+  <div id="view"></div>
+  <div class="foot" id="foot"></div>
+</div>
+<div id="modal"><div class="mbox" id="mbox"></div></div>
+
+<script>
+let DATA=null, vista='inv';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function usd(n){
+  n=Math.abs(n);
+  if(n>=1e9) return 'US$ '+(n/1e9).toLocaleString('es-AR',{maximumFractionDigits:1})+' mil M';
+  if(n>=1e6) return 'US$ '+Math.round(n/1e6).toLocaleString('es-AR')+' M';
+  return 'US$ '+Math.round(n/1e3).toLocaleString('es-AR')+' mil';
+}
+function trim(p){ if(!p) return '—'; const m=+p.slice(5,7), q=Math.ceil(m/3); return q+'T '+p.slice(0,4); }
+function fecha(iso){ if(!iso) return ''; const p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+
+async function init(){
+  try{
+    const r=await fetch('data/superinvestors.json',{cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    DATA=await r.json();
+  }catch(e){
+    $('view').innerHTML='<div class="empty">Todavía no hay datos de superinvestors publicados. Se generan solos una vez por semana (workflow «Superinvestors»); también se puede correr a mano desde la pestaña Actions de GitHub.</div>';
+    return;
+  }
+  $('stats').innerHTML=
+    `<div class="stat"><b>${DATA.n_inversores}</b><span>inversores seguidos</span></div>`+
+    `<div class="stat"><b>${usd(DATA.valor_total)}</b><span>en carteras 13F</span></div>`+
+    `<div class="stat"><b>${trim(DATA.inversores.map(i=>i.periodo).sort().slice(-1)[0])}</b><span>último trimestre</span></div>`;
+  $('foot').innerHTML='Fuente: formularios 13F-HR de la SEC (EDGAR); tickers vía OpenFIGI. Actualizado '+fecha(DATA.generado)+'. «Compra/venta» es una estimación: variación de acciones × precio del trimestre. Un fondo que presentó su 13F pero todavía no el del último trimestre muestra el anterior. No es una recomendación de inversión.';
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{vista=b.dataset.v;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));render();});
+  $('soloCedear').onchange=render; $('q').oninput=render;
+  render();
+}
+
+function render(){
+  if(!DATA) return;
+  const q=$('q').value.trim().toLowerCase(), soloC=$('soloCedear').checked;
+  const v=$('view');
+  if(vista==='inv'){
+    let L=DATA.inversores.filter(i=>!q||i.fondo.toLowerCase().includes(q)||i.gestor.toLowerCase().includes(q)||i.pos.some(p=>p.t.toLowerCase()===q));
+    v.innerHTML=L.length?'<div class="grid">'+L.map(cardInv).join('')+'</div>':'<div class="empty">Sin resultados.</div>';
+    v.querySelectorAll('.card').forEach(c=>c.onclick=()=>abrir(c.dataset.id));
+    return;
+  }
+  const clave={poseidas:'mas_poseidas',compras:'mayores_compras',ventas:'mayores_ventas',nuevas:'mas_nuevas'}[vista];
+  let L=DATA[clave].filter(x=>(!soloC||x.cedear)&&(!q||x.t.toLowerCase().includes(q)||x.n.toLowerCase().includes(q)));
+  if(!L.length){ v.innerHTML='<div class="empty">Sin resultados con este filtro.</div>'; return; }
+  const max=Math.max(...L.map(x=>vista==='poseidas'?x.fondos:vista==='compras'?x.compra:vista==='ventas'?x.venta:x.nuevas));
+  const col={poseidas:['Fondos que lo tienen','Valor total'],compras:['Compra neta estimada','Fondos'],ventas:['Venta neta estimada','Fondos'],nuevas:['Fondos que lo compraron por primera vez','Compra estimada']}[vista];
+  v.innerHTML=`<table><thead><tr><th>#</th><th>Acción</th><th class="num">${col[0]}</th><th class="num">${col[1]}</th></tr></thead><tbody>`+
+    L.map((x,i)=>{
+      const val=vista==='poseidas'?x.fondos:vista==='compras'?x.compra:vista==='ventas'?x.venta:x.nuevas;
+      const txt=vista==='poseidas'||vista==='nuevas'?val:usd(val);
+      const seg=vista==='poseidas'?usd(x.valor):vista==='nuevas'?usd(x.compra):x.fondos+(x.fondos===1?' fondo':' fondos');
+      return `<tr><td class="emp">${i+1}</td><td><span class="tk">${esc(x.t)}</span>${x.cedear?'<span class="badge">CEDEAR</span>':''}<div class="emp">${esc(x.n)}</div></td>`+
+        `<td class="num"><span class="bar" style="width:${Math.max(4,Math.round(90*val/max))}px"></span>${txt}</td><td class="num">${seg}</td></tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+function cardInv(i){
+  const top=i.pos.slice(0,5).map(p=>`<span class="chip${p.c?' c':''}" title="${esc(p.n)}">${esc(p.t||p.n.slice(0,8))} ${p.p.toFixed(1)}%</span>`).join('');
+  return `<div class="card" data-id="${esc(i.id)}"><div class="g">${esc(i.gestor)}</div><div class="f">${esc(i.fondo)}</div>`+
+    `<div class="m"><b>${usd(i.valor)}</b> · ${i.n_pos} posiciones · ${trim(i.periodo)}</div><div class="chips">${top}</div>`+
+    `<div class="mov"><span class="n">${i.nuevas} nuevas</span> · <span class="n">${i.aumentos} aumentos</span> · <span class="r">${i.reducciones} reducciones</span> · <span class="r">${i.vendidas} vendidas</span></div></div>`;
+}
+
+function abrir(id){
+  const i=DATA.inversores.find(x=>x.id===id); if(!i) return;
+  const soloC=$('soloCedear').checked;
+  const rows=i.pos.filter(p=>!soloC||p.c);
+  const est=p=>{
+    if(p.e==='nueva') return '<span class="tag nueva">Nueva</span>';
+    if(p.e==='aumento') return `<span class="tag aumento">Aumentó${p.d!=null?' +'+Math.round(p.d*100)+'%':''}</span>`;
+    if(p.e==='reduccion') return `<span class="tag reduccion">Redujo${p.d!=null?' '+Math.round(p.d*100)+'%':''}</span>`;
+    return '<span class="tag igual">Sin cambios</span>';
+  };
+  const vend=i.vendidas_top.filter(p=>!soloC||(p.t&&DATA.mas_poseidas.concat(DATA.mayores_ventas).some(x=>x.t===p.t&&x.cedear)));
+  $('mbox').innerHTML=`<div class="mhead"><div><h1 style="font-size:21px">${esc(i.gestor)}</h1><div class="sub" style="margin:0">${esc(i.fondo)} · ${usd(i.valor)} · ${i.n_pos} posiciones · ${trim(i.periodo)} (presentado el ${fecha(i.presentado)})</div></div><button class="x" onclick="cerrar()">Cerrar ✕</button></div>`+
+    (rows.length?`<table><thead><tr><th>Acción</th><th class="num">% de la cartera</th><th class="num">Valor</th><th>Movimiento del trimestre</th></tr></thead><tbody>`+
+    rows.map(p=>`<tr><td><span class="tk">${esc(p.t||'—')}</span>${p.c?'<span class="badge">CEDEAR</span>':''}<div class="emp">${esc(p.n)}</div></td><td class="num">${p.p.toFixed(1)}%</td><td class="num">${usd(p.v)}</td><td>${est(p)}</td></tr>`).join('')+'</tbody></table>'
+    :'<div class="empty">Ninguna de sus principales posiciones tiene CEDEAR. Destildá el filtro para ver todas.</div>')+
+    (vend.length?`<div class="foot">Vendió por completo en el trimestre: ${vend.map(p=>esc(p.t||p.n)).join(', ')}.</div>`:'');
+  $('modal').classList.add('open');
+}
+function cerrar(){ $('modal').classList.remove('open'); }
+$('modal').addEventListener('click',e=>{ if(e.target===$('modal')) cerrar(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrar(); });
+init();
+</script>
+</body>
+</html>
