@@ -493,8 +493,10 @@ tr.cli-tr:hover{background:var(--wash-1);}
         <option value="largo">Largo plazo</option>
         <option value="mediano" selected>Mediano plazo</option>
         <option value="corto">Corto plazo</option>
+        <option value="custom">Personalizado</option>
       </select>
     </label>
+    <button class="chip chip-tool" id="chip-pesos" onclick="abrirPesos()" title="Ajustar a mano cuánto pesa cada aspecto en el puntaje (Negocio, Precio vs. historia, Tendencia, Rebote técnico)">⚙ Pesos</button>
     <span class="hor-fresh" id="hor-fresh" style="display:none"></span>
     <span class="tools-sep"></span>
     <button class="chip chip-tool chip-rank" id="chip-ranking" onclick="toggleRanking()" title="Ordena por puntaje combinado −100…+100 (Negocio + Valuación + Tendencia, según el Horizonte elegido): 1er clic = lo que más conviene comprar arriba, 2º = lo que más conviene vender arriba. Deja afuera ETFs/índices y lo que no tiene todos los datos.">🏆 Ranking de puntaje</button>
@@ -763,6 +765,39 @@ tr.cli-tr:hover{background:var(--wash-1);}
           <button class="btn-msg" id="msg-copiar" onclick="msgCopiar()">Copiar</button>
         </div>
         <p class="msg-nota">Revisá el texto antes de enviar — es un borrador armado con la lectura de la pantalla, no un mensaje listo.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="holders-overlay" id="pesosOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarPesos()">
+    <div class="msg-modal">
+      <div class="hm-head">
+        <div><div class="hm-title">Pesos del puntaje</div><div class="hm-sub">Horizonte "Personalizado" — se guarda en esta compu</div></div>
+        <button class="hm-close" onclick="cerrarPesos()">✕</button>
+      </div>
+      <div class="msg-body">
+        <p class="msg-nota" style="margin-top:0">Los horizontes ya traen una combinación pensada para cada plazo. Si te importa más un aspecto que otro, subilo acá. Podés arrancar de uno de ellos:</p>
+        <div class="msg-actions" style="margin-top:6px">
+          <button class="btn-msg" onclick="pzLlenar(HORIZONTES.largo.pesos)">Cargar Largo</button>
+          <button class="btn-msg" onclick="pzLlenar(HORIZONTES.mediano.pesos)">Cargar Mediano</button>
+          <button class="btn-msg" onclick="pzLlenar(HORIZONTES.corto.pesos)">Cargar Corto</button>
+        </div>
+        <div class="sen-grid" style="margin-top:14px">
+          <label for="pz-negocio">Negocio (%)<small>Qué tan sólida es la empresa: ventas, ganancias, margen, caja, deuda</small></label>
+          <input type="number" id="pz-negocio" class="msg-input" min="0" max="100" step="5" oninput="pzNota()">
+          <label for="pz-valuacion">Precio vs. historia (%)<small>Si cotiza barata o cara frente a su promedio de 5 años</small></label>
+          <input type="number" id="pz-valuacion" class="msg-input" min="0" max="100" step="5" oninput="pzNota()">
+          <label for="pz-tendencia">Tendencia (%)<small>Si el precio viene subiendo o bajando</small></label>
+          <input type="number" id="pz-tendencia" class="msg-input" min="0" max="100" step="5" oninput="pzNota()">
+          <label for="pz-rebote">Rebote técnico (%)<small>Si está tocando una media o un Fibonacci que funcionó como soporte o resistencia</small></label>
+          <input type="number" id="pz-rebote" class="msg-input" min="0" max="100" step="5" oninput="pzNota()">
+        </div>
+        <div class="sen-reglas" id="pz-nota"></div>
+        <div class="msg-actions">
+          <button class="btn-msg" onclick="pzLlenar(HORIZONTES.mediano.pesos)" style="margin-right:auto">Restaurar (Mediano)</button>
+          <button class="btn-msg" onclick="cerrarPesos()">Cancelar</button>
+          <button class="btn-msg btn-pri" id="pz-guardar" onclick="pzGuardar()">Guardar y usar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1267,9 +1302,20 @@ const HORIZONTES={
   corto:  {label:'Corto plazo',   sub:'Días a ~30 días — trading, como la estrategia de CEDEARs',
     pesos:{negocio:.10, valuacion:.15, tendencia:.35, rebote:.40}},
 };
+// "Personalizado" (05/10, pedido de Nico — lo mismo que el "Avanzado: ajustar los pesos a mano" de
+// la web pública): pesos propios, guardados en esta compu. Se normalizan para que el puntaje siga
+// yendo de −100 a +100.
+const PESOS_KEYS=['negocio','valuacion','tendencia','rebote'];
+function _pesosGuardados(){
+  try{ const p=JSON.parse(localStorage.getItem('vm_pesos_custom')||'null'); if(p && PESOS_KEYS.every(k=>typeof p[k]==='number')) return p; }catch(e){}
+  return null;
+}
+HORIZONTES.custom={label:'Personalizado', sub:'Tus propios pesos (⚙ Pesos)', pesos:_pesosGuardados()||{...HORIZONTES.mediano.pesos}};
 let horizonteActual='mediano';
 try{ const _h=localStorage.getItem('vm_horizonte'); if(_h && HORIZONTES[_h]) horizonteActual=_h; }catch(e){}
 function setHorizonte(h){
+  // la primera vez que se elige "Personalizado" abre la ventana para cargar los pesos
+  if(h==='custom' && !_pesosGuardados()){ actualizarHorizonteUI(); abrirPesos(); return; }
   if(!HORIZONTES[h] || h===horizonteActual){ if(HORIZONTES[h]) actualizarHorizonteUI(); return; }
   horizonteActual=h;
   try{ localStorage.setItem('vm_horizonte',h); }catch(e){}
@@ -1279,7 +1325,37 @@ function setHorizonte(h){
 function actualizarHorizonteUI(){
   const sel=document.getElementById('hor-sel');
   if(sel) sel.value=horizonteActual;
+  const cp=document.getElementById('chip-pesos');
+  if(cp) cp.classList.toggle('active',horizonteActual==='custom');
   actualizarHorizonteFrescura();
+}
+// ── ventana "⚙ Pesos" ──
+function abrirPesos(){ pzLlenar(HORIZONTES[horizonteActual].pesos); document.getElementById('pesosOverlay').classList.add('open'); }
+function cerrarPesos(){ const o=document.getElementById('pesosOverlay'); if(o) o.classList.remove('open'); }
+function pzLlenar(p){
+  PESOS_KEYS.forEach(k=>{ document.getElementById('pz-'+k).value=Math.round((p[k]||0)*100); });
+  pzNota();
+}
+function pzLeer(){
+  const v={}; PESOS_KEYS.forEach(k=>{ const x=parseFloat(document.getElementById('pz-'+k).value); v[k]=isNaN(x)||x<0?0:x; });
+  return v;
+}
+function pzNota(){
+  const v=pzLeer(), suma=PESOS_KEYS.reduce((a,k)=>a+v[k],0);
+  const el=document.getElementById('pz-nota');
+  el.innerHTML = suma<=0 ? '<span style="color:var(--neg)">Poné al menos un peso mayor a 0.</span>'
+    : `Total: <b>${fmtN(suma,0)}%</b>${Math.round(suma)===100?'':' — se normaliza solo, para que el puntaje siga yendo de −100 a +100'}.`
+      + (v.rebote>0?'':' Con Rebote técnico en 0, el puntaje no mira si está tocando un soporte o una resistencia.');
+  document.getElementById('pz-guardar').disabled = suma<=0;
+}
+function pzGuardar(){
+  const v=pzLeer(), suma=PESOS_KEYS.reduce((a,k)=>a+v[k],0);
+  if(suma<=0) return;
+  const p={}; PESOS_KEYS.forEach(k=>{ p[k]=v[k]/suma; });
+  HORIZONTES.custom.pesos=p;
+  try{ localStorage.setItem('vm_pesos_custom',JSON.stringify(p)); localStorage.setItem('vm_horizonte','custom'); }catch(e){}
+  horizonteActual='custom';
+  cerrarPesos(); actualizarHorizonteUI(); render();
 }
 function puntajeDetalle(r){
   const t=tendencia(r), n=fundamental(r), v=valuacion5y(r);
@@ -3002,7 +3078,7 @@ try{ if(localStorage.getItem('vm_dens')==='d') densidad='d'; }catch(e){}
 function toggleDens(){ densidad=densidad==='c'?'d':'c'; try{ localStorage.setItem('vm_dens',densidad); }catch(e){} render(); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); cerrarPesos(); } });
 function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
@@ -3654,7 +3730,7 @@ const AYUDA={
   correlacion:'<b>Correlación.</b> Mide si dos activos se mueven juntos. <b>+100</b> = suben y bajan idéntico · <b>0</b> = no tienen relación · <b>negativo</b> = uno tiende a subir cuando el otro baja. Una cartera con todo muy correlacionado es como tener una sola apuesta; con activos poco correlacionados, las caídas de uno se compensan en parte con los otros. Se calcula con los retornos semanales de los últimos ~3 años.',
   cartera:'<b>En cartera.</b> Cuánto suman entre todos tus clientes en este activo (USD) y cuántos clientes lo tienen.',
   posicion:'<b>Posición cliente.</b> Qué conviene hacer con la posición de cada cliente según cuánto gana o pierde y hace cuánto la tiene — no según la empresa (eso es "Qué hacer"). <b>Vender</b> = tomar ganancia · <b>Stop</b> = pierde más que tu stop · <b>Acumular</b> · <b>Mantener</b> · <b>Esperar</b>. Un <b>⚠</b> marca cuando choca con la lectura de la empresa. Ordenar por esta columna pone arriba la plata en juego con señal de venta. Los umbrales se cambian con ⚙.',
-  horizonte:'<b>Horizonte.</b> Para qué plazo estás mirando el activo — cambia cómo se pesa el puntaje: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia): entrar en el momento exacto importa poco si vas a sostenerlo años, así que manda la calidad del negocio y si está barato. <b>Mediano plazo</b> (35/35/30, el de siempre): equilibrado, es el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico): para un trade de días o semanas el negocio casi no importa — lo que manda es el momento (tendencia + si está tocando un soporte o una resistencia ahora mismo). Cambiarlo reordena Puntaje, el Ranking, la ficha y Comparar — no cambia "Qué hacer". El precio y las medias se refrescan solos todos los días hábiles (no hace falta re-cargar el archivo), pero en Corto plazo igual conviene mirar el precio de hoy antes de operar — la Tendencia y el Rebote son los que más rápido se mueven.'
+  horizonte:'<b>Horizonte.</b> Para qué plazo estás mirando el activo — cambia cómo se pesa el puntaje: <b>Largo plazo</b> (45% Negocio + 40% Valuación + 15% Tendencia): entrar en el momento exacto importa poco si vas a sostenerlo años, así que manda la calidad del negocio y si está barato. <b>Mediano plazo</b> (35/35/30, el de siempre): equilibrado, es el default. <b>Corto plazo</b> (10% Negocio + 15% Valuación + 35% Tendencia + 40% Rebote técnico): para un trade de días o semanas el negocio casi no importa — lo que manda es el momento (tendencia + si está tocando un soporte o una resistencia ahora mismo). Cambiarlo reordena Puntaje, el Ranking, la ficha y Comparar — no cambia "Qué hacer". El precio y las medias se refrescan solos todos los días hábiles (no hace falta re-cargar el archivo), pero en Corto plazo igual conviene mirar el precio de hoy antes de operar — la Tendencia y el Rebote son los que más rápido se mueven. <b>Personalizado</b>: tus propios pesos, con el botón <b>⚙ Pesos</b> de al lado.'
 };
 function ayq(k){ return `<span class="q" tabindex="0" role="button" aria-label="¿Qué significa?" data-q="${k}">?</span>`; }
 (function(){
