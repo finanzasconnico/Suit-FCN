@@ -446,6 +446,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inac-pts.baja{background:var(--wash-2);color:var(--muted);}
 .inac-motivos{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .inac-badge.zona{background:var(--jade-d);color:var(--jade);}
+.inac-lote{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--wash-1);}
+.inac-lote.on{border-color:var(--jade);background:var(--jade-d);}
+.inac-lote-chk{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;}
+.inac-lote-chk input{width:15px;height:15px;}
+.inac-lote-info{font-size:11px;color:var(--muted);flex:1;min-width:200px;line-height:1.5;}
+.inac-lote-info .warn{color:var(--ambar);}
+.inac-lote-info .err{color:var(--danger);}
+.inac-lote select{padding:6px 8px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:11.5px;}
 .inac-cfg{margin-bottom:12px;border:1px dashed var(--border);border-radius:var(--r);padding:8px 12px;}
 .inac-cfg summary{cursor:pointer;font-size:11.5px;color:var(--muted);}
 .inac-cfg-body{margin-top:10px;}
@@ -1068,6 +1076,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
 
         <div class="inac-card">
+          <div class="inac-lote" id="inacLoteBar">
+            <label class="inac-lote-chk" title="Muestra solo las cuentas del último lote de inactivas que cargaste (el Excel de reasignación que manda Balanz)">
+              <input type="checkbox" id="inacSoloLote" onchange="inacToggleSoloLote(this.checked)"> 📥 Solo el lote de inactivas
+            </label>
+            <select id="inacLoteAsesor" hidden onchange="inacElegirAsesorLote(this.value)" title="El archivo trae lotes de varios asesores — elegí el tuyo"></select>
+            <span class="inac-lote-info" id="inacLoteInfo"></span>
+            <button class="aliq-btn-cancel" onclick="document.getElementById('inacLoteFile').click()">Cargar lote (.xlsx)</button>
+            <button class="aliq-btn-cancel" id="inacLoteQuitar" onclick="inacQuitarLote()" title="Olvidar el lote cargado" hidden>✕</button>
+            <input type="file" id="inacLoteFile" accept=".xlsx,.xls,.csv" hidden onchange="inacCargarLote(this)">
+          </div>
           <div class="inac-filtros" style="margin-bottom:12px;">
             <select id="inacAudiencia" onchange="renderInactivos()" title="A quién apunta la campaña" style="font-weight:600;">
               <option value="inactivos">📭 Inactivos</option>
@@ -3342,6 +3360,7 @@ async function abrirInactivos() {
   const z = _inacZonas();
   document.getElementById('inacZonaA').value = z.txtA;
   document.getElementById('inacZonaB').value = z.txtB;
+  document.getElementById('inacSoloLote').checked = !!(_inacLS(INAC_SOLO_LOTE_KEY, false) && _inacLote());
   inacElegirMail(_inacMail);
   if (!_inacBajasCargadas) {
     _inacBajasCargadas = true;
@@ -3410,16 +3429,122 @@ function _inacTenPorComitente() {
   _inacTenCache = { map, src: currentTenencia };
   return map;
 }
+// ── Lote de inactivas (Excel de reasignación de Balanz: Fecha Pase, Nuevo Asesor, Comitente…) ──
+// Se guarda en este navegador el ÚLTIMO lote cargado (solo comitente + asesor, sin mails ni
+// nombres). Con "Solo el lote" tildado, la lista se limita a esas cuentas y la audiencia
+// (Activos/Inactivos) deja de aplicar — pero las que el Stock ya marca "Activa" se dejan
+// afuera: se reactivaron solas y no tiene sentido mandarles un mail de reactivación.
+const INAC_LOTE_KEY = 'fcn_inac_lote_v1';
+const INAC_SOLO_LOTE_KEY = 'fcn_inac_solo_lote';
+function _inacLote() { return _inacLS(INAC_LOTE_KEY, null); }
+function _inacSoloLote() { const c = document.getElementById('inacSoloLote'); return !!(c && c.checked && _inacLote()); }
+// Set de comitentes del lote para el asesor elegido (o todos si el archivo trae uno solo).
+function _inacLoteSet() {
+  const L = _inacLote(); if (!L) return null;
+  return new Set(L.filas.filter(f => !L.asesor || f.a === L.asesor).map(f => f.c));
+}
+// ¿El asesor del lote es el del perfil? Alcanza con que coincida el apellido (última palabra
+// de la firma). Sin firma cargada no se puede saber → no se avisa.
+function _inacEsMiAsesor(nombre) {
+  const yo = _inacNorm(_inacPerfil().firma).split(' ').filter(Boolean);
+  if (!yo.length) return true;
+  return _inacNorm(nombre).split(' ').includes(yo[yo.length - 1]);
+}
+async function inacCargarLote(inp) {
+  const f = inp.files && inp.files[0];
+  inp.value = '';
+  if (!f) return;
+  try {
+    const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+    let filas = [], fechaPase = '';
+    for (const sn of wb.SheetNames) {
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+      const hi = aoa.findIndex(r => r.some(c => /^comitente$/i.test(String(c).trim())));
+      if (hi < 0) continue;
+      const h = aoa[hi].map(c => _inacNorm(c));
+      const iC = h.indexOf('comitente'), iC2 = h.indexOf('comitente2'), iA = h.indexOf('nuevo asesor'), iF = h.indexOf('fecha pase');
+      for (const r of aoa.slice(hi + 1)) {
+        const c = String(r[iC] || (iC2 >= 0 ? r[iC2] : '') || '').trim().replace(/\.0+$/, '');
+        if (!/^\d+$/.test(c)) continue;
+        filas.push({ c, a: iA >= 0 ? String(r[iA] || '').trim() : '' });
+        if (!fechaPase && iF >= 0) fechaPase = _stockFechaISO(r[iF]);
+      }
+      if (filas.length) break;
+    }
+    if (!filas.length) { showToast('No encontré la columna "Comitente" en ese Excel — ¿es el lote de reasignación?'); return; }
+    // Si el archivo trae varios asesores (lote de equipo), por defecto el que coincide con tu perfil.
+    const asesores = [...new Set(filas.map(x => x.a).filter(Boolean))];
+    const asesor = asesores.length > 1 ? (asesores.find(_inacEsMiAsesor) || asesores[0]) : '';
+    _inacLSset(INAC_LOTE_KEY, { archivo: f.name, fechaPase, cargado: _inacHoyISO(), asesor, filas });
+    document.getElementById('inacSoloLote').checked = true;
+    _inacLSset(INAC_SOLO_LOTE_KEY, true);
+    _inacSel.clear();
+    renderInactivos();
+  } catch (e) {
+    console.error('[Lote inactivas]', e);
+    showToast('No se pudo leer el lote: ' + e.message);
+  }
+}
+function inacElegirAsesorLote(a) {
+  const L = _inacLote(); if (!L) return;
+  L.asesor = a; _inacLSset(INAC_LOTE_KEY, L); _inacSel.clear(); renderInactivos();
+}
+function inacToggleSoloLote(on) {
+  if (on && !_inacLote()) { document.getElementById('inacSoloLote').checked = false; document.getElementById('inacLoteFile').click(); return; }
+  _inacLSset(INAC_SOLO_LOTE_KEY, on); renderInactivos();
+}
+function inacQuitarLote() {
+  if (!confirm('¿Olvidar el lote cargado? La lista vuelve a mostrar todas las cuentas.')) return;
+  try { localStorage.removeItem(INAC_LOTE_KEY); } catch {}
+  document.getElementById('inacSoloLote').checked = false;
+  _inacLSset(INAC_SOLO_LOTE_KEY, false);
+  renderInactivos();
+}
+// Barra del lote: qué hay cargado y cómo cruza con el Stock.
+function _inacRenderLoteBar() {
+  const L = _inacLote(), info = document.getElementById('inacLoteInfo');
+  if (!info) return;
+  const sel = document.getElementById('inacLoteAsesor'), chk = document.getElementById('inacSoloLote');
+  document.getElementById('inacLoteQuitar').hidden = !L;
+  document.getElementById('inacLoteBar').classList.toggle('on', _inacSoloLote());
+  if (!L) {
+    sel.hidden = true;
+    info.innerHTML = 'Cargá el Excel del lote de reasignación (el que manda Balanz con "Fecha Pase / Nuevo Asesor / Comitente") para mandarle el mail solo a esas cuentas.';
+    return;
+  }
+  const asesores = [...new Set(L.filas.map(x => x.a).filter(Boolean))];
+  sel.hidden = asesores.length < 2;
+  if (!sel.hidden) sel.innerHTML = asesores.map(a => `<option value="${escHtml(a)}" ${a === L.asesor ? 'selected' : ''}>${escHtml(a)} (${L.filas.filter(f => f.a === a).length})</option>`).join('');
+  const set = _inacLoteSet();
+  let enStock = 0, activas = 0;
+  if (currentStockMap) set.forEach(c => { const s = currentStockMap[c]; if (s) { enStock++; if (!/^inactiv/i.test(s.ai || '')) activas++; } });
+  const faltan = set.size - enStock;
+  const asesorLote = L.asesor || asesores[0] || '';
+  let h = `<b>${escHtml(L.archivo)}</b>${L.fechaPase ? ` · pase del ${_inacFechaCorta(L.fechaPase)}` : ''}${asesorLote && sel.hidden ? ` · ${escHtml(asesorLote)}` : ''} · <b>${set.size}</b> cuentas`;
+  if (currentStockMap) {
+    h += ` → ${enStock - activas} para mandar`;
+    if (activas) h += ` · ${activas} ya se ${activas === 1 ? 'reactivó (queda' : 'reactivaron (quedan'} afuera)`;
+    if (faltan && enStock) h += ` · <span class="warn">${faltan} no están en tu Stock — subí uno más nuevo (Power BI se actualiza los martes)</span>`;
+    if (!enStock) h += ` · <span class="err">ninguna está en tu Stock${asesorLote && !_inacEsMiAsesor(asesorLote) ? ` — este lote es de <b>${escHtml(asesorLote)}</b>, no tuyo` : ' — subí un Stock más nuevo (Power BI se actualiza los martes)'}</span>`;
+  }
+  if (asesorLote && enStock && !_inacEsMiAsesor(asesorLote)) h += ` · <span class="warn">el lote dice ${escHtml(asesorLote)}</span>`;
+  info.innerHTML = h;
+}
+
 function _inacFilasBase() {
   if (!currentStockMap) return [];
   const envios = _inacEnvios();
   const audiencia = (document.getElementById('inacAudiencia') || {}).value || 'inactivos';
+  const lote = _inacSoloLote() ? _inacLoteSet() : null;
   const ten = _inacTenPorComitente();
   const out = [];
   for (const [comitente, s] of Object.entries(currentStockMap)) {
     const esInactiva = /^inactiv/i.test(s.ai || '');
-    if (audiencia === 'inactivos' && !esInactiva) continue;
-    if (audiencia === 'activos' && esInactiva) continue;
+    if (lote) { if (!lote.has(comitente) || !esInactiva) continue; }
+    else {
+      if (audiencia === 'inactivos' && !esInactiva) continue;
+      if (audiencia === 'activos' && esInactiva) continue;
+    }
     const t = ten[comitente] || null;
     const mail = String(s.mail || '').trim().toLowerCase();
     const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
@@ -3518,6 +3643,9 @@ const _inacElegible = r => r.mailOk && !r.baja;
 function renderInactivos() {
   const body = document.getElementById('inacBody');
   if (!body) return;
+  _inacRenderLoteBar();
+  const audSel = document.getElementById('inacAudiencia');
+  if (audSel) { audSel.disabled = _inacSoloLote(); audSel.title = audSel.disabled ? 'Con "Solo el lote" tildado, la lista son las cuentas del lote' : 'A quién apunta la campaña'; }
   if (!currentStockMap) {
     body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Sin datos todavía — subí el <a onclick="showFiles()">Stock de cuentas</a> en Archivos. De ahí salen las cuentas inactivas (columna A/I), el nombre, el mail, la edad y la actividad.</div>`;
     _inacUltimaLista = []; _inacActualizarAcciones(); return;
@@ -3526,6 +3654,10 @@ function renderInactivos() {
   _inacPoblarActividades(base);
   const filas = _inacFiltrar(base);
   _inacUltimaLista = filas;
+  if (!base.length && _inacSoloLote()) {
+    body.innerHTML = `<div class="dash-empty" style="padding:14px 4px;">Ninguna cuenta del lote está en tu Stock como inactiva — mirá el aviso de arriba (¿es tu lote? ¿el Stock es más viejo que el lote?).</div>`;
+    _inacActualizarAcciones(); return;
+  }
   if (!base.length) {
     const aud = (document.getElementById('inacAudiencia') || {}).value || 'inactivos';
     const audTxt = aud === 'activos' ? '"Activa"' : aud === 'todos' ? '"Activa" ni "Inactiva"' : '"Inactiva"';
