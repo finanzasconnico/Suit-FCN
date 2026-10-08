@@ -218,6 +218,25 @@ tbody tr:hover{filter:brightness(1.35);}
 .btn-pri:hover{filter:brightness(1.08);border-color:var(--jade);}
 .hm-act{background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;font-size:11px;padding:1px 6px;margin-left:4px;}
 .hm-act:hover{border-color:var(--jade);color:var(--jade);}
+/* ── MAIL INFORMATIVO A TENEDORES (CCO) — 08/10 ── */
+.inf-modal{max-width:760px;}
+.inf-sec{margin-top:14px;}
+.inf-sec>h5{margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;}
+.inf-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.inf-tk{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 9px;border:1px solid var(--border);border-radius:14px;background:var(--surface);cursor:pointer;user-select:none;}
+.inf-tk input{margin:0;accent-color:var(--jade);}
+.inf-tk.off{opacity:.45;}
+.inf-tk small{color:var(--muted);font-family:var(--font-m);font-size:10.5px;}
+.inf-res{font-size:12px;color:var(--text);margin:8px 0 4px;}
+.inf-res b{font-family:var(--font-m);}
+.inf-tabla{width:100%;border-collapse:collapse;font-size:11.5px;}
+.inf-tabla th{text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500;padding:4px 6px;}
+.inf-tabla td{padding:5px 6px;border-top:1px solid var(--border);vertical-align:top;}
+.inf-tabla td.num{text-align:right;font-family:var(--font-m);white-space:nowrap;}
+.inf-lista{max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:6px;margin-top:6px;}
+.inf-lotes{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.inf-lote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;}
+.inf-lote .lbl{min-width:150px;color:var(--muted);}
 .msg-nota{font-size:10.5px;color:var(--dim);margin-top:12px;line-height:1.5;}
 .msg-list{max-height:44vh;overflow-y:auto;margin:6px 0;}
 .msg-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,58,52,.5);font-size:12px;}
@@ -524,6 +543,7 @@ tr.cli-tr:hover{background:var(--wash-1);}
     <button class="chip chip-tool chip-msg" onclick="abrirCorr()" title="Ver qué tan diversificada está una cartera: si sus activos se mueven juntos o no">🔗 Correlación</button>
     <button class="chip chip-tool chip-msg" id="chip-msg" onclick="abrirMensaje(clienteActivo)" style="display:none">✉ Mensaje</button>
     <button class="chip chip-tool chip-msg" id="chip-excel" onclick="exportarExcel()" style="display:none" title="Bajar a Excel las posiciones de tus clientes en lo que estás viendo (respeta los filtros)">⬇ Excel</button>
+    <button class="chip chip-tool chip-msg" id="chip-info" onclick="abrirInfo()" style="display:none" title="Un mail informativo (no personalizado) a todos los clientes que tienen ciertos activos — por ticker o por país — con todos en copia oculta">📣 Mail informativo</button>
     <span class="counter" id="counter"></span>
     <button class="chip chip-help" id="chip-help" onclick="toggleHelp()">¿Cómo leo esto?</button>
     <button class="chip chip-help" onclick="abrirGuia()">📖 Guía</button>
@@ -807,6 +827,49 @@ tr.cli-tr:hover{background:var(--wash-1);}
           <button class="btn-msg" onclick="pzLlenar(HORIZONTES.mediano.pesos)" style="margin-right:auto">Restaurar (Mediano)</button>
           <button class="btn-msg" onclick="cerrarPesos()">Cancelar</button>
           <button class="btn-msg btn-pri" id="pz-guardar" onclick="pzGuardar()">Guardar y usar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="holders-overlay" id="infoOverlay" onmousedown="this.dataset.downSelf=(event.target===this)" onclick="if(event.target===this&&this.dataset.downSelf==='true') cerrarInfo()">
+    <div class="msg-modal inf-modal">
+      <div class="hm-head">
+        <div><div class="hm-title">📣 Mail informativo a los que tienen…</div><div class="hm-sub">Un solo mail, igual para todos, con los clientes en copia oculta (CCO)</div></div>
+        <button class="hm-close" onclick="cerrarInfo()">✕</button>
+      </div>
+      <div class="msg-body">
+        <div class="inf-sec"><h5>1 · ¿Qué activos?</h5>
+          <div class="inf-chips">
+            <button class="btn-msg" onclick="infPreset('brasil')">Brasil</button>
+            <button class="btn-msg" onclick="infPreset('china')">China</button>
+            <button class="btn-msg" onclick="infPreset('argentina')">Argentina</button>
+            <button class="btn-msg" onclick="infPreset('latam')">Latinoamérica</button>
+          </div>
+          <label class="msg-lbl">Tickers (separados por coma — podés agregar o sacar)</label>
+          <input type="text" id="inf-tks" class="msg-input" placeholder="EWZ, NU, PBR…" oninput="infRender()">
+          <div class="inf-chips" id="inf-tkchips" style="margin-top:8px"></div>
+        </div>
+        <div class="inf-sec"><h5>2 · ¿A quiénes?</h5>
+          <div class="inf-res" id="inf-res"></div>
+          <details><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Ver la lista de clientes (podés destildar a alguno)</summary>
+            <div class="inf-lista"><table class="inf-tabla"><thead><tr><th></th><th>Cliente</th><th>Tiene</th><th style="text-align:right">USD</th><th style="text-align:right" title="qué parte de todo lo que tiene en Balanz son estos activos">% cartera</th><th>Mail</th></tr></thead><tbody id="inf-lista"></tbody></table></div>
+          </details>
+        </div>
+        <div class="inf-sec"><h5>3 · El mail</h5>
+          <div class="inf-chips"><button class="btn-msg" onclick="infPlantilla('brasil')">Plantilla: Brasil + elecciones</button><button class="btn-msg" onclick="infPlantilla('generica')">Plantilla genérica</button></div>
+          <label class="msg-lbl">Asunto</label>
+          <input type="text" id="inf-asunto" class="msg-input" oninput="infRender()">
+          <label class="msg-lbl">Mensaje — escribí en texto normal: los renglones en MAYÚSCULAS salen como título y los que empiezan con "•" como lista</label>
+          <textarea id="inf-texto" class="msg-input" rows="16"></textarea>
+        </div>
+        <div class="inf-sec"><h5>4 · Enviar</h5>
+          <div class="msg-actions" style="margin-top:0">
+            <button class="btn-msg btn-pri" id="inf-copy-html" onclick="infCopiarFormato(this)">📋 Copiar mensaje con formato</button>
+            <button class="btn-msg" onclick="infCopiarPlano(this)">Copiar en texto plano</button>
+          </div>
+          <div class="inf-lotes" id="inf-lotes"></div>
+          <p class="msg-nota">Cómo: 1) <b>Copiar mensaje con formato</b>. 2) <b>Abrir mail</b> de cada tanda: se abre tu programa de mail con los clientes en <b>CCO</b> y el asunto ya puesto. 3) Pegás el mensaje (Ctrl+V) y enviás. Van en tandas de hasta 50 para que el link no se corte y el mail no caiga en spam. Si usás Gmail/Outlook web, "Copiar mails" y los pegás en CCO.</p>
         </div>
       </div>
     </div>
@@ -1766,6 +1829,237 @@ function exportarExcel(){
     if(urg.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(urg),'Urgentes');
   }
   XLSX.writeFile(wb,`Renta_Variable_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+// ══════════════════════════════════════════
+//  MAIL INFORMATIVO A TENEDORES (08/10, pedido de Nico) — un mismo mail, NO personalizado, a todos
+//  los clientes que tienen ciertos activos (por ticker o por país), con todos en CCO. Ej.: Brasil
+//  antes de las elecciones (EWZ, NU, PBR…). Usa holdersByTicker entero (no solo el universo de
+//  múltiplos: un ETF como EWZ también cuenta). Respeta la lista de bajas de fcn-bajas (Supabase,
+//  la misma del aviso de liquidez del Suite). Los mails abren en tandas por mailto:?bcc= (el link
+//  tiene límite de largo) y el cuerpo se pega con formato desde el portapapeles.
+// ══════════════════════════════════════════
+const INF_SUPA_URL='https://wixbbcziostbtqfmphcc.supabase.co';
+const INF_SUPA_KEY='sb_publishable_olGxTFFfHuoZ-wzxQbq5_Q_1JfYE2yw';   // publishable: la seguridad está en la RLS
+const INF_BRASIL=['EWZ','NU','PBR','PETR3','PETR4','VALE','VALE3','ITUB','ITUB4','BBD','BBDC3','BBDC4','BBAS3','GGB','SID','ABEV','ABEV3','PAGS','STNE','XP','BAK','UGP','SUZ','SUZB3','ERJ','EMBR3','EBR','SBS','BRFS','AZUL','CBD','BSBR','TIMB','VIV','CIG','ELP','INTR','VTEX'];
+const INF_PRESETS={
+  brasil:INF_BRASIL,
+  china:['FXI','MCHI','KWEB','BABA','BIDU','JD','PDD','NIO','XPEV','LI','BILI','TME','YUMC','TCEHY','NTES','TCOM','ZTO','BEKE','HTHT','EDU','TAL','VIPS','FUTU','IQ','WB'],
+  argentina:['GGAL','YPF','YPFD','PAM','PAMP','BMA','SUPV','CEPU','TGS','TGSU2','TGNO4','EDN','LOMA','CRESY','CRES','IRS','IRSA','TEO','TECO2','BBAR','VIST','ALUA','TXAR','COME','TRAN','BYMA','METR','VALO','MIRG','CVH','HARG','LEDE','MORI','SEMI','AGRO','BHIP','BPAT','CGPA2','CTIO','DGCU2','INVJ','LONG','RICH','SAMI','AUSO','BOLT','DOME','ECOG','HSAT','PATA','BIOX'],
+  latam:[...INF_BRASIL,'MELI','ARCO','GLOB','DESP','ILF','EWW','AMX','FMX','KOF','CX','BAP','SCCO','SQM','BSAC','EC','CIB'],
+};
+const INF_NOMBRES={EWZ:'EWZ (el ETF de Brasil)',NU:'Nu Holdings (Nubank)',PBR:'Petrobras',PETR3:'Petrobras',PETR4:'Petrobras',VALE:'Vale',VALE3:'Vale',
+  ITUB:'Itaú',ITUB4:'Itaú',BBD:'Bradesco',BBDC3:'Bradesco',BBDC4:'Bradesco',BBAS3:'Banco do Brasil',GGB:'Gerdau',SID:'CSN',ABEV:'Ambev',ABEV3:'Ambev',
+  PAGS:'PagSeguro',STNE:'StoneCo',XP:'XP',BAK:'Braskem',ERJ:'Embraer',EMBR3:'Embraer',MELI:'Mercado Libre'};
+let infOff=new Set(), infExcl=new Set(), infBajas=undefined;   // undefined = cargando, null = no se pudo leer
+function abrirInfo(){
+  if(!document.getElementById('inf-tks').value.trim()) infPreset('brasil');
+  else infRender();
+  if(!document.getElementById('inf-texto').value.trim()) infPlantilla('brasil');
+  document.getElementById('infoOverlay').classList.add('open');
+  if(!CORR_DATA) cargarRetornos().then(d=>{ if(d) infRender(); });   // para el "últimas 4 semanas" de cada ticker
+  if(infBajas===undefined){
+    fetch(INF_SUPA_URL+'/rest/v1/bajas_emails?select=email',{headers:{apikey:INF_SUPA_KEY}})
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(d=>{ infBajas=new Set((d||[]).map(x=>String(x.email||'').trim().toLowerCase()).filter(Boolean)); })
+      .catch(e=>{ console.warn('[Mail informativo] no se pudo leer la lista de bajas',e); infBajas=null; })
+      .finally(()=>infRender());
+  }
+}
+function cerrarInfo(){ const o=document.getElementById('infoOverlay'); if(o) o.classList.remove('open'); }
+// solo los del preset que alguien tiene de verdad, ordenados por plata
+function infPreset(k){
+  const tks=(INF_PRESETS[k]||[]).filter(t=>(holdersByTicker[t]||[]).length)
+    .sort((a,b)=>holdersByTicker[b].reduce((s,h)=>s+h.tenencia,0)-holdersByTicker[a].reduce((s,h)=>s+h.tenencia,0));
+  document.getElementById('inf-tks').value=tks.join(', ');
+  infOff=new Set(); infRender();
+}
+function infTickers(){
+  return [...new Set(document.getElementById('inf-tks').value.toUpperCase().split(/[\s,;]+/).map(t=>t.replace(/\.E?$/,'')).filter(Boolean))];
+}
+function infToggleTk(t){ infOff.has(t)?infOff.delete(t):infOff.add(t); infRender(); }
+function infToggleCli(i){ const c=_infCalcCache&&_infCalcCache.clientes[i]; if(!c) return; infExcl.has(c.cliente)?infExcl.delete(c.cliente):infExcl.add(c.cliente); infRender(); }
+// total de cada cliente en Balanz (todas sus posiciones de la tenencia) — para el % de su cartera
+let _infTotRef=null, _infTot=null;
+function _infTotales(){
+  if(_infTotRef!==holdersByTicker){ _infTot={}; Object.values(holdersByTicker).forEach(a=>a.forEach(h=>{ _infTot[h.cliente]=(_infTot[h.cliente]||0)+(h.tenencia||0); })); _infTotRef=holdersByTicker; }
+  return _infTot;
+}
+let _infCalcCache=null;
+function infCalc(){
+  const tks=infTickers().filter(t=>!infOff.has(t)), tot=_infTotales(), m={};
+  tks.forEach(t=>(holdersByTicker[t]||[]).forEach(h=>{
+    const c=m[h.cliente]||(m[h.cliente]={cliente:h.cliente, h, tks:[], usd:0});
+    if(!c.tks.includes(t)) c.tks.push(t); c.usd+=h.tenencia||0;
+  }));
+  const clientes=Object.values(m).sort((a,b)=>b.usd-a.usd);
+  const mails=new Set(); let sinMail=0, baja=0, excl=0;
+  clientes.forEach(c=>{
+    const d=_datosDe(c.h)||{};
+    c.mail=String(d.mail||'').trim().toLowerCase(); c.nom=d.denominacion||d.nombre||nombreCompleto(c.cliente);
+    c.pct=tot[c.cliente]?c.usd/tot[c.cliente]:null;
+    c.estado = !/@/.test(c.mail)?'sinmail' : (infBajas&&infBajas.has(c.mail))?'baja' : infExcl.has(c.cliente)?'excl' : 'ok';
+    if(c.estado==='sinmail') sinMail++; else if(c.estado==='baja') baja++; else if(c.estado==='excl') excl++; else mails.add(c.mail);
+  });
+  return _infCalcCache={tks, clientes, mails:[...mails], sinMail, baja, excl, usd:clientes.reduce((a,c)=>a+c.usd,0)};
+}
+// tandas: hasta 50 direcciones y que el link mailto no pase ~1.800 caracteres (Windows/Outlook lo cortan)
+function infTandas(mails, asunto){
+  const out=[]; let cur=[], base=('mailto:?bcc=&subject='+encodeURIComponent(asunto)).length, len=base;
+  mails.forEach(m=>{
+    const add=encodeURIComponent(m).length+3;
+    if(cur.length && (cur.length>=50 || len+add>1800)){ out.push(cur); cur=[]; len=base; }
+    cur.push(m); len+=add;
+  });
+  if(cur.length) out.push(cur);
+  return out;
+}
+function infRender(){
+  const todos=infTickers(), r=infCalc(), pc=x=>x==null?'—':fmtN(x*100,0)+'%';
+  const retSem=t=>{ const s=CORR_DATA&&CORR_DATA.serie[t]; if(!s) return null; let acc=1,n=0; for(let i=s.length-1;i>=0&&n<4;i--){ if(s[i]===s[i]){ acc*=1+s[i]; n++; } } return n?acc-1:null; };
+  document.getElementById('inf-tkchips').innerHTML = todos.length ? todos.map(t=>{
+    const hs=holdersByTicker[t]||[], usd=hs.reduce((a,h)=>a+h.tenencia,0), on=!infOff.has(t), r4=retSem(t);
+    const rr=r4!=null?` · <span class="${r4>=0?'val-pos':'val-neg'}" title="últimas 4 semanas (retornos semanales)">${r4>=0?'+':'−'}${fmtN(Math.abs(r4)*100,1)}%</span>`:'';
+    return `<label class="inf-tk${on&&hs.length?'':' off'}"><input type="checkbox" ${on?'checked':''} onchange="infToggleTk('${t}')"> <b>${t}</b> <small>${hs.length?`${hs.length} cli. · ${fmtUsd(usd)}`:'nadie lo tiene'}${rr}</small></label>`;
+  }).join('') : '<span class="dash">Elegí un país arriba o escribí tickers.</span>';
+  const sinStock=!Object.keys(STOCK).length;
+  document.getElementById('inf-res').innerHTML = !r.clientes.length ? 'Ningún cliente tiene estos activos.'
+    : `<b>${r.clientes.length}</b> clientes los tienen (${fmtUsd(r.usd)}). Recibirían el mail: <b>${r.mails.length}</b> direcciones.`
+      + (r.sinMail?` · <span style="color:var(--ambar)">${r.sinMail} sin mail cargado</span>`:'')
+      + (r.baja?` · ${r.baja} dados de baja (no se les manda)`:'')
+      + (r.excl?` · ${r.excl} destildados`:'')
+      + (infBajas===undefined?' · <span class="dash">chequeando la lista de bajas…</span>':infBajas===null?' · <span style="color:var(--ambar)">⚠ no se pudo chequear la lista de bajas</span>':'')
+      + (sinStock?'<br><span style="color:var(--ambar)">⚠ Falta el "Stock de cuentas" (los mails de los clientes): subilo en el FCN Suite → Archivos.</span>':'');
+  document.getElementById('inf-lista').innerHTML = r.clientes.map((c,i)=>`<tr${c.estado==='ok'?'':' style="opacity:.55"'}>
+    <td>${c.estado==='ok'||c.estado==='excl'?`<input type="checkbox" ${c.estado==='ok'?'checked':''} onchange="infToggleCli(${i})">`:''}</td>
+    <td>${_escC(c.nom)}</td><td>${c.tks.join(', ')}</td><td class="num">${fmtUsd(c.usd)}</td><td class="num">${pc(c.pct)}</td>
+    <td>${c.estado==='sinmail'?'<span style="color:var(--ambar)">sin mail</span>':c.estado==='baja'?'de baja':_escC(c.mail)}</td></tr>`).join('');
+  const asunto=document.getElementById('inf-asunto').value;
+  const tandas=infTandas(r.mails, asunto);
+  window._infTandas=tandas;
+  document.getElementById('inf-lotes').innerHTML = tandas.map((t,i)=>`<div class="inf-lote"><span class="lbl">Tanda ${i+1} · ${t.length} ${t.length===1?'cliente':'clientes'}</span>
+    <button class="btn-msg" onclick="infAbrirTanda(${i})">✉ Abrir mail (CCO)</button>
+    <button class="btn-msg" onclick="infCopiarMails(${i},this)">Copiar mails</button></div>`).join('')
+    || '<span class="dash">No hay destinatarios con mail.</span>';
+}
+function infAbrirTanda(i){
+  const t=(window._infTandas||[])[i]; if(!t) return;
+  location.href=`mailto:?bcc=${encodeURIComponent(t.join(','))}&subject=${encodeURIComponent(document.getElementById('inf-asunto').value)}`;
+}
+function _infFlash(btn,txt){ if(!btn) return; const o=btn.textContent; btn.textContent=txt; setTimeout(()=>btn.textContent=o,1600); }
+function infCopiarMails(i,btn){
+  const t=(window._infTandas||[])[i]; if(!t) return;
+  navigator.clipboard?.writeText(t.join('; ')).then(()=>_infFlash(btn,'✓ copiados'),()=>_infFlash(btn,'no se pudo copiar'));
+}
+// texto plano editable → HTML prolijo para pegar en el mail: MAYÚSCULAS = título, "•" = lista,
+// el aviso legal del final en gris chico
+function infTextoAHtml(txt){
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esTitulo=l=>l.length<70 && /[A-ZÁÉÍÓÚÑ]/.test(l) && !/[a-záéíóúñ]/.test(l);
+  const out=[]; let par=[], lista=[];
+  const cerrarPar=()=>{ if(par.length){ const t=par.join('<br>'); out.push(/^(Este mail es informativo|Aviso:)/.test(par[0])
+      ? `<p style="margin:22px 0 0;font-size:11.5px;line-height:1.45;color:#7a8783;border-top:1px solid #e3e8e6;padding-top:10px">${t}</p>`
+      : `<p style="margin:0 0 12px">${t}</p>`); par=[]; } };
+  const cerrarLista=()=>{ if(lista.length){ out.push(`<ul style="margin:0 0 12px;padding-left:20px">${lista.map(x=>`<li style="margin:0 0 5px">${x}</li>`).join('')}</ul>`); lista=[]; } };
+  txt.replace(/\r/g,'').split('\n').forEach(raw=>{
+    const l=raw.trim();
+    if(!l){ cerrarPar(); cerrarLista(); return; }
+    if(/^[•\-·]\s*/.test(l)){ cerrarPar(); lista.push(esc(l.replace(/^[•\-·]\s*/,''))); return; }
+    cerrarLista();
+    if(esTitulo(l)){ cerrarPar(); out.push(`<p style="margin:20px 0 6px;font-size:12.5px;font-weight:700;letter-spacing:.06em;color:#1C8C5F">${esc(l)}</p>`); return; }
+    par.push(esc(l));
+  });
+  cerrarPar(); cerrarLista();
+  return `<div style="font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.55;color:#1C2B28;max-width:640px">${out.join('')}</div>`;
+}
+async function infCopiarFormato(btn){
+  const txt=document.getElementById('inf-texto').value, html=infTextoAHtml(txt);
+  try{
+    await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([txt],{type:'text/plain'})})]);
+    _infFlash(btn,'✓ Copiado — pegalo en el mail');
+  }catch(e){
+    // respaldo: copiar una selección con formato
+    const d=document.createElement('div'); d.contentEditable='true'; d.style.cssText='position:fixed;left:-9999px;top:0'; d.innerHTML=html; document.body.appendChild(d);
+    const rg=document.createRange(); rg.selectNodeContents(d); const s=getSelection(); s.removeAllRanges(); s.addRange(rg);
+    const ok=document.execCommand('copy'); s.removeAllRanges(); d.remove();
+    _infFlash(btn, ok?'✓ Copiado — pegalo en el mail':'no se pudo copiar');
+  }
+}
+function infCopiarPlano(btn){
+  navigator.clipboard?.writeText(document.getElementById('inf-texto').value).then(()=>_infFlash(btn,'✓ copiado'),()=>_infFlash(btn,'no se pudo copiar'));
+}
+function _infFirma(){
+  let p={}; try{ p=JSON.parse(localStorage.getItem('fcn_aviso_liq_perfil')||'{}')||{}; }catch(e){}
+  const esNico=nombreAsesor()==='Nico';
+  const firma=(p.firma||'').trim()||(esNico?'Nicolás Strijland':nombreAsesor());
+  const wpp=(p.wpp||'').trim()||(esNico?'+54 9 11 2328 4509':'');
+  return firma+(wpp?`\nWhatsApp: ${wpp}`:'');
+}
+// "EWZ (el ETF de Brasil), Nu Holdings (Nubank) o Petrobras" — los 3 con más plata, sin repetir empresa
+function _infEjemplos(){
+  const r=_infCalcCache||infCalc(), vistos=new Set(), ej=[];
+  r.tks.map(t=>({t,usd:(holdersByTicker[t]||[]).reduce((a,h)=>a+h.tenencia,0)})).sort((a,b)=>b.usd-a.usd).forEach(x=>{
+    const n=INF_NOMBRES[x.t]||x.t; if(ej.length<3 && !vistos.has(n)){ vistos.add(n); ej.push(n); }
+  });
+  return ej.length<2 ? ej.join('') : ej.slice(0,-1).join(', ')+' o '+ej[ej.length-1];
+}
+function infPlantilla(k){
+  const ej=_infEjemplos()||'estos activos', firma=_infFirma();
+  let asunto, t;
+  if(k==='brasil'){
+    asunto='Brasil: subas fuertes y elecciones en la mira — qué tener en cuenta';
+    t=`Hola,
+
+Te escribo porque tenés en tu cartera activos vinculados a Brasil, como ${ej}, y en los últimos días se movieron bastante. Te comparto un resumen corto para que estés al tanto.
+
+QUÉ ESTÁ PASANDO
+• Las acciones brasileñas vienen de varias jornadas de suba fuerte.
+• Brasil está en plena definición de sus elecciones presidenciales, y el mercado ya está poniéndole precio al resultado.
+
+POR QUÉ IMPORTAN LAS ELECCIONES
+• Un triunfo del bolsonarismo suele leerse como más amigable con el mercado, con más foco en el orden fiscal. En ese escenario, las empresas brasileñas podrían seguir beneficiándose.
+• Un triunfo de Lula podría traer más volatilidad, sobre todo en empresas donde el Estado tiene peso, como Petrobras o los bancos públicos.
+• Hasta que se defina, es esperable que los precios se muevan fuerte, para un lado o para el otro.
+
+QUÉ OPCIONES HAY SEGÚN TU PERFIL
+• Perfil conservador: puede ser un buen momento para tomar ganancia y mirar la elección desde afuera.
+• Perfil agresivo: mantener la posición, o incluso sumar, sabiendo que puede haber saltos fuertes en las dos direcciones.
+• Si Brasil es una parte chica de tu cartera y estás dispuesto a asumir volatilidad, mantener puede ser razonable.
+
+No hay una decisión correcta para todos: depende de tus objetivos, de tu horizonte y de cuánto pesa Brasil en tu cartera.
+
+¿Querés que lo operemos? Respondé este mail o escribime por WhatsApp y lo hacemos (vender, mantener o sumar). Si preferís charlarlo antes, coordinamos una llamada.
+
+Saludos,
+${firma}
+
+Este mail es informativo y no constituye una recomendación de inversión personalizada. Los rendimientos pasados no garantizan resultados futuros.`;
+  } else {
+    asunto=`Novedades sobre ${ej}`;
+    t=`Hola,
+
+Te escribo porque tenés en tu cartera ${ej}, y quería contarte una novedad que puede afectarlos.
+
+QUÉ ESTÁ PASANDO
+• [Contá acá qué pasó, en una o dos líneas]
+
+QUÉ PUEDE PASAR
+• [Escenario favorable]
+• [Escenario desfavorable]
+
+QUÉ OPCIONES HAY SEGÚN TU PERFIL
+• Perfil conservador: [por ejemplo, tomar ganancia o reducir]
+• Perfil agresivo: [por ejemplo, mantener o sumar]
+
+¿Querés que lo operemos? Respondé este mail o escribime por WhatsApp y lo hacemos. Si preferís charlarlo antes, coordinamos una llamada.
+
+Saludos,
+${firma}
+
+Este mail es informativo y no constituye una recomendación de inversión personalizada. Los rendimientos pasados no garantizan resultados futuros.`;
+  }
+  document.getElementById('inf-asunto').value=asunto;
+  document.getElementById('inf-texto').value=t;
+  infRender();
 }
 // ── STOCK (nombre / mail / teléfono del cliente) — nunca se publica ──
 let STOCK={};   // { comitente: {nombre, mail, tel} }
@@ -3135,7 +3429,7 @@ try{ if(localStorage.getItem('vm_dens')==='d') densidad='d'; }catch(e){}
 function toggleDens(){ densidad=densidad==='c'?'d':'c'; try{ localStorage.setItem('vm_dens',densidad); }catch(e){} render(); }
 function abrirGuia(){ document.getElementById('guiaOverlay').classList.add('open'); }
 function cerrarGuia(){ document.getElementById('guiaOverlay').classList.remove('open'); }
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); cerrarPesos(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ cerrarHolders(); cerrarGuia(); cerrarMsg(); cerrarNovedades(); cerrarAviso(); cerrarComparar(); cerrarSenCfg(); cerrarPesos(); cerrarInfo(); } });
 function quitarFoco(){ clienteActivo=null; topClientesSet=null; _carteraTocado=true; render(); }
 
 // datos de analistas del archivo mensual de Precios Objetivo (mismo shared key)
@@ -3231,6 +3525,7 @@ async function loadTenencia(){
       const tw=document.getElementById('ten-min-wrap'); if(tw) tw.style.display='';
       const cp=document.getElementById('chip-prioridad'); if(cp) cp.style.display='';
       const ce=document.getElementById('chip-excel'); if(ce) ce.style.display='';
+      const ci=document.getElementById('chip-info'); if(ci) ci.style.display='';
       // por defecto arranca filtrado a lo que realmente tenemos en cartera
       if(!_carteraTocado){ soloCartera=true; chip.classList.add('active'); }
     }
