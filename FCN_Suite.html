@@ -252,6 +252,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .content-area{flex:1;position:relative;overflow:hidden;}
 .tool-frame{position:absolute;inset:0;width:100%;height:100%;border:none;display:none;}
 .tool-frame.active{display:block;}
+/* Tabla agrandada dentro de una herramienta (fcn-tabla.js): el iframe tapa toda la ventana. */
+html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:2147483000;}
 
 /* ── PANELS (home + files) ── */
 .hub-panel{position:absolute;inset:0;overflow-y:auto;padding:32px;display:none;}
@@ -583,6 +585,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 :focus-visible{outline:2px solid var(--ambar) !important;outline-offset:2px !important;}
 </style>
 <script src="fcn-theme.js"></script>
+<script src="fcn-tabla.js" defer></script>
 <script src="fcn-core.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -5742,6 +5745,7 @@ function openTool(toolId) {
   setActiveTab(toolId);
   hideAllPanels();
   const loadingEl = document.getElementById('frame-loading');
+  document.documentElement.classList.remove('fcn-tf-iframe-full');
   document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
   if (frameCache[toolId]) {
     // Ya cargada: se muestra directo. Antes pasaba igual por "Cargando…" con un
@@ -5764,6 +5768,16 @@ function openTool(toolId) {
   activeToolId = toolId;
   _setSuiteUrl('tool', toolId);
 }
+
+// Una herramienta agrandó una tabla a pantalla completa (fcn-tabla.js): se esconde la barra y
+// el menú del Suite para que la tabla use toda la ventana. Solo se escucha a los iframes propios.
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!d || d.type !== 'fcn_tf') return;
+  const propio = Object.values(frameCache).some(f => f && f.contentWindow === e.source);
+  if (!propio) return;
+  document.documentElement.classList.toggle('fcn-tf-iframe-full', !!d.on);
+});
 
 function setActiveTab(toolId) {
   _ga('screen_view', { screen_id: toolId });
