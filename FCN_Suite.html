@@ -1264,7 +1264,8 @@ const TOOLS = [
   { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Escribí el ticker de una empresa de EE.UU. y arma solo ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 (datos de la SEC + Yahoo). Si subís tus Excel de Investing, tienen prioridad.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' },
   { id:'superinvestors', name:'Superinvestors', icon:'🏛️', desc:'Qué tienen, compraron y vendieron Buffett, Ackman, Cathie Wood y 27 fondos más (13F de la SEC). Marca lo que se puede comprar con CEDEARs.', badge:'Research', file:'Superinvestors_FCN.html', color:'jade' },
   { id:'cuantocobro', name:'¿Cuánto cobro?', icon:'💰', desc:'Letras en pesos y bonos/ONs en dólares: con un monto, cuánto cobrás y cuándo, mes a mes. Precios en vivo de BYMA, TIR y cartera combinada.', badge:'Renta Fija', file:'Cuanto_Cobro_FCN.html', color:'jade' },
-  { id:'rfpesos', name:'Renta Fija en Pesos', icon:'🏦', desc:'Lecaps, Boncaps, CER, TAMAR y duales: curva de tasas, ¿tasa fija o CER?, carry trade, clientes con vencimientos o para rotar, y cuánto cobrás.', badge:'Renta Fija', file:'Renta_Fija_Pesos_FCN.html', color:'jade' }
+  { id:'rfpesos', name:'Renta Fija en Pesos', icon:'🏦', desc:'Lecaps, Boncaps, CER, TAMAR y duales: curva de tasas, ¿tasa fija o CER?, carry trade, clientes con vencimientos o para rotar, y cuánto cobrás.', badge:'Renta Fija', file:'Renta_Fija_Pesos_FCN.html', color:'jade' },
+  { id:'cleaner', name:'Excel Cleaner',        icon:'🧹', desc:'Limpieza de contactos: filtra mails vacíos, elimina duplicados y expande listas separadas por ";". Soporta archivos encriptados.', badge:'Contactos', file:'excel_cleaner_agent para mail.html', color:'amber' },
 ];
 
 // ══════════════════════════════════════════════════════════════
@@ -1544,7 +1545,7 @@ const CATEGORIES = [
   { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama','rfpesos','cuantocobro'] },
   { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['multiplos','fundamental','superinvestors'] },
   { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','armador','monitor'] },
-  { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['files'] },
+  { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
 ];
 // Paneles nativos que viven "dentro" de una categoría pero no son un TOOLS[] con iframe propio
 // (ver hideAllPanels/showFiles/showCliente360) — icon/label acá para no repetirlos en cada lugar.
