@@ -2020,8 +2020,11 @@ function infCopiarPlano(btn){
 }
 function _infFirma(){
   let p={}; try{ p=JSON.parse(localStorage.getItem('fcn_aviso_liq_perfil')||'{}')||{}; }catch(e){}
-  const esNico=nombreAsesor()==='Nico';
-  const firma=(p.firma||'').trim()||(esNico?'Nicolás Strijland':nombreAsesor());
+  // mismo criterio que getAvisoPerfil() del Suite: los datos de Nico solo para el usuario "nicolas"
+  // (antes cualquier usuario con "nico" en el nombre se llevaba su WhatsApp)
+  const esNico=(new URLSearchParams(location.search).get('u')||'').trim().toLowerCase()==='nicolas';
+  const u=(new URLSearchParams(location.search).get('u')||'').trim().split(/\s+/)[0];
+  const firma=(p.firma||'').trim()||(esNico?'Nicolás Strijland':(u?u.charAt(0).toUpperCase()+u.slice(1):'Tu asesor'));
   const wpp=(p.wpp||'').trim()||(esNico?'+54 9 11 2328 4509':'');
   return firma+(wpp?`\nWhatsApp: ${wpp}`:'');
 }
