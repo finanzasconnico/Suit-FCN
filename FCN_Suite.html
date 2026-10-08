@@ -439,6 +439,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inac-badge.baja{background:rgba(200,60,60,.12);color:var(--danger);border:1px solid rgba(200,60,60,.3);}
 .inac-badge.seg{background:var(--wash-2);color:var(--muted);}
 .inac-done{border:1px solid var(--jade);background:var(--jade-d);}
+.inac-paso{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+.inac-paso-n{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--jade);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:14px;font-weight:600;}
+.inac-paso-t{font-family:var(--font-d);font-size:15px;color:var(--text);font-weight:600;line-height:1.3;}
+.inac-paso-s{font-size:11px;color:var(--muted);line-height:1.5;margin-top:2px;}
+.inac-cco-lote{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;margin-top:6px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);font-size:12px;}
+.inac-cco-lote.abierto{opacity:.6;}
+.inac-cco-lote.abierto b::before{content:'✓ ';color:var(--jade);}
+.inac-cco-btns{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;}
+.inac-cco-btns a{text-decoration:none;}
+.inac-envio{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
 .inac-done ol{margin:6px 0 0;padding-left:18px;font-size:11.5px;line-height:1.9;color:var(--text);}
 .inac-pts{display:inline-block;min-width:30px;text-align:center;padding:2px 7px;border-radius:12px;font-family:var(--font-m);font-size:11.5px;font-weight:600;cursor:help;}
 .inac-pts.alta{background:var(--jade);color:#fff;}
@@ -1034,39 +1044,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <div class="hub-panel" id="inactivos-panel">
       <div class="files-header">
         <h2>📧 Mail Marketing</h2>
-        <p>Campaña segmentada a tus clientes — elegí Activos, Inactivos o Todos y afiná con los filtros (tenencia, moneda, cartera, edad, antigüedad, zona, actividad). Elegí Mail 1, 2 o 3, ajustá el asunto y el texto (quedan guardados en este navegador), tildá a quién mandarle y descargá el Excel (CSV) + el Word para la combinación de correspondencia.</p>
+        <p>Campaña de mail a tus clientes en 3 pasos: <b>1</b> completá tu perfil, <b>2</b> elegí a quién (lote de inactivas, Activos/Inactivos y filtros por tenencia, edad, zona, actividad…) y tildá, <b>3</b> elegí Mail 1, 2 o 3, ajustá asunto y texto (quedan guardados en este navegador) y descargá el Excel (CSV) + el Word para la combinación de correspondencia.</p>
       </div>
       <div class="inac-wrap">
 
         <div class="inac-card">
-          <div class="inac-tabs" id="inacTabs">
-            <button class="inac-tab" data-n="1" onclick="inacElegirMail(1)">Mail 1 · Reactivación</button>
-            <button class="inac-tab" data-n="2" onclick="inacElegirMail(2)">Mail 2 · Seguimiento</button>
-            <button class="inac-tab" data-n="3" onclick="inacElegirMail(3)">Mail 3 · Contacto directo</button>
-          </div>
-          <div class="aliq-legend">Asunto</div>
-          <div class="inac-asunto-row">
-            <select id="inacAsuntoSug" onchange="inacUsarAsuntoSugerido(this.value)" title="Asuntos del bot de reactivación"></select>
-            <input type="text" id="inacAsunto" oninput="inacGuardarMail()" placeholder="Asunto del mail">
-          </div>
-          <div class="aliq-legend">Texto del mail</div>
-          <textarea class="inac-textarea" id="inacCuerpo" oninput="inacGuardarMail()"></textarea>
-          <div class="inac-chips">
-            Insertar:
-            <button class="inac-chip" onclick="inacInsertar('{Saludo}')" title="«Hola Juan,» — o «Hola,» si el Stock no tiene nombre">{Saludo}</button>
-            <button class="inac-chip" onclick="inacInsertar('{Nombre}')" title="Nombre de pila del Stock (columna Nombre)">{Nombre}</button>
-            <button class="inac-chip" onclick="inacInsertar('{Asesor}')" title="Tu nombre y apellido">{Asesor}</button>
-            <button class="inac-chip" onclick="inacInsertar('{WhatsApp}')" title="Tu WhatsApp, con link">{WhatsApp}</button>
-            <button class="inac-chip" onclick="inacInsertar('{Instagram}')" title="Tu Instagram, con link">{Instagram}</button>
-            <button class="inac-chip" onclick="inacInsertar('{Baja}')" title="Link «darte de baja acá»">{Baja}</button>
-            <span style="margin-left:6px;">· <b>**negrita**</b> · los links https://… quedan clickeables</span>
-            <span class="inac-saved" id="inacSaved"></span>
-            <button class="aliq-btn-cancel" onclick="inacRestaurarMail()" title="Vuelve al texto y asunto originales del bot">↺ Texto original</button>
-          </div>
-        </div>
-
-        <div class="inac-card">
-          <div class="aliq-legend">Tu perfil (el mismo del aviso de liquidez)</div>
+          <div class="inac-paso"><span class="inac-paso-n">1</span><div><div class="inac-paso-t">Tu perfil</div><div class="inac-paso-s">Tu firma y tus datos de contacto para el mail. Es el mismo perfil del aviso de liquidez y queda guardado en este navegador.</div></div></div>
           <div class="aliq-row" style="flex-wrap:wrap;">
             <div class="aliq-field" style="min-width:180px;"><label>Nombre y apellido (firma)</label><input type="text" id="inacFirma" oninput="inacGuardarPerfil()" placeholder="Nombre Apellido"></div>
             <div class="aliq-field" style="min-width:150px;"><label>WhatsApp</label><input type="text" id="inacWpp" oninput="inacGuardarPerfil()" placeholder="+54 9 11 ..."></div>
@@ -1076,6 +1059,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
         </div>
 
         <div class="inac-card">
+          <div class="inac-paso"><span class="inac-paso-n">2</span><div><div class="inac-paso-t">A quién le mandás</div><div class="inac-paso-s">Cargá el lote de inactivas o usá los filtros, y tildá los clientes (o “Tildar primeros N”).</div></div></div>
           <div class="inac-lote" id="inacLoteBar">
             <label class="inac-lote-chk" title="Muestra solo las cuentas del último lote de inactivas que cargaste (el Excel de reasignación que manda Balanz)">
               <input type="checkbox" id="inacSoloLote" onchange="inacToggleSoloLote(this.checked)"> 📥 Solo el lote de inactivas
@@ -1174,11 +1158,43 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
             <input type="number" id="inacTanda" min="1" step="50" value="200" style="width:80px;padding:7px 9px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:12px;">
             <button class="aliq-btn-cancel" onclick="inacSeleccionarTanda()" title="Tilda los primeros N de la lista, en el orden elegido">Tildar primeros N</button>
             <button class="aliq-btn-cancel" onclick="inacLimpiarSeleccion()">Destildar</button>
+          </div>
+          <div class="inac-scroll" id="inacBody"></div>
+        </div>
+
+        <div class="inac-card">
+          <div class="inac-paso"><span class="inac-paso-n">3</span><div><div class="inac-paso-t">Qué mail mandás</div><div class="inac-paso-s">Elegí Mail 1, 2 o 3, revisá asunto y texto, y descargá el Excel + el Word para la combinación de correspondencia.</div></div></div>
+          <div class="inac-tabs" id="inacTabs">
+            <button class="inac-tab" data-n="1" onclick="inacElegirMail(1)">Mail 1 · Reactivación</button>
+            <button class="inac-tab" data-n="2" onclick="inacElegirMail(2)">Mail 2 · Seguimiento</button>
+            <button class="inac-tab" data-n="3" onclick="inacElegirMail(3)">Mail 3 · Contacto directo</button>
+          </div>
+          <div class="aliq-legend">Asunto</div>
+          <div class="inac-asunto-row">
+            <select id="inacAsuntoSug" onchange="inacUsarAsuntoSugerido(this.value)" title="Asuntos del bot de reactivación"></select>
+            <input type="text" id="inacAsunto" oninput="inacGuardarMail()" placeholder="Asunto del mail">
+          </div>
+          <div class="aliq-legend">Texto del mail</div>
+          <textarea class="inac-textarea" id="inacCuerpo" oninput="inacGuardarMail()"></textarea>
+          <div class="inac-chips">
+            Insertar:
+            <button class="inac-chip" onclick="inacInsertar('{Saludo}')" title="«Hola Juan,» — o «Hola,» si el Stock no tiene nombre">{Saludo}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Nombre}')" title="Nombre de pila del Stock (columna Nombre)">{Nombre}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Asesor}')" title="Tu nombre y apellido">{Asesor}</button>
+            <button class="inac-chip" onclick="inacInsertar('{WhatsApp}')" title="Tu WhatsApp, con link">{WhatsApp}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Instagram}')" title="Tu Instagram, con link">{Instagram}</button>
+            <button class="inac-chip" onclick="inacInsertar('{Baja}')" title="Link «darte de baja acá»">{Baja}</button>
+            <span style="margin-left:6px;">· <b>**negrita**</b> · los links https://… quedan clickeables</span>
+            <span class="inac-saved" id="inacSaved"></span>
+            <button class="aliq-btn-cancel" onclick="inacRestaurarMail()" title="Vuelve al texto y asunto originales del bot">↺ Texto original</button>
+          </div>
+          <div class="inac-actions inac-envio">
+            <span class="inac-selinfo" id="inacSelInfo2"></span>
             <button class="aliq-btn-cancel" onclick="inacDescargar(true)" title="Word + CSV con 2 filas de ejemplo a tu mail de prueba (con y sin nombre)">🧪 Prueba a mi mail</button>
+            <button class="aliq-btn-cancel" id="inacBtnCCO" onclick="inacAbrirCCO()" title="Abre el mail ya armado (asunto + texto) con los tildados en CCO, en tandas — mismo texto para todos, sin personalizar el nombre">✉ Abrir en mail (CCO)</button>
             <button class="aliq-btn-gen" id="inacBtnGen" onclick="inacDescargar(false)">⬇ Descargar Excel + Word</button>
           </div>
-          <div class="inac-card inac-done" id="inacDone" style="display:none;margin-bottom:10px;"></div>
-          <div class="inac-scroll" id="inacBody"></div>
+          <div class="inac-card inac-done" id="inacDone" style="display:none;margin-top:10px;"></div>
         </div>
 
       </div>
@@ -3382,6 +3398,8 @@ function inacElegirMail(n) {
   document.getElementById('inacCuerpo').value = cfg.cuerpo;
   document.getElementById('inacSaved').textContent = '';
   document.getElementById('inacBtnGen').textContent = `⬇ Descargar Excel + Word — Mail ${n}`;
+  const optPend = document.querySelector('#inacEstado option[value="pendientes"]');
+  if (optPend) optPend.textContent = `Pendientes del Mail ${n} (se elige abajo)`;
   document.getElementById('inacDone').style.display = 'none';
   renderInactivos();
 }
@@ -3717,6 +3735,14 @@ function _inacActualizarAcciones() {
   if (_inacBajasCargadas && _inacBajas === null) html += ` · <span style="color:var(--danger)">⚠ no se pudo leer la lista de bajas</span>`;
   info.innerHTML = html;
   btn.disabled = !sel.length || faltan.length > 0;
+  const btnCCO = document.getElementById('inacBtnCCO');
+  if (btnCCO) btnCCO.disabled = btn.disabled;
+  // Resumen abajo, al lado del botón de descarga (paso 3).
+  const info2 = document.getElementById('inacSelInfo2');
+  if (info2) info2.innerHTML = sel.length
+    ? `Vas a generar el <b>Mail ${_inacMail}</b> para <b>${sel.length}</b> cliente${sel.length === 1 ? '' : 's'} tildado${sel.length === 1 ? '' : 's'} arriba.` +
+      (faltan.length ? ` <span style="color:var(--danger)">⚠ Falta ${faltan.join(' y ')} en el paso 1.</span>` : '')
+    : `<span style="color:var(--muted)">Tildá clientes en el paso 2 para habilitar la descarga.</span>`;
 }
 function inacLimpiarFiltros() {
   document.getElementById('inacBuscar').value = '';
@@ -3886,6 +3912,104 @@ function inacDescargar(prueba) {
       <li><b>Finalizar y combinar</b> → <b>Enviar mensajes de correo electrónico</b>: Para = <code>Email</code>, Asunto = el de arriba, Formato = <b>HTML</b>.</li>
     </ol>
     ${prueba ? '' : `<div style="margin-top:8px;"><button class="aliq-btn-gen" onclick="inacMarcarEnviados()">✓ Ya los mandé — marcar ${rows.length} con el Mail ${n}</button> <span style="font-size:10.5px;color:var(--muted);">Así no se repiten y el Mail ${Math.min(n + 1, 3)} te muestra a quién le toca.</span></div>`}`;
+}
+// ── Envío directo en CCO (sin Word): abre el mail ya armado, en tandas ──
+// Un mail con todos en CCO no puede personalizar el saludo ni llevar formato: el texto va plano
+// ({Saludo} → "Hola,", **negrita** sin asteriscos, links como URL). Los links mailto: tienen
+// límite de largo (~2.000 caracteres en Windows/Outlook), así que los destinatarios se reparten
+// en tandas; Outlook web acepta links mucho más largos. Si el texto no entra en el mailto, el
+// botón abre el mail sin cuerpo y copia el texto al portapapeles para pegarlo.
+const INAC_CCO_MAX_KEY = 'fcn_inac_cco_max';
+const INAC_MAILTO_MAX = 1900;
+const INAC_OWA_MAX = 7500;
+let _inacCcoLotes = [];
+function _inacTextoPlano(cuerpo, p) {
+  const ig = p.instagram || AVISO_IG_DEFAULT;
+  return String(cuerpo || '').replace(/\r/g, '')
+    .replace(/\{Saludo\}/g, 'Hola,')
+    .replace(/\{Nombre\}/g, '')
+    .replace(/\{Asesor\}/g, p.firma)
+    .replace(/\{WhatsApp\}/g, p.wpp ? `${p.wpp} (https://wa.me/${_inacDigits(p.wpp)})` : '')
+    .replace(/\{Instagram\}/g, ig)
+    .replace(/\{Baja\}\.?/g, `darte de baja acá: ${INAC_UNSUB_URL}`) // sin el "." pegado: lo tomarían como parte del link
+    .replace(/\*\*/g, '')
+    .replace(/[ \t]+,/g, ',').replace(/Hola ,/g, 'Hola,')
+    .replace(/\n/g, '\r\n');
+}
+const _inacMailto = (bcc, asunto, cuerpo) =>
+  `mailto:?bcc=${bcc.map(encodeURIComponent).join(',')}&subject=${encodeURIComponent(asunto)}${cuerpo != null ? '&body=' + encodeURIComponent(cuerpo) : ''}`;
+const _inacOwa = (bcc, asunto, cuerpo) =>
+  `https://outlook.office.com/mail/deeplink/compose?bcc=${encodeURIComponent(bcc.join(';'))}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+
+function inacAbrirCCO() {
+  const p = _inacPerfil(), n = _inacMail;
+  if (!p.firma || !p.wpp) { showToast('Completá tu nombre y tu WhatsApp en el paso 1.'); return; }
+  const asunto = document.getElementById('inacAsunto').value.trim();
+  const cuerpo = _inacTextoPlano(document.getElementById('inacCuerpo').value, p);
+  if (!cuerpo.trim()) { showToast('El texto del mail está vacío.'); return; }
+  if (_inacBajas === null && !confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi seguís, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Seguir de todos modos?')) return;
+  const sel = _inacSeleccionados();
+  if (!sel.length) { showToast('Tildá al menos un cliente en el paso 2.'); return; }
+  let max = parseInt(_inacLS(INAC_CCO_MAX_KEY, 50), 10) || 50;
+  const inp = document.getElementById('inacCcoMax');
+  if (inp) { max = Math.max(1, Math.min(500, parseInt(inp.value, 10) || 50)); _inacLSset(INAC_CCO_MAX_KEY, max); }
+  // Tandas: hasta `max` destinatarios y que el link de Outlook web entre en el límite.
+  const lotes = [];
+  let act = [];
+  for (const r of sel) {
+    const prueba = act.concat(r.mail);
+    if (act.length && (act.length >= max || _inacOwa(prueba, asunto, cuerpo).length > INAC_OWA_MAX)) { lotes.push(act); act = [r.mail]; }
+    else act = prueba;
+  }
+  if (act.length) lotes.push(act);
+  _inacCcoLotes = lotes.map(bcc => {
+    const conCuerpo = _inacMailto(bcc, asunto, cuerpo);
+    const entra = conCuerpo.length <= INAC_MAILTO_MAX;
+    return { bcc, owa: _inacOwa(bcc, asunto, cuerpo), mailto: entra ? conCuerpo : _inacMailto(bcc, asunto, null), cuerpoEnMailto: entra };
+  });
+  _inacCcoCtx = { asunto, cuerpo };
+  _inacUltimaDescarga = { n, comitentes: sel.map(r => r.comitente) };
+  const filas = _inacCcoLotes.map((l, i) => `
+    <div class="inac-cco-lote" id="inacCcoLote${i}">
+      <b>Tanda ${i + 1}/${_inacCcoLotes.length}</b> · ${l.bcc.length} destinatario${l.bcc.length === 1 ? '' : 's'}
+      <span class="inac-cco-btns">
+        <a class="aliq-btn-gen" href="${escHtml(l.owa)}" target="_blank" rel="noopener" onclick="inacCcoAbierto(${i})" title="Abre un mail nuevo en Outlook en el navegador, con todo cargado">Abrir en Outlook web</a>
+        <a class="aliq-btn-cancel" href="${escHtml(l.mailto)}" onclick="inacCcoAbierto(${i}, ${l.cuerpoEnMailto ? 'false' : 'true'})" title="${l.cuerpoEnMailto ? 'Abre tu programa de mail (Outlook de la compu)' : 'El texto es muy largo para este botón: abre el mail sin texto y te lo copia para que lo pegues con Ctrl+V'}">Abrir en la app de mail${l.cuerpoEnMailto ? '' : ' *'}</a>
+        <button class="aliq-btn-cancel" onclick="inacCcoCopiar(this, ${i})" title="Copia los mails separados por ; para pegarlos en el campo CCO">Copiar CCO</button>
+      </span>
+    </div>`).join('');
+  const sinCuerpo = _inacCcoLotes.some(l => !l.cuerpoEnMailto);
+  const done = document.getElementById('inacDone');
+  done.style.display = '';
+  done.innerHTML = `<b>✉ Mail ${n} en CCO — ${sel.length} cliente${sel.length === 1 ? '' : 's'} en ${_inacCcoLotes.length} tanda${_inacCcoLotes.length === 1 ? '' : 's'}.</b>
+    <div class="aliq-help" style="margin:6px 0 10px;">Todos reciben el mismo texto: el saludo sale <b>"Hola,"</b> sin nombre y los links van como texto. Para mails personalizados usá <b>Descargar Excel + Word</b>. Revisá el mail antes de tocar Enviar.${sinCuerpo ? ' <b>*</b> En "Abrir en la app de mail" el texto no entra en el link: se abre sin texto y queda copiado — pegalo con <b>Ctrl+V</b>.' : ''}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <label style="font-size:11px;color:var(--muted);">Máx. por mail</label>
+      <input type="number" id="inacCcoMax" min="1" max="500" value="${max}" style="width:70px;padding:6px 8px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:12px;">
+      <button class="aliq-btn-cancel" onclick="inacAbrirCCO()">Rearmar tandas</button>
+      <button class="aliq-btn-cancel" onclick="inacCcoCopiar(this, 'asunto')">Copiar asunto</button>
+      <button class="aliq-btn-cancel" onclick="inacCcoCopiar(this, 'cuerpo')">Copiar texto</button>
+    </div>
+    ${filas}
+    <div style="margin-top:10px;"><button class="aliq-btn-gen" onclick="inacMarcarEnviados()">✓ Ya los mandé — marcar ${sel.length} con el Mail ${n}</button></div>`;
+}
+let _inacCcoCtx = { asunto: '', cuerpo: '' };
+function inacCcoAbierto(i, copiarCuerpo) {
+  const el = document.getElementById('inacCcoLote' + i);
+  if (el) el.classList.add('abierto');
+  if (copiarCuerpo) _inacCopiarTexto(_inacCcoCtx.cuerpo).then(() => showToast('Texto copiado — pegalo en el mail con Ctrl+V.'));
+}
+function _inacCopiarTexto(t) {
+  return navigator.clipboard.writeText(t).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  });
+}
+function inacCcoCopiar(btn, que) {
+  const t = que === 'asunto' ? _inacCcoCtx.asunto : que === 'cuerpo' ? _inacCcoCtx.cuerpo : (_inacCcoLotes[que] || { bcc: [] }).bcc.join('; ');
+  const txt = btn.textContent;
+  _inacCopiarTexto(t).then(() => { btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = txt; }, 1500); });
+  if (typeof que === 'number') inacCcoAbierto(que);
 }
 function inacCopiarAsunto(btn) {
   const v = document.getElementById('inacAsuntoCopia').value;
