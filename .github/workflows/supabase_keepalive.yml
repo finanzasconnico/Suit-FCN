@@ -3,12 +3,13 @@ name: Supabase keep-alive (fcn-bajas)
 # El plan Free de Supabase pausa el proyecto tras 7 días sin actividad. El aviso de liquidez
 # se usa 1 vez por mes, así que sin esto el proyecto se dormiría entre usos y tanto la página
 # de baja (unsubscribe.html) como la lectura de la lista desde el Suite quedarían caídas.
-# Este workflow hace un request trivial cada 3 días para mantenerlo despierto.
+# Este workflow hace un request trivial todos los días para mantenerlo despierto (era cada 3 días,
+# pero el 07/10/2026 el proyecto apareció pausado igual — pasado a diario el 08/10).
 # La key es la "publishable" (pública a propósito, ya va en unsubscribe.html) — no es un secreto.
 
 on:
   schedule:
-    - cron: '17 6 */3 * *'
+    - cron: '17 6 * * *'
   workflow_dispatch: {}
 
 jobs:

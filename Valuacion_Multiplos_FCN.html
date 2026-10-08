@@ -864,12 +864,14 @@ tr.cli-tr:hover{background:var(--wash-1);}
           <textarea id="inf-texto" class="msg-input" rows="16"></textarea>
         </div>
         <div class="inf-sec"><h5>4 · Enviar</h5>
-          <div class="msg-actions" style="margin-top:0">
-            <button class="btn-msg btn-pri" id="inf-copy-html" onclick="infCopiarFormato(this)">📋 Copiar mensaje con formato</button>
-            <button class="btn-msg" onclick="infCopiarPlano(this)">Copiar en texto plano</button>
-          </div>
-          <div class="inf-lotes" id="inf-lotes"></div>
-          <p class="msg-nota">Cómo: 1) <b>Copiar mensaje con formato</b>. 2) <b>Abrir mail</b> de cada tanda: se abre tu programa de mail con los clientes en <b>CCO</b> y el asunto ya puesto. 3) Pegás el mensaje (Ctrl+V) y enviás. Van en tandas de hasta 50 para que el link no se corte y el mail no caiga en spam. Si usás Gmail/Outlook web, "Copiar mails" y los pegás en CCO.</p>
+          <div class="msg-actions" style="margin-top:0" id="inf-eml"></div>
+          <p class="msg-nota">Baja un mail <b>ya armado</b>: abrilo (clic en la descarga) y Outlook lo muestra listo, con todos los clientes en <b>CCO</b>, el asunto y el mensaje con formato. Revisalo y tocá <b>Enviar</b>. No hay que copiar ni pegar nada.</p>
+          <div class="msg-actions"><button class="btn-msg" id="inf-copy-html" onclick="infCopiarFormato(this)">📋 Copiar mensaje con formato</button></div>
+          <details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Otras formas (Gmail / Outlook web)</summary>
+            <div class="msg-actions"><button class="btn-msg" onclick="infCopiarPlano(this)">Copiar en texto plano</button></div>
+            <div class="inf-lotes" id="inf-lotes"></div>
+            <p class="msg-nota">Para el mail web: "Copiar mails" de cada tanda y pegalos en CCO; "Abrir mail (CCO)" abre tu programa con los destinatarios y el asunto, y el mensaje lo pegás. Van en tandas de hasta 50 porque el link tiene límite de largo.</p>
+          </details>
         </div>
       </div>
     </div>
@@ -1934,12 +1936,41 @@ function infRender(){
     <td>${_escC(c.nom)}</td><td>${c.tks.join(', ')}</td><td class="num">${fmtUsd(c.usd)}</td><td class="num">${pc(c.pct)}</td>
     <td>${c.estado==='sinmail'?'<span style="color:var(--ambar)">sin mail</span>':c.estado==='baja'?'de baja':_escC(c.mail)}</td></tr>`).join('');
   const asunto=document.getElementById('inf-asunto').value;
+  // mail listo (.eml): uno solo con todos en CCO; Exchange suele cortar en 500 destinatarios, así
+  // que pasando de 450 se arma en partes
+  const partes=[]; for(let i=0;i<r.mails.length;i+=INF_EML_MAX) partes.push(r.mails.slice(i,i+INF_EML_MAX));
+  window._infPartes=partes;
+  document.getElementById('inf-eml').innerHTML = !partes.length ? '<span class="dash">No hay destinatarios con mail.</span>'
+    : partes.map((p,i)=>`<button class="btn-msg btn-pri" onclick="infDescargarEml(${i},this)">✉ ${partes.length>1?`Mail listo — parte ${i+1} (${p.length})`:`Mail listo para enviar — ${p.length} en CCO`}</button>`).join('');
   const tandas=infTandas(r.mails, asunto);
   window._infTandas=tandas;
   document.getElementById('inf-lotes').innerHTML = tandas.map((t,i)=>`<div class="inf-lote"><span class="lbl">Tanda ${i+1} · ${t.length} ${t.length===1?'cliente':'clientes'}</span>
     <button class="btn-msg" onclick="infAbrirTanda(${i})">✉ Abrir mail (CCO)</button>
     <button class="btn-msg" onclick="infCopiarMails(${i},this)">Copiar mails</button></div>`).join('')
     || '<span class="dash">No hay destinatarios con mail.</span>';
+}
+// Archivo .eml con "X-Unsent: 1": Outlook clásico lo abre como borrador editable (no como mail
+// recibido) con los destinatarios en CCO, el asunto y el cuerpo HTML. Verificado 08/10/2026 con
+// Outlook de Nico vía COM: 120 destinatarios → 120 en CCO (Type=3), Sent=false, HTML intacto.
+const INF_EML_MAX=450;
+function _b64utf8(s){ const b=new TextEncoder().encode(s); let bin=''; for(let i=0;i<b.length;i+=0x8000) bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(bin); }
+function _b64lineas(s){ return _b64utf8(s).replace(/.{76}/g,'$&\r\n'); }
+function infDescargarEml(i,btn){
+  const mails=(window._infPartes||[])[i]; if(!mails||!mails.length) return;
+  const asunto=document.getElementById('inf-asunto').value.trim()||'Novedades';
+  const txt=document.getElementById('inf-texto').value, html=infTextoAHtml(txt);
+  const bnd='fcn_'+Date.now().toString(36);
+  const eml=[
+    'X-Unsent: 1','To: ','Bcc: '+mails.join(',\r\n '),
+    'Subject: =?UTF-8?B?'+_b64utf8(asunto)+'?=','MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${bnd}"`,'',
+    '--'+bnd,'Content-Type: text/plain; charset="UTF-8"','Content-Transfer-Encoding: base64','',_b64lineas(txt),
+    '--'+bnd,'Content-Type: text/html; charset="UTF-8"','Content-Transfer-Encoding: base64','',_b64lineas('<html><body>'+html+'</body></html>'),
+    '--'+bnd+'--',''
+  ].join('\r\n');
+  const parte=(window._infPartes.length>1)?`-parte${i+1}`:'';
+  _descargar(new Blob([eml],{type:'message/rfc822'}),`mail-informativo${parte}.eml`);
+  _infFlash(btn,'✓ Bajado — abrilo y tocá Enviar');
 }
 function infAbrirTanda(i){
   const t=(window._infTandas||[])[i]; if(!t) return;
