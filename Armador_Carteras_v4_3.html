@@ -309,6 +309,14 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--navy);color:var(--
 .qa-chip:hover{border-color:var(--wash-3);color:var(--text-strong);}
 .qa-chip.active{background:var(--balanz);border-color:var(--balanz);color:#fff;}
 .qa-chip.active small{color:rgba(255,255,255,.85);}
+.qa-mix-head{display:flex;align-items:center;justify-content:space-between;}
+.qa-mix-reset{background:none;border:none;color:var(--balanz);font-family:'Hanken Grotesk',sans-serif;font-size:10px;letter-spacing:0;text-transform:none;cursor:pointer;padding:0;}
+.qa-mix-reset:hover{text-decoration:underline;}
+.qa-mix{display:flex;align-items:center;gap:10px;}
+.qa-mix input[type=range]{flex:1;accent-color:var(--balanz);cursor:pointer;}
+.qa-mix-lbl{font-size:11px;color:var(--cream-dim);white-space:nowrap;min-width:52px;}
+.qa-mix-lbl:last-child{text-align:right;}
+.qa-mix-lbl b{color:var(--text-strong);font-weight:600;}
 .qa-status{font-size:10.5px;line-height:1.5;color:var(--cream-dim);margin-top:10px;}
 .qa-status .fav-ok,.qa-status .fav-warn{padding:1px 0;}
 details.adv{border:1px solid var(--border);border-radius:var(--radius);flex-shrink:0;}
@@ -420,6 +428,12 @@ details.adv>summary:hover{color:var(--text-strong);}
         <button type="button" class="qa-chip" data-perfil="conservador" onclick="setAutoPerfil('conservador')">Conservador<small>90% RF · 10% RV</small></button>
         <button type="button" class="qa-chip" data-perfil="moderado" onclick="setAutoPerfil('moderado')">Moderado<small>50% RF · 50% RV</small></button>
         <button type="button" class="qa-chip" data-perfil="agresivo" onclick="setAutoPerfil('agresivo')">Agresivo<small>45% RF · 55% RV</small></button>
+      </div>
+      <div class="qa-label qa-mix-head">Renta fija / Renta variable <button type="button" class="qa-mix-reset" id="qa-mix-reset" onclick="resetAutoMix()" hidden>↺ la del perfil</button></div>
+      <div class="qa-mix">
+        <span class="qa-mix-lbl">RF <b id="qa-mix-rf">—</b></span>
+        <input type="range" id="qa-mix" min="0" max="100" step="5" value="50" oninput="onAutoMixInput()" onchange="onAutoMixChange()" aria-label="Porcentaje de renta fija">
+        <span class="qa-mix-lbl">RV <b id="qa-mix-rv">—</b></span>
       </div>
       <div class="qa-label">Plazo de las ONs</div>
       <div class="qa-chips p4" id="qa-plazos">
@@ -1638,6 +1652,7 @@ var AUTO_FONDO={
   agresivo:{ticker:'BAHUSDA',name:'Fondo de liquidez en USD Balanz',type:'Liquidez / Money Market'}
 };
 var autoPerfil=null,autoPlazo='todos',autoFirma=null,autoSeq=0,autoMontoTimer=null;
+var autoRF=null; // % de renta fija elegido a mano; null = el que trae el perfil
 
 // ── Puntaje de renta variable (port de analisis.html: tendencia / fundamental / valuacion5y) ──
 var RVQ_MULT_SECTOR={
@@ -1821,7 +1836,21 @@ function autoAssetRV(ticker,name,type,curr,nota,sector,retSinTarget){
   return a;
 }
 
-function autoConstruir(perfil,plazo,monto,rvRows){
+// % de renta fija que trae cada perfil por defecto (el resto es renta variable).
+var AUTO_RF_DEFAULT={conservador:90,moderado:50,agresivo:45};
+// Escala las patas de un plan para que la renta fija sume rfObjetivo (null = el del perfil) y
+// devuelve % enteros que suman 100 (método del mayor resto).
+function autoRepartoPlan(plan,rfObjetivo){
+  var def={rf:0,rv:0};plan.forEach(function(x){def[x[0]]+=x[1];});
+  var obj=rfObjetivo==null?{rf:def.rf,rv:def.rv}:{rf:rfObjetivo,rv:100-rfObjetivo};
+  var crudo=plan.map(function(x){return def[x[0]]>0?x[1]*obj[x[0]]/def[x[0]]:0;});
+  var ent=crudo.map(Math.floor),falta=100-ent.reduce(function(s,v){return s+v;},0);
+  crudo.map(function(v,k){return{k:k,r:v-Math.floor(v)};}).sort(function(a,b){return b.r-a.r;})
+    .forEach(function(o){if(falta>0&&crudo[o.k]>0){ent[o.k]++;falta--;}});
+  return ent;
+}
+
+function autoConstruir(perfil,plazo,monto,rvRows,rfObjetivo){
   var out=[],avisos=[];
   function add(pct,a){a.pct=pct;out.push(a);}
   function fondo(pct,nota){var f=AUTO_FONDO[perfil];add(pct,{name:f.name,ticker:f.ticker,type:f.type,curr:'USD',nota:nota});}
@@ -1861,30 +1890,41 @@ function autoConstruir(perfil,plazo,monto,rvRows){
   // cualquier cosa debajo de A, acá no).
   var onA=function(){return autoCandidatosON(function(b){return autoGrupoCalif(b.calificacion)==='A';},plazo);};
 
-  if(perfil==='conservador'){
-    bonos('ONs AAA',80,onAAA(),4,true);
-    spy(5);
-    cedears(5,['SPY'],3);
-    fondo(10,'Fondo común de inversión');
-  } else if(perfil==='moderado'){
-    bonos('ONs AAA',50,onAAA(),4,true);
-    spy(10);
-    cedears(35,['SPY'],5);
-    locales(5,2);
-  } else {
-    bonos('ONs AAA',20,onAAA(),3,true);
-    bonos('ONs calificación A',10,onA(),2,true);
-    // Los soberanos tienen su propio corte por duration: no usan el plazo elegido, para no vaciarse.
-    bonos('Soberano corto (duration < 3)',5,autoCandidatosSOV(function(d){return d<3;}),2,false);
-    bonos('Soberano largo (duration ≥ 3)',5,autoCandidatosSOV(function(d){return d>=3;}),2,false);
-    var letra=autoMejorLetra();
-    if(letra){var ml=monitorFieldsDe(letra,'ARS'),l=LET_DB[letra];add(5,{name:(l.tipo||l.seccion||'Letra')+' '+letra,ticker:letra,type:'Renta Fija | Letras y Bonos ARS',ret:ml.ret,curr:'ARS',venc:ml.venc,dias:l.dias,papel:l.tipo||'',nota:'Carry en pesos (mejor TNA)'});}
-    else avisos.push('Sin letras en pesos en el Monitor: quedó un 5% sin asignar.');
-    spy(20);
-    add(5,autoAssetRV('IBIT','Bitcoin (ETF iShares IBIT)','Criptomonedas','USD','Porción chica: mucha más volatilidad que el resto'));
-    cedears(20,['SPY','IBIT'],5);
-    locales(10,2);
+  // Cada perfil es una lista de patas con su % por defecto y si son renta fija o variable.
+  // Si el asesor eligió otro reparto RF/RV (rfObjetivo), cada lado se escala en proporción y se
+  // redondea a % enteros que sigan sumando 100 (mayor resto). Una pata que queda en 0% no entra.
+  var letra=autoMejorLetra();
+  function pataLetra(p){
+    if(!letra){avisos.push('Sin letras en pesos en el Monitor: quedó un '+p+'% sin asignar.');return;}
+    var ml=monitorFieldsDe(letra,'ARS'),l=LET_DB[letra];
+    add(p,{name:(l.tipo||l.seccion||'Letra')+' '+letra,ticker:letra,type:'Renta Fija | Letras y Bonos ARS',ret:ml.ret,curr:'ARS',venc:ml.venc,dias:l.dias,papel:l.tipo||'',nota:'Carry en pesos (mejor TNA)'});
   }
+  var plan;
+  if(perfil==='conservador')plan=[
+    ['rf',80,function(p){bonos('ONs AAA',p,onAAA(),4,true);}],
+    ['rv',5,spy],
+    ['rv',5,function(p){cedears(p,['SPY'],3);}],
+    ['rf',10,function(p){fondo(p,'Fondo común de inversión');}]
+  ];
+  else if(perfil==='moderado')plan=[
+    ['rf',50,function(p){bonos('ONs AAA',p,onAAA(),4,true);}],
+    ['rv',10,spy],
+    ['rv',35,function(p){cedears(p,['SPY'],5);}],
+    ['rv',5,function(p){locales(p,2);}]
+  ];
+  else plan=[
+    ['rf',20,function(p){bonos('ONs AAA',p,onAAA(),3,true);}],
+    ['rf',10,function(p){bonos('ONs calificación A',p,onA(),2,true);}],
+    // Los soberanos tienen su propio corte por duration: no usan el plazo elegido, para no vaciarse.
+    ['rf',5,function(p){bonos('Soberano corto (duration < 3)',p,autoCandidatosSOV(function(d){return d<3;}),2,false);}],
+    ['rf',5,function(p){bonos('Soberano largo (duration ≥ 3)',p,autoCandidatosSOV(function(d){return d>=3;}),2,false);}],
+    ['rf',5,pataLetra],
+    ['rv',20,spy],
+    ['rv',5,function(p){add(p,autoAssetRV('IBIT','Bitcoin (ETF iShares IBIT)','Criptomonedas','USD','Porción chica: mucha más volatilidad que el resto'));}],
+    ['rv',20,function(p){cedears(p,['SPY','IBIT'],5);}],
+    ['rv',10,function(p){locales(p,2);}]
+  ];
+  autoRepartoPlan(plan,rfObjetivo).forEach(function(p,k){if(p>0)plan[k][2](p);});
   // El fondo puede entrar dos veces (fijo + reemplazo de ONs): se junta en una sola línea.
   var juntos=[],idx={};
   out.forEach(function(a){
@@ -1912,6 +1952,31 @@ function esperarMonitor(){
   });
 }
 function setAutoPerfil(perfil){armarPorPerfil(perfil,autoPlazo);}
+// Barra RF/RV: mientras se arrastra solo muestra los números; al soltar re-arma la cartera.
+function autoPintarMix(){
+  var rf=autoRF!=null?autoRF:(autoPerfil?AUTO_RF_DEFAULT[autoPerfil]:null);
+  var el=document.getElementById('qa-mix');
+  if(rf!=null)el.value=rf;
+  document.getElementById('qa-mix-rf').textContent=rf!=null?rf+'%':'—';
+  document.getElementById('qa-mix-rv').textContent=rf!=null?(100-rf)+'%':'—';
+  document.getElementById('qa-mix-reset').hidden=autoRF==null;
+}
+function onAutoMixInput(){
+  var v=parseInt(document.getElementById('qa-mix').value,10);
+  document.getElementById('qa-mix-rf').textContent=v+'%';
+  document.getElementById('qa-mix-rv').textContent=(100-v)+'%';
+}
+function onAutoMixChange(){
+  var prev=autoRF;
+  autoRF=parseInt(document.getElementById('qa-mix').value,10);
+  if(autoPerfil&&autoRF===AUTO_RF_DEFAULT[autoPerfil])autoRF=null; // igual al del perfil = sin personalizar
+  if(autoPerfil)armarPorPerfil(autoPerfil,autoPlazo,false,prev);
+  else autoPintarMix();
+}
+function resetAutoMix(){
+  var prev=autoRF;autoRF=null;
+  if(autoPerfil)armarPorPerfil(autoPerfil,autoPlazo,false,prev);else autoPintarMix();
+}
 function setAutoPlazo(plazo){
   if(autoPerfil){armarPorPerfil(autoPerfil,plazo);return;}
   autoPlazo=plazo;autoPintarChips();
@@ -1925,9 +1990,13 @@ function onPortSizeInput(){
     if(autoPerfil&&assets.length&&autoFirmaDe(assets)===autoFirma)armarPorPerfil(autoPerfil,autoPlazo,true);
   },600);
 }
-async function armarPorPerfil(perfil,plazo,silencioso){
-  if(!silencioso&&assets.length&&autoFirmaDe(assets)!==autoFirma&&!confirm('Esto reemplaza la cartera actual por la sugerida para el perfil elegido. ¿Continuar?'))return;
-  autoPerfil=perfil;autoPlazo=plazo;autoPintarChips();
+async function armarPorPerfil(perfil,plazo,silencioso,rfPrevio){
+  // rfPrevio: lo pasa la barra RF/RV, que ya cambió autoRF; si el asesor cancela, se vuelve atrás.
+  if(!silencioso&&assets.length&&autoFirmaDe(assets)!==autoFirma&&!confirm('Esto reemplaza la cartera actual por la sugerida para el perfil elegido. ¿Continuar?')){
+    if(arguments.length>3){autoRF=rfPrevio;autoPintarMix();}
+    return;
+  }
+  autoPerfil=perfil;autoPlazo=plazo;autoPintarChips();autoPintarMix();
   var seq=++autoSeq;
   if(!silencioso)autoStatus('⟳ Armando la cartera…');
   var rvRows=(await Promise.all([ensureRVAuto(),esperarMonitor(),_preciosObjReady]))[0];
@@ -1938,7 +2007,7 @@ async function armarPorPerfil(perfil,plazo,silencioso){
   }
   var ps=parseFloat(document.getElementById('port-size').value)||0;
   var enUSD=document.getElementById('port-curr').value==='USD';
-  var res=autoConstruir(perfil,plazo,(enUSD&&ps>0)?ps:10000,rvRows);
+  var res=autoConstruir(perfil,plazo,(enUSD&&ps>0)?ps:10000,rvRows,autoRF);
   if(editingId!==null)cancelEdit();
   assets=res.lineas.map(function(a,i){
     return Object.assign({id:Date.now()+i,ret:'',curr:'USD',venc:'',meses:'',ley:'',calif:'',nota:'',sector:'',dias:null,papel:null,color:PALETTE[i%PALETTE.length]},a);
@@ -1948,11 +2017,11 @@ async function armarPorPerfil(perfil,plazo,silencioso){
   setSelectValue(document.getElementById('client-horizon'),AUTO_HORIZONTE[plazo]);
   render();updateDoc();updateYield();
   if(!(enUSD&&ps>0))res.avisos.unshift('Sin monto en USD cargado: se armó como para USD 10.000 (con más plata se abren más activos).');
-  autoStatus('<div class="fav-ok">✓ '+AUTO_RIESGO[perfil]+' · '+AUTO_PLAZO_TXT[plazo]+' · '+assets.length+' activos. Cambiá el % en la lista o cualquier activo con ✎.</div>'+
+  autoStatus('<div class="fav-ok">✓ '+AUTO_RIESGO[perfil]+' · '+AUTO_PLAZO_TXT[plazo]+(autoRF!=null?' · '+autoRF+'% RF / '+(100-autoRF)+'% RV':'')+' · '+assets.length+' activos. Cambiá el % en la lista o cualquier activo con ✎.</div>'+
     res.avisos.map(function(m){return'<div class="fav-warn">⚠ '+m+'</div>';}).join(''));
 }
 function autoReset(){
-  autoSeq++;autoPerfil=null;autoPlazo='todos';autoFirma=null;autoPintarChips();
+  autoSeq++;autoPerfil=null;autoPlazo='todos';autoFirma=null;autoRF=null;autoPintarChips();autoPintarMix();
   autoStatus('Elegí un perfil y la cartera se arma sola con lo que hoy mejor puntúa en cada categoría. Después podés cambiar cualquier línea.');
 }
 
