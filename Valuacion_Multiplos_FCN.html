@@ -199,6 +199,15 @@ tbody tr:hover{filter:brightness(1.35);}
 .btn-msg:hover{border-color:var(--jade);}
 .btn-wa{border-color:rgba(37,211,102,.4);color:#25D366;}
 /* ── SEÑALES DE POSICIÓN (traídas de Rotador RV, 01/10) ── */
+/* tarjetas de plata en juego por señal de posición (14/10, formato del CRM de Marian) */
+.sen-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 12px;}
+.sk{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--c);border-radius:6px;padding:10px 14px;cursor:pointer;transition:background .15s,box-shadow .15s;}
+.sk:hover{background:var(--surface2,var(--surface));}
+.sk.sel{box-shadow:inset 0 0 0 1px var(--c);border-color:var(--c);}
+.sk-l{font-family:var(--font-m,monospace);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+.sk-v{font-family:var(--font-m,monospace);font-size:19px;font-weight:600;color:var(--text-strong);margin:3px 0 1px;}
+.sk-s{font-size:10.5px;color:var(--muted);}
+@media (max-width:900px){.sen-kpis{grid-template-columns:repeat(2,1fr);}}
 .ps{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap;cursor:default;}
 .ps-sell{background:rgba(219,160,60,.20);color:var(--ambar);}
 .ps-stop{background:rgba(192,69,59,.20);color:var(--neg);}
@@ -664,6 +673,7 @@ tr.cli-tr:hover{background:var(--wash-1);}
     </div>
   </div>
 
+  <div class="sen-kpis" id="sen-kpis" style="display:none"></div>
   <div class="table-wrap" id="table-wrap" style="display:none">
     <table id="main-table"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
   </div>
@@ -1780,6 +1790,44 @@ function senUrgencia(r){
 function senCuentaCliente(cart){
   const sc={}; cart.forEach(x=>{ const s=senalPosicion(x.h,x.r); if(s) sc[s.senal]=(sc[s.senal]||0)+1; });
   return sc;
+}
+// ── Tarjetas "plata en juego" por señal (arriba de la tabla) — clic = filtro Señal → Posición del cliente.
+// Respeta el cliente enfocado / Top clientes (holdersFiltrados). Cacheado: senalPosicion llama a
+// fundamental()/queHacer() y son ~4.000 posiciones; solo se recalcula si cambia algo de lo que depende.
+const SK_COM_PUNTA=0.005;   // comisión Balanz aprox. por punta en acciones/CEDEARs
+let _skCache=null, _skKey=null;
+function senKpisCalc(){
+  const key=[allRows.length, Object.keys(holdersByTicker).length, clienteActivo||'', topClientesSet?topClientesSet.size:0, JSON.stringify(SEN_CFG)].join('|');
+  if(_skCache && _skKey===key && _skCache._rows===allRows && _skCache._hold===holdersByTicker) return _skCache;
+  const k={}; ['VENDER','STOP','ACUMULAR','ALERTA'].forEach(x=>k[x]={usd:0,pos:0,cli:new Set(),tk:new Set()});
+  allRows.forEach(r=>holdersFiltrados(r).forEach(h=>{
+    const s=senalPosicion(h,r); if(!s) return;
+    const add=x=>{ const o=k[x]; o.usd+=h.tenencia||0; o.pos++; o.cli.add(h.cliente); o.tk.add(r.ticker); };
+    if(k[s.senal]) add(s.senal);
+    if(s.alerta) add('ALERTA');
+  }));
+  k._rows=allRows; k._hold=holdersByTicker; _skCache=k; _skKey=key;
+  return k;
+}
+function renderSenKpis(){
+  const el=document.getElementById('sen-kpis'); if(!el) return;
+  if(!senalesOn || !dataTenencia.length || !allRows.length){ el.style.display='none'; return; }
+  const k=senKpisCalc();
+  const usd=v=>'USD '+fmtN(v,0);
+  const card=(id,titulo,color,fact)=>{ const o=k[id];
+    return `<div class="sk${sigFiltro==='pos:'+id?' sel':''}" style="--c:${color}" onclick="senKpiClick('${id}')" title="Clic para ver solo estas posiciones (otra vez para sacar el filtro)">
+      <div class="sk-l">${titulo}</div><div class="sk-v">${usd(o.usd)}</div>
+      <div class="sk-s">${o.pos} posiciones · ${o.cli.size} clientes · ${o.tk.size} papeles${fact&&o.usd?` · Balanz factura ≈ ${usd(o.usd*2*SK_COM_PUNTA)}`:''}</div></div>`; };
+  el.innerHTML=card('VENDER','Tomar ganancia','var(--ambar)',1)+card('STOP','Stop / revisar','var(--neg)',1)
+    +card('ACUMULAR','Acumular','var(--pos)',0)+card('ALERTA','Con aviso ⚠ (choca con la empresa)','var(--info-badge)',0);
+  el.style.display='';
+}
+function senKpiClick(id){
+  const v='pos:'+id;
+  sigFiltro = sigFiltro===v ? '' : v;
+  const sel=document.getElementById('sig-sel'); if(sel) sel.value=sigFiltro;
+  if(activeTab!=='Panorama'){ activeTab='Panorama'; buildTabs(); }
+  render();
 }
 function senSyncUI(){
   const hayTen=dataTenencia.length>0;
@@ -4359,6 +4407,7 @@ function renderDebounced(){ clearTimeout(_renderTimer); _renderTimer=setTimeout(
 function render(){
   const thead=document.getElementById('thead'), tbody=document.getElementById('tbody');
   if(!thead||!tbody) return;
+  renderSenKpis();
   const enVistaCli = vistaCliente && activeTab==='Panorama';
   const tCli = enVistaCli ? renderTablaClientes() : null;
   const rows = enVistaCli ? tCli.rows : applySort(visibleRows());
