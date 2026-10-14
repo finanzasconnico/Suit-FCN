@@ -256,37 +256,72 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .wpp-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:var(--radius);font-family:var(--font-mono);font-size:9px;letter-spacing:.05em;cursor:pointer;border:1px solid rgba(37,211,102,.35);background:rgba(37,211,102,.1);color:var(--badge-green);transition:all .15s;text-decoration:none;}
 .wpp-btn:hover{background:rgba(37,211,102,.2);border-color:rgba(37,211,102,.6);}
 .wpp-btn svg{width:12px;height:12px;fill:#4ade80;flex-shrink:0;}
-/* ── HOY ── */
-.hoy-wrap{padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
-.hoy-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.hoy-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
-.hoy-kpi-v{font-size:20px;font-weight:600;font-family:var(--font-mono);line-height:1;}
-.hoy-kpi-l{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-muted);margin-top:3px;}
-.hoy-kpi-v.red{color:var(--danger);}
-.hoy-kpi-v.amber{color:var(--warning);}
-.hoy-kpi-v.green{color:var(--jade);}
-.hoy-kpi-v.blue{color:var(--badge-cyan);}
-.hoy-section-title{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);display:flex;align-items:center;gap:6px;}
-.hoy-cards{display:flex;flex-direction:column;gap:6px;}
-.hoy-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;border-left:3px solid transparent;transition:opacity .2s;}
-.hoy-card.contactado{opacity:.35;pointer-events:none;}
-.hoy-card.prio-rojo{border-left-color:var(--danger);}
-.hoy-card.prio-ambar{border-left-color:var(--warning);}
-.hoy-card.prio-verde{border-left-color:var(--jade);}
-.hoy-rank{font-size:15px;font-weight:700;font-family:var(--font-mono);text-align:center;color:var(--ink-muted);}
-.hoy-card.prio-rojo .hoy-rank{color:var(--danger);}
-.hoy-card.prio-ambar .hoy-rank{color:var(--warning);}
-.hoy-card.prio-verde .hoy-rank{color:var(--jade);}
-.hoy-body{}
-.hoy-title{font-size:12px;font-weight:600;color:var(--text-strong);}
-.hoy-sub{font-size:10px;color:var(--ink-muted);margin-top:2px;line-height:1.5;}
-.hoy-tags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
-.hoy-tag{font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid;}
-.hoy-tag-rot{background:rgba(192,69,59,.12);color:var(--badge-red);border-color:rgba(192,69,59,.3);}
-.hoy-tag-vto{background:rgba(217,137,43,.12);color:var(--badge-amber);border-color:rgba(217,137,43,.3);}
-.hoy-tag-sug{background:rgba(28,140,95,.12);color:var(--badge-green);border-color:rgba(28,140,95,.3);}
-.hoy-tag-seg{background:rgba(78,170,188,.1);color:var(--badge-cyan);border-color:rgba(78,170,188,.25);}
-.hoy-rotacion{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:7px;padding-top:7px;border-top:1px solid var(--wash-1);}
+/* ── OPORTUNIDADES ── */
+.op-wrap{padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+.op-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.op-kpi{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--c);border-radius:6px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;}
+.op-kpi:hover{background:var(--wash-1);}
+.op-kpi.sel{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c);}
+.op-kpi-l{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);}
+.op-kpi-v{font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--text-strong);margin:4px 0 2px;}
+.op-kpi-s{font-size:10px;color:var(--ink-muted);}
+.op-bar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:11px;color:var(--ink-muted);}
+.op-bar select{margin-left:4px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;font-family:var(--font-sans);}
+.op-chk{display:flex;align-items:center;gap:5px;cursor:pointer;}
+.op-chk input{accent-color:var(--jade);}
+.op-count{margin-left:auto;font-family:var(--font-mono);font-size:10px;}
+.op-list{display:flex;flex-direction:column;gap:6px;}
+.op-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.op-card.open{border-color:var(--jade);}
+.op-head{display:flex;align-items:center;gap:16px;padding:10px 14px;cursor:pointer;}
+.op-head:hover{background:var(--wash-1);}
+.op-caret{color:var(--ink-muted);font-size:11px;width:10px;flex-shrink:0;}
+.op-id{flex:1;min-width:0;font-size:11px;}
+.op-tk{font-family:var(--font-mono);font-size:13px;color:var(--ambar);}
+.op-sub{font-size:10px;color:var(--ink-muted);}
+.op-sub a{color:var(--jade);cursor:pointer;text-decoration:underline;}
+.op-tag{font-family:var(--font-mono);font-size:8.5px;font-weight:600;letter-spacing:.06em;padding:2px 6px;border-radius:8px;border:1px solid;vertical-align:1px;}
+.op-tag-tir{color:var(--badge-green);background:rgba(28,140,95,.12);border-color:rgba(28,140,95,.35);}
+.op-tag-vto{color:var(--badge-cyan);background:rgba(46,125,140,.12);border-color:rgba(46,125,140,.35);}
+.op-tag-gan{color:var(--badge-red);background:rgba(192,69,59,.12);border-color:rgba(192,69,59,.35);}
+.op-best{margin-top:4px;font-size:10.5px;color:var(--text);font-family:var(--font-mono);}
+.op-best-usd{color:var(--ink-muted);font-family:var(--font-sans);margin-left:4px;}
+.op-mejora{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--badge-green);background:rgba(28,140,95,.12);border:1px solid rgba(28,140,95,.3);border-radius:10px;padding:1px 7px;white-space:nowrap;}
+.op-down{font-family:var(--font-mono);font-size:9.5px;color:var(--badge-amber);font-weight:600;cursor:help;}
+.op-met{text-align:center;flex-shrink:0;min-width:54px;}
+.op-met-v{font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--text-strong);}
+.op-met-v.tir{color:var(--badge-green);}
+.op-met-v.up{color:var(--badge-green);}
+.op-met-v.dn{color:var(--badge-red);}
+.op-met-l{font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);margin-top:1px;}
+.op-ten{min-width:104px;text-align:right;}
+.op-ten .op-met-v{color:var(--badge-green);font-size:13.5px;}
+.op-ten .op-met-l{text-transform:none;letter-spacing:0;font-size:10px;}
+.op-det{border-top:1px solid var(--border);padding:8px 14px 12px 40px;background:var(--wash-1);}
+.op-alts{width:100%;border-collapse:collapse;font-size:11px;}
+.op-alts th{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:500;}
+.op-alts td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.op-alts .op-tk{font-size:12px;color:var(--badge-green);}
+.op-n{color:var(--ink-muted);font-family:var(--font-mono);font-size:10px;width:14px;}
+.op-num{font-family:var(--font-mono);white-space:nowrap;}
+.op-num.up{color:var(--badge-green);font-weight:600;}
+.op-acc{text-align:right;white-space:nowrap;}
+.op-btn{font-size:10px;padding:3px 9px;margin-left:5px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:var(--font-sans);}
+.op-btn:hover{border-color:var(--jade);color:var(--jade);}
+.op-btn-g{border-color:rgba(28,140,95,.4);color:var(--badge-green);}
+.op-clis-h{font-size:10px;color:var(--ink-muted);margin:10px 0 6px;display:flex;align-items:center;gap:6px;}
+.op-clis{display:flex;flex-wrap:wrap;gap:5px;}
+.op-cli{display:inline-flex;align-items:center;gap:6px;font-size:10px;padding:3px 8px;border-radius:4px;background:var(--surface);border:1px solid rgba(37,211,102,.3);cursor:pointer;max-width:330px;}
+.op-cli:hover{border-color:var(--whatsapp);}
+.op-cli.sin-tel{border-color:var(--border);}
+.op-cli-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+.op-cli-v{font-family:var(--font-mono);color:var(--badge-green);flex-shrink:0;}
+.op-cli-p{font-family:var(--font-mono);flex-shrink:0;}
+.op-cli-p.up{color:var(--badge-green);}
+.op-cli-p.dn{color:var(--badge-red);}
+.op-empty{text-align:center;padding:40px 20px;color:var(--ink-muted);font-size:12px;}
+.op-nota{font-size:10px;color:var(--ink-muted);line-height:1.6;}
+@media (max-width:900px){.op-kpis{grid-template-columns:1fr;}.op-head{flex-wrap:wrap;gap:10px;}.op-id{flex-basis:100%;}.op-det{padding-left:14px;overflow-x:auto;}}
 .rot-label{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-right:2px;}
 .rot-label-vender{color:var(--badge-red);}
 .rot-label-comprar{color:var(--badge-green);}
@@ -295,18 +330,6 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 .rot-comprar{background:rgba(28,140,95,.13);color:var(--badge-green);border:1px solid rgba(28,140,95,.3);}
 .rot-arrow{color:var(--ink-muted);font-size:11px;padding:0 2px;}
 .rot-tir{opacity:.75;}
-.hoy-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
-.hoy-tenencia{font-size:13px;font-weight:600;font-family:var(--font-mono);color:var(--text-strong);}
-.hoy-tenencia-lbl{font-size:9px;color:var(--ink-muted);text-align:right;}
-.hoy-actions{display:flex;gap:5px;align-items:center;}
-.hoy-contactado-btn{font-size:9px;padding:2px 7px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--ink-muted);cursor:pointer;transition:all .15s;}
-.hoy-contactado-btn:hover{border-color:var(--jade);color:var(--jade);}
-.hoy-empty{text-align:center;padding:40px 20px;color:var(--ink-muted);font-size:12px;}
-.hoy-mostrar-contactados{font-size:10px;color:var(--ink-muted);cursor:pointer;text-decoration:underline;text-align:center;padding:4px;border:none;background:transparent;}
-.hoy-formula{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;}
-.hoy-formula-row{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-muted);}
-.hoy-formula-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.hoy-formula-pct{font-size:9px;padding:1px 5px;border-radius:4px;background:var(--bg);color:var(--ink-muted);border:1px solid var(--border);margin-left:auto;}
 .wpp-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .wpp-modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:26px 26px 22px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:13px;}
 .wpp-modal-title{font-family:var(--font-display);font-size:16px;color:var(--text);}
@@ -576,14 +599,14 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
 
     <div id="results-area" style="display:none">
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-todas')">📋 Todas</button>
+        <button class="tab-btn active" onclick="switchTab('tab-oport')">🎯 Oportunidades</button>
+        <button class="tab-btn" onclick="switchTab('tab-todas')">📋 Todas</button>
         <button class="tab-btn" onclick="switchTab('tab-resumen')">👤 Por cliente</button>
-        <button class="tab-btn" onclick="switchTab('tab-hoy')">⚡ Hoy</button>
       </div>
 
-      <!-- TAB: HOY (al final y sin activar por defecto — Nico casi no la usa, 02/10) -->
-      <div class="tab-pane" id="tab-hoy">
-        <div id="hoy-content"></div>
+      <!-- TAB: OPORTUNIDADES (reemplazó a "Hoy" el 14/10/2026) -->
+      <div class="tab-pane active" id="tab-oport">
+        <div id="op-content"></div>
       </div>
 
       <!-- TAB: TIR BAJA (oculta, mantenida para compatibilidad) -->
@@ -617,7 +640,7 @@ tbody tr.highlight-high:hover{background:rgba(28,140,95,0.09);}
       </div>
 
       <!-- TAB: TODAS -->
-      <div class="tab-pane active" id="tab-todas">
+      <div class="tab-pane" id="tab-todas">
         <div class="table-wrap">
           <div class="table-header-row">
             <h3>Todos los bonos</h3>
@@ -1287,201 +1310,234 @@ function actualizarDescFiltroTIR(){
   sel.options[3].text=`Solo TIR < ${umbralTIR}%`;
 }
 
-// =================== HOY ===================
+// =================== OPORTUNIDADES (reemplaza a "Hoy", 14/10/2026) ===================
+// Una tarjeta por bono que tienen los clientes, agrupada por tipo de oportunidad y ordenada por
+// lo que gana el cliente si rota (o por tenencia). Al desplegarla: las alternativas
+// (buscarComparables, los mismos filtros que el detalle de cada bono) y los clientes que lo tienen.
+// Idea tomada del "Rotaciones" del CRM de Marian; agregados propios: aviso de baja de
+// calificación, en cuántos meses se paga la comisión, facturación estimada y liquidez BYMA.
+const OP_COM_PUNTA = 0.005;       // comisión Balanz por punta en bonos/ONs (~0,5%)
+const OP_MIN_MEJORA = 0.01;       // mejora mínima de TIR para proponer rotar (1 pp)
+const OP_DIAS_VTO = 90;           // "vence pronto"
+const OP_GANANCIA = 0.08;         // toma de ganancias (precio vs. precio promedio de compra)
+function _opLoad(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : v; } catch (e) { return def; } }
+function _opSave(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+let opTipo = _opLoad('scn_op_tipo', 'tir');
+let opOrden = _opLoad('scn_op_orden', 'mejora');
+let opMin = parseFloat(_opLoad('scn_op_min', '5000')) || 0;
+let opMismaCalif = _opLoad('scn_op_cal', '0') === '1';
+let opAbiertos = new Set();
+let _opGrupos = [];
+const _opFmt0 = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+const _opUsd = v => 'USD ' + _opFmt0.format(v);
+const _opPct = (v, d = 2) => (v * 100).toFixed(d).replace('.', ',') + '%';
+const _opPp = v => (v >= 0 ? '+' : '') + (v * 100).toFixed(2).replace('.', ',') + ' pp';
+function _opEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function _opJs(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
-let contactados = new Set(JSON.parse(localStorage.getItem('scanner-contactados')||'[]'));
-let mostrarContactados = false;
-
-function guardarContactados() {
-  localStorage.setItem('scanner-contactados', JSON.stringify([...contactados]));
+function opAlternativas(ticker) {
+  const base = dataMonitor[ticker];
+  if (!base || base.tir === null || base.tir === undefined) return [];
+  const baseRank = calificacionRank(base.calificacion);
+  return buscarComparables(ticker, leerFiltrosRotacion())
+    .filter(c => !opMismaCalif || baseRank === null || (calificacionRank(c.calificacion) ?? 99) <= baseRank)
+    .map(c => {
+      const mejora = c.tir - base.tir;
+      const cRank = calificacionRank(c.calificacion);
+      return Object.assign({}, c, {
+        mejora,
+        bajaCalif: baseRank !== null && cRank !== null && cRank > baseRank,
+        // Vender + comprar ≈ 2 puntas de comisión; meses de TIR extra que hacen falta para recuperarlas.
+        payback: mejora > 0 ? Math.ceil((2 * OP_COM_PUNTA) / mejora * 12) : null,
+        sinOperar: opSinOperar(c.ticker)
+      });
+    })
+    .filter(c => c.mejora >= OP_MIN_MEJORA)
+    // Lo que no operó hoy en BYMA va al final: la mejor TIR no sirve si no entra el monto
+    // (MCC3O → OZC6O, 14/10). Fuera de rueda nada operó → queda el orden por TIR.
+    .sort((a, b) => (a.sinOperar - b.sinOperar) || (b.tir - a.tir))
+    .slice(0, 4);
 }
 
-function marcarContactado(cliente) {
-  contactados.add(cliente);
-  guardarContactados();
-  renderHoy();
+function opSinOperar(ticker) {
+  if (typeof BYMA_STORE === 'undefined' || !BYMA_STORE || !BYMA_STORE.ready || typeof FCNByma === 'undefined') return 0;
+  const info = dataMonitor[ticker];
+  return FCNByma.liquidez(FCNByma.matchTicker(ticker, info ? info.dolar : '', null)).nivel === 'sin-op' ? 1 : 0;
 }
 
-function desmarcarContactado(cliente) {
-  contactados.delete(cliente);
-  guardarContactados();
-  renderHoy();
-}
-
-function toggleMostrarContactados() {
-  mostrarContactados = !mostrarContactados;
-  renderHoy();
-}
-
-function scoreCliente(posiciones) {
+function construirOportunidades() {
   const hoy = Date.now();
-  const umbBajo = umbralTIR / 100;
-  let maxScore = 0;
-  let motivos = [];
-  let tenenciaTotal = 0;
-  let tieneVtoProximo = false;
-  let diasSinContacto = 0;
-  let sugerido = null;
-  let tirMinima = Infinity;
-
-  posiciones.forEach(d => {
-    tenenciaTotal += d.tenencia || 0;
-    const dias = d.diasTenencia || 0;
-    if (dias > diasSinContacto) diasSinContacto = dias;
-
-    // Score por distancia al umbral TIR
-    let score = 0;
-    if (d.tir !== null) {
-      if (esTirBaja(d)) {
-        const gap = umbBajo - d.tir;
-        score += gap * 300; // peso distancia
-        if (d.tir < tirMinima) { tirMinima = d.tir; }
-      }
-    }
-
-    // Score por tenencia (normalizado sobre $10k)
-    score += Math.min(d.tenencia / 10000, 5) * 20;
-
-    // Score por vencimiento próximo
-    if (d.vencimiento) {
-      const vtoMs = new Date(d.vencimiento).getTime();
-      const diasVto = (vtoMs - hoy) / (86400000);
-      if (diasVto > 0 && diasVto < 90) {
-        score += (90 - diasVto) / 90 * 40;
-        tieneVtoProximo = true;
-      }
-    }
-
-    // Score por días en cartera sin contacto
-    score += Math.min(dias / 365, 2) * 10;
-
-    if (score > maxScore) maxScore = score;
+  const grupos = {};
+  datosFiltrados.forEach(d => {
+    const g = grupos[d.ticker] || (grupos[d.ticker] = {
+      ticker: d.ticker, instrumento: d.instrumento, tipo: d.tipo, emisor: d.emisor,
+      tir: d.tir, cupon: d.cupon, duration: d.duration, vencimiento: d.vencimiento, calificacion: d.calificacion,
+      tenencia: 0, costo: 0, valorConCosto: 0, pos: []
+    });
+    g.tenencia += d.tenencia;
+    if (opPnlCliente(d) !== null) { g.costo += d.precioCompra * d.nominales; g.valorConCosto += d.tenencia; }
+    g.pos.push(d);
+    if (d.tir !== null) g.tir = d.tir;
   });
-
-  // Determinar tipo de acción principal
-  const bajasPos = posiciones.filter(d => esTirBaja(d));
-  if (tieneVtoProximo) motivos.push('vto');
-  if (bajasPos.length > 0) motivos.push('rot');
-  if (bajasPos.length === 0 && diasSinContacto > 180) motivos.push('seg');
-
-  // Buscar sugerencia: mismos parámetros que la pestaña "Todas" (buscarComparables) — duration
-  // y calificación similar a la posición más floja, mejor TIR. Se calcula sobre la posición de
-  // TIR más baja del cliente (la que se muestra primero como "Vender" en la tarjeta).
-  if (bajasPos.length > 0) {
-    const peor = bajasPos.slice().sort((a, b) => a.tir - b.tir)[0];
-    const candidatos = buscarComparables(peor.ticker, leerFiltrosRotacion());
-    if (candidatos.length > 0) sugerido = { ticker: candidatos[0].ticker, tir: candidatos[0].tir };
-  }
-
-  return { score: maxScore, motivos, tenenciaTotal, tieneVtoProximo, diasSinContacto, sugerido, tirMinima: tirMinima === Infinity ? null : tirMinima, bajasCount: bajasPos.length };
+  return Object.values(grupos).map(g => {
+    const ms = vtoToMs(g.vencimiento);
+    g.diasVto = ms > 0 ? Math.round((ms - hoy) / 86400000) : null;
+    g.pnl = g.costo > 0 ? g.valorConCosto / g.costo - 1 : null;
+    g.tags = [];
+    g.alts = [];
+    if (g.diasVto !== null && g.diasVto >= 0 && g.diasVto <= OP_DIAS_VTO) g.tags.push('vto');
+    else {
+      g.alts = opAlternativas(g.ticker);
+      if (g.alts.length) g.tags.push('tir');
+    }
+    if (g.pnl !== null && g.pnl >= OP_GANANCIA) g.tags.push('gan');
+    g.mejoraUsd = g.alts.length ? g.tenencia * g.alts[0].mejora : 0;   // USD por año extra para los clientes
+    return g;
+  });
 }
 
-function renderHoy() {
-  const el = document.getElementById('hoy-content');
+// Precio de hoy (tenencia / nominales) vs. "Prec prom de compra". En algunas ONs el precio de compra
+// de Balanz viene en otra unidad (MR46O: 0,088 contra 0,82 hoy → "+831%"): fuera de −40%/+40% se
+// descarta en vez de mostrar una ganancia inventada.
+const OP_PNL_MAX = 0.40;
+function opPnlCliente(d) {
+  if (!(d.precioCompra > 0 && d.nominales > 0)) return null;
+  const p = d.tenencia / (d.precioCompra * d.nominales) - 1;
+  return Math.abs(p) <= OP_PNL_MAX ? p : null;
+}
+
+function renderOportunidades() {
+  const el = document.getElementById('op-content');
   if (!el) return;
-  if (datosFiltrados.length === 0) {
-    el.innerHTML = '<div class="hoy-empty">Cargá los archivos y hacé clic en "Analizar" para ver las prioridades del día.</div>';
-    return;
-  }
-
-  // Agrupar por cliente
-  const porCliente = {};
-  datosFiltrados.forEach(d => {
-    if (!porCliente[d.cliente]) porCliente[d.cliente] = [];
-    porCliente[d.cliente].push(d);
-  });
-
-  // Calcular score por cliente
-  const clientes = Object.entries(porCliente).map(([cliente, posiciones]) => {
-    const s = scoreCliente(posiciones);
-    return { cliente, posiciones, ...s };
-  }).sort((a, b) => b.score - a.score);
-
-  const activos = clientes.filter(c => !contactados.has(c.cliente));
-  const yaContactados = clientes.filter(c => contactados.has(c.cliente));
-
-  // KPIs
-  const rotUrgentes = activos.filter(c => c.bajasCount > 0).length;
-  const vtoProx = activos.filter(c => c.tieneVtoProximo).length;
-  const tenenciaRot = activos.filter(c => c.bajasCount > 0).reduce((s, c) => s + c.tenenciaTotal, 0);
-  const totalContactar = activos.length;
-
-  const prioClass = (score) => score > 40 ? 'prio-rojo' : score > 20 ? 'prio-ambar' : 'prio-verde';
-
-  const cardHTML = (c, idx) => {
-    const tir = c.tirMinima !== null ? (c.tirMinima * 100).toFixed(2) + '%' : '—';
-    const rotTag = c.bajasCount > 0 ? `<span class="hoy-tag hoy-tag-rot">${c.bajasCount} posic. bajo ${umbralTIR}%</span>` : '';
-    const vtoTag = c.tieneVtoProximo ? `<span class="hoy-tag hoy-tag-vto">Vence &lt;90 días</span>` : '';
-    const segTag = c.motivos.includes('seg') ? `<span class="hoy-tag hoy-tag-seg">+${Math.round(c.diasSinContacto/30)} meses sin contacto</span>` : '';
-    const bajasPos = c.posiciones.filter(d => esTirBaja(d)).sort((a,b) => a.tir - b.tir);
-    let rotacionHTML = '';
-    if (bajasPos.length > 0) {
-      const vendItems = bajasPos.map(p => `<span class="rot-item rot-vender">${p.ticker} ${liqBadgeInline(p.ticker)} <span class="rot-tir">${(p.tir*100).toFixed(1)}%</span></span>`).join('');
-      const comprarItem = c.sugerido ? `<span class="rot-arrow">&#8594;</span><span class="rot-label rot-label-comprar">Comprar</span><span class="rot-item rot-comprar">${c.sugerido.ticker} ${liqBadgeInline(c.sugerido.ticker)} <span class="rot-tir">${(c.sugerido.tir*100).toFixed(1)}%</span></span>` : '';
-      rotacionHTML = `<div class="hoy-rotacion"><span class="rot-label rot-label-vender">Vender</span>${vendItems}${comprarItem}</div>`;
-    }
-    const sub = c.bajasCount > 0
-      ? `TIR mínima ${tir} · ${c.posiciones.length} posición${c.posiciones.length>1?'es':''} · ${Math.round(c.diasSinContacto)} días`
-      : c.tieneVtoProximo
-        ? `Vencimiento próximo · Tenencia $${formatNum(c.tenenciaTotal)}`
-        : `${c.posiciones.length} posición${c.posiciones.length>1?'es':''} · ${Math.round(c.diasSinContacto)} días en cartera`;
-    const wppCtxData = { cliente: c.cliente, ticker: c.posiciones[0]?.ticker||'', tir: c.tirMinima, tirBaja: c.bajasCount>0, tirAlta: false, tel: c.posiciones[0]?.tel||null, nombre: c.posiciones[0]?.nombreStock||'', comitente: c.posiciones[0]?.comitente||'' };
-    const wppBtnHtml = `<button class="wpp-btn" onclick='abrirWpp(${JSON.stringify(wppCtxData).replace(/'/g,"&#39;")})'>
-      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.859L.057 23.571a.75.75 0 00.903.882l5.842-1.53A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.726 9.726 0 01-4.95-1.348l-.355-.211-3.667.961.977-3.573-.231-.368A9.712 9.712 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
-      WPP
-    </button>`;
-    return `<div class="hoy-card ${prioClass(c.score)}" id="hoy-card-${idx}">
-      <div class="hoy-rank">${idx+1}</div>
-      <div class="hoy-body">
-        <div class="hoy-title">${c.cliente}</div>
-        <div class="hoy-sub">${sub}</div>
-        <div class="hoy-tags">${rotTag}${vtoTag}${segTag}</div>
-        ${rotacionHTML}
-      </div>
-      <div class="hoy-right">
-        <div>
-          <div class="hoy-tenencia">$${formatNum(c.tenenciaTotal)}</div>
-          <div class="hoy-tenencia-lbl">tenencia total</div>
-        </div>
-        <div class="hoy-actions">
-          ${wppBtnHtml}
-          <button class="hoy-contactado-btn" onclick="marcarContactado('${c.cliente.replace(/'/g,"\\'")}')">✓ Contactado</button>
-        </div>
-      </div>
-    </div>`;
+  if (!datosFiltrados.length) { el.innerHTML = '<div class="op-empty">Cargá los archivos y hacé clic en "Analizar" para ver las oportunidades.</div>'; return; }
+  const todos = construirOportunidades();
+  const kpi = t => {
+    const gs = todos.filter(g => g.tags.includes(t) && g.tenencia >= opMin);
+    return { usd: gs.reduce((s, g) => s + g.tenencia, 0), pos: gs.reduce((s, g) => s + g.pos.length, 0), n: gs.length };
   };
-
-  const listaHTML = activos.length > 0
-    ? activos.map((c, i) => cardHTML(c, i)).join('')
-    : '<div class="hoy-empty">Todos los clientes ya fueron contactados hoy.</div>';
-
-  el.innerHTML = `<div class="hoy-wrap">
-    <div class="hoy-kpi-row">
-      <div class="hoy-kpi"><div class="hoy-kpi-v red">${rotUrgentes}</div><div class="hoy-kpi-l">Rotaciones urgentes</div></div>
-      <div class="hoy-kpi"><div class="hoy-kpi-v amber">${vtoProx}</div><div class="hoy-kpi-l">Vencen en 90 días</div></div>
-      <div class="hoy-kpi"><div class="hoy-kpi-v green">$${formatNum(tenenciaRot)}</div><div class="hoy-kpi-l">Tenencia a rotar</div></div>
-      <div class="hoy-kpi"><div class="hoy-kpi-v blue">${totalContactar}</div><div class="hoy-kpi-l">Clientes pendientes</div></div>
+  const K = { tir: kpi('tir'), vto: kpi('vto'), gan: kpi('gan') };
+  _opGrupos = todos.filter(g => g.tags.includes(opTipo) && g.tenencia >= opMin);
+  const ord = {
+    mejora: (a, b) => (b.mejoraUsd - a.mejoraUsd) || (b.tenencia - a.tenencia),
+    tenencia: (a, b) => b.tenencia - a.tenencia,
+    clientes: (a, b) => b.pos.length - a.pos.length || b.tenencia - a.tenencia,
+    vto: (a, b) => (a.diasVto ?? 1e9) - (b.diasVto ?? 1e9),
+    pnl: (a, b) => (b.pnl ?? -9) - (a.pnl ?? -9)
+  };
+  _opGrupos.sort(ord[opOrden] || ord.tenencia);
+  const totUsd = _opGrupos.reduce((s, g) => s + g.tenencia, 0);
+  const kpiCard = (t, titulo, k, color) => `<div class="op-kpi${opTipo === t ? ' sel' : ''}" style="--c:${color}" onclick="opSetTipo('${t}')">
+      <div class="op-kpi-l">${titulo}</div><div class="op-kpi-v">${_opUsd(k.usd)}</div>
+      <div class="op-kpi-s">${k.pos} posiciones · ${k.n} bonos · Balanz factura ≈ ${_opUsd(k.usd * 2 * OP_COM_PUNTA)}</div></div>`;
+  const ordOpts = [['mejora', 'Más ganancia para el cliente'], ['tenencia', 'Mayor tenencia'], ['clientes', 'Más clientes'], ['vto', 'Vence antes'], ['pnl', 'Mayor ganancia acumulada']]
+    .map(([v, l]) => `<option value="${v}"${opOrden === v ? ' selected' : ''}>${l}</option>`).join('');
+  const minOpts = [0, 1000, 5000, 10000, 50000].map(v => `<option value="${v}"${opMin === v ? ' selected' : ''}>≥ ${_opUsd(v)}</option>`).join('');
+  const f = leerFiltrosRotacion();
+  el.innerHTML = `<div class="op-wrap">
+    <div class="op-kpis">
+      ${kpiCard('tir', 'Mejorar TIR', K.tir, 'var(--ambar)')}
+      ${kpiCard('vto', `Vence en ${OP_DIAS_VTO} días`, K.vto, 'var(--badge-cyan)')}
+      ${kpiCard('gan', `Toma de ganancias &gt;${OP_GANANCIA * 100}%`, K.gan, 'var(--badge-red)')}
     </div>
-    <div class="hoy-section-title">Movimientos prioritarios del día</div>
-    <div class="hoy-cards">${listaHTML}</div>
-    ${yaContactados.length > 0 ? `<button class="hoy-mostrar-contactados" onclick="toggleMostrarContactados()">${mostrarContactados ? 'Ocultar' : 'Mostrar'} ${yaContactados.length} ya contactados</button>` : ''}
-    ${mostrarContactados && yaContactados.length > 0 ? `<div class="hoy-cards" style="opacity:.4">${yaContactados.map((c,i)=>`<div class="hoy-card" style="border-left:3px solid var(--border)"><div class="hoy-rank" style="color:var(--ink-muted)">${i+1}</div><div class="hoy-body"><div class="hoy-title">${c.cliente}</div><div class="hoy-sub">Contactado hoy · $${formatNum(c.tenenciaTotal)}</div></div><div class="hoy-right"><button class="hoy-contactado-btn" onclick="desmarcarContactado('${c.cliente.replace(/'/g,"\\'")}')">✗ Deshacer</button></div></div>`).join('')}</div>` : ''}
-    <div>
-      <div class="hoy-section-title" style="margin-bottom:8px">Cómo se calcula la prioridad</div>
-      <div class="hoy-formula">
-        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--danger)"></div>Distancia al umbral TIR<span class="hoy-formula-pct">40%</span></div>
-        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--warning)"></div>Tenencia en el activo<span class="hoy-formula-pct">30%</span></div>
-        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--warning)"></div>Días hasta vencimiento<span class="hoy-formula-pct">20%</span></div>
-        <div class="hoy-formula-row"><div class="hoy-formula-dot" style="background:var(--ink-muted)"></div>Días sin contacto<span class="hoy-formula-pct">10%</span></div>
-      </div>
+    <div class="op-bar">
+      <label>Tenencia mínima <select onchange="opMin=+this.value;_opSave('scn_op_min',opMin);renderOportunidades()">${minOpts}</select></label>
+      <label>Ordenar <select onchange="opOrden=this.value;_opSave('scn_op_orden',opOrden);renderOportunidades()">${ordOpts}</select></label>
+      <label class="op-chk" title="Apagado: acepta alternativas hasta ${f.calNotches} escalón de calificación más abajo (se marcan con ↓)"><input type="checkbox" ${opMismaCalif ? 'checked' : ''} onchange="opMismaCalif=this.checked;_opSave('scn_op_cal',opMismaCalif?'1':'0');renderOportunidades()"> Solo igual o mejor calificación</label>
+      <span class="op-count">${_opGrupos.length} bonos · ${_opGrupos.reduce((s, g) => s + g.pos.length, 0)} posiciones · ${_opUsd(totUsd)}</span>
     </div>
+    <div class="op-list">${_opGrupos.length ? _opGrupos.map(opCard).join('') : '<div class="op-empty">No hay oportunidades de este tipo con estos filtros.</div>'}</div>
+    <div class="op-nota">Mejorar TIR: alternativas con duration ±${f.durTol} años y calificación ±${f.calNotches} escalón (los filtros del detalle de cada bono) que rindan al menos ${OP_MIN_MEJORA * 100} pp más. "Se paga en" = meses de TIR extra para recuperar la comisión de vender y comprar (~${OP_COM_PUNTA * 200}%). "Balanz factura" = tenencia × 2 puntas × ${OP_COM_PUNTA * 100}%. La ganancia es precio de hoy vs. precio promedio de compra (sin cupones cobrados; en bonos que amortizan da de menos).</div>
   </div>`;
+}
+
+function opSetTipo(t) { opTipo = t; _opSave('scn_op_tipo', t); renderOportunidades(); }
+function opToggle(tk) { opAbiertos.has(tk) ? opAbiertos.delete(tk) : opAbiertos.add(tk); renderOportunidades(); }
+
+function opCard(g) {
+  const i = _opGrupos.indexOf(g);
+  const tkJs = _opJs(g.ticker);
+  const abierto = opAbiertos.has(g.ticker);
+  const tagHtml = {
+    tir: '<span class="op-tag op-tag-tir">MEJORA TIR</span>',
+    vto: `<span class="op-tag op-tag-vto">VENCE EN ${g.diasVto} DÍAS</span>`,
+    gan: `<span class="op-tag op-tag-gan">GANANCIA ${g.pnl != null ? _opPct(g.pnl, 1) : ''}</span>`
+  };
+  const best = g.alts[0];
+  const resumen = best
+    ? `<div class="op-best">→ <b>${_opEsc(best.ticker)}</b> ${_opPct(best.tir)} <span class="op-mejora">${_opPp(best.mejora)}</span>${best.bajaCalif ? ' <span class="op-down" title="Baja la calificación">↓ calif.</span>' : ''}${best.sinOperar ? ' <span class="op-down" title="No operó hoy en BYMA">sin operar hoy</span>' : ''} <span class="op-best-usd">≈ ${_opUsd(g.mejoraUsd)}/año más para los clientes</span></div>`
+    : '';
+  const met = (v, l, cls = '') => `<div class="op-met"><div class="op-met-v ${cls}">${v}</div><div class="op-met-l">${l}</div></div>`;
+  let det = '';
+  if (abierto) {
+    const altRows = g.alts.map((c, k) => `<tr>
+        <td class="op-n">${k + 1}</td>
+        <td><b class="op-tk">${_opEsc(c.ticker)}</b> ${liqBadgeInline(c.ticker)}<div class="op-sub">${_opEsc(c.emisor || c.instrumento || '')}</div></td>
+        <td class="op-num up">${_opPct(c.tir)}</td>
+        <td class="op-num">${c.duration != null ? c.duration.toFixed(2) + 'a' : '—'}</td>
+        <td>${califBadge(c.calificacion)}${c.bajaCalif ? ' <span class="op-down" title="Calificación más baja que ' + _opEsc(g.calificacion) + '">↓</span>' : ''}</td>
+        <td class="op-num">${formatVto(c.vencimiento)}</td>
+        <td><span class="op-mejora">${_opPp(c.mejora)}</span></td>
+        <td class="op-num" title="Meses de TIR extra para recuperar la comisión de vender y comprar">${c.payback != null ? c.payback + ' meses' : '—'}</td>
+        <td class="op-acc"><button class="op-btn" onclick="irARotarAlternativa('${tkJs}','${_opJs(c.ticker)}')">⇄ Comparar</button><button class="op-btn op-btn-g" onclick="opCopiarMsg(${i},${k},this)">📋 Copiar msg</button></td>
+      </tr>`).join('');
+    const altTabla = g.alts.length
+      ? `<table class="op-alts" data-fcn-tf-skip><thead><tr><th></th><th>Comprar</th><th>TIR</th><th>Duration</th><th>Calif.</th><th>Vto.</th><th>Mejora</th><th>Se paga en</th><th></th></tr></thead><tbody>${altRows}</tbody></table>`
+      : `<div class="op-sub" style="padding:8px 0">${g.tags.includes('vto') ? 'Vence pronto: la plata queda libre para reinvertir. ' : ''}${g.tags.includes('gan') && !g.tags.includes('vto') ? 'Sin alternativas que rindan ' + OP_MIN_MEJORA * 100 + ' pp más con estos filtros. ' : ''}<a onclick="abrirHoldersON('${tkJs}')">Ver alternativas con otros filtros ↗</a> <button class="op-btn op-btn-g" onclick="opCopiarMsg(${i},-1,this)">📋 Copiar msg</button></div>`;
+    const chips = g.pos.slice().sort((a, b) => b.tenencia - a.tenencia).map(d => {
+      const j = g.pos.indexOf(d);
+      const p = opPnlCliente(d);
+      return `<span class="op-cli${d.tel ? '' : ' sin-tel'}" onclick="opWppCliente(${i},${j})" title="${d.tel ? 'Mandarle WhatsApp' : 'Sin teléfono — cargá el Stock de cuentas'}">
+        <span class="op-cli-n">${_opEsc(d.cliente)}</span><span class="op-cli-v">${_opUsd(d.tenencia)}</span>${p !== null ? `<span class="op-cli-p ${p >= 0 ? 'up' : 'dn'}">${p >= 0 ? '+' : ''}${_opPct(p, 1)}</span>` : ''}</span>`;
+    }).join('');
+    det = `<div class="op-det">${altTabla}
+      <div class="op-clis-h">Clientes (${g.pos.length}) · tocá uno para mandarle WhatsApp con la propuesta <button class="op-btn" onclick="mailATodos('${tkJs}')">✉ Mail a todos</button></div>
+      <div class="op-clis">${chips}</div></div>`;
+  }
+  return `<div class="op-card${abierto ? ' open' : ''}">
+    <div class="op-head" onclick="opToggle('${tkJs}')">
+      <span class="op-caret">${abierto ? '▾' : '▸'}</span>
+      <div class="op-id">
+        <div><b class="op-tk">${_opEsc(g.ticker)}</b> ${liqBadgeInline(g.ticker)} ${g.tags.map(t => tagHtml[t]).join(' ')} ${g.cupon != null ? `<span class="op-sub">Cupón ${_opPct(g.cupon)}</span>` : ''}</div>
+        <div class="op-sub">${_opEsc(g.emisor || g.instrumento)} · Vto. ${formatVto(g.vencimiento)}</div>
+        ${resumen}
+      </div>
+      ${met(g.tir != null ? _opPct(g.tir) : '—', 'TIR actual', 'tir')}
+      ${met(g.duration != null ? g.duration.toFixed(2) + 'a' : '—', 'Duration')}
+      ${met(_opEsc(g.calificacion || '—'), 'Calif.')}
+      ${met(g.pnl != null ? (g.pnl >= 0 ? '+' : '') + _opPct(g.pnl, 1) : '—', 'Ganancia', g.pnl == null ? '' : g.pnl >= 0 ? 'up' : 'dn')}
+      <div class="op-met op-ten"><div class="op-met-v">${_opUsd(g.tenencia)}</div><div class="op-met-l">${g.pos.length} cliente${g.pos.length === 1 ? '' : 's'}</div></div>
+    </div>${det}
+  </div>`;
+}
+
+function opMensaje(g, c, d) {
+  const nom = d ? _nomSaludo(d.nombreStock) : '';
+  if (!c) {
+    if (g.tags.includes('vto')) return `Hola${nom}! 👋\n\nTe aviso que tu *${g.ticker}* vence en ${g.diasVto} días: esa plata te va a quedar libre en la cuenta.\n\nSi querés, te armo un par de opciones para reinvertirla y que siga generando renta. ¿Lo vemos?`;
+    const p = d ? opPnlCliente(d) : g.pnl;
+    return `Hola${nom}! 👋\n\nTu *${g.ticker}* viene con una ganancia de ${p != null ? _opPct(p, 1) : 'buena'} en precio desde que la compraste. Puede ser un buen momento para tomarla y rotar a algo que hoy rinda más.\n\n¿Te parece que lo veamos?`;
+  }
+  const cal = c.bajaCalif ? ` (calificación ${c.calificacion}, un escalón por debajo de la actual ${g.calificacion})` : (c.calificacion ? ` (calificación ${c.calificacion})` : '');
+  return `Hola${nom}! 👋\n\nEstuve revisando tu cartera. Tu *${g.ticker}* (${g.emisor || g.instrumento}) hoy rinde ${_opPct(g.tir)} anual en dólares.\n\nEncontré *${c.ticker}*${c.emisor ? ` (${c.emisor})` : ''}, con un plazo parecido${c.duration != null ? ` (${c.duration.toFixed(1).replace('.', ',')} años)` : ''}, que rinde *${_opPct(c.tir)}*: ${(c.mejora * 100).toFixed(2).replace('.', ',')} puntos más por año${cal}.\n\n¿Te parece que lo veamos? Te paso los números.`;
+}
+function opCopiarMsg(i, k, btn) {
+  const g = _opGrupos[i]; if (!g) return;
+  const txt = opMensaje(g, k >= 0 ? g.alts[k] : null, null);
+  const ok = () => { const o = btn.textContent; btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = o; }, 1400); };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(ok).catch(() => prompt('Copiá el mensaje:', txt));
+  else prompt('Copiá el mensaje:', txt);
+}
+function opWppCliente(i, j) {
+  const g = _opGrupos[i]; if (!g) return;
+  const d = g.pos[j]; if (!d) return;
+  abrirWpp({ cliente: d.cliente, ticker: g.ticker, tir: g.tir != null ? _opPct(g.tir) : null, tel: d.tel || null,
+    nombre: d.nombreStock || '', comitente: d.comitente, texto: opMensaje(g, g.alts[0] || null, d) });
 }
 
 // =================== RENDER ===================
 
 function renderTablas() {
-  renderHoy(); renderStats(); renderTablaBajas(); renderTablaTodasONs();
+  renderOportunidades(); renderStats(); renderTablaBajas(); renderTablaTodasONs();
   renderTablaTop(); renderResumenClientes();
 }
 
@@ -2095,7 +2151,7 @@ function setModoTIR(modo) {
 function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const idx=['tab-todas','tab-resumen','tab-hoy'].indexOf(id);
+  const idx=['tab-oport','tab-todas','tab-resumen'].indexOf(id);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById(id).classList.add('active');
 }
@@ -2159,7 +2215,10 @@ function abrirWpp(ctx) {
   }
   const tpl = ctx.tirBaja ? 'atencion' : ctx.tirAlta ? 'buenas' : 'seguimiento';
   const btn = document.querySelector(`.wpp-tpl-btn[onclick*="${tpl}"]`);
-  if (btn) usarTpl(btn, tpl);
+  if (ctx.texto) {   // mensaje ya armado (Oportunidades): no se pisa con una plantilla
+    document.querySelectorAll('.wpp-tpl-btn').forEach(b => b.classList.remove('sel'));
+    document.getElementById('wpp-texto').value = ctx.texto;
+  } else if (btn) usarTpl(btn, tpl);
   document.getElementById('wpp-overlay').style.display = 'flex';
 }
 

@@ -25,6 +25,12 @@
 // Para que una tabla NO tenga el botón: data-fcn-tf-skip en ella o en un
 // contenedor.
 //
+// FORMULARIOS / PANELES: cualquier elemento con id y data-fcn-expandir="Título"
+// también recibe el ⤢ y se agranda igual (sin buscador ni columnas). El
+// contenido queda centrado (máx. ~1240px); si la herramienta quiere otro
+// armado (ej. dos columnas) lo define con su propio CSS para
+// `#su-panel.fcn-tf-full`.
+//
 // Incluir con <script src="fcn-tabla.js" defer></script> (no depende de
 // nada; todo con prefijo fcnTf/fcn-tf).
 // ══════════════════════════════════════════════════════════════
@@ -52,7 +58,10 @@
     'html.fcn-tf-abierta .fcn-tf-btn{display:none!important}',
     '.fcn-tf-anc{transform:none!important;filter:none!important;backdrop-filter:none!important;perspective:none!important;contain:none!important;will-change:auto!important;z-index:auto!important;isolation:auto!important;animation:none!important}',
     '.fcn-tf-hide{display:none!important}',
-    '.fcn-tf-full{position:fixed!important;top:' + BAR_H + 'px!important;left:0!important;right:0!important;bottom:0!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0 14px 28px!important;overflow:auto!important;z-index:190!important;background:var(--fcn-tf-bg)!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:block!important;visibility:visible!important;opacity:1!important;animation:fcnTfIn .16s ease-out}',
+    '.fcn-tf-full{position:fixed!important;top:' + BAR_H + 'px!important;left:0!important;right:0!important;bottom:0!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0 14px 28px!important;overflow:auto!important;z-index:190!important;background:var(--fcn-tf-bg)!important;border:0!important;border-radius:0!important;box-shadow:none!important;visibility:visible!important;opacity:1!important;animation:fcnTfIn .16s ease-out}',
+    '.fcn-tf-full:not(.fcn-tf-panel){display:block!important}',
+    '.fcn-tf-full.fcn-tf-panel{padding:24px max(24px,calc((100vw - 1240px) / 2)) 48px!important}',
+    '.fcn-tf-bar.fcn-tf-modo-panel .fcn-tf-buscar,.fcn-tf-bar.fcn-tf-modo-panel .fcn-tf-cnt,.fcn-tf-bar.fcn-tf-modo-panel [data-a=ajustar],.fcn-tf-bar.fcn-tf-modo-panel [data-a=compacta],.fcn-tf-bar.fcn-tf-modo-panel [data-a=cols]{display:none!important}',
     '@keyframes fcnTfIn{from{opacity:0}to{opacity:1}}',
     '@keyframes fcnTfBar{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}',
     '@media (prefers-reduced-motion:reduce){.fcn-tf-full,.fcn-tf-bar{animation:none!important}.fcn-tf-btn{transition:none}}',
@@ -126,7 +135,9 @@
   }
   // Caja que se agranda: el contenedor con scroll de la tabla (si la tabla es casi todo
   // su contenido), si no el padre directo (escondiendo lo demás que tenga), si no la tabla.
+  function esPanel(el){ return el.tagName !== 'TABLE' && el.hasAttribute('data-fcn-expandir'); }
   function cajaDe(t){
+    if(esPanel(t)) return { el:t, modo:'panel' };
     var n = t.parentElement;
     for(var i = 0; i < 4 && n && n !== document.body; i++, n = n.parentElement){
       if(n.tagName === 'TD' || n.tagName === 'TH') break;
@@ -198,8 +209,9 @@
     var b = document.createElement('button');
     b.type = 'button';
     b.className = 'fcn-tf-btn';
-    b.title = 'Agrandar tabla (pantalla completa)';
-    b.setAttribute('aria-label', 'Agrandar tabla');
+    var que = esPanel(t) ? 'formulario' : 'tabla';
+    b.title = 'Agrandar ' + que + ' (pantalla completa)';
+    b.setAttribute('aria-label', 'Agrandar ' + que);
     b.innerHTML = ICO_ABRIR;
     b.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); abrir(t); });
     document.body.appendChild(b);
@@ -208,10 +220,12 @@
   function ubicarBotones(){
     if(abierta) return;
     var vivas = new Set();
-    var tablas = document.getElementsByTagName('table');
+    var tablas = Array.prototype.slice.call(document.getElementsByTagName('table'));
+    var paneles = document.querySelectorAll('[data-fcn-expandir][id]');
+    for(var k = 0; k < paneles.length; k++) tablas.push(paneles[k]);
     for(var i = 0; i < tablas.length; i++){
       var t = tablas[i];
-      if(!califica(t)) continue;
+      if(t.tagName === 'TABLE' ? !califica(t) : !t.isConnected) continue;
       var rv = rectVisible(t);
       var b = botones.get(t);
       if(!rv){ if(b) b.classList.remove('on'); vivas.add(t); continue; }
@@ -220,7 +234,7 @@
       var x = rv.right - 24 - 6, y = null;
       var rt = t.getBoundingClientRect();
       var ya = Math.round(rt.top) - 24 - 5;
-      if(rt.top >= rv.top - 1 && ya >= 0 && libre(x, ya)) y = ya;
+      if(t.tagName === 'TABLE' && rt.top >= rv.top - 1 && ya >= 0 && libre(x, ya)) y = ya;
       for(var dy = 0; y === null && dy <= 88; dy += 44){
         var yy = rv.top + 6 + dy;
         if(yy + 24 > rv.bottom) break;
@@ -241,13 +255,14 @@
   var pref = { ajustar: lsGet('fcn_tf_ajustar') !== '0', compacta: lsGet('fcn_tf_compacta') === '1' };
 
   function claveDe(t){
+    if(esPanel(t)) return { tid: t.id, anc: '', idx: 0 };
     var anc = t.parentElement;
     while(anc && !anc.id && anc !== document.body) anc = anc.parentElement;
     var lista = Array.prototype.filter.call((anc || document.body).getElementsByTagName('table'), tablaRaiz);
     return { tid: t.id || '', anc: anc && anc.id ? anc.id : '', idx: lista.indexOf(t) };
   }
   function buscarPorClave(k){
-    if(k.tid){ var x = document.getElementById(k.tid); if(x && x.tagName === 'TABLE') return x; }
+    if(k.tid){ var x = document.getElementById(k.tid); if(x && (x.tagName === 'TABLE' || x.hasAttribute('data-fcn-expandir'))) return x; }
     var anc = k.anc ? document.getElementById(k.anc) : document.body;
     if(!anc) return null;
     var lista = Array.prototype.filter.call(anc.getElementsByTagName('table'), tablaRaiz);
@@ -437,6 +452,7 @@
       A = abierta;
     }
     var t = A.table, caja = A.caja.el;
+    if(A.caja.modo === 'panel') return;
     if(A.caja.modo === 'padre'){
       for(var c = caja.firstElementChild; c; c = c.nextElementSibling){
         var ocultar = c !== t && !c.contains(t) && !/^(SCRIPT|STYLE|TEMPLATE)$/.test(c.tagName) && getComputedStyle(c).position !== 'fixed';
@@ -506,11 +522,12 @@
       try{ abierta.ocultos = JSON.parse(lsGet(claveLS(abierta.key)) || '[]') || []; }catch(e){ abierta.ocultos = []; }
     }
     caja.el.classList.add('fcn-tf-full');
+    if(caja.modo === 'panel') caja.el.classList.add('fcn-tf-panel');
   }
   function desmontar(todo){
     var A = abierta;
     if(!A) return;
-    A.caja.el.classList.remove('fcn-tf-full', 'fcn-tf-compacta', 'fcn-tf-thbg');
+    A.caja.el.classList.remove('fcn-tf-full', 'fcn-tf-compacta', 'fcn-tf-thbg', 'fcn-tf-panel');
     A.anc.forEach(function(n){ n.classList.remove('fcn-tf-anc'); });
     A.ocultosHermanos.forEach(function(n){ n.classList.remove('fcn-tf-hide'); });
     var t = A.table;
@@ -531,7 +548,9 @@
     paleta(t);
     focoPrevio = document.activeElement;
     montar(t, null);
-    titEl.textContent = tituloDe(t);
+    var panel = esPanel(t);
+    bar.classList.toggle('fcn-tf-modo-panel', panel);
+    titEl.textContent = panel ? (t.getAttribute('data-fcn-expandir') || tituloDe(t)) : tituloDe(t);
     titEl.title = titEl.textContent;
     inpBuscar.value = '';
     document.documentElement.classList.add('fcn-tf-abierta');
@@ -540,7 +559,7 @@
     abierta.caja.el.scrollTop = 0;
     // El zoom se recalcula cuando el Suite terminó de agrandar el iframe.
     setTimeout(aplicar, 60); setTimeout(aplicar, 260);
-    try{ inpBuscar.focus({ preventScroll:true }); }catch(e){}
+    if(!panel) try{ inpBuscar.focus({ preventScroll:true }); }catch(e){}
   }
   function cerrar(){
     if(!abierta) return;

@@ -1311,22 +1311,30 @@ function valuacion5y(r){
 // ══════════════════════════════════════════
 //  SCORE FUNDAMENTAL (-100 negocio deteriorándose … +100 negocio sólido y creciendo)
 // ══════════════════════════════════════════
+// Empresas que en los últimos 5 años casi nunca ganaron plata NI generaron caja (≤1 de 5): para
+// ellas la tendencia del margen (arranca de márgenes de −600%) y la deuda/EBITDA (un EBITDA
+// positivo por extraordinarios) no son confiables → no entran, y el negocio queda como mucho en
+// "Regular". Caso real: Satellogic salía "Sólido" (08/10). En bancos/financieras la deuda/EBITDA
+// tampoco tiene sentido (la "deuda" son depósitos): Nu daba −295x.
+function _quemaCaja(f){ return f.niPos!=null && f.fcfPos!=null && f.niPos<=0.2 && f.fcfPos<=0.2; }
 function fundamental(r){
   const f=r.f||{};
   const c=[];
+  const quema=_quemaCaja(f), fin=r.sector==='Financial Services';
   // crecimiento de ventas anualizado: +15%/año → +1, -15% → -1
   if(f.revCagr!==null && f.revCagr!==undefined) c.push([clamp(f.revCagr/0.15,-1,1), 0.30]);
   // rentabilidad: fracción de años con ganancia (0..1) → -1..+1
   if(f.niPos!==null && f.niPos!==undefined) c.push([f.niPos*2-1, 0.25]);
   // tendencia del margen neto: +5 puntos → +1, -5 → -1
-  if(f.margenTrend!==null && f.margenTrend!==undefined) c.push([clamp(f.margenTrend/0.05,-1,1), 0.20]);
+  if(!quema && f.margenTrend!==null && f.margenTrend!==undefined) c.push([clamp(f.margenTrend/0.05,-1,1), 0.20]);
   // generación de caja: fracción de años con FCF positivo
   if(f.fcfPos!==null && f.fcfPos!==undefined) c.push([f.fcfPos*2-1, 0.15]);
   // apalancamiento: caja neta → +1, 2.5x deuda/EBITDA → 0, 5x+ → -1
-  if(f.ndEbitda!==null && f.ndEbitda!==undefined) c.push([clamp((2.5-f.ndEbitda)/2.5,-1,1), 0.10]);
+  if(!quema && !fin && f.ndEbitda!==null && f.ndEbitda!==undefined) c.push([clamp((2.5-f.ndEbitda)/2.5,-1,1), 0.10]);
   if(c.length<3) return null;
   const w=c.reduce((a,x)=>a+x[1],0);
-  return Math.round(100 * c.reduce((a,x)=>a+x[0]*x[1],0) / w);
+  const sc=Math.round(100 * c.reduce((a,x)=>a+x[0]*x[1],0) / w);
+  return quema ? Math.min(sc,0) : sc;
 }
 
 // ── SEÑALES en palabras (para asesores que arrancan) ──
@@ -1651,7 +1659,8 @@ function construirHolders(){
   dataTenencia.forEach(row=>{
     // el Excel de Balanz trae variantes del mismo papel ("MSFT.E", "NVDA.", "GE-Repetido-1-5286-0-1")
     // que no matcheaban con el universo de múltiplos → ~8% de la RV de los clientes quedaba afuera
-    const ticker=String(row['Ticker']||'').trim().toUpperCase().replace(/-REPETIDO.*$/,'').replace(/\.E?$/,'');
+    let ticker=String(row['Ticker']||'').trim().toUpperCase().replace(/-REPETIDO.*$/,'').replace(/\.E?$/,'');
+    if(ticker==='BRK.B') ticker='BRKB';   // Berkshire: en la tenencia viene "BRK.B."
     if(!ticker) return;
     (holdersByTicker[ticker]=holdersByTicker[ticker]||[]).push({
       cliente:row['Cuenta']||row['Comitente']||'—',
@@ -3042,9 +3051,11 @@ function abrirFicha(ticker,opts){
   const neg=[];
   if(f.revCagr!=null) neg.push(`Las ventas ${f.revCagr>=0?'crecen':'caen'} al <b>${pct(f.revCagr)}/año</b> (últimos 5 años).`);
   if(f.niPos!=null) neg.push(`Ganó plata en <b>${Math.round(f.niPos*5)} de los últimos 5 años</b>.`);
-  if(f.margenTrend!=null) neg.push(`El margen neto se ${f.margenTrend>=0?'expandió':'comprimió'} <b>${fmtN(f.margenTrend*100,1)} pp</b> en ese período.`);
+  const _qc=_quemaCaja(f), _fin=r.sector==='Financial Services';
+  if(_qc) neg.push(`<span style="color:var(--ambar)">Casi nunca ganó plata ni generó caja en los últimos 5 años</span>: es una empresa que todavía quema caja, así que su negocio no puede puntuar más que "Regular".`);
+  if(f.margenTrend!=null && !_qc) neg.push(`El margen neto se ${f.margenTrend>=0?'expandió':'comprimió'} <b>${fmtN(f.margenTrend*100,1)} pp</b> en ese período.`);
   if(f.fcfPos!=null) neg.push(`Generó caja libre en <b>${Math.round(f.fcfPos*5)} de 5 años</b>.`);
-  if(f.ndEbitda!=null) neg.push(f.ndEbitda<=0?`Tiene <b>más caja que deuda</b>.`:`Deuda neta de <b>${fmtN(f.ndEbitda,1)}×</b> su ganancia operativa anual ${f.ndEbitda<=1?'(cómodo)':f.ndEbitda<=3?'(manejable)':'(alto)'}.`);
+  if(f.ndEbitda!=null && !_qc && !_fin) neg.push(f.ndEbitda<=0?`Tiene <b>más caja que deuda</b>.`:`Deuda neta de <b>${fmtN(f.ndEbitda,1)}×</b> su ganancia operativa anual ${f.ndEbitda<=1?'(cómodo)':f.ndEbitda<=3?'(manejable)':'(alto)'}.`);
   if(!neg.length) neg.push('Sin datos de balances (ETF, o empresa sin balances públicos accesibles).');
 
   // La valuación

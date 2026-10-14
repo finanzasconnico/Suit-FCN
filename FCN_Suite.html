@@ -354,6 +354,24 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 .liq-wpp-btn{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(37,211,102,.14);border:1px solid rgba(37,211,102,.3);cursor:pointer;}
 .liq-wpp-btn:hover{background:rgba(37,211,102,.28);}
 .liq-wpp-btn svg{width:9px;height:9px;fill:#25D366;}
+/* ── Agenda de cobros (Inicio) ── */
+.agenda-card{margin-bottom:14px;}
+.agenda-card .dash-section-title{flex-wrap:wrap;}
+.agenda-rangos{margin:0 0 0 auto;}
+.agenda-rangos .liq-toggle-btn.active{background:var(--jade-d);border-color:var(--jade);color:var(--jade);}
+.agenda-resumen{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5;}
+.agenda-resumen b{color:var(--text);font-family:var(--font-m);font-weight:600;}
+.agenda-box{max-height:300px;overflow-x:hidden;padding-left:6px;}
+.agenda-dia{font-family:var(--font-m);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ambar);padding:8px 0 3px;border-bottom:1px solid var(--border);margin-bottom:2px;display:flex;justify-content:space-between;}
+.agenda-dia:first-child{padding-top:0;}
+.agenda-dia span:last-child{color:var(--muted);letter-spacing:0;}
+.agenda-row{display:flex;align-items:center;gap:10px;padding:5px 6px;margin:0 -6px;border-radius:5px;font-size:11.5px;cursor:pointer;}
+.agenda-row:hover{background:var(--wash-1);}
+.agenda-row:hover .agenda-cli{text-decoration:underline;text-decoration-color:var(--ambar);}
+.agenda-cli{width:210px;flex-shrink:0;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.agenda-det{flex:1;min-width:0;color:var(--muted);font-family:var(--font-m);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.agenda-monto{font-family:var(--font-m);font-weight:600;color:var(--jade);flex-shrink:0;text-align:right;min-width:92px;}
+@media (max-width:720px){.agenda-cli{width:120px;}.agenda-det{display:none;}.agenda-rangos{margin-left:0;}}
 .liq-wpp-btn.sin-tel{background:var(--wash-1);border-color:var(--border);}
 .liq-wpp-btn.sin-tel svg{fill:var(--muted);}
 
@@ -588,6 +606,8 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 <script src="fcn-tabla.js" defer></script>
 <script src="fcn-core.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="fcn-letras.js"></script>
+<script src="fcn-bonos.js"></script>
 </head>
 <body>
 
@@ -719,6 +739,18 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 
       <div class="dash-section">
         <div class="dash-kpis" id="dash-stats"></div>
+        <div class="dash-card agenda-card">
+          <div class="dash-section-title">📅 Cobros de tus clientes <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(cupones, amortizaciones y vencimientos — plata para reinvertir)</span>
+            <div class="liq-toggle agenda-rangos" id="agenda-rangos">
+              <button class="liq-toggle-btn" data-r="pasado7" onclick="setAgendaRango('pasado7')">Últimos 7 días</button>
+              <button class="liq-toggle-btn" data-r="prox7" onclick="setAgendaRango('prox7')">Próximos 7 días</button>
+              <button class="liq-toggle-btn" data-r="prox30" onclick="setAgendaRango('prox30')">Próximos 30 días</button>
+            </div>
+          </div>
+          <div id="dash-agenda-resumen" class="agenda-resumen"></div>
+          <div id="dash-agenda" class="dash-scrollbox agenda-box"></div>
+          <div id="dash-agenda-cap" style="font-size:10px;color:var(--muted);margin-top:6px;"></div>
+        </div>
         <div class="dash-two-col">
           <div class="dash-card">
             <div class="dash-section-title">📊 Composición de la cartera (todos los clientes)</div>
@@ -2396,6 +2428,7 @@ function parseMonitorTIR(entry) {
   try {
     const wb = fcnLibro(entry, entry.data, DASH_XLSX_OPTS.monitor);
     const names = wb.SheetNames;
+    dashCalendario = parseMonitorCalendario(wb);   // mismo libro: calendarios de pago para la agenda de cobros
     const dataMonitor = {};
     let corpCnt = 0, sovCnt = 0;
     const excelSerialToDate = serial => {
@@ -2582,6 +2615,172 @@ function renderDashRFRotar(monitor, tenencia) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  AGENDA DE COBROS — qué clientes cobran cupón / amortización / vencimiento y cuánto
+//  Calendarios = hojas por ticker del Monitor, con el MISMO parser de "¿Cuánto cobro?"
+//  (fcn-bonos.js: bonos y ONs en USD; fcn-letras.js: LECAPs/BONCAPs en pesos, pagan todo
+//  al vencimiento). Cobro = nominales de la Tenencia × flujo por 1 VN. Los bonos en pesos
+//  CER/duales no tienen hoja con calendario en el Monitor → quedan afuera (se avisa).
+// ══════════════════════════════════════════════════════════════
+var dashCalendario = null;   // { idx: ticker -> {tipo:'bono'|'letra', ...} } — lo llena parseMonitorTIR
+const AGENDA_MIN_USD = 10;   // cobros menores no se listan (se cuentan aparte)
+const _agFmt0 = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+const _agFmtUsd = v => 'USD ' + _agFmt0.format(v);
+const _agFmtArs = v => '$ ' + _agFmt0.format(v);
+const _agIso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const _AG_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+let agendaRango = (() => { try { return localStorage.getItem('fcn_agenda_rango') || 'prox7'; } catch (e) { return 'prox7'; } })();
+let _agendaFilas = [];
+
+function parseMonitorCalendario(wb) {
+  if (!window.FCNBonos || !window.FCNLetras) return null;
+  try {
+    const idx = {};
+    const ayer = new Date(); ayer.setDate(ayer.getDate() - 10);   // incluye lo que venció hace poco (vista "últimos 7 días")
+    FCNBonos.bonosDesdeLibro(XLSX, wb, ayer).bonos.forEach(b => {
+      const c = { tipo: 'bono', ticker: b.ticker, flujos: b.flujos, vto: b.vto };
+      idx[b.ticker] = c;
+      if (b.simbolo && !idx[b.simbolo]) idx[b.simbolo] = c;
+    });
+    FCNLetras.letrasDesdeLibro(XLSX, wb, ayer).forEach(l => {
+      if (l.vto && l.vf > 0 && !idx[l.ticker]) idx[l.ticker] = { tipo: 'letra', ticker: l.ticker, vto: l.vto, vf: l.vf };
+    });
+    return { idx, n: Object.keys(idx).length };
+  } catch (e) { console.warn('[Agenda] no se pudieron leer los calendarios del Monitor', e); return null; }
+}
+
+function agendaVentana(rango) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const d = n => { const x = new Date(hoy); x.setDate(x.getDate() + n); return x; };
+  if (rango === 'pasado7') return { desde: d(-7), hasta: d(-1), pasado: true };
+  if (rango === 'prox30') return { desde: hoy, hasta: d(30), pasado: false };
+  return { desde: hoy, hasta: d(7), pasado: false };
+}
+
+// → { filas:[{fecha, cliente, usd, ars, items:[{ticker, cupon, amort, total, moneda}]}], sinCal:{ticker:usd}, chicos }
+function calcAgendaCobros(tenencia, cal, desde, hasta) {
+  const out = { filas: [], sinCal: {}, chicos: 0 };
+  if (!tenencia || !tenencia.carteraPorCliente || !cal) return out;
+  const dIso = _agIso(desde), hIso = _agIso(hasta);
+  Object.entries(tenencia.carteraPorCliente).forEach(([cliente, pos]) => {
+    const nomPorTk = {};
+    pos.forEach(p => { if (p.grupo === 'Renta Fija' && p.nominales > 0) nomPorTk[p.ticker] = (nomPorTk[p.ticker] || 0) + p.nominales; });
+    const porFecha = {};
+    Object.entries(nomPorTk).forEach(([tk, nom]) => {
+      const c = cal.idx[tk];
+      if (!c) {
+        const ten = pos.filter(p => p.ticker === tk).reduce((s, p) => s + (p.tenencia || 0), 0);
+        out.sinCal[tk] = (out.sinCal[tk] || 0) + ten;
+        return;
+      }
+      const agregar = (fecha, it) => {
+        const k = _agIso(fecha);
+        if (k < dIso || k > hIso) return;
+        (porFecha[k] = porFecha[k] || { fecha, items: [] }).items.push(it);
+      };
+      if (c.tipo === 'bono') {
+        c.flujos.forEach(f => agregar(f.fecha, { ticker: tk, cupon: f.cupon * nom, amort: f.amort * nom, total: f.total * nom, moneda: 'USD', final: f.fecha.getTime() === c.vto.getTime() }));
+      } else {
+        agregar(c.vto, { ticker: tk, cupon: 0, amort: 0, total: c.vf * nom, moneda: 'ARS', final: true });
+      }
+    });
+    Object.values(porFecha).forEach(g => {
+      const usd = g.items.filter(i => i.moneda === 'USD').reduce((s, i) => s + i.total, 0);
+      const ars = g.items.filter(i => i.moneda === 'ARS').reduce((s, i) => s + i.total, 0);
+      // Pesos: se compara contra el mínimo en USD con un MEP aproximado (solo para filtrar migajas).
+      if (usd + ars / 1500 < AGENDA_MIN_USD) { out.chicos++; return; }
+      out.filas.push({ fecha: g.fecha, cliente, usd, ars, items: g.items.sort((a, b) => b.total - a.total) });
+    });
+  });
+  out.filas.sort((a, b) => a.fecha - b.fecha || (b.usd + b.ars / 1500) - (a.usd + a.ars / 1500));
+  return out;
+}
+
+function _agDetalle(it) {
+  const m = it.moneda === 'USD' ? _agFmtUsd(it.total) : _agFmtArs(it.total);
+  let que;
+  if (it.moneda === 'ARS') que = 'vence';
+  else if (it.final) que = 'vence';
+  else if (it.cupon > 0.005 && it.amort > 0.005) que = 'renta + amort.';
+  else if (it.amort > 0.005) que = 'amort.';
+  else que = 'renta';
+  return `${it.ticker} ${que} ${m}`;
+}
+
+function setAgendaRango(r) {
+  agendaRango = r;
+  try { localStorage.setItem('fcn_agenda_rango', r); } catch (e) {}
+  renderDashAgenda();
+}
+
+function renderDashAgenda() {
+  const el = document.getElementById('dash-agenda');
+  if (!el) return;
+  document.querySelectorAll('#agenda-rangos .liq-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.r === agendaRango));
+  const res = document.getElementById('dash-agenda-resumen');
+  const cap = document.getElementById('dash-agenda-cap');
+  res.innerHTML = ''; cap.textContent = '';
+  const tenencia = currentTenencia;
+  if (!tenencia || !tenencia.carteraPorCliente || !dashCalendario) {
+    el.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a> y el <a onclick="showFiles()">Monitor de Individuos</a> para ver acá qué clientes cobran renta o amortización y cuánto.</div>`;
+    _agendaFilas = [];
+    return;
+  }
+  const v = agendaVentana(agendaRango);
+  const r = calcAgendaCobros(tenencia, dashCalendario, v.desde, v.hasta);
+  _agendaFilas = r.filas;
+  if (!r.filas.length) {
+    el.innerHTML = `<div class="dash-empty">${v.pasado ? 'Ningún cliente cobró' : 'Ningún cliente cobra'} renta ni amortización ${v.pasado ? 'en los últimos 7 días' : agendaRango === 'prox30' ? 'en los próximos 30 días' : 'en los próximos 7 días'}.</div>`;
+  } else {
+    const totUsd = r.filas.reduce((s, f) => s + f.usd, 0), totArs = r.filas.reduce((s, f) => s + f.ars, 0);
+    const nCli = new Set(r.filas.map(f => f.cliente)).size;
+    const montos = [totUsd ? `<b>${_agFmtUsd(totUsd)}</b>` : '', totArs ? `<b>${_agFmtArs(totArs)}</b>` : ''].filter(Boolean).join(' + ');
+    res.innerHTML = `<b>${nCli}</b> cliente${nCli === 1 ? '' : 's'} ${v.pasado ? 'cobraron' : 'cobran'} ${montos} ${v.pasado ? 'en los últimos 7 días — esa plata ya está en sus cuentas' : 'entre hoy y el ' + v.hasta.getDate() + '/' + (v.hasta.getMonth() + 1)}. Mandales una propuesta para reinvertirla.`;
+    const hoyIso = _agIso(new Date());
+    let html = '', diaAct = '';
+    r.filas.forEach((f, i) => {
+      const k = _agIso(f.fecha);
+      if (k !== diaAct) {
+        diaAct = k;
+        const delDia = r.filas.filter(x => _agIso(x.fecha) === k);
+        const dUsd = delDia.reduce((s, x) => s + x.usd, 0), dArs = delDia.reduce((s, x) => s + x.ars, 0);
+        const lbl = `${_AG_DIAS[f.fecha.getDay()]} ${f.fecha.getDate()}/${f.fecha.getMonth() + 1}${k === hoyIso ? ' · hoy' : ''}`;
+        html += `<div class="agenda-dia"><span>${lbl}</span><span>${[dUsd ? _agFmtUsd(dUsd) : '', dArs ? _agFmtArs(dArs) : ''].filter(Boolean).join(' + ')} · ${delDia.length} cliente${delDia.length === 1 ? '' : 's'}</span></div>`;
+      }
+      const tel = telParaClienteFCN(f.cliente);
+      const monto = [f.usd ? _agFmtUsd(f.usd) : '', f.ars ? _agFmtArs(f.ars) : ''].filter(Boolean).join(' + ');
+      html += `<div class="agenda-row" onclick="abrirCarteraCliente(_agendaFilas[${i}].cliente)" title="Ver cartera completa">
+        <span class="agenda-cli" title="${escHtml(f.cliente)}">${escHtml(f.cliente)}</span>
+        <span class="agenda-det" title="${escHtml(f.items.map(_agDetalle).join(' · '))}">${escHtml(f.items.map(_agDetalle).join(' · '))}</span>
+        <span class="agenda-monto">${monto}</span>
+        <span class="liq-wpp-btn ${tel ? '' : 'sin-tel'}" onclick="event.stopPropagation();abrirWppAgenda(${i})" title="${tel ? 'Mandarle un WhatsApp para reinvertir' : 'Sin teléfono — cargá el Stock de cuentas'}">${WPP_SVG_ICON}</span>
+      </div>`;
+    });
+    el.innerHTML = html;
+  }
+  const sinCal = Object.entries(r.sinCal).sort((a, b) => b[1] - a[1]);
+  const notas = [];
+  if (r.chicos) notas.push(`${r.chicos} cobro${r.chicos === 1 ? '' : 's'} menor${r.chicos === 1 ? '' : 'es'} a USD ${AGENDA_MIN_USD} sin listar`);
+  if (sinCal.length) notas.push(`sin calendario en el Monitor (no se incluyen): ${sinCal.slice(0, 6).map(([t]) => t).join(', ')}${sinCal.length > 6 ? ` y ${sinCal.length - 6} más` : ''} — sobre todo bonos en pesos CER/duales`);
+  notas.push('montos estimados con los nominales de la Tenencia cargada');
+  cap.textContent = notas.join(' · ');
+}
+
+function abrirWppAgenda(i) {
+  const f = _agendaFilas[i];
+  if (!f) return;
+  const tel = telParaClienteFCN(f.cliente);
+  if (!tel) { alertaSinStockFCN(); return; }
+  const pasado = _agIso(f.fecha) < _agIso(new Date());
+  const esHoy = _agIso(f.fecha) === _agIso(new Date());
+  const cuando = esHoy ? 'hoy' : `el ${_AG_DIAS[f.fecha.getDay()]} ${f.fecha.getDate()}/${f.fecha.getMonth() + 1}`;
+  const monto = [f.usd ? _agFmtUsd(f.usd) : '', f.ars ? _agFmtArs(f.ars) : ''].filter(Boolean).join(' y ');
+  const tks = [...new Set(f.items.map(it => it.ticker))].join(', ');
+  const verbo = pasado ? 'cobraste' : esHoy ? 'cobrás' : 'vas a cobrar';
+  const texto = `Hola${_nomSaludoFCN(f.cliente)}! 👋\n\nTe aviso que ${cuando} ${verbo} aprox. ${monto} de ${tks}${pasado ? ', ya lo tenés disponible en la cuenta' : ''}.\n\nSi querés, lo reinvertimos para que siga generándote renta — te armo un par de opciones según lo que necesites. ¿Lo vemos?\n\n${nombreAsesorFirma()}`;
+  abrirWppConTexto(f.cliente, tel, texto);
+}
+
+// ══════════════════════════════════════════════════════════════
 //  MODALES: clientes que tienen un ticker / cartera completa de un cliente
 // ══════════════════════════════════════════════════════════════
 let currentTenencia = null; // último resultado de parseTenencia(), para los modales
@@ -2623,12 +2822,16 @@ function abrirWppLiquidez(cliente) {
   if (!cliente || !currentTenencia) return;
   const m = currentTenencia.porClienteMoneda[cliente] || { ARS: 0, USD: 0 };
   const tel = telParaClienteFCN(cliente);
-  wppLiqCtx = { cliente, tel };
-  document.getElementById('wppLiqSub').textContent = cliente;
   const partes = [];
   if (m.USD) partes.push('USD ' + fmtK(m.USD));
   if (m.ARS) partes.push('ARS ' + fmtK(m.ARS));
   const texto = `Hola${_nomSaludoFCN(cliente)}! 👋\n\nVeo que tenés ${partes.join(' y ')} de liquidez sin invertir en tu cuenta.\n\n¿Querés contarme por acá o por llamado qué estás pensando hacer con eso? Así vemos juntos alguna estrategia, en base a tus necesidades u objetivos, para que ese dinero empiece a generarte una renta.\n\n${nombreAsesorFirma()}`;
+  abrirWppConTexto(cliente, tel, texto);
+}
+// Mismo modal de WhatsApp con un texto cualquiera (lo usan Liquidez y la Agenda de cobros).
+function abrirWppConTexto(cliente, tel, texto) {
+  wppLiqCtx = { cliente, tel };
+  document.getElementById('wppLiqSub').textContent = cliente;
   document.getElementById('wppLiqTexto').value = texto;
   const telEl = document.getElementById('wppLiqTel');
   const sendBtn = document.getElementById('wppLiqSendBtn');
@@ -4113,17 +4316,23 @@ function vmValuacion5y(r) {
   const mm = k && r.m[k];
   return (mm && mm.actual !== null && mm.p5 !== null) ? vmCorr(mm.actual, mm.p5) : null;
 }
+// mismo criterio que fundamental() de Valuacion_Multiplos_FCN.html (08/10): empresas que casi
+// nunca ganaron plata ni generaron caja no usan margen ni deuda/EBITDA y quedan como mucho en
+// "Regular"; en financieras no se usa deuda/EBITDA.
 function vmFundamental(r) {
   const f = r.f || {};
   const c = [];
+  const quema = f.niPos != null && f.fcfPos != null && f.niPos <= 0.2 && f.fcfPos <= 0.2;
+  const fin = r.sector === 'Financial Services';
   if (f.revCagr !== null && f.revCagr !== undefined) c.push([vmClamp(f.revCagr / 0.15, -1, 1), 0.30]);
   if (f.niPos !== null && f.niPos !== undefined) c.push([f.niPos * 2 - 1, 0.25]);
-  if (f.margenTrend !== null && f.margenTrend !== undefined) c.push([vmClamp(f.margenTrend / 0.05, -1, 1), 0.20]);
+  if (!quema && f.margenTrend !== null && f.margenTrend !== undefined) c.push([vmClamp(f.margenTrend / 0.05, -1, 1), 0.20]);
   if (f.fcfPos !== null && f.fcfPos !== undefined) c.push([f.fcfPos * 2 - 1, 0.15]);
-  if (f.ndEbitda !== null && f.ndEbitda !== undefined) c.push([vmClamp((2.5 - f.ndEbitda) / 2.5, -1, 1), 0.10]);
+  if (!quema && !fin && f.ndEbitda !== null && f.ndEbitda !== undefined) c.push([vmClamp((2.5 - f.ndEbitda) / 2.5, -1, 1), 0.10]);
   if (c.length < 3) return null;
   const w = c.reduce((a, x) => a + x[1], 0);
-  return Math.round(100 * c.reduce((a, x) => a + x[0] * x[1], 0) / w);
+  const sc = Math.round(100 * c.reduce((a, x) => a + x[0] * x[1], 0) / w);
+  return quema ? Math.min(sc, 0) : sc;
 }
 // ══════════════════════════════════════════
 // PUNTAJE COMBINADO −100…+100 — portado de Valuacion_Multiplos_FCN.html (01/10, pedido de
@@ -5333,6 +5542,7 @@ function renderDashboardAll() {
   renderDashVentaSugerida();
   renderDashRFOportunidades(monitor);
   renderDashRFRotar(monitor, tenencia);
+  renderDashAgenda();
   renderCliente360();
   renderRanking();
   if (document.getElementById('inactivos-panel')?.classList.contains('active')) renderInactivos();

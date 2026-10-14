@@ -116,6 +116,7 @@ ADR_MAP = {
     # en ARS del CEDEAR contra balances en USD = multiplos sin sentido)
     "DJNJ3": "JNJ", "DISN": "DIS", "XROX": "XRX", "NOKA": "NOK", "BNG": "BG",
     "ADGO": "AGRO", "MGLU3": "MGLU", "BBAS3": "BDORY",
+    "BRKB": "BRK-B",   # Berkshire: Yahoo lo escribe con guion (quedaba NO_ENCONTRADO)
 }
 
 
@@ -308,6 +309,9 @@ def build_entry(ticker):
                            "Net Income Continuous Operations")
         ebitda = series_for(fin, "EBITDA", "Normalized EBITDA")
         ebit   = series_for(fin, "EBIT", "Operating Income")
+        # EBITDA sin extraordinarios: para la deuda/EBITDA (Satellogic 2025 informaba EBITDA +3,6M
+        # por resultados no recurrentes; el normalizado era -22M y salía "más caja que deuda").
+        ebitda_n = series_for(fin, "Normalized EBITDA")
         eq    = series_for(bs, "Stockholders Equity", "Common Stock Equity", "Total Equity Gross Minority Interest")
         debt  = series_for(bs, "Total Debt", "Net Debt")
         cash  = series_for(bs, "Cash And Cash Equivalents",
@@ -418,7 +422,9 @@ def build_entry(ticker):
         def frac_pos(vals):
             xs = [v for v in vals if v is not None]
             return round(sum(1 for v in xs if v > 0) / len(xs), 3) if xs else None
-        margen = [niv[i] / revv[i] for i in range(min(len(niv), len(revv)))
+        # margen neto acotado a ±50%: pasar de -610% a -27% (Satellogic) contaba como una mejora
+        # enorme y empujaba el puntaje a "Sólido" en empresas que nunca ganaron plata
+        margen = [max(-0.5, min(0.5, niv[i] / revv[i])) for i in range(min(len(niv), len(revv)))
                   if niv[i] is not None and revv[i] and revv[i] > 0]
         # en ARS (inflacion alta) el crecimiento de ventas y la tendencia del margen
         # quedan distorsionados por la contabilidad ajustada por inflacion -> se saltean
@@ -432,7 +438,13 @@ def build_entry(ticker):
         d0 = col_val(debt, cols[0]) if cols else None
         c0 = col_val(cash, cols[0]) if cols else None
         e0 = ebv[0] if ebv else None
-        if d0 is not None and e0 and e0 > 0:
+        en0 = col_val(ebitda_n, cols[0]) if (cols and ebitda_n is not None) else None
+        if en0 is not None:
+            e0 = min(e0, en0) if e0 is not None else en0   # el más conservador de los dos
+        # en bancos/financieras la "deuda" incluye depósitos y fondeo: deuda/EBITDA no tiene sentido
+        # (Nu daba -295x, Grupo Valores -4,3x = "mucha caja")
+        es_fin = (info.get("sector") or "") == "Financial Services"
+        if d0 is not None and e0 and e0 > 0 and not es_fin:
             fund["ND_EBITDA"] = round((d0 - (c0 or 0)) / e0, 2)
 
         # CEDEAR sin mapear (precio ARS del CEDEAR, balances en otra moneda): los
