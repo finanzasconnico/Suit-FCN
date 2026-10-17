@@ -297,6 +297,9 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 
 /* ── DASHBOARD (panorama general) ── */
 .dash-section{max-width:1120px;margin:0 auto 28px;}
+.dash-pbi-stamp{font-size:11px;color:var(--muted);margin:-8px 0 10px;display:flex;flex-wrap:wrap;gap:4px 14px;}
+.dash-pbi-stamp:empty{display:none;}
+.dash-pbi-stamp strong{color:var(--jade);font-weight:600;}
 .dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
 .dash-stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
 .dash-stat.warn{border-color:rgba(219,160,60,.3);}
@@ -755,6 +758,7 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
       <div class="tools-grid" id="task-grid"></div>
 
       <div class="dash-section">
+        <div class="dash-pbi-stamp" id="dash-pbi-stamp"></div>
         <div class="dash-kpis" id="dash-stats"></div>
         <div class="dash-card agenda-card">
           <div class="dash-section-title">📅 Cobros de tus clientes <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(cupones, amortizaciones y vencimientos — plata para reinvertir)</span>
@@ -6188,6 +6192,7 @@ function renderDashboardAll() {
   currentTenencia = tenencia;
   currentStockMap = stock;
   renderDashStats(tenencia, precios);
+  renderPowerBIStamp();
   renderDashComposicion(tenencia);
   renderDashLiquidez(tenencia);
   renderDashTopClientes(tenencia);
@@ -6363,6 +6368,28 @@ async function clearActiveClient() {
   if (teniaAlgo) showToast('Filtro de cliente quitado.');
 }
 
+// ── POWER BI (extensión de Chrome "FCN · Power BI → Suite", fuera de este repo) ──
+// La extensión lee la tabla que el reporte de Power BI ya muestra, la guarda como un .xlsx igual
+// al exportado en la misma key de fcn_shared_v1 (con src:'powerbi') y avisa a esta pestaña con el
+// evento 'fcn-powerbi-actualizado' (a las demás, por BroadcastChannel como siempre).
+async function renderPowerBIStamp() {
+  const el = document.getElementById('dash-pbi-stamp');
+  if (!el) return;
+  const sfs = SHARED_FILES.filter(sf => sf.sourceUrl && /powerbi\.com/.test(sf.sourceUrl));
+  const entries = await Promise.all(sfs.map(sf => fcnGetSharedFile(userKey(sf.key))));
+  el.innerHTML = sfs.map((sf, i) => entries[i] && entries[i].src === 'powerbi'
+    ? `<span>🔄 ${escHtml(sf.name)}: <strong>Datos de Power BI al ${fmtFechaHora(entries[i].ts)}</strong></span>` : '').join('');
+}
+document.addEventListener('fcn-powerbi-actualizado', async e => {
+  const key = e.detail && e.detail.key;
+  const sf = SHARED_FILES.find(x => x.key === key);
+  if (!sf) return;
+  await refreshFilesStatus();
+  await refreshDashboardForKey(key);
+  if (key === 'tenencia') refreshClienteList();
+  showToast(`🔄 ${sf.name} actualizada desde Power BI (${fmtFechaHora(e.detail.ts)})`, 5000);
+});
+
 // ── FILES PANEL ──
 function buildFilesPanel() {
   const grid = document.getElementById('files-grid');
@@ -6381,7 +6408,7 @@ function buildFileCard(sf, entry) {
   const usedPills = sf.usedBy.map(t => `<span class="fct-pill">${t}</span>`).join('');
   const statusDot  = entry ? 'loaded' : '';
   const statusText = entry
-    ? `<strong>${escHtml(entry.name)}</strong> &nbsp;·&nbsp; ${relTime(entry.ts)}`
+    ? `<strong>${escHtml(entry.name)}</strong> &nbsp;·&nbsp; ${relTime(entry.ts)}${entry.src === 'powerbi' ? ` &nbsp;·&nbsp; 🔄 Datos de Power BI al ${fmtFechaHora(entry.ts)}` : ''}`
     : 'Sin archivo — subí uno para que se use automáticamente';
   const tsText     = entry ? `<span class="fcs-ts">${new Date(entry.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>` : '';
   return `
@@ -6695,6 +6722,9 @@ function showToast(msg, duration = 3000) {
 }
 
 // ── UTILS ──
+function fmtFechaHora(ts) {
+  return new Date(ts).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 function relTime(ts) {
   const diff = Date.now() - ts;
   if (diff < 60000)      return 'hace unos segundos';
