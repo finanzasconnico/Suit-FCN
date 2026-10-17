@@ -6368,26 +6368,51 @@ async function clearActiveClient() {
   if (teniaAlgo) showToast('Filtro de cliente quitado.');
 }
 
-// ── POWER BI (extensión de Chrome "FCN · Power BI → Suite", fuera de este repo) ──
-// La extensión lee la tabla que el reporte de Power BI ya muestra, la guarda como un .xlsx igual
-// al exportado en la misma key de fcn_shared_v1 (con src:'powerbi') y avisa a esta pestaña con el
-// evento 'fcn-powerbi-actualizado' (a las demás, por BroadcastChannel como siempre).
+// ── POWER BI / SHAREPOINT (extensión de Chrome "FCN · Power BI → Suite", fuera de este repo) ──
+// La extensión lee las tablas que los reportes de Power BI ya muestran (Tenencia, Stock) y las guarda
+// como un .xlsx igual al exportado en la misma key de fcn_shared_v1 (src:'powerbi'); el Monitor lo
+// baja entero de SharePoint (src:'sharepoint', con modificadoEn = Last-Modified del archivo). Avisa a
+// esta pestaña con el evento 'fcn-powerbi-actualizado' (a las demás, por BroadcastChannel como siempre).
+function origenAutoTexto(entry) {
+  if (!entry) return '';
+  if (entry.src === 'powerbi') return `Datos de Power BI al ${fmtFechaHora(entry.ts)}`;
+  if (entry.src === 'sharepoint') return entry.modificadoEn
+    ? `Archivo de SharePoint modificado el ${fmtFechaHora(entry.modificadoEn)}`
+    : `Bajado de SharePoint el ${fmtFechaHora(entry.ts)}`;
+  return '';
+}
 async function renderPowerBIStamp() {
   const el = document.getElementById('dash-pbi-stamp');
   if (!el) return;
-  const sfs = SHARED_FILES.filter(sf => sf.sourceUrl && /powerbi\.com/.test(sf.sourceUrl));
-  const entries = await Promise.all(sfs.map(sf => fcnGetSharedFile(userKey(sf.key))));
-  el.innerHTML = sfs.map((sf, i) => entries[i] && entries[i].src === 'powerbi'
-    ? `<span>🔄 ${escHtml(sf.name)}: <strong>Datos de Power BI al ${fmtFechaHora(entries[i].ts)}</strong></span>` : '').join('');
+  const entries = await Promise.all(SHARED_FILES.map(sf => fcnGetSharedFile(userKey(sf.key))));
+  el.innerHTML = SHARED_FILES.map((sf, i) => origenAutoTexto(entries[i])
+    ? `<span>🔄 ${escHtml(sf.name)}: <strong>${origenAutoTexto(entries[i])}</strong></span>` : '').join('');
+}
+// El Monitor llega crudo (.xlsm entero): se compacta acá, una vez, igual que en onFileSelected.
+async function compactarMonitorAuto() {
+  const entry = await fcnGetSharedFile(userKey('monitor'));
+  if (!entry || entry.src !== 'sharepoint' || entry.slim) return false;
+  showToast('⏳ Compactando el Monitor (una sola vez)…', 4000);
+  await new Promise(r => setTimeout(r, 30));
+  const data = slimMonitorArrayBuffer(entry.data);
+  const db = await fcnOpenSharedDB();
+  await new Promise((res, rej) => {
+    const req = db.transaction(FCN_DB_STORE, 'readwrite').objectStore(FCN_DB_STORE).put({ ...entry, data, slim: true }, userKey('monitor'));
+    req.onsuccess = () => res(); req.onerror = () => rej(req.error);
+  });
+  await _fcnLibrosBorrar('monitor');
+  notifyTools('monitor');
+  return true;
 }
 document.addEventListener('fcn-powerbi-actualizado', async e => {
   const key = e.detail && e.detail.key;
   const sf = SHARED_FILES.find(x => x.key === key);
   if (!sf) return;
+  if (key === 'monitor') { try { await compactarMonitorAuto(); } catch (err) { console.warn('[FCN] no se pudo compactar el Monitor', err); } }
   await refreshFilesStatus();
   await refreshDashboardForKey(key);
   if (key === 'tenencia') refreshClienteList();
-  showToast(`🔄 ${sf.name} actualizada desde Power BI (${fmtFechaHora(e.detail.ts)})`, 5000);
+  showToast(`🔄 ${sf.name} actualizado (${origenAutoTexto(await fcnGetSharedFile(userKey(key)))})`, 5000);
 });
 
 // ── FILES PANEL ──
@@ -6408,7 +6433,7 @@ function buildFileCard(sf, entry) {
   const usedPills = sf.usedBy.map(t => `<span class="fct-pill">${t}</span>`).join('');
   const statusDot  = entry ? 'loaded' : '';
   const statusText = entry
-    ? `<strong>${escHtml(entry.name)}</strong> &nbsp;·&nbsp; ${relTime(entry.ts)}${entry.src === 'powerbi' ? ` &nbsp;·&nbsp; 🔄 Datos de Power BI al ${fmtFechaHora(entry.ts)}` : ''}`
+    ? `<strong>${escHtml(entry.name)}</strong> &nbsp;·&nbsp; ${relTime(entry.ts)}${origenAutoTexto(entry) ? ` &nbsp;·&nbsp; 🔄 ${origenAutoTexto(entry)}` : ''}`
     : 'Sin archivo — subí uno para que se use automáticamente';
   const tsText     = entry ? `<span class="fcs-ts">${new Date(entry.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>` : '';
   return `
