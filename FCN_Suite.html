@@ -357,7 +357,7 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 /* ── Agenda de cobros (Inicio) ── */
 .agenda-card{margin-bottom:14px;}
 .agenda-card .dash-section-title{flex-wrap:wrap;}
-.agenda-rangos{margin:0 0 0 auto;}
+.agenda-rangos{margin:0 0 0 8px;}
 .agenda-rangos .liq-toggle-btn.active{background:var(--jade-d);border-color:var(--jade);color:var(--jade);}
 .agenda-resumen{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5;}
 .agenda-resumen b{color:var(--text);font-family:var(--font-m);font-weight:600;}
@@ -487,6 +487,23 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 .inac-cfg{margin-bottom:12px;border:1px dashed var(--border);border-radius:var(--r);padding:8px 12px;}
 .inac-cfg summary{cursor:pointer;font-size:11.5px;color:var(--muted);}
 .inac-cfg-body{margin-top:10px;}
+.cob-cal-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.cob-cal-head b{min-width:130px;text-align:center;font-family:var(--font-d);font-size:14px;text-transform:capitalize;}
+.cob-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
+.cob-cal-dow{font-family:var(--font-m);font-size:9px;text-transform:uppercase;color:var(--muted);text-align:center;}
+.cob-cal-d{min-height:70px;padding:4px 5px;border:1px solid var(--border);border-radius:6px;font-size:10px;background:var(--wash-1);overflow:hidden;}
+.cob-cal-d.vacio{visibility:hidden;}
+.cob-cal-d.sin{opacity:.5;}
+.cob-cal-d.con{cursor:pointer;}
+.cob-cal-d.con:hover{border-color:var(--jade);}
+.cob-cal-d .n{display:block;font-family:var(--font-m);color:var(--muted);font-size:10px;margin-bottom:2px;}
+.cob-cal-d.hoy .n{color:var(--jade);font-weight:700;}
+.cob-cal-d.sel{border-color:var(--jade);background:var(--jade-d);}
+.cob-cal-tk{display:block;font-family:var(--font-m);font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--jade);}
+.cob-cal-tk.venc{color:var(--ambar);}
+.cob-cal-tk i{font-style:normal;color:var(--muted);}
+.cob-cal-mas{display:block;font-size:9px;color:var(--muted);}
+@media (max-width:640px){.cob-cal-d{min-height:48px;padding:3px;}.cob-cal-tk{font-size:8.5px;}}
 @media (max-width:640px){.inac-card{padding:12px;}.inac-textarea{min-height:200px;}}
 .aliq-help{font-size:10px;color:var(--muted);line-height:1.6;}
 .aliq-help a{color:var(--jade);}
@@ -741,6 +758,7 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
         <div class="dash-kpis" id="dash-stats"></div>
         <div class="dash-card agenda-card">
           <div class="dash-section-title">📅 Cobros de tus clientes <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(cupones, amortizaciones y vencimientos — plata para reinvertir)</span>
+            <button class="aviso-liq-btn" onclick="showCobros()" style="margin-left:auto;" title="Armar el mail de aviso (cuánto cobran y en qué reinvertirlo)">✉ Avisarles por mail</button>
             <div class="liq-toggle agenda-rangos" id="agenda-rangos">
               <button class="liq-toggle-btn" data-r="pasado7" onclick="setAgendaRango('pasado7')">Últimos 7 días</button>
               <button class="liq-toggle-btn" data-r="prox7" onclick="setAgendaRango('prox7')">Próximos 7 días</button>
@@ -1076,6 +1094,91 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
       <div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 20px;overflow-x:auto;" id="ranking-body"></div>
     </div>
 
+    <div class="hub-panel" id="cobros-panel">
+      <div class="files-header">
+        <h2>🔔 Avisos de cobro y vencimiento</h2>
+        <p>Avisale por mail a los clientes que <b>cobran renta</b> o a los que <b>les vence un bono o letra</b> (ej. S16O6), con cuánto cobran y en qué reinvertirlo. Para reinvertir sugiere el <b>mismo bono si no tiene lámina mínima</b> (o si lo que cobran alcanza para la lámina); si ya vence o pide una lámina que no alcanza, uno <b>parecido sin lámina mínima</b>. Arma Word + CSV para mandar desde Outlook, igual que Mail Marketing.</p>
+      </div>
+      <div class="inac-wrap">
+
+        <div class="inac-card">
+          <div class="inac-paso"><span class="inac-paso-n">1</span><div><div class="inac-paso-t">Tu perfil</div><div class="inac-paso-s">Es el mismo perfil de Mail Marketing y del aviso de liquidez; queda guardado en este navegador.</div></div></div>
+          <div class="aliq-row" style="flex-wrap:wrap;">
+            <div class="aliq-field" style="min-width:180px;"><label>Nombre y apellido (firma)</label><input type="text" id="cobFirma" oninput="cobGuardarPerfil()" placeholder="Nombre Apellido"></div>
+            <div class="aliq-field" style="min-width:150px;"><label>WhatsApp</label><input type="text" id="cobWpp" oninput="cobGuardarPerfil()" placeholder="+54 9 11 ..."></div>
+            <div class="aliq-field" style="min-width:180px;"><label>Instagram (opcional)</label><input type="text" id="cobInstagram" oninput="cobGuardarPerfil()" placeholder="https://www.instagram.com/..."></div>
+            <div class="aliq-field" style="min-width:180px;"><label>Mail para la prueba</label><input type="text" id="cobTestMail" oninput="cobGuardarPerfil()" placeholder="tumail@balanz.com"></div>
+          </div>
+        </div>
+
+        <div class="inac-card">
+          <div class="inac-paso"><span class="inac-paso-n">2</span><div><div class="inac-paso-t">Qué cobros avisar</div><div class="inac-paso-s">Tocá un día del calendario (ahí ves todos los bonos que pagan y alternativas parecidas), escribí un ticker (salta solo a su próximo cobro) o elegí un período. Tildá a quién le mandás.</div></div></div>
+          <div id="cobCal" class="cob-cal" style="margin-bottom:14px;"></div>
+          <div class="inac-filtros" style="margin-bottom:8px;">
+            <label for="cobTicker">Ticker</label>
+            <input type="text" id="cobTicker" placeholder="ej. S16O6 (opcional, uno o varios)" style="max-width:260px;" onchange="cobTickerCambio()" title="Dejalo vacío para ver los cobros de todos los bonos y letras">
+            <label for="cobDesde">Desde</label>
+            <input type="date" id="cobDesde" onchange="renderCobros()">
+            <label for="cobHasta">hasta</label>
+            <input type="date" id="cobHasta" onchange="renderCobros()">
+            <button class="aliq-btn-cancel" onclick="cobPreset('hoy')">Hoy</button>
+            <button class="aliq-btn-cancel" onclick="cobPreset('p7')">Próx. 7 días</button>
+            <button class="aliq-btn-cancel" onclick="cobPreset('p15')">Próx. 15</button>
+            <button class="aliq-btn-cancel" onclick="cobPreset('p30')">Próx. 30</button>
+            <button class="aliq-btn-cancel" onclick="cobPreset('u7')">Últimos 7 días</button>
+            <select id="cobQue" onchange="cobQueCambio()" title="Qué tipo de cobro">
+              <option value="todo">Todo (vencimientos + renta)</option>
+              <option value="venc">Solo vencimientos</option>
+              <option value="renta">Solo renta / amortización</option>
+            </select>
+          </div>
+          <div class="inac-lote-info" id="cobTickerNota" style="margin-bottom:6px;"></div>
+          <div class="inac-lote-info" id="cobInfo" style="margin-bottom:10px;"></div>
+          <div class="inac-actions" style="margin-bottom:10px;">
+            <span class="inac-selinfo" id="cobSelInfo"></span>
+            <button class="aliq-btn-cancel" onclick="cobTildarTodos(true)">Tildar todos</button>
+            <button class="aliq-btn-cancel" onclick="cobTildarTodos(false)">Destildar</button>
+          </div>
+          <div class="inac-scroll" id="cobBody"></div>
+        </div>
+
+        <div class="inac-card">
+          <div class="inac-paso"><span class="inac-paso-n">3</span><div><div class="inac-paso-t">Qué mail mandás</div><div class="inac-paso-s">Cada cliente recibe su propio detalle (qué cobra, cuándo y cuánto) y su propia sugerencia de reinversión. Revisá el texto y descargá.</div></div></div>
+          <div class="inac-tabs" id="cobTabs">
+            <button class="inac-tab" data-t="venc" onclick="cobElegirMail('venc')">Vencimiento</button>
+            <button class="inac-tab" data-t="renta" onclick="cobElegirMail('renta')">Cobro de renta</button>
+          </div>
+          <div class="aliq-legend">Asunto</div>
+          <div class="inac-asunto-row"><input type="text" id="cobAsunto" oninput="cobGuardarMail()" placeholder="Asunto del mail"></div>
+          <div class="aliq-legend">Texto del mail</div>
+          <textarea class="inac-textarea" id="cobCuerpo" oninput="cobGuardarMail()" style="min-height:220px;"></textarea>
+          <div class="inac-chips">
+            Insertar:
+            <button class="inac-chip" onclick="cobInsertar('{Saludo}')" title="«Hola Juan,» — o «Hola,» si el Stock no tiene nombre">{Saludo}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Detalle}')" title="«Te escribo porque el 16/10 vence tu S16O6 y cobrás aprox. $ …» — distinto para cada cliente">{Detalle}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Sugerencia}')" title="En qué reinvertirlo — distinto para cada cliente">{Sugerencia}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Monto}')" title="Total que cobra el cliente">{Monto}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Ticker}')" title="Ticker(s) que cobra">{Ticker}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Fecha}')" title="Fecha del primer cobro">{Fecha}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Nombre}')" title="Nombre de pila del Stock">{Nombre}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Asesor}')" title="Tu nombre y apellido">{Asesor}</button>
+            <button class="inac-chip" onclick="cobInsertar('{WhatsApp}')" title="Tu WhatsApp, con link">{WhatsApp}</button>
+            <button class="inac-chip" onclick="cobInsertar('{Baja}')" title="Link «darte de baja acá»">{Baja}</button>
+            <span style="margin-left:6px;">· <b>**negrita**</b> · los links https://… quedan clickeables</span>
+            <span class="inac-saved" id="cobSaved"></span>
+            <button class="aliq-btn-cancel" onclick="cobRestaurarMail()" title="Vuelve al texto y asunto originales">↺ Texto original</button>
+          </div>
+          <div class="inac-actions inac-envio">
+            <span class="inac-selinfo" id="cobSelInfo2"></span>
+            <button class="aliq-btn-cancel" onclick="cobDescargar(true)" title="Word + CSV con 2 filas de ejemplo a tu mail de prueba (con y sin nombre)">🧪 Prueba a mi mail</button>
+            <button class="aliq-btn-gen" id="cobBtnGen" onclick="cobDescargar(false)">⬇ Descargar Word + CSV</button>
+          </div>
+          <div class="inac-done" id="cobDone" style="display:none;margin-top:12px;padding:12px 14px;border-radius:var(--r);"></div>
+        </div>
+
+      </div>
+    </div>
+
     <div class="hub-panel" id="inactivos-panel">
       <div class="files-header">
         <h2>📧 Mail Marketing</h2>
@@ -1296,6 +1399,7 @@ const TOOLS = [
   { id:'fundamental', name:'Análisis Fundamental', icon:'🏢', desc:'Escribí el ticker de una empresa de EE.UU. y arma solo ventas, márgenes, balance, flujo de caja y un puntaje de 1 a 10 (datos de la SEC + Yahoo). Si subís tus Excel de Investing, tienen prioridad.', badge:'Research', file:'Analisis_Fundamental_FCN.html', color:'jade' },
   { id:'superinvestors', name:'Superinvestors', icon:'🏛️', desc:'Qué tienen, compraron y vendieron Buffett, Ackman, Cathie Wood y 27 fondos más (13F de la SEC). Marca lo que se puede comprar con CEDEARs.', badge:'Research', file:'Superinvestors_FCN.html', color:'jade' },
   { id:'cuantocobro', name:'¿Cuánto cobro?', icon:'💰', desc:'Letras en pesos y bonos/ONs en dólares: con un monto, cuánto cobrás y cuándo, mes a mes. Precios en vivo de BYMA, TIR y cartera combinada.', badge:'Renta Fija', file:'Cuanto_Cobro_FCN.html', color:'jade' },
+  { id:'pesosdolares', name:'¿Pesos o dólares?', icon:'⚖️', desc:'Elegí una fecha: la mejor alternativa en pesos (LECAP, CER, TAMAR, duales, caución) contra la mejor en dólares, con todas las comisiones, el dólar de los futuros y el dólar de quiebre.', badge:'Renta Fija', file:'Pesos_o_Dolares_FCN.html', color:'jade' },
   { id:'rfpesos', name:'Renta Fija en Pesos', icon:'🏦', desc:'Lecaps, Boncaps, CER, TAMAR y duales: curva de tasas, ¿tasa fija o CER?, carry trade, clientes con vencimientos o para rotar, y cuánto cobrás.', badge:'Renta Fija', file:'Renta_Fija_Pesos_FCN.html', color:'jade' },
   { id:'cleaner', name:'Excel Cleaner',        icon:'🧹', desc:'Limpieza de contactos: filtra mails vacíos, elimina duplicados y expande listas separadas por ";". Soporta archivos encriptados.', badge:'Contactos', file:'excel_cleaner_agent para mail.html', color:'amber' },
 ];
@@ -1574,9 +1678,9 @@ function showApp() {
 //  dentro de Utilidades en vez de ser una pestaña suelta.
 // ══════════════════════════════════════════════════════════════
 const CATEGORIES = [
-  { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama','rfpesos','cuantocobro'] },
+  { id:'rentafija',     name:'Renta Fija',          icon:'💵', toolIds:['scanner','calcbonos','calcrot','panorama','rfpesos','cuantocobro','pesosdolares'] },
   { id:'rentavariable', name:'Renta Variable',      icon:'📈', toolIds:['multiplos','fundamental','superinvestors'] },
-  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','armador','monitor'] },
+  { id:'carteras',      name:'Carteras y Clientes', icon:'👤', toolIds:['cliente360','ranking','inactivos','cobros','armador','monitor'] },
   { id:'utilidades',    name:'Utilidades',          icon:'⚙️', toolIds:['cleaner','files'] },
 ];
 // Paneles nativos que viven "dentro" de una categoría pero no son un TOOLS[] con iframe propio
@@ -1586,6 +1690,7 @@ const NATIVE_PANELS = {
   cliente360: { icon:'🧭', label:'Vista 360', show: showCliente360 },
   ranking:    { icon:'🏆', label:'Ranking Rentabilidad', show: showRanking },
   inactivos:  { icon:'📧', label:'Mail Marketing', show: showInactivos },
+  cobros:     { icon:'🔔', label:'Avisos de cobro', show: showCobros },
 };
 function categoryOf(toolId) {
   if (toolId === 'files') return 'utilidades';
@@ -1769,6 +1874,7 @@ const HOME_TASKS = [
   { id:'superinvestors',       icon:'🏛️', name:'Ver qué compran los grandes',             desc:'Posiciones de Buffett, Ackman y otros fondos famosos; filtra lo que tiene CEDEAR.', action: () => openTool('superinvestors') },
   { id:'atender_cliente',      icon:'👤',  name:'Atender a un cliente puntual',            desc:'Ver toda su cartera junta y mandarle algo directo.',               action: () => showCliente360() },
   { id:'mail_marketing',       icon:'📧',  name:'Mandar mail masivo',                      desc:'A inactivos, activos o filtrado por tenencia, edad o zona.',       action: () => showInactivos() },
+  { id:'avisos_cobro',          icon:'🔔',  name:'Avisar cobros y vencimientos',            desc:'Mail a quienes cobran renta o les vence un bono, con en qué reinvertirlo.', action: () => showCobros() },
   { id:'liquidez_mensual',     icon:'💧',  name:'Avisar liquidez del mes',                 desc:'Mail a todos los que tengan plata sin invertir todavía.',          action: () => { showHome(); abrirAvisoLiquidez(); } },
   { id:'ranking',              icon:'🏆',  name:'Ver ranking de rentabilidad',             desc:'Quién rindió más y menos, en todo el libro.',                      action: () => showRanking() },
   { id:'mostrar_rentabilidad', icon:'💵',  name:'Mostrarle rentabilidad a un cliente',     desc:'Posiciones, cupones y ganancias de su cartera.',                   action: () => openTool('monitor') },
@@ -3999,10 +4105,556 @@ function inacMarcarEnviados() {
   renderInactivos();
 }
 
+// ══════════════════════════════════════════════════════════════
+//  AVISOS DE COBRO Y VENCIMIENTO POR MAIL (16/10/2026)
+//  Pedido de Nico: "buscar el bono S16O6 y todos los clientes que lo tienen para armar un mail
+//  automático avisándoles del vencimiento", y lo mismo cuando cobran renta de cualquier bono,
+//  sugiriendo en qué reinvertir: el mismo bono si NO tiene lámina mínima; si la tiene (o ya
+//  venció), uno parecido sin lámina mínima. Reusa el motor de la Agenda de cobros
+//  (calcAgendaCobros: nominales de la Tenencia × calendario del Monitor) y el de Mail Marketing
+//  (Word con campos de combinación + CSV, lista de bajas de Supabase). Candidatos de reinversión:
+//  data/cuanto_cobro.json (mismo que ¿Cuánto cobro?), con `mn`/`mu` = lámina mínima / múltiplo.
+// ══════════════════════════════════════════════════════════════
+const COB_MAILS_KEY = 'fcn_cob_mails_v1';
+const COB_EXTRA = ['Detalle', 'Sugerencia', 'Monto', 'Ticker', 'Fecha'];
+const COB_COLS = ['Saludo', 'Nombre', 'Email', 'Comitente', 'Cuenta', 'Detalle', 'Sugerencia', 'Monto', 'Ticker', 'Fecha'];
+const COB_TEXTOS = {
+  venc: {
+    asunto: 'Te vence un bono: lo que cobrás y cómo reinvertirlo',
+    cuerpo: `{Saludo}
+
+{Detalle}
+
+{Sugerencia}
+
+Si querés avanzamos con eso, o vemos otra alternativa según lo que necesites: respondeme este mail o escribime por WhatsApp y lo resolvemos hoy mismo.
+
+${_INAC_FIRMA}
+
+Si preferís no recibir más comunicaciones, podés {Baja}.`
+  },
+  renta: {
+    asunto: 'Vas a cobrar renta en tu cuenta: ¿cómo la reinvertimos?',
+    cuerpo: `{Saludo}
+
+{Detalle}
+
+Esa plata queda disponible en tu cuenta apenas se acredita, y si no se reinvierte queda parada. {Sugerencia}
+
+Si querés avanzamos con eso, o vemos otra alternativa según lo que necesites: respondeme este mail o escribime por WhatsApp.
+
+${_INAC_FIRMA}
+
+Si preferís no recibir más comunicaciones, podés {Baja}.`
+  }
+};
+
+let _cobTipo = 'venc';
+let _cobUniverso = null;      // null = sin cargar; {bonos, letras, fechaMonitor, idx}
+let _cobFilas = [];           // una por cliente
+let _cobSel = new Set();
+let _cobUltimoCalc = null;    // { sinCal, chicos }
+
+const _cobDate = iso => new Date(iso + 'T12:00:00');
+const _COB_MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const _cobMesAnio = iso => { const [y, m] = iso.split('-'); return `${_COB_MESES[+m - 1]} ${y}`; };
+const _cobFechaCorta = d => `${d.getDate()}/${d.getMonth() + 1}`;
+const _cobFmtN = n => _agFmt0.format(n);
+const _cobMonedaTxt = (moneda, v) => moneda === 'USD' ? _agFmtUsd(v) : _agFmtArs(v);
+const _cobDias = iso => (_cobDate(iso) - Date.now()) / 864e5;
+
+async function _cobCargarUniverso() {
+  if (_cobUniverso !== null) return;
+  try {
+    const r = await fetch('data/cuanto_cobro.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const bonos = (j.bonos || []).filter(b => b.ok === 1 && b.v);
+    const idx = {};
+    bonos.forEach(b => { idx[b.t] = b; if (b.s && !idx[b.s]) idx[b.s] = b; });
+    _cobUniverso = { bonos, letras: (j.letras || []).filter(l => l.v), fechaMonitor: j.fechaMonitor || '', idx };
+  } catch (e) {
+    console.warn('[Avisos de cobro] no se pudo cargar cuanto_cobro.json', e);
+    _cobUniverso = { bonos: [], letras: [], fechaMonitor: '', idx: {}, error: true };
+  }
+}
+
+// "AAA (arg)", "BB+.ar", "B- (Fitch)" → 1 (mejor) … 10 (peor); null si no hay calificación.
+function _cobCalifRank(ca) {
+  const m = String(ca || '').trim().toUpperCase().match(/^(AAA|AA|A|BBB|BB|B|CCC|CC|C|D)([+-])?/);
+  if (!m) return null;
+  const base = { AAA: 1, AA: 2, A: 3, BBB: 4, BB: 5, B: 6, CCC: 7, CC: 8, C: 9, D: 10 }[m[1]];
+  return base + (m[2] === '+' ? -0.3 : m[2] === '-' ? 0.3 : 0);
+}
+// Nominales (VN) que se pueden comprar con `cash` respetando lámina mínima (mn) y múltiplo (mu). 0 si no alcanza.
+function _cobNominalesPara(b, cash) {
+  if (!(b.pm > 0)) return 0;
+  const mn = Math.max(1, b.mn || 1), mu = Math.max(1, b.mu || 1);
+  const n = Math.floor(cash / b.pm);
+  return n < mn ? 0 : mn + Math.floor((n - mn) / mu) * mu;
+}
+const _cobSinMin = b => (b.mn || 1) <= 1;
+const _cobCupon = b => (b.cu * 100).toLocaleString('es-AR', { maximumFractionDigits: 2 }) + '%';
+function _cobDescBono(b) {
+  const calif = _cobCalifRank(b.ca) != null ? `, calificación ${String(b.ca).split(/[\s.(]/)[0]}` : '';
+  return `${b.t} (${b.em || 'ON'}${calif}, cupón ${_cobCupon(b)}, vence ${_cobMesAnio(b.v)})`;
+}
+
+// Sugerencia de reinversión para una moneda. it = el cobro más grande de esa moneda.
+// → { texto, panel, ticker, verif }
+function _cobSugerir(moneda, cash, it, soloParecidos) {
+  const U = _cobUniverso;
+  const generica = { texto: `Si querés, te armo un par de opciones para reinvertir ${_cobMonedaTxt(moneda, cash)}.`, panel: 'Armar opciones a mano', ticker: '', verif: false };
+  if (!U || U.error) return generica;
+  const m = _cobMonedaTxt(moneda, cash);
+
+  if (moneda === 'ARS') {
+    // Letras: la más cercana al plazo de la que vence (o ~4 meses), con al menos 30 días por delante.
+    const orig = U.letras.find(l => l.t === it.ticker);
+    const targ = orig && orig.e ? (_cobDate(orig.v) - _cobDate(orig.e)) / 864e5 : 120;
+    const pool = U.letras.filter(l => l.t !== it.ticker && l.pm > 0 && _cobDias(l.v) >= 30 && _cobDias(l.v) <= 365)
+      .sort((a, b) => Math.abs(_cobDias(a.v) - targ) - Math.abs(_cobDias(b.v) - targ));
+    if (!pool.length) return generica;
+    const l = pool[0], alt = pool[1];
+    const n = Math.floor(cash / l.pm);
+    return {
+      texto: `Para reinvertir esos ${m} en pesos, te propongo ${l.t} (${l.tp || 'letra'}, vence el ${_cobDate(l.v).toLocaleDateString('es-AR')})${n ? ` — alcanzarían para unos ${_cobFmtN(n)} VN` : ''}${alt ? `; otra opción parecida es ${alt.t} (vence el ${_cobDate(alt.v).toLocaleDateString('es-AR')})` : ''}.`,
+      panel: `${l.t}${alt ? ' / ' + alt.t : ''} · ~${_cobFmtN(n)} VN`, ticker: l.t, verif: false,
+      alts: pool.slice(0, 2).map(x => `${x.t} · vence ${_cobDate(x.v).toLocaleDateString('es-AR')} · TNA ${(x.tna * 100).toFixed(1)}%`)
+    };
+  }
+
+  // USD: bonos / ONs
+  const base = U.idx[it.ticker] || null;
+  const baseVivo = !it.final && (!base || _cobDias(base.v) >= 90);
+  const seguiaVivo = !soloParecidos && baseVivo;
+  if (seguiaVivo) {
+    if (!base) {
+      return { texto: `Para que no quede quieta, te propongo reinvertir esos ${m} en el mismo ${it.ticker}, así seguís cobrando su renta.`, panel: `Mismo ${it.ticker} (⚠ verificar lámina mínima)`, ticker: it.ticker, verif: true };
+    }
+    const n = _cobNominalesPara(base, cash);
+    if (_cobSinMin(base) && n > 0) {
+      return { texto: `Para que no quede quieta, te propongo reinvertir esos ${m} en el mismo ${it.ticker} (${_cobCupon(base)} de cupón, vence ${_cobMesAnio(base.v)}), que no tiene lámina mínima: alcanzarían unos ${_cobFmtN(n)} VN y seguirías cobrando renta.`, panel: `Mismo ${it.ticker} · sin mínimo · ~${_cobFmtN(n)} VN`, ticker: it.ticker, verif: false };
+    }
+    if (n > 0) {
+      return { texto: `Para que no quede quieta, te propongo reinvertir esos ${m} en el mismo ${it.ticker} (${_cobCupon(base)} de cupón, vence ${_cobMesAnio(base.v)}): con lo que cobrás alcanzás la lámina mínima de ${_cobFmtN(base.mn)} VN y comprarías unos ${_cobFmtN(n)} VN.`, panel: `Mismo ${it.ticker} · mín. ${_cobFmtN(base.mn)} VN (alcanza) · ~${_cobFmtN(n)} VN`, ticker: it.ticker, verif: false };
+    }
+  }
+
+  // Parecido sin lámina mínima
+  const baseRank = base ? _cobCalifRank(base.ca) : null;
+  const maxRank = baseRank != null ? baseRank + 0.01 : 2.3;   // sin dato: AA- o mejor
+  const mismoTk = b => b.t === it.ticker || (base && b.t === base.t);
+  let pool = U.bonos.filter(b => !mismoTk(b) && b.pm > 0 && _cobDias(b.v) >= 180 && (!base || !base.co || b.co === base.co)
+    && (() => { const r = _cobCalifRank(b.ca); return r != null && r <= maxRank; })());
+  let sinMin = pool.filter(_cobSinMin).filter(b => _cobNominalesPara(b, cash) > 0);
+  let conMinAlcanza = false;
+  if (!sinMin.length) { sinMin = pool.filter(b => _cobNominalesPara(b, cash) > 0); conMinAlcanza = true; }
+  if (!sinMin.length) return generica;
+  const targetMs = (base && baseVivo ? _cobDate(base.v).getTime() : Date.now() + 730 * 864e5);
+  const cerca = sinMin.filter(b => Math.abs(_cobDate(b.v) - targetMs) <= 365 * 864e5);
+  const ordenar = arr => arr.sort((a, b) => {
+    const sa = baseRank != null && Math.abs(_cobCalifRank(a.ca) - baseRank) < 0.01 ? 1 : 0;
+    const sb = baseRank != null && Math.abs(_cobCalifRank(b.ca) - baseRank) < 0.01 ? 1 : 0;
+    if (sa !== sb) return sb - sa;
+    const la = base && a.l === base.l ? 1 : 0, lb = base && b.l === base.l ? 1 : 0;
+    if (la !== lb) return lb - la;
+    return (b.tm || 0) - (a.tm || 0);
+  });
+  const lista = ordenar(cerca.length ? cerca : sinMin);
+  const c = lista[0];
+  const alt = lista.find(x => x.t !== c.t && x.em !== c.em);
+  const n = _cobNominalesPara(c, cash);
+  const motivo = it.final ? `, como ${it.ticker} ya vence,`
+    : (base && !_cobSinMin(base) ? `, como ${it.ticker} pide una lámina mínima de ${_cobFmtN(base.mn)} VN (más de lo que cobrás),` : '');
+  const tirTxt = typeof c.tm === 'number' ? ` · TIR ${(c.tm * 100).toFixed(1)}%` : '';
+  return {
+    texto: `Para reinvertir esos ${m}${motivo} te propongo ${_cobDescBono(c)}${conMinAlcanza ? `, con una lámina mínima de ${_cobFmtN(c.mn)} VN que alcanzás con tu cobro` : ', que no tiene lámina mínima'}: alcanzarían unos ${_cobFmtN(n)} VN${alt ? `. Otra opción parecida es ${_cobDescBono(alt)}` : ''}.`,
+    panel: `${c.t}${alt ? ' / ' + alt.t : ''}${tirTxt}${conMinAlcanza ? ' · mín. ' + _cobFmtN(c.mn) : ' · sin mínimo'} · ~${_cobFmtN(n)} VN`,
+    ticker: c.t, verif: false,
+    alts: lista.slice(0, 3).map(x => `${x.t} · ${String(x.ca).split(/[\s.(]/)[0]} · cupón ${_cobCupon(x)} · vence ${_cobMesAnio(x.v)}${typeof x.tm === 'number' ? ' · TIR ' + (x.tm * 100).toFixed(1) + '%' : ''}${_cobSinMin(x) ? '' : ' · mín. ' + _cobFmtN(x.mn)}`)
+  };
+}
+
+function _cobFrase(it) {
+  const hoyIso = _agIso(new Date()), k = _agIso(it.fecha);
+  const pasado = k < hoyIso;
+  const cuando = k === hoyIso ? 'hoy' : `el ${_cobFechaCorta(it.fecha)}`;
+  const m = _cobMonedaTxt(it.moneda, it.total);
+  if (it.moneda === 'ARS' || it.final) return `${cuando} ${pasado ? 'venció' : 'vence'} tu ${it.ticker} y ${pasado ? 'cobraste' : 'cobrás'} aprox. ${m}`;
+  const que = it.cupon > 0.005 && it.amort > 0.005 ? 'renta y amortización' : it.amort > 0.005 ? 'amortización' : 'renta';
+  return `${cuando} ${pasado ? 'cobraste' : 'cobrás'} aprox. ${m} de ${que} de ${it.ticker}`;
+}
+
+// Arma la lista: una fila por cliente con todo lo que cobra en la ventana elegida.
+function _cobCalcular() {
+  const tenencia = currentTenencia;
+  if (!tenencia || !tenencia.carteraPorCliente || !dashCalendario) return null;
+  const d = document.getElementById('cobDesde').value, h = document.getElementById('cobHasta').value;
+  if (!d || !h) return null;
+  const desde = new Date(d + 'T00:00:00'), hasta = new Date(h + 'T00:00:00');
+  const que = document.getElementById('cobQue').value;
+  const tks = document.getElementById('cobTicker').value.toUpperCase().split(/[\s,;]+/).filter(Boolean);
+  const r = calcAgendaCobros(tenencia, dashCalendario, desde, hasta);
+  const porCli = {};
+  r.filas.forEach(f => {
+    const items = f.items.filter(it => (que === 'todo' || (que === 'venc') === !!(it.final || it.moneda === 'ARS')) && (!tks.length || tks.includes(it.ticker)))
+      .map(it => Object.assign({}, it, { fecha: f.fecha }));
+    if (!items.length) return;
+    (porCli[f.cliente] = porCli[f.cliente] || []).push(...items);
+  });
+  const filas = Object.entries(porCli).map(([cliente, items]) => {
+    items.sort((a, b) => a.fecha - b.fecha || b.total - a.total);
+    const comitente = tenencia.comitentePorCliente ? (tenencia.comitentePorCliente[cliente] || '') : '';
+    const s = currentStockMap && comitente ? currentStockMap[comitente] : null;
+    const mail = s ? String(s.mail || '').trim().toLowerCase() : '';
+    const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
+    const usd = items.filter(i => i.moneda === 'USD').reduce((a, i) => a + i.total, 0);
+    const ars = items.filter(i => i.moneda === 'ARS').reduce((a, i) => a + i.total, 0);
+    const sug = [];
+    [['USD', usd], ['ARS', ars]].forEach(([mon, cash]) => {
+      if (cash <= 0) return;
+      const mayor = items.filter(i => i.moneda === mon).sort((a, b) => b.total - a.total)[0];
+      sug.push(_cobSugerir(mon, cash, mayor));
+    });
+    const frases = items.map(_cobFrase);
+    return {
+      cliente, comitente, mail, mailOk, s, items, usd, ars,
+      baja: !!(mailOk && _inacBajas && _inacBajas.has(mail)),
+      nombre: s && s.nombre ? tcNombre(s.nombre) : '',
+      detalle: 'Te escribo porque ' + frases.join('; ') + '.',
+      sugerencia: sug.map(x => x.texto).join(' '),
+      sugPanel: sug.map(x => x.panel).join(' | '),
+      verif: sug.some(x => x.verif),
+      fecha: items[0].fecha,
+      tickers: [...new Set(items.map(i => i.ticker))].join(', ')
+    };
+  });
+  filas.sort((a, b) => a.fecha - b.fecha || (b.usd + b.ars / 1500) - (a.usd + a.ars / 1500));
+  return { filas, sinCal: r.sinCal, chicos: r.chicos };
+}
+
+// ── Calendario de cobros de TODOS los bonos/letras del Monitor ──
+// Cada día muestra qué bonos pagan (naranja = vencimiento, verde = renta/amortización) y cuántos de
+// tus clientes lo tienen. Un clic en el día arma la lista de avisos de ese día; en el detalle, cada
+// bono trae alternativas parecidas (sin lámina mínima) para proponer.
+const _COB_MESES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+let _cobCalMes = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
+let _cobCalDia = '';
+function _cobEventosCal() {
+  const cal = dashCalendario;
+  if (!cal || !cal.idx) return null;
+  const ten = currentTenencia && currentTenencia.carteraPorCliente;
+  const porTk = {};
+  if (ten) Object.entries(ten).forEach(([cli, pos]) => pos.forEach(p => {
+    if (p.grupo === 'Renta Fija' && p.nominales > 0) (porTk[p.ticker] = porTk[p.ticker] || new Set()).add(cli);
+  }));
+  const unicos = new Map();   // el idx tiene el mismo bono bajo ticker y símbolo
+  Object.entries(cal.idx).forEach(([k, c]) => {
+    const set = unicos.get(c) || new Set();
+    if (porTk[k]) porTk[k].forEach(x => set.add(x));
+    unicos.set(c, set);
+  });
+  const ev = {};
+  unicos.forEach((clis, c) => {
+    const add = (fecha, tipo) => { const k = _agIso(fecha); (ev[k] = ev[k] || []).push({ ticker: c.ticker, tipo, clientes: clis.size, moneda: c.tipo === 'bono' ? 'USD' : 'ARS' }); };
+    if (c.tipo === 'bono') c.flujos.forEach(f => add(f.fecha, f.fecha.getTime() === c.vto.getTime() ? 'venc' : f.amort > 0.005 ? (f.cupon > 0.005 ? 'renta+amort' : 'amort') : 'renta'));
+    else add(c.vto, 'venc');
+  });
+  Object.values(ev).forEach(l => l.sort((a, b) => b.clientes - a.clientes || a.ticker.localeCompare(b.ticker)));
+  return ev;
+}
+function cobCalMes(n) { _cobCalMes = new Date(_cobCalMes.getFullYear(), _cobCalMes.getMonth() + n, 1); renderCobCal(); }
+function cobCalHoy() { const d = new Date(); _cobCalMes = new Date(d.getFullYear(), d.getMonth(), 1); renderCobCal(); }
+function cobCalDia(iso) {
+  _cobCalDia = iso;
+  document.getElementById('cobTicker').value = '';
+  document.getElementById('cobTickerNota').textContent = '';
+  document.getElementById('cobDesde').value = iso;
+  document.getElementById('cobHasta').value = iso;
+  renderCobros();
+}
+function cobCalAvisarTicker(tk, iso) {
+  document.getElementById('cobTicker').value = tk;
+  document.getElementById('cobTickerNota').textContent = '';
+  document.getElementById('cobDesde').value = iso;
+  document.getElementById('cobHasta').value = iso;
+  renderCobros();
+  const el = document.getElementById('cobSelInfo');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+const _COB_TIPO_TXT = { venc: 'Vence', renta: 'Renta', amort: 'Amortización', 'renta+amort': 'Renta + amort.' };
+function renderCobCal() {
+  const el = document.getElementById('cobCal');
+  if (!el) return;
+  const ev = _cobEventosCal();
+  if (!ev) { el.innerHTML = '<div class="dash-empty">Subí el <a onclick="showFiles()">Monitor de Individuos</a> para ver el calendario de pagos de todos los bonos.</div>'; return; }
+  const soloEl = document.getElementById('cobCalSolo');
+  const solo = soloEl ? soloEl.checked : true;
+  const y = _cobCalMes.getFullYear(), mo = _cobCalMes.getMonth();
+  const offset = (new Date(y, mo, 1).getDay() + 6) % 7;   // semana desde el lunes
+  const nd = new Date(y, mo + 1, 0).getDate();
+  const hoyIso = _agIso(new Date());
+  let html = `<div class="cob-cal-head"><button class="aliq-btn-cancel" onclick="cobCalMes(-1)">‹</button><b>${_COB_MESES_LARGO[mo]} ${y}</b><button class="aliq-btn-cancel" onclick="cobCalMes(1)">›</button><button class="aliq-btn-cancel" onclick="cobCalHoy()">Hoy</button>
+    <label style="font-size:11px;color:var(--muted);cursor:pointer;"><input type="checkbox" id="cobCalSolo" ${solo ? 'checked' : ''} onchange="renderCobCal()"> Solo bonos que tienen mis clientes</label>
+    <span style="font-size:10.5px;color:var(--muted);"><span class="cob-cal-tk venc" style="display:inline;">■ vencimiento</span> · <span class="cob-cal-tk" style="display:inline;">■ renta / amortización</span> · (n) = clientes tuyos</span></div><div class="cob-cal-grid">`;
+  ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(d => html += `<div class="cob-cal-dow">${d}</div>`);
+  for (let i = 0; i < offset; i++) html += '<div class="cob-cal-d vacio"></div>';
+  for (let d = 1; d <= nd; d++) {
+    const iso = `${y}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const lista = (ev[iso] || []).filter(e => !solo || e.clientes > 0);
+    const cls = ['cob-cal-d', lista.length ? 'con' : 'sin', iso === hoyIso ? 'hoy' : '', iso === _cobCalDia ? 'sel' : ''].join(' ');
+    html += `<div class="${cls}" ${lista.length ? `onclick="cobCalDia('${iso}')"` : ''}><span class="n">${d}</span>` +
+      lista.slice(0, 3).map(e => `<span class="cob-cal-tk ${e.tipo === 'venc' ? 'venc' : ''}">${escHtml(e.ticker)}${e.clientes ? ` <i>(${e.clientes})</i>` : ''}</span>`).join('') +
+      (lista.length > 3 ? `<span class="cob-cal-mas">+${lista.length - 3} más</span>` : '') + '</div>';
+  }
+  html += '</div>';
+  // detalle del día elegido
+  if (_cobCalDia) {
+    const lista = (ev[_cobCalDia] || []).filter(e => !solo || e.clientes > 0);
+    const [yy, mm, dd] = _cobCalDia.split('-');
+    html += `<div class="cob-cal-det"><div class="aliq-legend" style="margin-top:12px;">Pagos del ${dd}/${mm}/${yy} — alternativas parecidas para proponerle a cada cliente</div>`;
+    if (!lista.length) html += '<div class="dash-empty">Nada para mostrar ese día.</div>';
+    else {
+      html += '<table class="inac-table"><thead><tr><th>Bono</th><th>Qué paga</th><th class="num">Clientes</th><th>Alternativas parecidas (sin lámina mínima)</th><th></th></tr></thead><tbody>';
+      lista.forEach(e => {
+        const alt = _cobUniverso && !_cobUniverso.error ? _cobSugerir(e.moneda, e.moneda === 'USD' ? 1000 : 1000000, { ticker: e.ticker, final: e.tipo === 'venc' }, true) : null;
+        const altTxt = alt && alt.alts && alt.alts.length ? alt.alts.map(escHtml).join('<br>') : '<span style="color:var(--muted);">—</span>';
+        html += `<tr><td><b>${escHtml(e.ticker)}</b></td><td>${_COB_TIPO_TXT[e.tipo] || e.tipo}</td><td class="num">${e.clientes}</td><td style="font-size:11px;">${altTxt}</td>
+          <td>${e.clientes ? `<button class="aliq-btn-gen" onclick="cobCalAvisarTicker('${escHtml(e.ticker)}','${_cobCalDia}')">Avisar a sus ${e.clientes}</button>` : ''}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function cobPreset(p) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const d = n => { const x = new Date(hoy); x.setDate(x.getDate() + n); return _agIso(x); };
+  const r = { hoy: [0, 0], p7: [0, 7], p15: [0, 15], p30: [0, 30], u7: [-7, -1] }[p] || [0, 7];
+  document.getElementById('cobDesde').value = d(r[0]);
+  document.getElementById('cobHasta').value = d(r[1]);
+  _cobCalDia = '';
+  renderCobros();
+}
+// Al escribir un ticker (ej. S16O6) salta solo a la fecha de su próximo cobro/vencimiento.
+function cobTickerCambio() {
+  const tk = document.getElementById('cobTicker').value.toUpperCase().split(/[\s,;]+/).filter(Boolean)[0];
+  const nota = document.getElementById('cobTickerNota');
+  nota.textContent = '';
+  if (tk && dashCalendario && dashCalendario.idx) {
+    const c = dashCalendario.idx[tk];
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    if (!c) nota.textContent = `⚠ ${tk} no figura en el calendario del Monitor (los bonos en pesos CER/duales no tienen).`;
+    else {
+      const fechas = c.tipo === 'bono' ? c.flujos.map(f => f.fecha) : [c.vto];
+      const prox = fechas.filter(f => f >= hoy).sort((a, b) => a - b)[0];
+      if (prox) {
+        document.getElementById('cobDesde').value = _agIso(prox);
+        document.getElementById('cobHasta').value = _agIso(prox);
+        nota.textContent = `Próximo cobro de ${tk}: ${prox.toLocaleDateString('es-AR')}.`;
+      } else nota.textContent = `${tk} no tiene más cobros por delante.`;
+    }
+  }
+  renderCobros();
+}
+function cobQueCambio() {
+  const q = document.getElementById('cobQue').value;
+  if (q === 'venc') cobElegirMail('venc', true); else if (q === 'renta') cobElegirMail('renta', true);
+  renderCobros();
+}
+
+function _cobLS() { try { return JSON.parse(localStorage.getItem(COB_MAILS_KEY) || '{}') || {}; } catch { return {}; } }
+function cobElegirMail(t, sinRender) {
+  _cobTipo = t;
+  document.querySelectorAll('#cobTabs .inac-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+  const s = _cobLS()[t] || {};
+  document.getElementById('cobAsunto').value = s.asunto != null ? s.asunto : COB_TEXTOS[t].asunto;
+  document.getElementById('cobCuerpo').value = s.cuerpo != null ? s.cuerpo : COB_TEXTOS[t].cuerpo;
+  document.getElementById('cobSaved').textContent = '';
+  if (!sinRender) _cobActualizarAcciones();
+}
+function cobGuardarMail() {
+  const all = _cobLS();
+  all[_cobTipo] = { asunto: document.getElementById('cobAsunto').value, cuerpo: document.getElementById('cobCuerpo').value };
+  try { localStorage.setItem(COB_MAILS_KEY, JSON.stringify(all)); document.getElementById('cobSaved').textContent = 'Guardado en este navegador'; } catch (e) {}
+}
+function cobRestaurarMail() {
+  const all = _cobLS(); delete all[_cobTipo];
+  try { localStorage.setItem(COB_MAILS_KEY, JSON.stringify(all)); } catch (e) {}
+  cobElegirMail(_cobTipo);
+}
+function cobInsertar(tok) {
+  const ta = document.getElementById('cobCuerpo');
+  const a = ta.selectionStart, b = ta.selectionEnd;
+  ta.value = ta.value.slice(0, a) + tok + ta.value.slice(b);
+  ta.focus(); ta.selectionStart = ta.selectionEnd = a + tok.length;
+  cobGuardarMail();
+}
+function cobGuardarPerfil() {
+  let s = {}; try { s = JSON.parse(localStorage.getItem(AVISO_PERFIL_KEY) || '{}'); } catch {}
+  Object.assign(s, getAvisoPerfil(), {
+    firma: document.getElementById('cobFirma').value.trim(),
+    wpp: document.getElementById('cobWpp').value.trim(),
+    instagram: document.getElementById('cobInstagram').value.trim(),
+    testMail: document.getElementById('cobTestMail').value.trim()
+  });
+  try { localStorage.setItem(AVISO_PERFIL_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+async function abrirCobros() {
+  const p = _inacPerfil();
+  document.getElementById('cobFirma').value = p.firma;
+  document.getElementById('cobWpp').value = p.wpp;
+  document.getElementById('cobInstagram').value = p.instagram;
+  document.getElementById('cobTestMail').value = p.testMail;
+  if (!document.getElementById('cobDesde').value) cobPreset('p7');
+  cobElegirMail(_cobTipo, true);
+  renderCobros();
+  const pend = [];
+  if (_cobUniverso === null) pend.push(_cobCargarUniverso());
+  if (!_inacBajasCargadas) { _inacBajasCargadas = true; pend.push(fetchBajasSet().then(s => { _inacBajas = s; })); }
+  if (pend.length) { await Promise.all(pend); renderCobros(); }
+}
+
+function renderCobros() {
+  const body = document.getElementById('cobBody');
+  if (!body) return;
+  renderCobCal();
+  const info = document.getElementById('cobInfo');
+  const calc = _cobCalcular();
+  if (!calc) {
+    _cobFilas = []; _cobSel = new Set();
+    body.innerHTML = `<div class="dash-empty">Sin datos todavía — subí <a onclick="showFiles()">Tenencia por Ticker</a>, el <a onclick="showFiles()">Monitor de Individuos</a> (de ahí salen los calendarios de pago) y el Stock de cuentas (de ahí salen los mails).</div>`;
+    info.textContent = ''; _cobActualizarAcciones(); return;
+  }
+  _cobUltimoCalc = calc;
+  const prevSel = _cobSel;
+  _cobFilas = calc.filas;
+  // Por defecto van tildados todos los que se les puede mandar; si el usuario ya tildó algo, se respeta.
+  const habil = f => f.mailOk && !f.baja;
+  const ids = new Set(_cobFilas.map(f => f.cliente));
+  _cobSel = new Set([...prevSel].filter(c => ids.has(c)));
+  if (!prevSel.size || !_cobSel.size) _cobSel = new Set(_cobFilas.filter(habil).map(f => f.cliente));
+  const U = _cobUniverso;
+  const notas = [];
+  if (!currentStockMap) notas.push('<span class="err">⚠ Falta el Stock de cuentas: sin él no hay mails ni nombres.</span>');
+  if (_inacBajasCargadas && _inacBajas === null) notas.push('<span class="err">⚠ No se pudo leer la lista de bajas.</span>');
+  if (U && U.error) notas.push('<span class="err">⚠ No se pudo cargar data/cuanto_cobro.json: las sugerencias de reinversión van genéricas.</span>');
+  else if (U && U.fechaMonitor) {
+    const edad = Math.floor((Date.now() - _cobDate(U.fechaMonitor)) / 864e5);
+    notas.push(`Candidatos de reinversión: Monitor del ${_cobDate(U.fechaMonitor).toLocaleDateString('es-AR')}${edad > 7 ? ` <span class="warn">(hace ${edad} días — revisá precios y vencimientos antes de mandar)</span>` : ''}.`);
+  }
+  const sinCal = Object.keys(calc.sinCal);
+  if (sinCal.length) notas.push(`Sin calendario en el Monitor (no incluidos): ${sinCal.slice(0, 6).join(', ')}${sinCal.length > 6 ? ' y ' + (sinCal.length - 6) + ' más' : ''}.`);
+  if (calc.chicos) notas.push(`${calc.chicos} cobro${calc.chicos === 1 ? '' : 's'} menor${calc.chicos === 1 ? '' : 'es'} a USD ${AGENDA_MIN_USD} sin listar.`);
+  info.innerHTML = notas.join(' · ');
+  if (!_cobFilas.length) { body.innerHTML = `<div class="dash-empty">Ningún cliente cobra eso en las fechas elegidas.</div>`; _cobActualizarAcciones(); return; }
+  let html = `<table class="inac-table"><thead><tr><th style="width:28px;"><input type="checkbox" onchange="cobTildarTodos(this.checked)" ${_cobFilas.filter(habil).every(f => _cobSel.has(f.cliente)) ? 'checked' : ''} title="Tildar / destildar todos"></th><th>Cliente</th><th>Cobra</th><th class="num">Monto</th><th>Reinversión sugerida</th><th></th></tr></thead><tbody>`;
+  _cobFilas.forEach((f, i) => {
+    const ok = habil(f);
+    const monto = [f.usd ? _agFmtUsd(f.usd) : '', f.ars ? _agFmtArs(f.ars) : ''].filter(Boolean).join(' + ');
+    const estado = !f.mailOk ? '<span class="inac-badge baja">sin mail</span>' : f.baja ? '<span class="inac-badge baja">dado de baja</span>' : '';
+    const tel = telParaClienteFCN(f.cliente);
+    html += `<tr class="${ok ? '' : 'off'}">
+      <td><input type="checkbox" ${_cobSel.has(f.cliente) ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="cobTildar(${i},this.checked)"></td>
+      <td><a style="cursor:pointer;" onclick="abrirCarteraCliente(_cobFilas[${i}].cliente)" title="Ver cartera completa">${escHtml(f.cliente)}</a><div class="sub">${escHtml(f.mail || '—')}</div></td>
+      <td style="max-width:300px;"><div class="sub" style="color:var(--text);">${escHtml(f.items.map(it => _cobFechaCorta(it.fecha) + ' ' + _agDetalle(it)).join(' · '))}</div></td>
+      <td class="num">${monto}</td>
+      <td style="max-width:360px;font-size:11px;">${escHtml(f.sugPanel)}${f.verif ? ' <span class="warn" title="Ese bono no está en el universo de cuanto_cobro.json: confirmá su lámina mínima">⚠</span>' : ''}</td>
+      <td style="white-space:nowrap;">${estado} <span class="liq-wpp-btn ${tel ? '' : 'sin-tel'}" onclick="cobWpp(${i})" title="${tel ? 'Mandarle esto por WhatsApp' : 'Sin teléfono — cargá el Stock de cuentas'}">${WPP_SVG_ICON}</span></td>
+    </tr>`;
+  });
+  body.innerHTML = html + '</tbody></table>';
+  _cobActualizarAcciones();
+}
+function cobTildar(i, v) { const f = _cobFilas[i]; if (!f) return; if (v) _cobSel.add(f.cliente); else _cobSel.delete(f.cliente); _cobActualizarAcciones(); }
+function cobTildarTodos(v) {
+  _cobSel = new Set(v ? _cobFilas.filter(f => f.mailOk && !f.baja).map(f => f.cliente) : []);
+  renderCobros();
+}
+function _cobSeleccionados() { return _cobFilas.filter(f => _cobSel.has(f.cliente) && f.mailOk && !f.baja); }
+function _cobActualizarAcciones() {
+  const sel = _cobSeleccionados();
+  const usd = sel.reduce((a, f) => a + f.usd, 0), ars = sel.reduce((a, f) => a + f.ars, 0);
+  const txt = `<b>${sel.length}</b> de ${_cobFilas.length} cliente${_cobFilas.length === 1 ? '' : 's'} tildado${sel.length === 1 ? '' : 's'}${sel.length ? ' · cobran ' + [usd ? _agFmtUsd(usd) : '', ars ? _agFmtArs(ars) : ''].filter(Boolean).join(' + ') : ''}`;
+  ['cobSelInfo', 'cobSelInfo2'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = txt; });
+  const b = document.getElementById('cobBtnGen');
+  if (b) b.textContent = `⬇ Descargar Word + CSV — ${sel.length} aviso${sel.length === 1 ? '' : 's'}`;
+}
+function cobWpp(i) {
+  const f = _cobFilas[i];
+  if (!f) return;
+  const tel = telParaClienteFCN(f.cliente);
+  if (!tel) { alertaSinStockFCN(); return; }
+  abrirWppConTexto(f.cliente, tel, `Hola${_nomSaludoFCN(f.cliente)}! 👋\n\n${f.detalle}\n\n${f.sugerencia}\n\n¿Lo vemos?\n\n${nombreAsesorFirma()}`);
+}
+
+function _cobCSV(rows) {
+  const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  return '﻿' + [COB_COLS.map(esc).join(','), ...rows.map(r => COB_COLS.map(c => esc(r[c])).join(','))].join('\r\n') + '\r\n';
+}
+function _cobFila(f) {
+  return {
+    Saludo: _inacSaludo(f.nombre), Nombre: f.nombre, Email: f.mail, Comitente: f.comitente, Cuenta: (f.s && f.s.denominacion) || f.cliente,
+    Detalle: f.detalle, Sugerencia: f.sugerencia,
+    Monto: [f.usd ? _agFmtUsd(f.usd) : '', f.ars ? _agFmtArs(f.ars) : ''].filter(Boolean).join(' y '),
+    Ticker: f.tickers, Fecha: f.fecha.toLocaleDateString('es-AR')
+  };
+}
+
+function cobDescargar(prueba) {
+  const p = _inacPerfil(), t = _cobTipo;
+  if (!p.firma || !p.wpp) { showToast('Completá tu nombre y tu WhatsApp en "Tu perfil" antes de generar.'); return; }
+  const cfg = { asunto: document.getElementById('cobAsunto').value.trim(), cuerpo: document.getElementById('cobCuerpo').value };
+  if (!cfg.cuerpo.trim()) { showToast('El texto del mail está vacío.'); return; }
+  let rows;
+  if (prueba) {
+    const dest = (p.testMail || '').split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+    if (!dest.length) { showToast('Cargá tu mail de prueba en "Tu perfil".'); return; }
+    const m = _cobFilas.find(f => f.mailOk) || _cobFilas[0];
+    const det = m ? m.detalle : 'Te escribo porque hoy vence tu S16O6 y cobrás aprox. $ 1.250.000.';
+    const sug = m ? m.sugerencia : 'Si querés, te armo un par de opciones para reinvertir $ 1.250.000.';
+    const monto = m ? _cobFila(m).Monto : '$ 1.250.000';
+    rows = [
+      { Saludo: _inacSaludo('María José'), Nombre: 'María José', Email: dest[0], Comitente: 'PRUEBA-1', Cuenta: 'EJEMPLO MARIA JOSE', Detalle: det, Sugerencia: sug, Monto: monto, Ticker: m ? m.tickers : 'S16O6', Fecha: m ? m.fecha.toLocaleDateString('es-AR') : '' },
+      { Saludo: _inacSaludo(''), Nombre: '', Email: dest[1 % dest.length], Comitente: 'PRUEBA-2', Cuenta: 'EJEMPLO SIN NOMBRE', Detalle: det, Sugerencia: sug, Monto: monto, Ticker: m ? m.tickers : 'S16O6', Fecha: m ? m.fecha.toLocaleDateString('es-AR') : '' }
+    ];
+  } else {
+    if (_inacBajas === null && !confirm('No se pudo verificar la lista de clientes dados de baja.\n\nSi generás igual, el mail podría llegarle a alguien que pidió no recibirlo más.\n\n¿Generar de todos modos?')) return;
+    const sel = _cobSeleccionados();
+    if (!sel.length) { showToast('Tildá al menos un cliente.'); return; }
+    rows = sel.map(_cobFila);
+  }
+  const suf = prueba ? '-PRUEBA' : '';
+  const nombre = t === 'venc' ? 'vencimiento' : 'renta';
+  try {
+    _descargar(_inacDocx(cfg.cuerpo, p, COB_EXTRA), `Aviso-${nombre}${suf}.docx`);
+    _descargar(new Blob([_cobCSV(rows)], { type: 'text/csv;charset=utf-8' }), `aviso-${nombre}${suf}.csv`);
+  } catch (e) { console.error('[Avisos de cobro]', e); showToast('No se pudo armar el Word: ' + e.message); return; }
+  if (typeof _ga === 'function') _ga('cobros_descarga', { tipo: t, prueba: prueba ? 1 : 0, n: rows.length });
+  const done = document.getElementById('cobDone');
+  done.style.display = '';
+  done.innerHTML = `<b>✓ Descargados <code>Aviso-${nombre}${suf}.docx</code> y <code>aviso-${nombre}${suf}.csv</code> — ${rows.length} ${prueba ? 'filas de prueba' : 'cliente' + (rows.length === 1 ? '' : 's')}.</b>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:var(--muted);">Asunto:</span>
+      <input type="text" readonly value="${escHtml(cfg.asunto)}" id="cobAsuntoCopia" style="flex:1;min-width:200px;padding:7px 9px;background:var(--wash-1);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:12px;">
+      <button class="aliq-btn-cancel" onclick="(function(b){var i=document.getElementById('cobAsuntoCopia');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);b.textContent='✓ Copiado';})(this)">Copiar asunto</button>
+    </div>
+    <ol>
+      <li>Abrí <b>Outlook (classic)</b> y esperá el "Conectado a Microsoft Exchange".</li>
+      <li>Abrí <code>Aviso-${nombre}${suf}.docx</code> → <b>Correspondencia</b> → <b>Seleccionar destinatarios</b> → <b>Usar una lista existente</b> → <code>aviso-${nombre}${suf}.csv</code> (codificación <b>UTF-8</b>).</li>
+      <li>Revisá con <b>Vista previa de resultados</b> que saludo, detalle y sugerencia salgan bien para cada cliente.</li>
+      <li><b>Finalizar y combinar</b> → <b>Enviar mensajes de correo electrónico</b>: Para = <code>Email</code>, Asunto = el de arriba, Formato = <b>HTML</b>.</li>
+    </ol>`;
+}
+
 // ── Word desde el texto: párrafos, **negrita**, links, campos de combinación ──
 function _inacDigits(s) { return String(s || '').replace(/\D/g, ''); }
 function _inacIgHandle(url) { const m = String(url || '').match(/instagram\.com\/([^/?#\s]+)/i); return m ? '@' + m[1] : url; }
-function _inacDocx(texto, perfil) {
+function _inacDocx(texto, perfil, extra) {
   const rels = [];
   const relId = url => { let i = rels.indexOf(url); if (i < 0) { rels.push(url); i = rels.length - 1; } return 'rIdL' + (i + 1); };
   const rPr = (b, link) => `<w:rPr>${link ? '<w:rStyle w:val="Hyperlink"/>' : ''}${b ? '<w:b/>' : ''}</w:rPr>`;
@@ -4012,11 +4664,11 @@ function _inacDocx(texto, perfil) {
   const ig = perfil.instagram || AVISO_IG_DEFAULT;
   const tokens = (seg, b) => {
     let out = '', last = 0, m;
-    const re = /\{(Saludo|Nombre|Asesor|WhatsApp|Instagram|Baja)\}|(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)])/g;
+    const re = new RegExp('\\{(Saludo|Nombre|Asesor|WhatsApp|Instagram|Baja' + (extra && extra.length ? '|' + extra.join('|') : '') + ')\\}|(https?:\\/\\/[^\\s<>"]*[^\\s<>".,;:!?)])', 'g');
     while ((m = re.exec(seg))) {
       out += run(seg.slice(last, m.index), b);
       if (m[2]) out += link(m[2], m[2].replace(/^https?:\/\//, ''), b);
-      else if (m[1] === 'Saludo' || m[1] === 'Nombre') out += campo(m[1], b);
+      else if (m[1] === 'Saludo' || m[1] === 'Nombre' || (extra && extra.includes(m[1]))) out += campo(m[1], b);
       else if (m[1] === 'Asesor') out += run(perfil.firma, b);
       else if (m[1] === 'WhatsApp') out += perfil.wpp ? link('https://wa.me/' + _inacDigits(perfil.wpp), perfil.wpp, b) : '';
       else if (m[1] === 'Instagram') out += link(ig, _inacIgHandle(ig), b);
@@ -4668,6 +5320,7 @@ const SEARCH_SECCIONES = [
   { id: 'cliente360', nombre: 'Vista 360', icon: '👤' },
   { id: 'ranking', nombre: 'Ranking', icon: '🏆' },
   { id: 'inactivos', nombre: 'Mail Marketing', alias: 'Inactivos cuentas sin actividad reactivación activos', icon: '📧' },
+  { id: 'cobros', nombre: 'Avisos de cobro y vencimiento', alias: 'aviso vencimiento cobro renta cupón amortización reinvertir mail', icon: '🔔' },
 ];
 let _searchActiveIdx = -1;
 
@@ -4955,6 +5608,7 @@ function irAResultadoBusqueda(tipo, id) {
     else if (id === 'cliente360') showCliente360();
     else if (id === 'ranking') showRanking();
     else if (id === 'inactivos') showInactivos();
+    else if (id === 'cobros') showCobros();
   }
   else if (tipo === 'cliente') abrirCarteraCliente(id);
   else if (tipo === 'ticker') abrirHolders(id);
@@ -5546,6 +6200,7 @@ function renderDashboardAll() {
   renderCliente360();
   renderRanking();
   if (document.getElementById('inactivos-panel')?.classList.contains('active')) renderInactivos();
+  if (document.getElementById('cobros-panel')?.classList.contains('active')) renderCobros();
 }
 
 async function refreshFilesStatusBits() {
@@ -5873,7 +6528,7 @@ async function pasteFromClipboard(key) {
 // Paneles "nativos" del propio FCN_Suite.html (no son iframes de otra herramienta) — Inicio,
 // Archivos, y ahora Vista 360. hideAllPanels() centraliza el show/hide para no repetir la
 // misma lista de ids en cada show*() cada vez que se agrega un panel nuevo.
-const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel', 'ranking-panel', 'inactivos-panel'];
+const NATIVE_PANEL_IDS = ['home-panel', 'files-panel', 'cliente360-panel', 'ranking-panel', 'inactivos-panel', 'cobros-panel'];
 function hideAllPanels() {
   document.querySelectorAll('.tool-frame').forEach(f => f.classList.remove('active'));
   NATIVE_PANEL_IDS.forEach(id => document.getElementById(id)?.classList.remove('active'));
@@ -5906,6 +6561,7 @@ function _abrirVistaDesdeUrl(){
     else if(panel==='cliente360') showCliente360();
     else if(panel==='ranking') showRanking();
     else if(panel==='inactivos') showInactivos();
+    else if(panel==='cobros') showCobros();
     else showHome();
   } finally { _suiteUrlSuprimir = false; }
 }
@@ -5948,6 +6604,14 @@ function showInactivos() {
   document.getElementById('inactivos-panel').classList.add('active');
   abrirInactivos();
   _setSuiteUrl('panel', 'inactivos');
+}
+
+function showCobros() {
+  setActiveTab('cobros');
+  hideAllPanels();
+  document.getElementById('cobros-panel').classList.add('active');
+  abrirCobros();
+  _setSuiteUrl('panel', 'cobros');
 }
 
 function openTool(toolId) {

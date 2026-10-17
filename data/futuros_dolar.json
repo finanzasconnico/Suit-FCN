@@ -1,0 +1,114 @@
+{
+ "version": 1,
+ "fecha": "2026-10-16",
+ "a3500": {
+  "fecha": "2026-10-16",
+  "valor": 1518
+ },
+ "futuros": [
+  {
+   "simbolo": "DLR102026",
+   "vto": "2026-10-30",
+   "precio": 1531,
+   "tna": 0.2233,
+   "volumen": 648637,
+   "interesAbierto": 1443251
+  },
+  {
+   "simbolo": "DLR112026",
+   "vto": "2026-11-30",
+   "precio": 1558.5,
+   "tna": 0.2164,
+   "volumen": 90228,
+   "interesAbierto": 762227
+  },
+  {
+   "simbolo": "DLR122026",
+   "vto": "2026-12-31",
+   "precio": 1587.5,
+   "tna": 0.2228,
+   "volumen": 44651,
+   "interesAbierto": 647326
+  },
+  {
+   "simbolo": "DLR012027",
+   "vto": "2027-01-29",
+   "precio": 1617.5,
+   "tna": 0.2279,
+   "volumen": 17194,
+   "interesAbierto": 206790
+  },
+  {
+   "simbolo": "DLR022027",
+   "vto": "2027-02-26",
+   "precio": 1645,
+   "tna": 0.2296,
+   "volumen": 4754,
+   "interesAbierto": 228513
+  },
+  {
+   "simbolo": "DLR032027",
+   "vto": "2027-03-31",
+   "precio": 1680,
+   "tna": 0.2347,
+   "volumen": 13438,
+   "interesAbierto": 178310
+  },
+  {
+   "simbolo": "DLR042027",
+   "vto": "2027-04-30",
+   "precio": 1711,
+   "tna": 0.2368,
+   "volumen": 18510,
+   "interesAbierto": 77821
+  },
+  {
+   "simbolo": "DLR052027",
+   "vto": "2027-05-31",
+   "precio": 1744,
+   "tna": 0.2394,
+   "volumen": 153,
+   "interesAbierto": 80402
+  },
+  {
+   "simbolo": "DLR062027",
+   "vto": "2027-06-30",
+   "precio": 1774,
+   "tna": 0.2395,
+   "volumen": 15,
+   "interesAbierto": 24640
+  },
+  {
+   "simbolo": "DLR072027",
+   "vto": "2027-07-30",
+   "precio": 1804,
+   "tna": 0.2396,
+   "volumen": 15,
+   "interesAbierto": 24775
+  },
+  {
+   "simbolo": "DLR082027",
+   "vto": "2027-08-31",
+   "precio": 1847,
+   "tna": 0.248,
+   "volumen": 8056,
+   "interesAbierto": 43947
+  },
+  {
+   "simbolo": "DLR092027",
+   "vto": "2027-09-30",
+   "precio": 1893,
+   "tna": 0.2584,
+   "volumen": 10050,
+   "interesAbierto": 10048
+  },
+  {
+   "simbolo": "DLR102027",
+   "vto": "2027-10-29",
+   "precio": 1935,
+   "tna": 0.2653,
+   "volumen": 10,
+   "interesAbierto": 11
+  }
+ ]
+}

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Pesos o dólares? — FCN Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Hanken+Grotesk:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#081917; --surface:#0E2622; --surface2:#122B27; --border:#1E3A34;
+  --jade:#1C8C5F; --jade-d:rgba(28,140,95,.12); --ambar:#DBA03C; --ambar-d:rgba(219,160,60,.12);
+  --azul:#4F86E0; --azul-d:rgba(79,134,224,.12);
+  --danger:#C0453B; --danger-d:rgba(192,69,59,.12);
+  --text:#EAF1EE; --muted:#6C817C; --dim:#3C5752; --text-strong:#ffffff;
+  --font-d:'Spectral', Georgia, serif; --font-s:'Hanken Grotesk', system-ui, sans-serif; --font-m:'IBM Plex Mono', ui-monospace, monospace;
+  --r:6px; --wash-1:rgba(255,255,255,.045); --pos:#4ade80; --neg:#E8837E;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F1EFE9;--border:#E2E6E4;
+    --ambar:#B8862F;--azul:#2F64BF;--text:#1C2B28;--text-strong:#0A130F;--muted:#5B6B66;
+    --wash-1:rgba(0,0,0,.035);--pos:#1C8C5F;--neg:#C0453B;
+  }
+}
+[data-theme="light"]{
+  --bg:#FAF9F6;--surface:#FFFFFF;--surface2:#F1EFE9;--border:#E2E6E4;
+  --ambar:#B8862F;--azul:#2F64BF;--text:#1C2B28;--text-strong:#0A130F;--muted:#5B6B66;
+  --wash-1:rgba(0,0,0,.035);--pos:#1C8C5F;--neg:#C0453B;
+}
+[data-theme="dark"]{
+  --bg:#081917;--surface:#0E2622;--surface2:#122B27;--border:#1E3A34;
+  --ambar:#DBA03C;--azul:#4F86E0;--text:#EAF1EE;--text-strong:#ffffff;--muted:#6C817C;
+  --wash-1:rgba(255,255,255,.045);--pos:#4ade80;--neg:#E8837E;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-s);background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;}
+[hidden]{display:none !important;}
+
+.topbar{min-height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 20px;gap:12px;}
+.topbar-brand{display:flex;align-items:center;gap:12px;}
+.topbar-logo{width:30px;height:30px;border-radius:6px;background:var(--jade);color:#fff;font-family:var(--font-m);font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;}
+.topbar-title{font-family:var(--font-d);font-size:16px;font-weight:300;}
+.topbar-title span{color:var(--ambar);}
+.topbar-subtitle{font-size:11px;color:var(--muted);margin-top:1px;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pill{font-family:var(--font-m);font-size:10px;letter-spacing:.04em;padding:3px 9px;border-radius:3px;border:1px solid var(--border);color:var(--muted);background:var(--surface2);white-space:nowrap;}
+.pill.ok{border-color:rgba(28,140,95,.45);color:var(--jade);background:var(--jade-d);}
+.pill.warn{border-color:rgba(219,160,60,.45);color:var(--ambar);background:var(--ambar-d);}
+.pill.err{border-color:rgba(192,69,59,.45);color:var(--neg);background:var(--danger-d);}
+.btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 11px;cursor:pointer;font-size:12px;color:var(--text);font-family:var(--font-s);}
+.btn:hover{border-color:var(--jade);}
+.btn.pri{background:var(--jade);border-color:var(--jade);color:#fff;}
+
+.main{max-width:1180px;margin:0 auto;padding:18px 20px 48px;}
+.controls{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;gap:16px 22px;align-items:flex-end;flex-wrap:wrap;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field>label,.lab{font-size:10px;font-family:var(--font-m);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+.inrow{display:flex;gap:6px;align-items:center;}
+input.txt,input[type=date]{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 10px;font-family:var(--font-m);font-size:14px;}
+input.txt{width:150px;text-align:right;}
+input.txt.sm{width:76px;font-size:13px;}
+input[type=date]{width:150px;color-scheme:dark;}
+[data-theme="light"] input[type=date]{color-scheme:light;}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) input[type=date]{color-scheme:light;} }
+input.txt:focus,input[type=date]:focus{outline:none;border-color:var(--jade);}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;}
+.seg button{background:var(--bg);color:var(--muted);border:0;padding:8px 13px;font-size:12px;font-family:var(--font-s);cursor:pointer;}
+.seg button.on{background:var(--jade);color:#fff;}
+.chips{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:4px 10px;font-size:11.5px;cursor:pointer;font-family:var(--font-s);}
+.chip:hover{border-color:var(--jade);color:var(--text);}
+.chip.on{background:var(--jade);border-color:var(--jade);color:#fff;}
+.lnk{background:none;border:0;color:var(--jade);cursor:pointer;font-size:12px;font-family:var(--font-s);padding:0;}
+.lnk:hover{text-decoration:underline;}
+
+.supuestos{background:var(--surface2);border:1px solid var(--border);border-top:0;border-radius:0 0 var(--r) var(--r);padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 22px;}
+.supuestos .field input.txt{width:100%;}
+.supuestos small{font-size:10.5px;color:var(--muted);line-height:1.4;}
+.controls.abierto{border-radius:var(--r) var(--r) 0 0;}
+
+/* ── resultado ── */
+.res{margin-top:16px;display:grid;gap:14px;}
+.frase{font-family:var(--font-d);font-size:20px;font-weight:300;line-height:1.4;color:var(--text);}
+.frase b{font-weight:600;color:var(--text-strong);}
+.duelo{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0;}
+.card.gana{border-color:var(--jade);box-shadow:inset 0 0 0 1px var(--jade);}
+.card .k{font-family:var(--font-m);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;gap:6px;align-items:center;}
+.card .v{font-family:var(--font-m);font-size:24px;color:var(--text-strong);font-weight:500;}
+.card .s{font-size:12px;color:var(--muted);line-height:1.45;}
+.card .s b{color:var(--text);font-weight:500;}
+.badge{font-family:var(--font-m);font-size:8.5px;letter-spacing:.08em;padding:1px 6px;border-radius:2px;border:1px solid var(--border);color:var(--muted);text-transform:uppercase;white-space:nowrap;}
+.badge.gana{background:var(--jade);border-color:var(--jade);color:#fff;}
+.badge.segura{border-color:rgba(28,140,95,.5);color:var(--jade);}
+.badge.estimada{border-color:rgba(219,160,60,.5);color:var(--ambar);}
+.badge.riesgo{border-color:rgba(192,69,59,.5);color:var(--neg);}
+.badge.pesos{border-color:rgba(79,134,224,.5);color:var(--azul);}
+.badge.usd{border-color:rgba(28,140,95,.5);color:var(--jade);}
+.dolar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:flex;gap:10px 26px;flex-wrap:wrap;align-items:baseline;}
+.dolar>div{display:flex;flex-direction:column;gap:2px;}
+.dolar span{font-family:var(--font-m);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+.dolar b{font-family:var(--font-m);font-size:15px;color:var(--text-strong);font-weight:500;}
+.dolar em{font-style:normal;font-size:11px;color:var(--muted);}
+.dolar>div.sel b{color:var(--jade);}
+.dolar>div.sel span::after{content:' · el que se usa';color:var(--jade);}
+.card.iq .iq-row{display:flex;gap:8px 22px;align-items:baseline;flex-wrap:wrap;}
+.card.iq .iq-row .s{flex:1;min-width:240px;}
+.card.iq .iq-u{font-size:12px;color:var(--muted);font-weight:400;}
+.aviso{font-size:12px;color:var(--muted);line-height:1.55;background:var(--ambar-d);border:1px solid rgba(219,160,60,.3);border-radius:var(--r);padding:10px 14px;}
+.aviso b{color:var(--text);font-weight:500;}
+.sec{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;}
+.sec h3{font-family:var(--font-d);font-size:17px;font-weight:400;color:var(--text-strong);}
+.sec .sp{flex:1;}
+
+.tabla-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow-x:auto;}
+table{border-collapse:collapse;width:100%;}
+th{font-family:var(--font-m);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:right;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface);}
+th:first-child,td:first-child{text-align:left;}
+td{text-align:right;padding:10px 12px;border-bottom:1px solid var(--border);font-family:var(--font-m);font-size:12.5px;white-space:nowrap;}
+tr:last-child td{border-bottom:0;}
+tbody tr:hover td{background:var(--wash-1);}
+td.tk{font-family:var(--font-s);font-weight:600;color:var(--text-strong);}
+td .sub{display:block;font-size:10.5px;color:var(--muted);margin-top:2px;font-family:var(--font-s);font-weight:400;}
+td.fin{font-weight:500;color:var(--text-strong);}
+tr.base td{background:var(--jade-d);}
+tr.quiebre td{background:var(--ambar-d);}
+tr.op{cursor:pointer;}
+tr.det td{background:var(--surface2);white-space:normal;font-family:var(--font-s);font-size:12px;color:var(--muted);text-align:left;line-height:1.55;}
+tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
+.pos{color:var(--pos);} .neg{color:var(--neg);} .mut{color:var(--muted);}
+.msg{padding:34px 20px;text-align:center;color:var(--muted);line-height:1.6;}
+.notes{margin-top:18px;font-size:11.5px;color:var(--muted);line-height:1.65;display:grid;gap:6px;}
+.notes b{color:var(--text);font-weight:500;}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;}
+.modal.open{display:flex;}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;width:min(620px,100%);display:flex;flex-direction:column;gap:10px;}
+.modal-box textarea{width:100%;min-height:300px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:10px;font-family:var(--font-s);font-size:13px;line-height:1.5;resize:vertical;}
+.modal-acc{display:flex;gap:8px;justify-content:flex-end;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--jade);color:var(--text);padding:9px 16px;border-radius:6px;font-size:12.5px;opacity:0;transition:opacity .2s ease-out,transform .2s ease-out;pointer-events:none;z-index:60;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media (max-width:860px){ .duelo{grid-template-columns:1fr;} }
+@media (max-width:640px){ .main{padding:14px 16px 30px;} .frase{font-size:17px;} .card .v{font-size:20px;} }
+</style>
+<script src="fcn-theme.js"></script>
+<script src="fcn-tabla.js" defer></script>
+<script src="fcn-core.js"></script>
+<script src="fcn-letras.js"></script>
+<script src="fcn-bonos.js"></script>
+<script src="fcn-carry.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">FN</div>
+    <div>
+      <div class="topbar-title">finanzasconnico · <span>¿Pesos o dólares?</span></div>
+      <div class="topbar-subtitle">Hasta una fecha: dónde conviene tener la plata, con todas las comisiones y el dólar que descuenta el mercado</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="pill" id="st-datos">cargando…</span>
+    <button class="btn" onclick="actualizar(true)" title="Traer precios de nuevo">↻ Actualizar</button>
+    <button id="btnTheme" class="btn" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro">🌙</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="controls" id="controls">
+    <div class="field">
+      <label for="in-monto">Tengo</label>
+      <div class="inrow">
+        <input type="text" class="txt" id="in-monto" inputmode="numeric" autocomplete="off" value="50.000">
+        <div class="seg" id="seg-tengo"><button data-v="ARS">$</button><button data-v="USD" class="on">USD</button></div>
+      </div>
+    </div>
+    <div class="field">
+      <label for="in-fecha">Lo necesito el</label>
+      <input type="date" id="in-fecha">
+      <div class="chips" id="chips-plazo">
+        <button class="chip" data-m="1">1 mes</button><button class="chip" data-m="3">3 meses</button><button class="chip" data-m="6">6 meses</button><button class="chip" data-m="12">1 año</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Lo necesito en</label>
+      <div class="seg" id="seg-nec"><button data-v="ARS">Pesos</button><button data-v="USD" class="on">Dólares</button></div>
+    </div>
+    <div class="field">
+      <label>Inflación para los CER</label>
+      <div class="inrow">
+        <div class="seg" id="seg-finfl"><button data-v="rem" class="on" title="Lo que esperan los analistas del REM del BCRA, mes por mes">REM</button><button data-v="mercado" title="La inflación que dejan los precios: con ella los CER empatan con las LECAP">Mercado</button><button data-v="monitor" title="La que proyecta el Monitor">Monitor</button><button data-v="manual" title="Cargá vos la inflación mensual">A mano</button></div>
+        <input type="text" class="txt sm" id="in-infl" inputmode="decimal" placeholder="% mensual" hidden>
+      </div>
+    </div>
+    <div class="field">
+      <label>Dólar en la fecha</label>
+      <div class="inrow">
+        <div class="seg" id="seg-fdol"><button data-v="futuros" class="on" title="Lo que paga hoy el mercado de futuros (A3), llevado a MEP">Futuros</button><button data-v="rem" title="Lo que esperan los analistas del REM del BCRA, llevado a MEP">REM</button><button data-v="hoy" title="Que el dólar quede como hoy">Igual a hoy</button><button data-v="manual" title="Cargá vos el MEP que esperás">A mano</button></div>
+        <input type="text" class="txt sm" id="in-mepman" inputmode="decimal" placeholder="MEP $" hidden>
+      </div>
+    </div>
+    <div class="field">
+      <label for="in-ventana">Vencimientos ± días</label>
+      <input type="text" class="txt sm" id="in-ventana" inputmode="numeric" value="15">
+    </div>
+    <div class="field" style="margin-left:auto">
+      <button class="lnk" id="btn-sup" onclick="toggleSupuestos()">⚙ Supuestos y comisiones ▾</button>
+    </div>
+  </div>
+  <div class="supuestos" id="supuestos" hidden>
+    <div class="field">
+      <label>Calificación mínima (ONs)</label>
+      <div class="seg" id="seg-calif"><button data-v="AAA">AAA</button><button data-v="AA-" class="on">AA- o mejor</button><button data-v="A-">A- o mejor</button></div>
+      <small>Soberanos y BOPREAL entran siempre, rotulados aparte.</small>
+    </div>
+    <div class="field">
+      <label for="in-usdman">Tasa en USD a mano (TNA %)</label>
+      <input type="text" class="txt" id="in-usdman" inputmode="decimal" placeholder="opcional">
+      <small>Plazo fijo o FCI en dólares, para comparar.</small>
+    </div>
+    <div class="field">
+      <label>Liquidación</label>
+      <div class="seg" id="seg-plazo"><button data-v="24" class="on">24 hs</button><button data-v="CI">CI</button></div>
+    </div>
+    <div class="field">
+      <label>Comisiones %</label>
+      <div class="inrow" style="flex-wrap:wrap">
+        <span class="lab" style="width:58px">Letras</span><input type="text" class="txt sm" id="c-letra" value="0,10">
+        <span class="lab" style="width:58px">Bonos</span><input type="text" class="txt sm" id="c-bono" value="0,50">
+      </div>
+      <div class="inrow">
+        <span class="lab" style="width:58px">MEP</span><input type="text" class="txt sm" id="c-mep" value="1,00">
+      </div>
+      <small>MEP = compra + venta del AL30 al pasar de moneda.</small>
+    </div>
+    <div class="field">
+      <label>Arancel caución % cada 90 días</label>
+      <div class="inrow"><span class="lab" style="width:58px">Pesos</span><input type="text" class="txt sm" id="c-caucars" value="0,50"></div>
+      <div class="inrow"><span class="lab" style="width:58px">Dólares</span><input type="text" class="txt sm" id="c-caucusd" value="0,10"></div>
+      <small>Se prorratea por los días.</small>
+    </div>
+  </div>
+
+  <div class="res" id="res"><div class="msg">Cargando datos…</div></div>
+
+  <div class="notes">
+    <div><b>Cómo se calcula:</b> para cada alternativa se arma la plata que tendrías en la fecha, en la moneda en que la necesitás. Si tenés otra moneda, se pasa por MEP (compra + venta del AL30). Si algo vence antes, lo cobrado queda en caución de la misma moneda hasta la fecha; si vence un poco después, se marca cuántos días tarde llega.</div>
+    <div><b>Segura</b> = el resultado ya se sabe hoy (tasa fija, caución al plazo, bono hasta el vencimiento; el único riesgo es que el emisor no pague). <b>Estimada</b> = depende de algo que no se sabe (inflación para el CER, la TAMAR, renovar la caución). <b>Riesgo de precio</b> = el bono vence después y hay que venderlo: se supone que se vende a la misma TIR de hoy.</div>
+    <div><b>El dólar de la fecha:</b> los futuros de A3 son del dólar oficial (A3500); se llevan a MEP con la brecha de hoy. El precio de un futuro sale casi entero de la diferencia de tasas entre pesos y dólares, así que <b>es un precio de mercado, no un pronóstico</b>: por eso el "dólar de quiebre" suele quedar cerca. La pregunta real es si el dólar va a terminar arriba o abajo de ese número.</div>
+    <div><b>Inflación y dólar, de dónde salen:</b> <b>REM</b> = la mediana de lo que esperan unas 40 consultoras y bancos en el Relevamiento de Expectativas de Mercado del BCRA (sale una vez por mes). <b>Mercado</b> = la inflación que ya descuentan los precios: con ella el CER y la LECAP empatan. <b>Futuros</b> = lo que paga hoy el mercado de A3 por el dólar de esa fecha. El CER ajusta con ~2 meses de rezago, así que los primeros meses de cualquier CER ya se conocen y van con la inflación real del INDEC. La <b>inflación de quiebre</b> responde lo mismo que el dólar de quiebre: no hace falta acertar la inflación, alcanza con saber si va a quedar arriba o abajo de ese número.</div>
+    <div>Precios en vivo de BYMA (letras, bonos, cauciones, AL30/AL30D); CER, TAMAR y duales con las tasas del Monitor; futuros de A3 al cierre del día hábil anterior. No incluye impuestos (persona humana). Información orientativa, no constituye una recomendación de inversión.</div>
+  </div>
+</div>
+
+<div class="modal" id="m-wpp">
+  <div class="modal-box">
+    <div class="sec" style="margin:0"><h3>Resumen para mandar</h3><span class="sp"></span><button class="btn" onclick="cerrarWpp()">✕</button></div>
+    <textarea id="wpp-texto"></textarea>
+    <div class="modal-acc"><button class="btn" onclick="copiarWpp()">Copiar</button><button class="btn pri" onclick="abrirWhatsApp()">Abrir WhatsApp</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var L = FCNLetras, B = FCNBonos, C = FCNCarry;
+  var LS = 'fcn_pesos_dolares_v1';
+  var st = { tengo:'USD', nec:'USD', plazo:'24', calif:'AA-', finfl:'rem', fdol:'futuros', datos:null, res:null, filtro:'todas', abiertos:{}, monFuente:'', monFecha:null };
+
+  // ── util ──
+  function $(id){ return document.getElementById(id); }
+  function num(txt){
+    var s = String(txt == null ? '' : txt).trim().replace(/\s|\$/g,'');
+    if(!s) return null;
+    if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g,'').replace(',','.');      // es-AR: 10.000 = diez mil
+    else s = s.replace(',','.');
+    var n = parseFloat(s); return isFinite(n) ? n : null;
+  }
+  var nf0 = new Intl.NumberFormat('es-AR',{maximumFractionDigits:0});
+  var nf1 = new Intl.NumberFormat('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
+  var nf2 = new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  function money(v, mon){ return (mon === 'USD' ? 'USD ' : '$ ') + nf0.format(Math.round(v)); }
+  function pct(v, dec){ return v == null || !isFinite(v) ? '—' : (dec === 1 ? nf1 : nf2).format(v*100) + '%'; }
+  function tc(v){ return '$ ' + nf1.format(v); }
+  function fdate(d){ return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); }
+  function isoLocal(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2400); }
+  function marcar(id, v){ var bs=$(id).querySelectorAll('button'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-v')===v); }
+  function segOn(id, cb){ $(id).addEventListener('click', function(e){ var b=e.target.closest('button'); if(!b) return; marcar(id, b.getAttribute('data-v')); cb(b.getAttribute('data-v')); }); }
+
+  // ── persistencia (solo comodidad) ──
+  var CAMPOS = ['in-monto','in-fecha','in-ventana','in-infl','in-mepman','in-usdman','c-letra','c-bono','c-mep','c-caucars','c-caucusd'];
+  function guardar(){
+    var o = {tengo:st.tengo, nec:st.nec, plazo:st.plazo, calif:st.calif, finfl:st.finfl, fdol:st.fdol};
+    CAMPOS.forEach(function(id){ o[id] = $(id).value; });
+    try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){}
+  }
+  function restaurar(){
+    var o = null; try{ o = JSON.parse(localStorage.getItem(LS)||'null'); }catch(e){}
+    if(o){
+      CAMPOS.forEach(function(id){ if(o[id] != null && o[id] !== '') $(id).value = o[id]; });
+      if(o.tengo) st.tengo = o.tengo; if(o.nec) st.nec = o.nec; if(o.plazo) st.plazo = o.plazo; if(o.calif) st.calif = o.calif;
+      if(o.finfl) st.finfl = o.finfl; if(o.fdol) st.fdol = o.fdol;
+    }
+    var f = $('in-fecha').value ? new Date($('in-fecha').value+'T00:00') : null;
+    if(!f || f <= new Date()) $('in-fecha').value = isoLocal(sumarMeses(new Date(), 3));
+    marcar('seg-tengo', st.tengo); marcar('seg-nec', st.nec); marcar('seg-plazo', st.plazo); marcar('seg-calif', st.calif);
+    marcar('seg-finfl', st.finfl); marcar('seg-fdol', st.fdol); verManual();
+  }
+  function verManual(){ $('in-infl').hidden = st.finfl !== 'manual'; $('in-mepman').hidden = st.fdol !== 'manual'; }
+  function sumarMeses(d, m){ return new Date(d.getFullYear(), d.getMonth()+m, d.getDate()); }
+
+  window.toggleSupuestos = function(){
+    var s = $('supuestos'), ab = s.hidden;
+    s.hidden = !ab; $('controls').classList.toggle('abierto', ab);
+    $('btn-sup').textContent = '⚙ Supuestos y comisiones ' + (ab ? '▴' : '▾');
+  };
+
+  // ── datos ──
+  async function cargarMonitor(){
+    var mon = null; st.monFuente = '';
+    try{ mon = await fcnGetSharedFile('monitor'); if(mon) st.monFuente = 'Monitor del Suite'; }catch(e){}
+    if(!mon){ mon = await fcnFetchStaticFallback('data/monitor.xlsx'); if(mon) st.monFuente = 'Monitor publicado'; }
+    if(!mon) return null;
+    var solo = await fcnLeerLibro('monitor', mon, {type:'array', bookSheets:true});
+    // mismas opciones que ¿Cuánto cobro? para letras y bonos → comparten la caché de libros
+    var wbL = await fcnLeerLibro('monitor', mon, {type:'array', sheets:L.nombresLetras(solo.SheetNames), cellDates:true});
+    var wbB = await fcnLeerLibro('monitor', mon, {type:'array', sheets:B.nombresBonos(solo.SheetNames), cellDates:true});
+    var hojasP = solo.SheetNames.filter(function(s){ return s === 'Letras-Bonos $' || s === 'FX'; });
+    var wbP = await fcnLeerLibro('monitor', mon, {type:'array', sheets:hojasP, cellDates:true});
+    var hoy = new Date();
+    return { letras: L.letrasDesdeLibro(XLSX, wbL, hoy), bonos: B.bonosDesdeLibro(XLSX, wbB, hoy).bonos, pm: C.pesosDesdeLibro(XLSX, wbP) };
+  }
+  async function cargarFuturos(){
+    try{ var r = await fetch('data/futuros_dolar.json', {cache:'no-cache'}); if(!r.ok) return null; return C.futurosDesdeJSON(await r.json()); }catch(e){ return null; }
+  }
+  async function cargarREM(){
+    try{ var r = await fetch('data/rem.json', {cache:'no-cache'}); if(!r.ok) return null; return C.remDesdeJSON(await r.json()); }catch(e){ return null; }
+  }
+
+  var MON = null;
+  async function actualizar(force){
+    $('st-datos').className = 'pill'; $('st-datos').textContent = 'cargando…';
+    try{
+      if(!MON || force === 'monitor') MON = await cargarMonitor();
+      if(!MON){ $('res').innerHTML = '<div class="msg">No hay Monitor cargado. Subilo en <a href="FCN_Suite.html#archivos" target="_top">FCN Suite → Archivos</a>.</div>'; $('st-datos').textContent='sin Monitor'; $('st-datos').className='pill err'; return; }
+      var f = !!force && force !== 'monitor';
+      var r = await Promise.all([ L.getPrecios({force:f}), B.getPrecios(MON.bonos, {force:f}), C.getCauciones(f), C.getMEP(f), cargarFuturos(), cargarREM() ]);
+      var mep = r[3], fut = r[4], rem = r[5];
+      st.datos = {
+        letras: MON.letras, preciosLetras: r[0].ok ? r[0].data : {}, bonos: MON.bonos, preciosBonos: r[1].ok ? r[1].data : {},
+        pesos: MON.pm.pesos, cauciones: r[2].ok ? r[2].data : [],
+        mepHoy: mep ? mep.mep : MON.pm.fx.mep, mepFuente: mep ? mep.fuente : 'Monitor',
+        oficialHoy: (fut && fut.a3500 && fut.a3500.valor) || MON.pm.fx.a3500, futuros: fut, rem: rem, fx: MON.pm.fx,
+        estado: { letras:r[0], bonos:r[1], cau:r[2], mep:mep, fut:fut }
+      };
+      var falta = [];
+      if(!r[0].ok) falta.push('letras'); if(!r[1].ok) falta.push('bonos'); if(!r[2].ok) falta.push('cauciones'); if(!mep) falta.push('MEP en vivo'); if(!fut) falta.push('futuros'); if(!rem) falta.push('REM');
+      $('st-datos').className = 'pill ' + (falta.length ? 'warn' : 'ok');
+      $('st-datos').textContent = falta.length ? 'sin ' + falta.join(', ') : 'BYMA + A3 + REM ✓';
+      $('st-datos').title = 'Tasas CER/TAMAR: ' + st.monFuente + (MON.pm.fecha ? ' del ' + fdate(MON.pm.fecha) : '') + (fut ? ' · futuros al ' + fdate(fut.fecha) : '') + (rem ? ' · REM de ' + C.mesTxt(rem.relevamiento) : '');
+      var inf = MON.pm.inflRef && MON.pm.inflRef.length ? MON.pm.inflRef : null;
+      $('seg-finfl').querySelector('[data-v=monitor]').title = 'La que proyecta el Monitor' + (inf ? ' (entre ' + pct(Math.min.apply(null, inf.map(function(x){return x.inf;}))) + ' y ' + pct(Math.max.apply(null, inf.map(function(x){return x.inf;}))) + ' mensual según el plazo)' : '');
+      calcular();
+    }catch(e){
+      console.error(e);
+      $('st-datos').className = 'pill err'; $('st-datos').textContent = 'error';
+      $('res').innerHTML = '<div class="msg">No se pudieron cargar los datos: ' + esc(e.message) + '</div>';
+    }
+  }
+  window.actualizar = actualizar;
+
+  // ── cálculo ──
+  function params(){
+    var infl = num($('in-infl').value), usd = num($('in-usdman').value);
+    return {
+      hoy: new Date(), fecha: $('in-fecha').value ? new Date($('in-fecha').value + 'T00:00') : null,
+      monto: num($('in-monto').value), tengo: st.tengo, necesito: st.nec, plazo: st.plazo, califMin: st.calif,
+      ventana: Math.max(0, Math.min(120, num($('in-ventana').value) || 0)),
+      inflMensual: st.finfl === 'manual' && infl != null ? infl/100 : null, tasaUSDManual: usd != null && usd > 0 ? usd/100 : null,
+      fuenteInfl: st.finfl, fuenteDolar: st.fdol, mepManual: num($('in-mepman').value),
+      com: { letra: num($('c-letra').value) || 0, bono: num($('c-bono').value) || 0, mep: num($('c-mep').value) || 0,
+             caucARS: num($('c-caucars').value) || 0, caucUSD: num($('c-caucusd').value) || 0 }
+    };
+  }
+  function calcular(){
+    guardar();
+    if(!st.datos) return;
+    var p = params();
+    if(!(p.monto > 0)){ $('res').innerHTML = '<div class="msg">Poné cuánto tenés.</div>'; return; }
+    if(!p.fecha){ $('res').innerHTML = '<div class="msg">Elegí la fecha en que necesitás la plata.</div>'; return; }
+    st.p = p;
+    st.res = C.analizar(p, st.datos);
+    render();
+  }
+
+  // ── render ──
+  function nomOp(o){
+    if(o.tipo === 'Caución' || o.tipo === 'Sin invertir' || o.tipo === 'Tasa a mano') return o.ticker;
+    return o.ticker + ' <span class="mut" style="font-weight:400">· ' + esc(o.tipo) + '</span>';
+  }
+  function nomOpTxt(o){ return (o.tipo === 'Caución' || o.tipo === 'Sin invertir' || o.tipo === 'Tasa a mano') ? o.ticker : o.ticker + ' (' + o.tipo + ')'; }
+  var CERT = {segura:'Segura', estimada:'Estimada', riesgo:'Riesgo de precio'};
+  function cuando(o){
+    if(o.tipo === 'Caución' || o.tipo === 'Sin invertir' || o.tipo === 'Tasa a mano') return 'hasta la fecha';
+    var t = 'vence ' + fdate(o.vto);
+    if(o.venta) return t + ' · se vende en la fecha';
+    if(o.gap > 0) return t + ' · ' + o.gap + ' d en caución';
+    if(o.gap < 0) return t + ' · <span style="color:var(--ambar)">llega ' + (-o.gap) + ' d tarde</span>';
+    return t;
+  }
+  function tasa(o){
+    if(o.tir != null) return 'TIR ' + pct(o.tir, 1);
+    if(o.tna != null) return 'TNA ' + pct(o.tna, 1);
+    return '—';
+  }
+
+  var DLBL = { futuros:'el dólar de los futuros', rem:'el dólar del REM', hoy:'el dólar de hoy', manual:'tu dólar' };
+  var ILBL = { rem:'el REM', mercado:'el mercado', monitor:'el Monitor', manual:'tu supuesto' };
+  function render(){
+    var r = st.res, p = st.p, nec = p.necesito;
+    if(r.error){ $('res').innerHTML = '<div class="msg">' + esc(r.error) + '</div>'; return; }
+    var P = r.mejorPesos, U = r.mejorUSD, h = [];
+    var tengoTxt = money(p.monto, p.tengo);
+    h.push('<div class="frase">Con <b>' + tengoTxt + '</b> hasta el <b>' + fdate(r.fecha) + '</b> (' + r.dias + ' días), y la plata la necesitás en <b>' + (nec === 'USD' ? 'dólares' : 'pesos') + '</b>:</div>');
+
+    if(P && U){
+      var ganaP = r.diferencia >= 0;
+      var difTxt = money(Math.abs(r.diferencia), nec);
+      h.push('<div class="duelo">');
+      h.push(cardOp('Lo mejor en pesos', P, ganaP));
+      h.push(cardOp('Lo mejor en dólares', U, !ganaP));
+      var varQ = r.quiebre / r.mepHoy - 1;
+      h.push('<div class="card"><div class="k">Dólar de quiebre</div><div class="v">' + tc(r.quiebre) + '</div>' +
+        '<div class="s">MEP en la fecha a partir del cual <b>conviene dólares</b> (' + (varQ >= 0 ? '+' : '') + pct(varQ, 1) + ' desde hoy). Si el MEP termina abajo, ganan los pesos.</div>' +
+        '<div class="s">Con ' + DLBL[r.fuenteDolar] + ' (' + tc(r.mepFecha) + '): <b>' + (ganaP ? 'pesos' : 'dólares') + ' por ' + difTxt + '</b>.</div>' +
+        '</div>');
+      h.push('</div>');
+      if(P.certeza !== 'segura' && r.mejorPesosSegura && r.mejorPesosSegura !== P){
+        h.push('<div class="aviso">La mejor opción en pesos (<b>' + esc(nomOpTxt(P)) + '</b>) es <b>estimada</b>: ' + esc(P.nota) + ' La mejor con resultado seguro es <b>' + esc(nomOpTxt(r.mejorPesosSegura)) + '</b> → ' + money(r.mejorPesosSegura.valor, nec) + '.</div>');
+      }
+      var iq = r.inflQuiebre;
+      if(iq){
+        var mq = iq.meses, rq = mq.sinPublicar && mq.sinPublicar !== mq.hasta ? C.mesTxt(mq.sinPublicar) + ' a ' + C.mesTxt(mq.hasta) : C.mesTxt(mq.hasta);
+        var ganaCER = iq.dif >= 0;
+        h.push('<div class="card iq"><div class="k">Inflación de quiebre · CER contra tasa fija</div>' +
+          '<div class="iq-row"><div class="v">' + pct(iq.b) + '<span class="iq-u"> mensual</span></div>' +
+          '<div class="s">Promedio de ' + rq + '. Si la inflación de esos meses queda <b>arriba</b>, <b>' + esc(iq.cer.ticker) + '</b> (CER) le gana a <b>' + esc(iq.tf.ticker) + '</b> (' + esc(iq.tf.tipo) + '); si queda abajo, gana la tasa fija.' +
+          (mq.realHasta ? ' Los meses hasta ' + C.mesTxt(mq.realHasta) + ' ya se publicaron y van con la inflación real (el CER ajusta con ~2 meses de rezago).' : '') + '</div></div>' +
+          '<div class="s">' + (iq.fuente === 'mercado' ? 'Con la inflación de <b>mercado</b> empatan por construcción: es la que ya descuentan los precios. Elegí REM o cargá la tuya para ver quién gana.'
+            : 'Según ' + ILBL[iq.fuente] + ': <b>' + pct(iq.esperada) + '</b> mensual → conviene <b>' + (ganaCER ? esc(iq.cer.ticker) + ' (CER)' : esc(iq.tf.ticker) + ' (tasa fija)') + '</b> por ' + money(Math.abs(iq.dif), nec) + '.') + '</div></div>');
+      }
+    } else {
+      h.push('<div class="aviso">No encontré alternativas ' + (!P ? 'en pesos' : 'en dólares') + ' para esa fecha con los datos de hoy.</div>');
+    }
+
+    // dólar
+    var d = st.datos;
+    h.push('<div class="dolar">' +
+      '<div><span>MEP hoy</span><b>' + tc(r.mepHoy) + '</b><em>' + esc(d.mepFuente) + '</em></div>' +
+      (r.oficialHoy ? '<div><span>Oficial hoy (A3500)</span><b>' + tc(r.oficialHoy) + '</b><em>brecha ' + pct(r.brecha, 1) + '</em></div>' : '') +
+      (r.mepFuturos ? '<div class="' + (r.fuenteDolar === 'futuros' ? 'sel' : '') + '"><span>MEP futuros al ' + fdate(r.fecha) + '</span><b>' + tc(r.mepFuturos) + '</b><em>' + (r.mepFuturos >= r.mepHoy ? '+' : '') + pct(r.mepFuturos / r.mepHoy - 1, 1) + ' · oficial ' + tc(r.oficialFecha) + (r.extrapolado ? ' (extrapolado)' : (r.contrato ? ' (' + r.contrato.simbolo + ')' : '')) + '</em></div>' : '') +
+      (r.mepREM ? '<div class="' + (r.fuenteDolar === 'rem' ? 'sel' : '') + '"><span>MEP según el REM</span><b>' + tc(r.mepREM) + '</b><em>' + (r.mepREM >= r.mepHoy ? '+' : '') + pct(r.mepREM / r.mepHoy - 1, 1) + ' · oficial ' + tc(r.oficialREM) + (r.extrapoladoREM ? ' (extrapolado)' : '') + '</em></div>' : '') +
+      (r.fuenteDolar === 'manual' ? '<div class="sel"><span>Tu dólar (MEP)</span><b>' + tc(r.mepFecha) + '</b><em>' + (r.mepFecha >= r.mepHoy ? '+' : '') + pct(r.mepFecha / r.mepHoy - 1, 1) + ' en ' + r.dias + ' días</em></div>' : '') +
+      (d.fx && d.fx.bandaSup ? '<div><span>Techo de la banda (hoy)</span><b>' + tc(d.fx.bandaSup) + '</b><em>oficial</em></div>' : '') +
+      '</div>');
+    r.avisos.forEach(function(a){ h.push('<div class="aviso">' + esc(a) + '</div>'); });
+
+    // escenarios
+    if(r.escenarios){
+      h.push('<div class="sec"><h3>Escenarios de dólar</h3><span class="sp"></span><button class="btn" onclick="armarWpp()">✆ Resumen para el cliente</button></div>');
+      h.push('<div class="tabla-wrap"><table data-fcn-tf-skip><thead><tr><th>Si el MEP en la fecha es</th><th>Cambio vs. hoy</th><th>En pesos (' + esc(P.ticker) + ')</th><th>En dólares (' + esc(U.ticker) + ')</th><th>Diferencia</th><th>Gana</th></tr></thead><tbody>');
+      r.escenarios.forEach(function(s){
+        var cls = s.base ? 'base' : (s.quiebre ? 'quiebre' : '');
+        var gana = Math.abs(s.dif) < 0.5 ? '<span class="mut">empate</span>' : (s.dif > 0 ? '<span class="badge pesos">Pesos</span>' : '<span class="badge usd">Dólares</span>');
+        h.push('<tr class="' + cls + '"><td class="tk">' + tc(s.X) + '<span class="sub">' + esc(s.lbl) + '</span></td>' +
+          '<td>' + (s.varHoy >= 0 ? '+' : '') + pct(s.varHoy, 1) + '</td><td>' + money(s.pesos, nec) + '</td><td>' + money(s.usd, nec) + '</td>' +
+          '<td class="' + (s.dif >= 0 ? 'pos' : 'neg') + '">' + (s.dif >= 0 ? '+' : '−') + money(Math.abs(s.dif), nec) + '</td><td>' + gana + '</td></tr>');
+      });
+      h.push('</tbody></table></div>');
+    }
+
+    // ranking de alternativas
+    h.push('<div class="sec"><h3>Todas las alternativas</h3><span class="sp"></span><div class="chips" id="chips-filtro">' +
+      ['todas','pesos','usd','seguras'].map(function(f){ return '<button class="chip' + (st.filtro === f ? ' on' : '') + '" data-f="' + f + '">' + ({todas:'Todas',pesos:'En pesos',usd:'En dólares',seguras:'Solo seguras'})[f] + '</button>'; }).join('') + '</div></div>');
+    var ops = r.opciones.filter(function(o){ return st.filtro === 'todas' || (st.filtro === 'seguras' ? o.certeza === 'segura' : o.grupo === st.filtro); });
+    var top = Math.max(P ? P.valor : 0, U ? U.valor : 0);     // referencia: la mejor sin riesgo de precio
+    h.push('<div class="tabla-wrap"><table id="tabla-ops"><thead><tr><th>Alternativa</th><th>Cuándo</th><th>Tasa</th><th>Resultado</th><th>Terminás con</th><th>En ' + (nec === 'USD' ? 'dólares' : 'pesos') + '</th><th>vs. la mejor</th></tr></thead><tbody>');
+    ops.forEach(function(o){
+      var k = o.grupo + o.ticker + (o.venta ? 'v' : '');
+      var mejor = o === P || o === U;
+      h.push('<tr class="op' + (mejor ? ' mejor' : '') + '" data-k="' + esc(k) + '"><td class="tk">' + nomOp(o) +
+        '<span class="sub"><span class="badge ' + o.grupo + '">' + (o.grupo === 'pesos' ? 'Pesos' : 'Dólares') + '</span> <span class="badge ' + o.certeza + '">' + CERT[o.certeza] + '</span>' + (o.sinOperar ? ' <span class="badge">sin operar hoy</span>' : '') + '</span></td>' +
+        '<td style="font-family:var(--font-s);font-size:12px">' + cuando(o) + '</td><td>' + tasa(o) + '</td>' +
+        '<td class="' + (o.retorno >= 0 ? '' : 'neg') + '">' + (o.retorno >= 0 ? '+' : '') + pct(o.retorno) + '<span class="sub">TNA ' + pct(o.tnaEq, 1) + '</span></td>' +
+        '<td>' + money(o.final, o.moneda) + '</td><td class="fin">' + money(o.valor, nec) + '</td>' +
+        '<td class="' + (Math.abs(o.valor - top) < 0.5 ? 'mut' : (o.valor > top ? 'pos' : 'neg')) + '">' + (Math.abs(o.valor - top) < 0.5 ? '—' : (o.valor > top ? '+' : '−') + money(Math.abs(top - o.valor), nec)) + '</td></tr>');
+      if(st.abiertos[k]) h.push('<tr class="det"><td colspan="7">' + esc(o.nota) + (o.caucion && o.caucion.tna ? ' Lo cobrado antes queda en caución (TNA ' + pct(o.caucion.tna, 1) + ').' : '') + (o.emisor ? ' Emisor: ' + esc(o.emisor) + '.' : '') + ' Precio: ' + esc(o.fuente || '—') + '.</td></tr>');
+    });
+    if(!ops.length) h.push('<tr><td colspan="7" class="msg">Nada con este filtro.</td></tr>');
+    h.push('</tbody></table></div>');
+    h.push('<div class="notes" style="margin-top:4px"><div>"Resultado" es la ganancia hasta la fecha en la moneda del instrumento, ya con comisiones de compra y venta y, si corresponde, con el pase por MEP de entrada. "En ' + (nec === 'USD' ? 'dólares' : 'pesos') + '" convierte al final con ' + DLBL[r.fuenteDolar] + ' (' + tc(r.mepFecha) + ') y otro ' + String(p.com.mep).replace('.', ',') + '% de MEP. Tocá una fila para ver el detalle.</div></div>');
+
+    $('res').innerHTML = h.join('');
+    var cf = $('chips-filtro');
+    if(cf) cf.addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; st.filtro = b.getAttribute('data-f'); render(); });
+    var tb = $('tabla-ops');
+    if(tb) tb.addEventListener('click', function(e){ var tr = e.target.closest('tr.op'); if(!tr) return; var k = tr.getAttribute('data-k'); st.abiertos[k] = !st.abiertos[k]; render(); });
+  }
+  function cardOp(titulo, o, gana){
+    var nec = st.p.necesito;
+    return '<div class="card' + (gana ? ' gana' : '') + '"><div class="k">' + titulo + (gana ? ' <span class="badge gana">conviene</span>' : '') + '</div>' +
+      '<div class="v">' + money(o.valor, nec) + '</div>' +
+      '<div class="s"><b>' + esc(nomOpTxt(o)) + '</b> · ' + cuando(o) + ' · ' + tasa(o) + '</div>' +
+      '<div class="s"><span class="badge ' + o.certeza + '">' + CERT[o.certeza] + '</span> ' + esc(o.nota) + '</div></div>';
+  }
+
+  // ── resumen para el cliente ──
+  window.armarWpp = function(){
+    var r = st.res, p = st.p, nec = p.necesito, P = r.mejorPesos, U = r.mejorUSD;
+    if(!P || !U) return;
+    var t = [];
+    t.push('Hola! Te paso la comparación que hicimos: ' + money(p.monto, p.tengo) + ' hasta el ' + fdate(r.fecha) + ' (' + r.dias + ' días), para tenerlo en ' + (nec === 'USD' ? 'dólares' : 'pesos') + '.');
+    t.push('');
+    t.push('• En pesos: ' + nomOpTxt(P) + ' → ' + money(P.valor, nec) + (P.certeza !== 'segura' ? ' (estimado)' : ''));
+    t.push('• En dólares: ' + nomOpTxt(U) + ' → ' + money(U.valor, nec));
+    t.push('');
+    t.push('El dólar de quiebre es ' + tc(r.quiebre) + ' (MEP). Si el dólar termina por debajo de eso, conviene pesos; si termina arriba, conviene dólares.' + (r.fuenteDolar === 'futuros' ? ' Hoy el mercado de futuros lo ubica en ' + tc(r.mepFecha) + '.' : r.fuenteDolar === 'rem' ? ' Los analistas del REM (BCRA) lo esperan en ' + tc(r.mepFecha) + '.' : ''));
+    t.push('');
+    t.push('Ya incluye todas las comisiones (compra, venta y pase por MEP). Es una estimación con los precios de hoy, no una promesa: el dólar y las tasas pueden cambiar.');
+    $('wpp-texto').value = t.join('\n');
+    $('m-wpp').classList.add('open');
+  };
+  window.cerrarWpp = function(){ $('m-wpp').classList.remove('open'); };
+  window.copiarWpp = function(){ navigator.clipboard.writeText($('wpp-texto').value).then(function(){ toast('✓ Copiado'); }); };
+  window.abrirWhatsApp = function(){ window.open('https://wa.me/?text=' + encodeURIComponent($('wpp-texto').value), '_blank'); };
+
+  // ── eventos ──
+  var deb; function calcDeb(){ clearTimeout(deb); deb = setTimeout(calcular, 250); }
+  ['in-monto','in-ventana','in-infl','in-mepman','in-usdman','c-letra','c-bono','c-mep','c-caucars','c-caucusd'].forEach(function(id){ $(id).addEventListener('input', calcDeb); });
+  $('in-fecha').addEventListener('change', calcular);
+  $('chips-plazo').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; $('in-fecha').value = isoLocal(sumarMeses(new Date(), +b.getAttribute('data-m'))); calcular(); });
+  segOn('seg-tengo', function(v){
+    st.tengo = v;
+    var m = num($('in-monto').value);
+    if(m && st.datos && st.datos.mepHoy){ $('in-monto').value = nf0.format(Math.round(v === 'ARS' ? m * st.datos.mepHoy : m / st.datos.mepHoy)); }   // mismo monto, en la otra moneda
+    calcular();
+  });
+  segOn('seg-nec', function(v){ st.nec = v; calcular(); });
+  segOn('seg-plazo', function(v){ st.plazo = v; calcular(); });
+  segOn('seg-calif', function(v){ st.calif = v; calcular(); });
+  segOn('seg-finfl', function(v){ st.finfl = v; verManual(); if(v === 'manual') $('in-infl').focus(); calcular(); });
+  segOn('seg-fdol', function(v){ st.fdol = v; verManual(); if(v === 'manual'){ if(!$('in-mepman').value && st.res && st.res.mepFecha) $('in-mepman').value = nf0.format(Math.round(st.res.mepFecha)); $('in-mepman').focus(); } calcular(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') cerrarWpp(); });
+
+  if(typeof fcnBroadcastChannel !== 'undefined' && fcnBroadcastChannel){
+    fcnBroadcastChannel.addEventListener('message', function(e){ if(e.data && e.data.type === 'file_updated' && e.data.key === 'monitor') actualizar('monitor'); });
+  }
+  restaurar();
+  actualizar(false);
+})();
+</script>
+</body>
+</html>

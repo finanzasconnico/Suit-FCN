@@ -16,23 +16,27 @@ try { XLSX = require('xlsx'); } catch (e) { console.error('Falta la librería: n
 const raiz = path.resolve(__dirname, '..', '..');
 require(path.join(raiz, 'fcn-letras.js'));       // define globalThis.FCNLetras
 require(path.join(raiz, 'fcn-bonos.js'));        // define globalThis.FCNBonos (necesita FCNLetras)
-const L = globalThis.FCNLetras, B = globalThis.FCNBonos;
+require(path.join(raiz, 'fcn-carry.js'));        // define globalThis.FCNCarry (¿Pesos o dólares?: hoja "Letras-Bonos $" + FX)
+const L = globalThis.FCNLetras, B = globalThis.FCNBonos, C = globalThis.FCNCarry;
 
 const origen = path.join(raiz, 'data', 'monitor.xlsx');
 const destino = path.join(raiz, 'data', 'cuanto_cobro.json');
 const buf = fs.readFileSync(origen);
 const nombres = XLSX.read(buf, { type: 'buffer', bookSheets: true }).SheetNames;
-const hojas = L.nombresLetras(nombres).concat(B.nombresBonos(nombres));
+const hojasPesos = nombres.filter(s => s === 'Letras-Bonos $' || s === 'FX');
+const hojas = L.nombresLetras(nombres).concat(B.nombresBonos(nombres), hojasPesos);
 const wb = XLSX.read(buf, { type: 'buffer', sheets: hojas, cellDates: false });
 
 // "hoy" = ayer: el JSON no descarta nada que venza hoy; cada cliente vuelve a filtrar por vigencia con su fecha.
 const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
 const letras = L.letrasDesdeLibro(XLSX, wb, ayer);
 const rb = B.bonosDesdeLibro(XLSX, wb, ayer);
+const pm = C.pesosDesdeLibro(XLSX, wb);
 
-if (letras.length < 3 || rb.bonos.length < 50) {
+if (letras.length < 3 || rb.bonos.length < 50 || pm.pesos.length < 5 || !(pm.fx.mep > 0) || !pm.fecha) {
   // Guardia: si el Monitor cambió de formato y el parser no lee casi nada, NO pisamos el JSON bueno con uno vacío.
-  console.error('Lectura sospechosa (letras=' + letras.length + ', bonos=' + rb.bonos.length + '): no se escribe el JSON.');
+  console.error('Lectura sospechosa (letras=' + letras.length + ', bonos=' + rb.bonos.length + ', pesos=' + pm.pesos.length +
+    ', MEP=' + pm.fx.mep + ', fecha pesos=' + pm.fecha + '): no se escribe el JSON.');
   process.exit(3);
 }
 const fechasMon = rb.bonos.map(b => b.liqMonitor).filter(Boolean).sort((a, b) => a - b);
@@ -43,10 +47,11 @@ const salida = {
   fechaMonitor: fechasMon.length ? iso(fechasMon[fechasMon.length - 1]) : null,   // fecha de los precios/TIR guardados en el Monitor
   letras: L.letrasAJSON(letras),
   bonos: B.bonosAJSON(rb.bonos),
-  descartados: rb.descartados
+  descartados: rb.descartados,
+  pesos: C.pesosAJSON(pm)        // ¿Pesos o dólares? (web pública): CER / TAMAR / duales / tasa fija + FX del Monitor
 };
 // Sin "generado en" con hora: así, si el Monitor no cambió, el archivo sale idéntico y no se hace un commit de más.
 fs.writeFileSync(destino, JSON.stringify(salida));
 const kb = Math.round(fs.statSync(destino).size / 1024);
 const invalidos = salida.bonos.filter(b => !b.ok).length;
-console.log('cuanto_cobro.json: ' + salida.letras.length + ' letras, ' + salida.bonos.length + ' bonos (' + invalidos + ' no validados), ' + kb + ' KB, Monitor del ' + salida.fechaMonitor);
+console.log('cuanto_cobro.json: ' + salida.letras.length + ' letras, ' + salida.bonos.length + ' bonos (' + invalidos + ' no validados), ' + salida.pesos.lista.length + ' en pesos (tasas del ' + salida.pesos.fecha + '), ' + kb + ' KB, Monitor del ' + salida.fechaMonitor);
