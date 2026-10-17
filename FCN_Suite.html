@@ -300,6 +300,13 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 .dash-pbi-stamp{font-size:11px;color:var(--muted);margin:-8px 0 10px;display:flex;flex-wrap:wrap;gap:4px 14px;}
 .dash-pbi-stamp:empty{display:none;}
 .dash-pbi-stamp strong{color:var(--jade);font-weight:600;}
+.dash-fact{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:12px 14px;margin-bottom:14px;}
+.dash-fact:empty{display:none;}
+.dash-fact-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px;color:var(--text);}
+.dash-fact-top strong{color:var(--jade);}
+.dash-fact-bar{height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin:8px 0 6px;}
+.dash-fact-bar>div{height:100%;border-radius:4px;transition:width .4s;}
+.dash-fact-sub{font-size:11px;color:var(--muted);}
 .dash-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
 .dash-stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
 .dash-stat.warn{border-color:rgba(219,160,60,.3);}
@@ -759,6 +766,7 @@ html.fcn-tf-iframe-full .tool-frame.active{position:fixed;inset:0;z-index:214748
 
       <div class="dash-section">
         <div class="dash-pbi-stamp" id="dash-pbi-stamp"></div>
+        <div class="dash-fact" id="dash-facturacion"></div>
         <div class="dash-kpis" id="dash-stats"></div>
         <div class="dash-card agenda-card">
           <div class="dash-section-title">📅 Cobros de tus clientes <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px;">(cupones, amortizaciones y vencimientos — plata para reinvertir)</span>
@@ -6193,6 +6201,7 @@ function renderDashboardAll() {
   currentStockMap = stock;
   renderDashStats(tenencia, precios);
   renderPowerBIStamp();
+  renderFacturacion();
   renderDashComposicion(tenencia);
   renderDashLiquidez(tenencia);
   renderDashTopClientes(tenencia);
@@ -6404,8 +6413,55 @@ async function compactarMonitorAuto() {
   notifyTools('monitor');
   return true;
 }
+// ── FACTURACIÓN DEL MES vs META (la extensión baja el Reporte de Facturación del portal de asesores
+// y guarda un resumen en fcn_shared_v1 / key 'comisiones': {resumen:{totalUSD, porDia, ultimoDia, mes}}) ──
+// Meta: 10.000 USD/mes facturados a Balanz (CLAUDE.md, "Objetivo de negocio"). Se puede cambiar
+// por navegador con localStorage['fcn_meta_facturacion'].
+const META_FACTURACION_USD = 10000;
+// Feriados nacionales que caen en día hábil (solo para contar días hábiles restantes del mes).
+const FERIADOS_AR = new Set(['2026-10-12', '2026-11-23','2026-12-08', '2026-12-25', '2027-01-01']);
+function _ymdLocal(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function _esHabil(d) { const w = d.getDay(); return w !== 0 && w !== 6 && !FERIADOS_AR.has(_ymdLocal(d)); }
+function habilesEntre(desde, hasta) { // inclusive, fechas locales
+  let n = 0; const d = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+  for (; d <= hasta; d.setDate(d.getDate() + 1)) if (_esHabil(d)) n++;
+  return n;
+}
+async function renderFacturacion() {
+  const el = document.getElementById('dash-facturacion');
+  if (!el) return;
+  const entry = await fcnGetSharedFile(userKey('comisiones'));
+  const r = entry && entry.resumen;
+  const hoy = new Date();
+  if (!r || r.mes !== _ymdLocal(hoy).slice(0, 7)) { el.innerHTML = ''; return; }
+  let meta = META_FACTURACION_USD;
+  try { meta = parseFloat(localStorage.getItem('fcn_meta_facturacion')) || meta; } catch (e) {}
+  const total = r.totalUSD || 0, pct = Math.max(0, Math.min(100, total / meta * 100));
+  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1), finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+  // El reporte trae hasta ayer (último día con datos): lo que falta se reparte en los hábiles desde hoy.
+  const corte = r.ultimoDia ? new Date(r.ultimoDia + 'T12:00:00') : new Date(hoy.getTime() - 864e5);
+  const habTranscurridos = Math.max(1, habilesEntre(inicioMes, corte));
+  const habRestantes = habilesEntre(hoy, finMes);
+  const falta = Math.max(0, meta - total);
+  const porDia = habRestantes ? falta / habRestantes : falta;
+  const proyeccion = total / habTranscurridos * habilesEntre(inicioMes, finMes);
+  const usd = n => 'USD ' + Math.round(n).toLocaleString('es-AR');
+  const mesNombre = hoy.toLocaleString('es-AR', { month: 'long' });
+  const color = proyeccion >= meta ? 'var(--jade)' : proyeccion >= meta * 0.8 ? 'var(--ambar)' : 'var(--danger)';
+  el.innerHTML = `
+    <div class="dash-fact-top">
+      <span>💰 Facturación de ${escHtml(mesNombre)}: <strong>${usd(total)}</strong> de ${usd(meta)} (${pct.toFixed(0)}%)</span>
+      <span class="dash-fact-sub">hasta el ${r.ultimoDia ? r.ultimoDia.split('-').reverse().slice(0, 2).join('/') : '—'} · Reporte de Facturación de Balanz</span>
+    </div>
+    <div class="dash-fact-bar"><div style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
+    <div class="dash-fact-sub">${falta > 0
+      ? `Faltan ${usd(falta)} → ${usd(porDia)} por día hábil (${habRestantes} restantes) · al ritmo actual cerrás en ~${usd(proyeccion)}`
+      : `🎯 Meta cumplida · al ritmo actual cerrás en ~${usd(proyeccion)}`}</div>`;
+}
+
 document.addEventListener('fcn-powerbi-actualizado', async e => {
   const key = e.detail && e.detail.key;
+  if (key === 'comisiones') { await renderFacturacion(); showToast('💰 Facturación del mes actualizada desde Balanz', 4000); return; }
   const sf = SHARED_FILES.find(x => x.key === key);
   if (!sf) return;
   if (key === 'monitor') { try { await compactarMonitorAuto(); } catch (err) { console.warn('[FCN] no se pudo compactar el Monitor', err); } }
