@@ -361,9 +361,12 @@
     var i = ESCALA.indexOf(m[1] + (m[2] || ''));
     return i >= 0 ? i : ESCALA.indexOf(m[1]);
   }
-  // Soberanos y BOPREAL siempre (rotulados aparte); provinciales y ONs con calificación local ≥ califMin.
-  function elegibleUSD(b, califMin) {
-    if (b.cat === 'Soberano' || b.cat === 'BOPREAL') return true;
+  // Bonos del Tesoro y BOPREAL: entran si incluirSob (default sí), rotulados aparte. Provinciales y ONs: calificación
+  // ≥ califMin ('todas' = cualquiera, incluso sin calificación). Ojo: algunas provincias traen escala INTERNACIONAL
+  // ("B- (Fitch)"), que no es comparable con la local ("AA (arg)"): con un mínimo local alto quedan afuera.
+  function elegibleUSD(b, califMin, incluirSob) {
+    if (b.cat === 'Soberano' || b.cat === 'BOPREAL') return incluirSob !== false;
+    if (califMin === 'todas') return true;
     var r = califRank(b.calif), lim = califRank(califMin);
     return r != null && lim != null && r <= lim;
   }
@@ -531,7 +534,7 @@
     // ── Dólares: bonos y ONs que vencen cerca de la fecha (a vencimiento) ──
     var largos = [], aVto = [];
     (d.bonos || []).forEach(function (b) {
-      if (!b.validado || !elegibleUSD(b, p.califMin)) return;
+      if (!b.validado || !elegibleUSD(b, p.califMin, p.incluirSob)) return;
       var pr = B.elegirPrecio(b, d.preciosBonos || {}, p.plazo, hoy);
       if (!pr) return;
       var r = B.calcularBono(b, { monto: montoUSD, comisionPct: com.bono, plazo: p.plazo, hoy: hoy, precio: pr });
@@ -619,7 +622,7 @@
 
   global.FCNCarry = {
     DEFAULTS: DEFAULTS, pesosDesdeLibro: pesosDesdeLibro, pesosAJSON: pesosAJSON, pesosDesdeJSON: pesosDesdeJSON, getCauciones: getCauciones, tasaCaucion: tasaCaucion, crecerCaucion: crecerCaucion,
-    getMEP: getMEP, futurosDesdeJSON: futurosDesdeJSON, oficialEsperado: oficialEsperado, califRank: califRank, elegibleUSD: elegibleUSD,
+    getMEP: getMEP, futurosDesdeJSON: futurosDesdeJSON, oficialEsperado: oficialEsperado, califRank: califRank, elegibleUSD: elegibleUSD, ESCALA: ESCALA,
     conv: conv, analizar: analizar,
     remDesdeJSON: remDesdeJSON, pathInflacion: pathInflacion, factorCER: factorCER, mesesCER: mesesCER, mesTxt: mesTxt, rangoTxt: rangoTxt, oficialREM: oficialREM
   };

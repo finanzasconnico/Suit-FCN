@@ -102,6 +102,9 @@ input.txt:focus,input[type=date]:focus{outline:none;border-color:var(--jade);}
 .dolar span{font-family:var(--font-m);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
 .dolar b{font-family:var(--font-m);font-size:15px;color:var(--text-strong);font-weight:500;}
 .dolar em{font-style:normal;font-size:11px;color:var(--muted);}
+.selc{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:8px 8px;font-family:var(--font-m);font-size:12.5px;}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;}
+.cnt{font-size:10.5px;color:var(--muted);}
 .dolar>div.sel b{color:var(--jade);}
 .dolar>div.sel span::after{content:' · el que se usa';color:var(--jade);}
 .card.iq .iq-row{display:flex;gap:8px 22px;align-items:baseline;flex-wrap:wrap;}
@@ -203,6 +206,14 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
       </div>
     </div>
     <div class="field">
+      <label for="sel-calif">Calificación de la empresa</label>
+      <div class="inrow">
+        <select id="sel-calif" class="selc" title="Calificación mínima de las ONs y bonos provinciales (escala local)"><option value="AAA">AAA</option><option value="AA+">AA+ o mejor</option><option value="AA">AA o mejor</option><option value="AA-" selected>AA- o mejor</option><option value="A+">A+ o mejor</option><option value="A">A o mejor</option><option value="A-">A- o mejor</option><option value="BBB+">BBB+ o mejor</option><option value="BBB">BBB o mejor</option><option value="BBB-">BBB- o mejor</option><option value="todas">Cualquiera</option></select>
+        <label class="chk" title="Bonos del Tesoro (AL/GD/AO/AN…) y BOPREAL del BCRA"><input type="checkbox" id="chk-sob" checked> + Tesoro y BOPREAL</label>
+      </div>
+      <small class="cnt" id="calif-cnt"></small>
+    </div>
+    <div class="field">
       <label for="in-ventana">Vencimientos ± días</label>
       <input type="text" class="txt sm" id="in-ventana" inputmode="numeric" value="15">
     </div>
@@ -211,11 +222,6 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
     </div>
   </div>
   <div class="supuestos" id="supuestos" hidden>
-    <div class="field">
-      <label>Calificación mínima (ONs)</label>
-      <div class="seg" id="seg-calif"><button data-v="AAA">AAA</button><button data-v="AA-" class="on">AA- o mejor</button><button data-v="A-">A- o mejor</button></div>
-      <small>Soberanos y BOPREAL entran siempre, rotulados aparte.</small>
-    </div>
     <div class="field">
       <label for="in-usdman">Tasa en USD a mano (TNA %)</label>
       <input type="text" class="txt" id="in-usdman" inputmode="decimal" placeholder="opcional">
@@ -269,7 +275,7 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
   'use strict';
   var L = FCNLetras, B = FCNBonos, C = FCNCarry;
   var LS = 'fcn_pesos_dolares_v1';
-  var st = { tengo:'USD', nec:'USD', plazo:'24', calif:'AA-', finfl:'rem', fdol:'futuros', datos:null, res:null, filtro:'todas', abiertos:{}, monFuente:'', monFecha:null };
+  var st = { tengo:'USD', nec:'USD', plazo:'24', calif:'AA-', sob:true, finfl:'rem', fdol:'futuros', datos:null, res:null, filtro:'todas', abiertos:{}, monFuente:'', monFecha:null };
 
   // ── util ──
   function $(id){ return document.getElementById(id); }
@@ -296,7 +302,7 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
   // ── persistencia (solo comodidad) ──
   var CAMPOS = ['in-monto','in-fecha','in-ventana','in-infl','in-mepman','in-usdman','c-letra','c-bono','c-mep','c-caucars','c-caucusd'];
   function guardar(){
-    var o = {tengo:st.tengo, nec:st.nec, plazo:st.plazo, calif:st.calif, finfl:st.finfl, fdol:st.fdol};
+    var o = {tengo:st.tengo, nec:st.nec, plazo:st.plazo, calif:st.calif, sob:st.sob, finfl:st.finfl, fdol:st.fdol};
     CAMPOS.forEach(function(id){ o[id] = $(id).value; });
     try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){}
   }
@@ -305,11 +311,11 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
     if(o){
       CAMPOS.forEach(function(id){ if(o[id] != null && o[id] !== '') $(id).value = o[id]; });
       if(o.tengo) st.tengo = o.tengo; if(o.nec) st.nec = o.nec; if(o.plazo) st.plazo = o.plazo; if(o.calif) st.calif = o.calif;
-      if(o.finfl) st.finfl = o.finfl; if(o.fdol) st.fdol = o.fdol;
+      if(o.finfl) st.finfl = o.finfl; if(o.fdol) st.fdol = o.fdol; if(o.sob === false) st.sob = false;
     }
     var f = $('in-fecha').value ? new Date($('in-fecha').value+'T00:00') : null;
     if(!f || f <= new Date()) $('in-fecha').value = isoLocal(sumarMeses(new Date(), 3));
-    marcar('seg-tengo', st.tengo); marcar('seg-nec', st.nec); marcar('seg-plazo', st.plazo); marcar('seg-calif', st.calif);
+    marcar('seg-tengo', st.tengo); marcar('seg-nec', st.nec); marcar('seg-plazo', st.plazo); $('sel-calif').value = st.calif; if(!$('sel-calif').value){ st.calif = 'AA-'; $('sel-calif').value = 'AA-'; } $('chk-sob').checked = st.sob;
     marcar('seg-finfl', st.finfl); marcar('seg-fdol', st.fdol); verManual();
   }
   function verManual(){ $('in-infl').hidden = st.finfl !== 'manual'; $('in-mepman').hidden = st.fdol !== 'manual'; }
@@ -380,7 +386,7 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
     var infl = num($('in-infl').value), usd = num($('in-usdman').value);
     return {
       hoy: new Date(), fecha: $('in-fecha').value ? new Date($('in-fecha').value + 'T00:00') : null,
-      monto: num($('in-monto').value), tengo: st.tengo, necesito: st.nec, plazo: st.plazo, califMin: st.calif,
+      monto: num($('in-monto').value), tengo: st.tengo, necesito: st.nec, plazo: st.plazo, califMin: st.calif, incluirSob: st.sob,
       ventana: Math.max(0, Math.min(120, num($('in-ventana').value) || 0)),
       inflMensual: st.finfl === 'manual' && infl != null ? infl/100 : null, tasaUSDManual: usd != null && usd > 0 ? usd/100 : null,
       fuenteInfl: st.finfl, fuenteDolar: st.fdol, mepManual: num($('in-mepman').value),
@@ -388,8 +394,18 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
              caucARS: num($('c-caucars').value) || 0, caucUSD: num($('c-caucusd').value) || 0 }
     };
   }
+  function contarCalif(){
+    var bs = (st.datos && st.datos.bonos) || [], n = 0, sob = 0;
+    bs.forEach(function(b){
+      if(!b.validado) return;
+      if(b.cat === 'Soberano' || b.cat === 'BOPREAL'){ sob++; return; }
+      if(C.elegibleUSD(b, st.calif)) n++;
+    });
+    $('calif-cnt').textContent = n + ' ONs y provincias' + (st.sob ? ' + ' + sob + ' del Tesoro/BOPREAL' : '') + ' en el universo';
+  }
   function calcular(){
     guardar();
+    if(st.datos) contarCalif();
     if(!st.datos) return;
     var p = params();
     if(!(p.monto > 0)){ $('res').innerHTML = '<div class="msg">Poné cuánto tenés.</div>'; return; }
@@ -553,7 +569,8 @@ tr.mejor td.tk::before{content:'★ ';color:var(--ambar);}
   });
   segOn('seg-nec', function(v){ st.nec = v; calcular(); });
   segOn('seg-plazo', function(v){ st.plazo = v; calcular(); });
-  segOn('seg-calif', function(v){ st.calif = v; calcular(); });
+  $('sel-calif').addEventListener('change', function(){ st.calif = this.value; calcular(); });
+  $('chk-sob').addEventListener('change', function(){ st.sob = this.checked; calcular(); });
   segOn('seg-finfl', function(v){ st.finfl = v; verManual(); if(v === 'manual') $('in-infl').focus(); calcular(); });
   segOn('seg-fdol', function(v){ st.fdol = v; verManual(); if(v === 'manual'){ if(!$('in-mepman').value && st.res && st.res.mepFecha) $('in-mepman').value = nf0.format(Math.round(st.res.mepFecha)); $('in-mepman').focus(); } calcular(); });
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape') cerrarWpp(); });
