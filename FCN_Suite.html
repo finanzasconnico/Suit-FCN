@@ -6436,7 +6436,10 @@ async function renderFacturacion() {
   if (!r || r.mes !== _ymdLocal(hoy).slice(0, 7)) { el.innerHTML = ''; return; }
   let meta = META_FACTURACION_USD;
   try { meta = parseFloat(localStorage.getItem('fcn_meta_facturacion')) || meta; } catch (e) {}
-  const total = r.totalUSD || 0, pct = Math.max(0, Math.min(100, total / meta * 100));
+  // Oficial (hasta ayer) + estimación de hoy desde las Órdenes del día (r.hoy, cada 15 min en horario).
+  const oficial = r.totalUSD || 0;
+  const hoyEst = r.hoy && r.hoy.fecha === _ymdLocal(hoy) ? r.hoy : null;
+  const total = oficial + (hoyEst ? hoyEst.estimadoUSD || 0 : 0), pct = Math.max(0, Math.min(100, total / meta * 100));
   const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1), finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
   // El reporte trae hasta ayer (último día con datos): lo que falta se reparte en los hábiles desde hoy.
   const corte = r.ultimoDia ? new Date(r.ultimoDia + 'T12:00:00') : new Date(hoy.getTime() - 864e5);
@@ -6444,14 +6447,15 @@ async function renderFacturacion() {
   const habRestantes = habilesEntre(hoy, finMes);
   const falta = Math.max(0, meta - total);
   const porDia = habRestantes ? falta / habRestantes : falta;
-  const proyeccion = total / habTranscurridos * habilesEntre(inicioMes, finMes);
+  // Proyección con días completos (el oficial): el día de hoy todavía está a medias.
+  const proyeccion = oficial / habTranscurridos * habilesEntre(inicioMes, finMes);
   const usd = n => 'USD ' + Math.round(n).toLocaleString('es-AR');
   const mesNombre = hoy.toLocaleString('es-AR', { month: 'long' });
   const color = proyeccion >= meta ? 'var(--jade)' : proyeccion >= meta * 0.8 ? 'var(--ambar)' : 'var(--danger)';
   el.innerHTML = `
     <div class="dash-fact-top">
       <span>💰 Facturación de ${escHtml(mesNombre)}: <strong>${usd(total)}</strong> de ${usd(meta)} (${pct.toFixed(0)}%)</span>
-      <span class="dash-fact-sub">hasta el ${r.ultimoDia ? r.ultimoDia.split('-').reverse().slice(0, 2).join('/') : '—'} · Reporte de Facturación de Balanz</span>
+      <span class="dash-fact-sub">oficial ${usd(oficial)} hasta el ${r.ultimoDia ? r.ultimoDia.split('-').reverse().slice(0, 2).join('/') : '—'}${hoyEst ? ` + hoy ${usd(hoyEst.estimadoUSD || 0)} estimado (${hoyEst.ordenes} órdenes, ${new Date(hoyEst.actualizadoEn).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })})` : ''}</span>
     </div>
     <div class="dash-fact-bar"><div style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
     <div class="dash-fact-sub">${falta > 0
